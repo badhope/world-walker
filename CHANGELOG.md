@@ -2,94 +2,74 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [3.0.0] - 2026-04-04
+
+### 重构 (Refactored)
+
+**架构优化**
+- 统一配置系统，消除 `core/` 和 `backend/core/` 的混乱
+- 建立正确的 Python 包结构
+- 精简项目结构，从 50+ 文件精简到 24 个核心文件
+
+**数据采集**
+- 删除所有假爬虫代码
+- 集成 AKShare 获取真实经济数据
+- 支持 GDP、CPI、PPI、M2、PMI 等指标采集
+
+**推演引擎**
+- 重写推演引擎，实现 14 个真正的经济学指标推演
+- 支持线性推演和蒙特卡洛模拟
+- 添加置信区间计算
+
+**经济模型**
+- 菲利普斯曲线 (失业率-通胀率关系)
+- 奥肯定律 (GDP-失业率关系)
+- 柯布-道格拉斯生产函数
+- 索洛增长模型
+
+**前端优化**
+- 重写 Streamlit 应用
+- 修复页面路由问题
+- 优化 UI 样式
+
+**部署优化**
+- 创建一键启动脚本 `启动.bat`
+- 自动管理双进程启动
+- 自动打开浏览器
+
+### 修复 (Fixed)
+
+- 修复 `pyyaml` 依赖缺失问题
+- 修复 `start.py` 引用不存在的 `web_app_enhanced.py`
+- 修复 Streamlit 页面路由错误
+- 修复数据库初始化问题
+- 修复数据采集保存逻辑
+
+### 移除 (Removed)
+
+- 删除假爬虫代码 (`backend/services/scraper/`)
+- 删除重复的 `core/` 目录
+- 删除旧的 `config.py`
+- 删除无用的测试文件
+- 删除 Docker 相关文件
+- 删除空的 services 子目录
 
 ## [2.1.0] - 2026-03-23
 
 ### Added
-- **Internationalization (i18n) Support**
-  - English/Chinese language toggle in sidebar
-  - Complete translation dictionary in `app/i18n.py`
-  - Language preference persisted in session state
-
-- **Batch Calculation API Endpoint**
-  - `POST /api/v1/inference/batch_calculate` for bulk indicator calculations
-  - Support for multiple indicators in single request
-  - Confidence intervals for Monte Carlo method
-
-- **Enhanced UI/UX**
-  - Gradient background styling
-  - Card-based layout for feature sections
-  - Animated metric displays
-  - Responsive design improvements
-
-### Fixed
-- **Syntax Error in Streamlit App**
-  - Fixed `legend=dict orientation="h"` missing parentheses in `update_layout()`
-  - File: `app/streamlit_app.py` line 417
-
-### Improved
-- **Code Quality**
-  - All 68 unit tests passing
-  - Syntax validation for all Python modules
-  - Backend import validation successful
-
-- **API Documentation**
-  - Enhanced OpenAPI schema
-  - Better error messages for missing fields
+- 国际化支持 (中英文切换)
+- 批量计算 API
+- UI/UX 增强
 
 ## [2.0.0] - 2026-03-22
 
 ### Added
-- **Core Economic Models**
-  - `FiscalAnalyzer` - Government revenue, expenditure, deficit analysis
-  - `RegionalAnalyzer` - Regional economic disparity and convergence testing
-  - `IncomeDistributionAnalyzer` - Income distribution and inequality metrics
-  - `IndustrialAnalyzer` - Industrial structure and upgrading analysis
-  - `InnovationAnalyzer` - R&D and innovation capability assessment
-
-- **Backend API (FastAPI)**
-  - `GET /api/v1/indicators/` - List all economic indicators
-  - `POST /api/v1/inference/calculate` - Single indicator calculation
-  - `POST /api/v1/inference/infer_all` - Calculate all possible indicators
-  - `GET /api/v1/inference/available_indicators` - Get available indicators
-  - `POST /api/v1/data/` - Create economic indicator records
-  - `GET /api/v1/data/` - Query indicator records
-  - `GET /health` - Health check endpoint
-
-- **Data Scraping Infrastructure**
-  - `MinistryOfFinanceScraper` - Official fiscal data
-  - `NationalBureauOfStatisticsScraper` - GDP, CPI, population
-  - `CustomsScraper` - Import/export data
-  - `CentralBankScraper` - Monetary data
-
-- **Teaching Models**
-  - Phillips Curve analysis
-  - Okun's Law calculations
-  - Cobb-Douglas production function
-  - Harrod-Domar growth model
-
-- **Frontend (Streamlit)**
-  - Multi-module dashboard
-  - Interactive Plotly visualizations
-  - API status monitoring
-  - Economic trends display
-
-- **Documentation**
-  - `README.md` - English documentation
-  - `README_zh.md` - Chinese documentation
-  - `CONTRIBUTING.md` - Contribution guidelines
-  - `LICENSE` - GPL v3.0 license
-
-### Changed
-- Improved indicator calculation formulas
-- Enhanced convergence testing algorithms
-- Better error handling in API endpoints
+- FastAPI 后端
+- Streamlit 前端
+- 数据采集基础设施
+- 教学模型
 
 ## [1.0.0] - 2026-03-20
 
 ### Added
-- Initial project structure
-- Basic fiscal analysis module
-- Regional economic data models
+- 初始项目结构

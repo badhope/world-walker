@@ -1,0 +1,65 @@
+# GNU General Public License v3.0
+
+Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications, which include larger works using a licensed work, under the same license. Copyright and license notices must be preserved. Contributors provide an express grant of patent rights.
+
+## Terms
+
+### 0. Definitions
+
+"This License" refers to version 3 of the GNU General Public License.
+
+"Copyright" also means copyright-like laws that apply to other kinds of works.
+
+"The Program" means any original work of authorship, including any substantive modifications, made under this license.
+
+"A contributor" is anyone who submits patches, changes, or additions to this Program.
+
+### 1. Source Code
+
+The "source code" for a work means the preferred form of the work for making modifications to it. "Object code" means any non-source form of a work.
+
+A "Standard Interface" means an interface that either is an official standard defined by a recognized standards body, or, in the case of interfaces specified for a particular programming language, one that is widely used among developers working in that language.
+
+### 2. Basic Permissions
+
+All rights granted under this License are granted for the term of copyright and are irrevocable provided the stated conditions are met. This License explicitly affirms your unlimited permission to run the unmodified Program. The output from running a covered work is covered by this License only if the output, given its content, constitutes a covered work.
+
+### 3. Contributing
+
+When you make a contribution, you are confirming that:
+- The contribution is your original work
+- You have the right to submit it under this license
+- You understand the contribution is provided "as is"
+
+### 4. Distribution
+
+You may distribute covered works to others under this License. You must make sure that recipients can receive the source code. You must ensure that the Program is distributed with complete source code.
+
+### 5. Patent License
+
+Each contributor grants you a non-exclusive, worldwide, royalty-free patent license under the contributor's essential patent claims, to make, use, sell, offer for sale, import and otherwise run, modify and propagate the contents of the contributor's contribution.
+
+### 6. No Warranty
+
+THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### 7. Interpretation
+
+- This is an **open source project** for **educational and research purposes**
+- The software is designed for **economic data analysis and prediction**
+- Users are encouraged to use, modify, and distribute the software under GPL v3
+- Contributions from the community are welcome
+
+## Contact
+
+For questions regarding this license, please contact the project maintainers.
+
+---
+
+Copyright (c) 2024-2026 National Economic Data Analysis Platform Contributors
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.

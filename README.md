@@ -1,6 +1,16 @@
+
 # national_stats
 
 **AI驱动的经济数据分析平台** - 自动采集、分析、可视化、预警、报告生成
+
+---
+
+## 🌐 Language / 语言
+
+- [中文](#特性)
+- [English](#features)
+
+---
 
 ## 特性
 
@@ -62,5 +72,70 @@ backend/
 ```
 
 ## 许可证
+
+GPL-3.0
+
+---
+
+## Features
+
+- 🤖 **Multi-Agent Collaboration** - CrewAI-based multi-agent system
+- 📊 **Real-time Data** - Fetch data from NBS and PBOC
+- 📈 **Economic Models** - Phillips curve, Okun's law, Cobb-Douglas, Solow growth
+- 🎨 **Visualization** - Heatmaps, radar charts, dashboards, provincial comparison
+- ⚠️ **Alert System** - Real-time monitoring for 7 core indicators
+- 📄 **Auto Reporting** - Complete analysis reports in Markdown
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+## Quick Start
+
+```python
+from backend.agents import CrewManager
+
+manager = CrewManager(provider="ollama", model="llama3.2")
+result = manager.run_full_analysis(topic="2024 China Macroeconomic Analysis")
+```
+
+## Command Line
+
+```bash
+# Get real-time alerts
+python -c "from backend.agents.roles.alert import get_all_alerts; print(get_all_alerts())"
+
+# Generate analysis report
+python -c "from backend.agents.roles.report import generate_and_save_report; print(generate_and_save_report())"
+```
+
+## Local Models
+
+```bash
+# Install Ollama (free)
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull llama3.2
+```
+
+## Project Structure
+
+```
+backend/
+├── agents/           # AI Agent system
+│   ├── roles/
+│   │   ├── data_collector.py    # Data collection
+│   │   ├── analyst.py           # Economic analysis
+│   │   ├── visualization/       # Visualization
+│   │   ├── alert/              # Alert system
+│   │   ├── verification/       # Data verification
+│   │   ├── comparison/         # Comparative analysis
+│   │   └── report/            # Report generation
+│   └── crew_manager.py
+└── services/          # Service layer
+```
+
+## License
 
 GPL-3.0

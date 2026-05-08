@@ -46,3 +46,17 @@ data/database/
 *.db
 *.cache
 *.meta
+
+# Generated files
+*.html
+*.md
+*.pdf
+
+# API Keys
+.env
+.env.local
+.env.*.local
+
+# Secrets
+secrets/
+credentials/

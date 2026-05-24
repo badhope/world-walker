@@ -1,7 +1,7 @@
 
 # national_stats
 
-**AI驱动的经济数据分析平台** - 自动采集、分析、可视化、预警、报告生成
+**经济数据分析平台** - 实时数据采集、分析、可视化、预警
 
 ---
 
@@ -14,7 +14,6 @@
 
 ## 特性
 
-- 🤖 **多Agent协作** - 基于CrewAI的多智能体系统
 - 📊 **实时数据** - 从国家统计局、人民银行获取数据
 - 📈 **经济学模型** - 菲利普斯曲线、奥肯定律、柯布-道格拉斯、索洛增长
 - 🎨 **可视化** - 热力图、雷达图、仪表盘、省际对比
@@ -29,46 +28,35 @@ pip install -r requirements.txt
 
 ## 快速开始
 
-```python
-from backend.agents import CrewManager
-
-manager = CrewManager(provider="ollama", model="llama3.2")
-result = manager.run_full_analysis(topic="2024年中国宏观经济分析")
-```
-
-## 命令行
+启动 API 服务：
 
 ```bash
-# 获取实时预警
-python -c "from backend.agents.roles.alert import get_all_alerts; print(get_all_alerts())"
-
-# 生成分析报告
-python -c "from backend.agents.roles.report import generate_and_save_report; print(generate_and_save_report())"
+python -m backend.main
 ```
 
-## 本地模型
+访问 API 文档：http://localhost:8001/docs
 
-```bash
-# 安装Ollama (免费)
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llama3.2
-```
+## 技术架构
+
+所有分析基于经济学公式和统计模型，无需外部 AI 模型
 
 ## 项目结构
 
 ```
 backend/
-├── agents/           # AI Agent系统
-│   ├── roles/
-│   │   ├── data_collector.py    # 数据采集
-│   │   ├── analyst.py           # 经济分析
-│   │   ├── visualization/       # 可视化
-│   │   ├── alert/              # 预警系统
-│   │   ├── verification/       # 数据验证
-│   │   ├── comparison/         # 对比分析
-│   │   └── report/            # 报告生成
-│   └── crew_manager.py
-└── services/          # 服务层
+├── api/              # API 路由
+│   └── routes/       # 路由定义
+├── core/             # 核心配置
+│   ├── config.py     # 配置管理
+│   └── database.py   # 数据库管理
+├── models/           # 数据模型
+│   └── schemas.py    # Pydantic 模型
+├── services/         # 服务层
+│   ├── data_cleaner.py       # 数据清理
+│   ├── data_fetcher.py       # 数据获取
+│   ├── inference_engine.py   # 推理引擎
+│   └── visualizer.py         # 可视化服务
+└── main.py          # FastAPI 主程序入口
 ```
 
 ## 许可证
@@ -79,7 +67,6 @@ GPL-3.0
 
 ## Features
 
-- 🤖 **Multi-Agent Collaboration** - CrewAI-based multi-agent system
 - 📊 **Real-time Data** - Fetch data from NBS and PBOC
 - 📈 **Economic Models** - Phillips curve, Okun's law, Cobb-Douglas, Solow growth
 - 🎨 **Visualization** - Heatmaps, radar charts, dashboards, provincial comparison
@@ -94,46 +81,35 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-```python
-from backend.agents import CrewManager
-
-manager = CrewManager(provider="ollama", model="llama3.2")
-result = manager.run_full_analysis(topic="2024 China Macroeconomic Analysis")
-```
-
-## Command Line
+Start the API service:
 
 ```bash
-# Get real-time alerts
-python -c "from backend.agents.roles.alert import get_all_alerts; print(get_all_alerts())"
-
-# Generate analysis report
-python -c "from backend.agents.roles.report import generate_and_save_report; print(generate_and_save_report())"
+python -m backend.main
 ```
 
-## Local Models
+Access API documentation: http://localhost:8001/docs
 
-```bash
-# Install Ollama (free)
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llama3.2
-```
+## Technical Architecture
+
+All analysis is based on economic formulas and statistical models, no external AI models required
 
 ## Project Structure
 
 ```
 backend/
-├── agents/           # AI Agent system
-│   ├── roles/
-│   │   ├── data_collector.py    # Data collection
-│   │   ├── analyst.py           # Economic analysis
-│   │   ├── visualization/       # Visualization
-│   │   ├── alert/              # Alert system
-│   │   ├── verification/       # Data verification
-│   │   ├── comparison/         # Comparative analysis
-│   │   └── report/            # Report generation
-│   └── crew_manager.py
-└── services/          # Service layer
+├── api/              # API routes
+│   └── routes/       # route definitions
+├── core/             # core configuration
+│   ├── config.py     # config management
+│   └── database.py   # database management
+├── models/           # data models
+│   └── schemas.py    # Pydantic models
+├── services/         # service layer
+│   ├── data_cleaner.py       # data cleaning
+│   ├── data_fetcher.py       # data fetching
+│   ├── inference_engine.py   # inference engine
+│   └── visualizer.py         # visualization service
+└── main.py          # FastAPI main entry point
 ```
 
 ## License

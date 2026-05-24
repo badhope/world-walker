@@ -1,3 +1,9 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.env
+
 # Python
 __pycache__/
 *.py[cod]
@@ -19,44 +25,46 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual environments
 venv/
 ENV/
 env/
-.venv
+.venv/
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
+.DS_Store
 
 # Logs
 *.log
+logs/
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Data
-data/cache/
-data/database/
+# Database
 *.db
-*.cache
-*.meta
+*.sqlite
+*.sqlite3
 
-# Generated files
-*.html
-*.md
-*.pdf
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.pytest_cache/
 
-# API Keys
-.env
-.env.local
-.env.*.local
+# Local configurations
+config.local.py
+settings.local.py
 
-# Secrets
-secrets/
-credentials/
+# Jupyter
+.ipynb_checkpoints/
+
+# Secrets and credentials
+*secret*
+*credential*
+*.pem
+*.key

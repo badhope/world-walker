@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     """应用配置"""
     # 基础信息
     PROJECT_NAME: str = "国家经济数据分析平台"
-    VERSION: str = "3.0.0"
+    VERSION: str = "4.0.0"
     API_V1_STR: str = "/api/v1"
     
     # 数据库

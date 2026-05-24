@@ -110,7 +110,7 @@ class DataCleaner:
                 outliers_info["columns"][col] = {
                     "outlier_count": len(outlier_indices),
                     "outlier_ratio": len(outlier_indices) / len(df),
-                    "outlier_indices": outlier_indices[:100],  # 最多返回100个
+                    "outlier_indices": outlier_indices[:100],
                     "outlier_values": df.loc[outlier_indices, col].tolist()[:100]
                 }
         
@@ -233,7 +233,7 @@ class DataCleaner:
             if col not in df_norm.columns:
                 continue
             
-* min_val = df_norm[col].min()
+            min_val = df_norm[col].min()
             max_val = df_norm[col].max()
             
             if max_val != min_val:
@@ -281,7 +281,6 @@ class DataCleaner:
             "statistics": {}
         }
         
-        # 数值统计
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         for col in numeric_cols:
             report["statistics"][col] = {

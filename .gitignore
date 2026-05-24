@@ -2,7 +2,6 @@
 .env
 .env.local
 .env.*.local
-*.env
 
 # Python
 __pycache__/
@@ -68,3 +67,6 @@ settings.local.py
 *credential*
 *.pem
 *.key
+
+# Data directories
+data/

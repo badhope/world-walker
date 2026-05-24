@@ -1,4 +1,4 @@
-# national_stats - AI 驱动的经济数据分析平台
+# national_stats - 经济数据分析平台
 
 # Core
 python>=3.12
@@ -6,7 +6,6 @@ python>=3.12
 # Web Framework
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
-streamlit>=1.28.0
 
 # Data Processing
 pandas>=2.1.0
@@ -25,13 +24,10 @@ statsmodels>=0.14.0
 akshare>=1.12.0
 requests>=2.31.0
 
-# AI Agent
-crewai>=0.80.0
-langchain>=0.1.0
-
 # Database
 sqlalchemy>=2.0.0
 pydantic>=2.5.0
+pydantic-settings>=2.0.0
 
 # Utilities
 pyyaml>=6.0.1

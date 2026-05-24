@@ -18,15 +18,15 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./data/national_stats.db"
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8501", "http://127.0.0.1:8501"]
+    CORS_ORIGINS: List[str] = ["*"]
     
     # 爬虫配置
     SCRAPER_TIMEOUT: int = 30
     SCRAPER_MAX_RETRIES: int = 3
-    SCRAPER_DELAY: float = 1.0  # 请求间隔秒数
+    SCRAPER_DELAY: float = 1.0
     
     # 缓存
-    CACHE_TTL: int = 3600  # 1小时
+    CACHE_TTL: int = 3600
     CACHE_DIR: str = "./data/cache"
     
     # 数据目录
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     
     # 安全
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7天
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     
     class Config:
         case_sensitive = True

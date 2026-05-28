@@ -258,15 +258,20 @@ class InferenceEngine:
         confidence_level: float,
         n_simulations: int = 10000
     ) -> Tuple[Tuple[float, float], float]:
-        """蒙特卡洛模拟"""
-        results = []
+        """蒙特卡洛模拟 - 向量化优化版"""
+        # 向量化生成所有扰动输入
+        input_keys = list(inputs.keys())
+        input_values = np.array([inputs[k] for k in input_keys])
         
-        for _ in range(n_simulations):
-            # 对每个输入添加随机扰动（假设正态分布，5%标准差）
-            perturbed = {
-                k: v * (1 + np.random.normal(0, 0.05))
-                for k, v in inputs.items()
-            }
+        # 生成随机扰动矩阵 (n_simulations x n_inputs)
+        perturbations = 1 + np.random.normal(0, 0.05, size=(n_simulations, len(input_keys)))
+        perturbed_values = input_values * perturbations
+        
+        # 批量计算结果（需要formula支持向量化，但当前实现使用dict，保持原逻辑）
+        # 为了保持兼容性，我们仍然使用循环，但优化性能
+        results = []
+        for i in range(n_simulations):
+            perturbed = {k: perturbed_values[i, j] for j, k in enumerate(input_keys)}
             try:
                 results.append(formula(perturbed))
             except Exception:
@@ -282,7 +287,8 @@ class InferenceEngine:
         upper = np.percentile(results, (1 + confidence_level) / 2 * 100)
         
         # R² 基于模拟结果的方差
-        variance_explained = 1 - np.var(results) / (np.mean(results) ** 2) if np.mean(results) != 0 else 0
+        mean_result = np.mean(results)
+        variance_explained = 1 - np.var(results) / (mean_result ** 2) if mean_result != 0 else 0
         
         return (lower, upper), max(0, min(1, variance_explained))
     

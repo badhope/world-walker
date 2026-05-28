@@ -12,6 +12,15 @@ class AnalysisConfig:
     DEFAULT_REGION = "深圳"
     DEFAULT_INDUSTRY = "半导体"
     
+    # 默认评分配置
+    DEFAULT_SCORES = {
+        "business_cost": 75.0,
+        "supply_chain": 80.0,
+        "policy_benefit": 70.0,
+        "fiscal_leverage": 75.0,
+        "industry_driving": 82.0
+    }
+    
     # 分析维度开关
     ENABLED_ANALYSES = {
         "business_cost": True,
@@ -41,6 +50,7 @@ class AnalysisConfig:
             "default_year": cls.DEFAULT_YEAR,
             "default_region": cls.DEFAULT_REGION,
             "default_industry": cls.DEFAULT_INDUSTRY,
+            "default_scores": cls.DEFAULT_SCORES,
             "enabled_analyses": cls.ENABLED_ANALYSES,
             "visualization": cls.VISUALIZATION
         }

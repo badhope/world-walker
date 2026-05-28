@@ -16,6 +16,12 @@ class DataCleaner:
     def __init__(self):
         self.cleaning_report = {}
     
+    def _get_numeric_columns(self, df: pd.DataFrame, columns: Optional[List[str]]) -> List[str]:
+        """获取要处理的数值列"""
+        if columns is None:
+            return df.select_dtypes(include=[np.number]).columns.tolist()
+        return [col for col in columns if col in df.columns]
+    
     # ==================== 缺失值处理 ====================
     
     def detect_missing(self, df: pd.DataFrame) -> Dict[str, any]:
@@ -53,14 +59,9 @@ class DataCleaner:
             columns: 指定列，为空则处理所有数值列
         """
         df_clean = df.copy()
+        target_columns = self._get_numeric_columns(df_clean, columns)
         
-        if columns is None:
-            columns = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-        
-        for col in columns:
-            if col not in df_clean.columns:
-                continue
-            
+        for col in target_columns:
             missing_mask = df_clean[col].isna()
             if not missing_mask.any():
                 continue
@@ -93,15 +94,10 @@ class DataCleaner:
         columns: Optional[List[str]] = None
     ) -> Dict[str, any]:
         """使用 Z-score 检测异常值"""
-        if columns is None:
-            columns = df.select_dtypes(include=[np.number]).columns.tolist()
-        
+        target_columns = self._get_numeric_columns(df, columns)
         outliers_info = {"method": "zscore", "threshold": threshold, "columns": {}}
         
-        for col in columns:
-            if col not in df.columns:
-                continue
-            
+        for col in target_columns:
             z_scores = np.abs(stats.zscore(df[col].dropna()))
             outlier_mask = z_scores > threshold
             outlier_indices = df[col].dropna().index[outlier_mask].tolist()
@@ -123,15 +119,10 @@ class DataCleaner:
         columns: Optional[List[str]] = None
     ) -> Dict[str, any]:
         """使用 IQR 检测异常值"""
-        if columns is None:
-            columns = df.select_dtypes(include=[np.number]).columns.tolist()
-        
+        target_columns = self._get_numeric_columns(df, columns)
         outliers_info = {"method": "iqr", "multiplier": multiplier, "columns": {}}
         
-        for col in columns:
-            if col not in df.columns:
-                continue
-            
+        for col in target_columns:
             Q1 = df[col].quantile(0.25)
             Q3 = df[col].quantile(0.75)
             IQR = Q3 - Q1
@@ -153,6 +144,13 @@ class DataCleaner:
         
         return outliers_info
     
+    def _get_iqr_bounds(self, series: pd.Series, multiplier: float) -> Tuple[float, float]:
+        """获取 IQR 边界"""
+        Q1 = series.quantile(0.25)
+        Q3 = series.quantile(0.75)
+        IQR = Q3 - Q1
+        return Q1 - multiplier * IQR, Q3 + multiplier * IQR
+    
     def remove_outliers(
         self,
         df: pd.DataFrame,
@@ -162,22 +160,12 @@ class DataCleaner:
     ) -> pd.DataFrame:
         """移除异常值"""
         df_clean = df.copy()
+        target_columns = self._get_numeric_columns(df_clean, columns)
         
-        if columns is None:
-            columns = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-        
-        for col in columns:
-            if col not in df_clean.columns:
-                continue
-            
+        for col in target_columns:
             if method == "iqr":
-                Q1 = df_clean[col].quantile(0.25)
-                Q3 = df_clean[col].quantile(0.75)
-                IQR = Q3 - Q1
-                lower = Q1 - threshold * IQR
-                upper = Q3 + threshold * IQR
+                lower, upper = self._get_iqr_bounds(df_clean[col], threshold)
                 df_clean = df_clean[(df_clean[col] >= lower) & (df_clean[col] <= upper)]
-            
             elif method == "zscore":
                 z_scores = np.abs(stats.zscore(df_clean[col].dropna()))
                 df_clean = df_clean[z_scores <= threshold]
@@ -193,20 +181,11 @@ class DataCleaner:
     ) -> pd.DataFrame:
         """盖帽处理异常值（Winsorization）"""
         df_clean = df.copy()
+        target_columns = self._get_numeric_columns(df_clean, columns)
         
-        if columns is None:
-            columns = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-        
-        for col in columns:
-            if col not in df_clean.columns:
-                continue
-            
+        for col in target_columns:
             if method == "iqr":
-                Q1 = df_clean[col].quantile(0.25)
-                Q3 = df_clean[col].quantile(0.75)
-                IQR = Q3 - Q1
-                lower = Q1 - threshold * IQR
-                upper = Q3 + threshold * IQR
+                lower, upper = self._get_iqr_bounds(df_clean[col], threshold)
             else:
                 lower = df_clean[col].quantile(0.01)
                 upper = df_clean[col].quantile(0.99)
@@ -224,15 +203,10 @@ class DataCleaner:
     ) -> Tuple[pd.DataFrame, Dict[str, Tuple[float, float]]]:
         """Min-Max 标准化到 [0, 1]"""
         df_norm = df.copy()
+        target_columns = self._get_numeric_columns(df_norm, columns)
         params = {}
         
-        if columns is None:
-            columns = df_norm.select_dtypes(include=[np.number]).columns.tolist()
-        
-        for col in columns:
-            if col not in df_norm.columns:
-                continue
-            
+        for col in target_columns:
             min_val = df_norm[col].min()
             max_val = df_norm[col].max()
             
@@ -249,15 +223,10 @@ class DataCleaner:
     ) -> Tuple[pd.DataFrame, Dict[str, Tuple[float, float]]]:
         """Z-score 标准化"""
         df_std = df.copy()
+        target_columns = self._get_numeric_columns(df_std, columns)
         params = {}
         
-        if columns is None:
-            columns = df_std.select_dtypes(include=[np.number]).columns.tolist()
-        
-        for col in columns:
-            if col not in df_std.columns:
-                continue
-            
+        for col in target_columns:
             mean_val = df_std[col].mean()
             std_val = df_std[col].std()
             

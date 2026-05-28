@@ -10,19 +10,21 @@ from typing import Dict, List, Optional
 from scipy import stats
 import logging
 
+from config import config_loader
+
 logger = logging.getLogger(__name__)
 
 
 class Visualizer:
     """可视化器"""
     
-    def __init__(self, theme: str = "plotly_white"):
-        self.theme = theme
-        self.color_palette = [
-            "#667eea", "#764ba2", "#f093fb", "#f5576c",
-            "#4facfe", "#00f2fe", "#43e97b", "#38f9d7",
-            "#fa709a", "#fee140"
-        ]
+    def __init__(self, theme: Optional[str] = None, color_palette: Optional[List[str]] = None):
+        # 从配置获取默认值
+        self.analysis_config = config_loader.get_analysis_config()
+        self.visualization_config = self.analysis_config.VISUALIZATION
+        
+        self.theme = theme or self.visualization_config["theme"]
+        self.color_palette = color_palette or self.visualization_config["color_palette"]
     
     def time_series_plot(
         self,

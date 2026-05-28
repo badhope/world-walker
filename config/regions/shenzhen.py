@@ -10,6 +10,7 @@ class ShenzhenConfig(RegionConfig):
     name = "深圳"
     code = "440300"
     province = "广东省"
+    country = "中国"
     
     statistical_caliber = "city"
     
@@ -25,3 +26,26 @@ class ShenzhenConfig(RegionConfig):
         "employment": 0.15,
         "innovation": 0.2
     }
+    
+    economic_characteristics = [
+        "科技创新中心",
+        "先进制造业基地",
+        "金融中心",
+        "对外贸易枢纽",
+        "民营经济活跃"
+    ]
+    
+    benchmark_data = {
+        "gdp_per_capita": 183000.0,  # 元/人
+        "average_wage": 15000.0,     # 元/月
+        "industrial_efficiency": 0.85,
+        "land_price": 800.0,         # 元/平方米·年
+        "energy_cost": 1.2           # 元/千瓦时
+    }
+    
+    data_sources = [
+        "nbs",
+        "guangdong_statistics_bureau",
+        "shenzhen_statistics_bureau",
+        "industry_association"
+    ]

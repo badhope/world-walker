@@ -2,17 +2,23 @@
 国家经济数据分析平台 - 统一配置
 """
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 from pathlib import Path
 import os
+import logging
 
 
 class Settings(BaseSettings):
     """应用配置"""
     # 基础信息
-    PROJECT_NAME: str = "国家经济数据分析平台"
+    PROJECT_NAME: str = "区域产业经济分析平台"
     VERSION: str = "4.0.0"
     API_V1_STR: str = "/api/v1"
+    
+    # API服务
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8001
+    DEBUG: bool = True
     
     # 数据库
     DATABASE_URL: str = "sqlite:///./data/national_stats.db"
@@ -32,6 +38,13 @@ class Settings(BaseSettings):
     # 数据目录
     DATA_DIR: str = "./data"
     EXPORT_DIR: str = "./data/exports"
+    RAW_DATA_DIR: str = "./data/raw"
+    PROCESSED_DATA_DIR: str = "./data/processed"
+    
+    # 日志配置
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    LOG_FILE: Optional[str] = None
     
     # 安全
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
@@ -42,9 +55,30 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 
+def setup_logging(settings: Settings):
+    """配置日志系统"""
+    log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+    
+    handlers = [logging.StreamHandler()]
+    if settings.LOG_FILE:
+        handlers.append(logging.FileHandler(settings.LOG_FILE, encoding='utf-8'))
+    
+    logging.basicConfig(
+        level=log_level,
+        format=settings.LOG_FORMAT,
+        handlers=handlers
+    )
+
+
 settings = Settings()
+setup_logging(settings)
 
 # 确保目录存在
-Path(settings.DATA_DIR).mkdir(parents=True, exist_ok=True)
-Path(settings.CACHE_DIR).mkdir(parents=True, exist_ok=True)
-Path(settings.EXPORT_DIR).mkdir(parents=True, exist_ok=True)
+for dir_path in [
+    settings.DATA_DIR,
+    settings.CACHE_DIR,
+    settings.EXPORT_DIR,
+    settings.RAW_DATA_DIR,
+    settings.PROCESSED_DATA_DIR
+]:
+    Path(dir_path).mkdir(parents=True, exist_ok=True)

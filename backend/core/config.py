@@ -2,7 +2,7 @@
 国家经济数据分析平台 - 统一配置
 """
 from pydantic_settings import BaseSettings
-from typing import List, Optional
+from typing import List
 from pathlib import Path
 import os
 

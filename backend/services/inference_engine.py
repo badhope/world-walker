@@ -2,8 +2,7 @@
 经济指标推演引擎 - 真正的经济学模型
 """
 import numpy as np
-import pandas as pd
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, Tuple, Optional, Any
 from scipy import stats
 from dataclasses import dataclass
 import logging
@@ -270,7 +269,7 @@ class InferenceEngine:
             }
             try:
                 results.append(formula(perturbed))
-            except:
+            except Exception:
                 continue
         
         if not results:

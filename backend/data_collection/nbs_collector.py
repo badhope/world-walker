@@ -1,5 +1,5 @@
 """
-真实数据采集器 - 使用 AKShare 获取真实经济数据
+国家统计局数据采集器 - 使用 AKShare 获取真实经济数据
 """
 import akshare as ak
 import pandas as pd
@@ -8,16 +8,41 @@ from datetime import datetime
 import logging
 import re
 
+from backend.data_collection.base_collector import BaseCollector
+
 logger = logging.getLogger(__name__)
 
 
-class RealDataFetcher:
-    """真实数据获取器"""
+class NBSCollector(BaseCollector):
+    """国家统计局数据采集器"""
     
     def __init__(self):
-        pass
+        super().__init__()
+        self.source_name = "nbs"
     
-    # ==================== GDP 数据 ====================
+    def fetch_data(self, **kwargs) -> List[Dict[str, Any]]:
+        """
+        采集数据
+        
+        Args:
+            **kwargs: indicator - 指标名称
+            
+        Returns:
+            数据列表
+        """
+        indicator = kwargs.get('indicator', 'gdp')
+        
+        fetch_methods = {
+            'gdp': self.get_gdp,
+            'cpi': self.get_cpi,
+            'pmi': self.get_pmi,
+        }
+        
+        if indicator in fetch_methods:
+            return fetch_methods[indicator]()
+        
+        logger.warning(f"未知指标: {indicator}")
+        return []
     
     def get_gdp(self) -> List[Dict[str, Any]]:
         """获取 GDP 数据"""
@@ -102,8 +127,6 @@ class RealDataFetcher:
             logger.error(f"获取 GDP 失败: {e}")
             return []
     
-    # ==================== CPI 数据 ====================
-    
     def get_cpi(self) -> List[Dict[str, Any]]:
         """获取 CPI 数据"""
         try:
@@ -139,45 +162,6 @@ class RealDataFetcher:
         except Exception as e:
             logger.error(f"获取 CPI 失败: {e}")
             return []
-    
-    # ==================== 货币供应量 ====================
-    
-    def get_money_supply(self) -> List[Dict[str, Any]]:
-        """获取货币供应量"""
-        try:
-            df = ak.macro_china_m2_yearly()
-            results = []
-            
-            for _, row in df.iterrows():
-                try:
-                    date_str = str(row['日期'])
-                    date = pd.to_datetime(date_str)
-                    year = date.year
-                    month = date.month
-                    
-                    value = float(row['今值'])
-                    results.append({
-                        'code': 'm2_yoy',
-                        'name': 'M2同比',
-                        'value': value,
-                        'unit': '%',
-                        'year': year,
-                        'month': month,
-                        'category': 'financial',
-                        'source': 'pbc',
-                        'timestamp': datetime.now().isoformat()
-                    })
-                except (ValueError, KeyError, TypeError):
-                    continue
-            
-            logger.info(f"获取 M2 数据: {len(results)} 条")
-            return results
-            
-        except Exception as e:
-            logger.error(f"获取 M2 失败: {e}")
-            return []
-    
-    # ==================== PMI ====================
     
     def get_pmi(self) -> List[Dict[str, Any]]:
         """获取 PMI 数据"""
@@ -215,8 +199,6 @@ class RealDataFetcher:
             logger.error(f"获取 PMI 失败: {e}")
             return []
     
-    # ==================== 批量获取 ====================
-    
     def fetch_all(self, indicators: Optional[List[str]] = None) -> Dict[str, List[Dict]]:
         """批量获取所有数据"""
         all_data = {}
@@ -224,7 +206,6 @@ class RealDataFetcher:
         fetchers = {
             'gdp': self.get_gdp,
             'cpi': self.get_cpi,
-            'money_supply': self.get_money_supply,
             'pmi': self.get_pmi,
         }
         
@@ -243,4 +224,4 @@ class RealDataFetcher:
 
 
 # 单例
-fetcher = RealDataFetcher()
+nbs_collector = NBSCollector()

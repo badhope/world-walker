@@ -487,5 +487,5 @@ class EconomicModels:
 
 
 # 单例
-engine = InferenceEngine()
-models = EconomicModels()
+inference_engine = InferenceEngine()
+economic_models = EconomicModels()

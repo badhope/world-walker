@@ -92,7 +92,7 @@ class RealDataFetcher:
                             'timestamp': datetime.now().isoformat()
                         })
                         
-                except (ValueError, KeyError, TypeError) as e:
+                except (ValueError, KeyError, TypeError):
                     continue
             
             logger.info(f"获取 GDP 数据: {len(results)} 条")

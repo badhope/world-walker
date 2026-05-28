@@ -3,8 +3,7 @@
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional
 
 from backend.core.database import get_db, EconomicIndicator
 from backend.models.schemas import (

@@ -1,8 +1,7 @@
 """
 数据采集 API 路由
 """
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from typing import Optional, List
+from fastapi import APIRouter, HTTPException
 from datetime import datetime
 import logging
 

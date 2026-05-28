@@ -6,7 +6,7 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Optional
 from scipy import stats
 import logging
 
@@ -366,7 +366,7 @@ class Visualizer:
                 y=df[col],
                 mode='lines+markers',
                 name=name,
-                line=dict(color=self.color_palette[(i-1) % len(self.color_palette)])
+                line=dict(color=self.color_palette[(i - 1) % len(self.color_palette)])
             ), row=i, col=1)
         
         fig.update_layout(

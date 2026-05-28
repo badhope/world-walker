@@ -2,7 +2,7 @@
 Pydantic 数据模型
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple
 from datetime import datetime
 from enum import Enum
 

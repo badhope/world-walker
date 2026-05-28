@@ -4,16 +4,16 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
+import sys
+from pathlib import Path
 
-from backend.analysis.enterprise_analyzer import EnterpriseAnalyzer
-from backend.analysis.government_analyzer import GovernmentAnalyzer
+# 添加项目根目录到Python路径
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
 from config.analysis_config import AnalysisConfig
 
 router = APIRouter(prefix="/analysis", tags=["产业分析"])
-
-# 初始化分析器
-enterprise_analyzer = EnterpriseAnalyzer()
-government_analyzer = GovernmentAnalyzer()
 
 
 class AnalysisRequest(BaseModel):
@@ -28,30 +28,32 @@ class AnalysisRequest(BaseModel):
 def enterprise_analysis(request: AnalysisRequest):
     """企业端产业分析：营商成本、供应链配套、政策红利"""
     try:
-        data = request.data or {}
-        data["region"] = request.region
-        data["industry"] = request.industry
-        data["year"] = request.year
+        # 导入我们的示例分析器
+        from examples.shenzhen_semiconductor_2025.enterprise_analysis import EnterpriseAnalysisRunner
         
-        report = enterprise_analyzer.generate_comprehensive_report(data)
+        runner = EnterpriseAnalysisRunner()
+        report = runner.generate_report()
         return report
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
+        import traceback
+        error_detail = f"{str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 
 @router.post("/government", summary="政府端分析")
 def government_analysis(request: AnalysisRequest):
     """政府端产业分析：财政杠杆、产业带动、产业链分析"""
     try:
-        data = request.data or {}
-        data["region"] = request.region
-        data["industry"] = request.industry
-        data["year"] = request.year
+        # 导入我们的示例分析器
+        from examples.shenzhen_semiconductor_2025.government_analysis import GovernmentAnalysisRunner
         
-        report = government_analyzer.generate_comprehensive_report(data)
+        runner = GovernmentAnalysisRunner()
+        report = runner.generate_report()
         return report
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
+        import traceback
+        error_detail = f"{str(e)}\n{traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail)
 
 
 @router.get("/config", summary="获取分析配置")

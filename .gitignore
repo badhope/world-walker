@@ -67,6 +67,19 @@ settings.local.py
 *credential*
 *.pem
 *.key
+ghp_*
 
 # Data directories
 data/
+exports/
+
+# Node.js
+node_modules/
+.pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+npm-debug.log*
+lerna-debug.log*
+dist/
+dist-ssr/
+*.local

@@ -5,6 +5,9 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from datetime import datetime
+import os
+import json
+from pathlib import Path
 
 router = APIRouter(prefix="/data", tags=["数据管理"])
 
@@ -105,3 +108,85 @@ def list_codes(
     
     codes = list({(d.code, d.name) for d in filtered if d.code})
     return {"codes": [{"code": c[0], "name": c[1]} for c in codes]}
+
+
+# ==========================================
+# 新增：深圳半导体产业分析示例数据接口
+# ==========================================
+
+def get_example_data_path(filename: str):
+    """获取示例数据文件路径"""
+    base_dir = Path(__file__).parent.parent.parent.parent
+    return base_dir / "examples" / "shenzhen_semiconductor_2025" / "data" / filename
+
+
+@router.get("/basic", summary="获取基础数据")
+def get_basic_data():
+    """获取深圳半导体产业基础数据"""
+    try:
+        data_file = get_example_data_path("basic_data.json")
+        with open(data_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        return {
+            "region": "深圳",
+            "industry": "半导体",
+            "year": 2025,
+            "data": data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"加载数据失败: {str(e)}")
+
+
+@router.get("/trend", summary="获取趋势数据")
+def get_trend_data(
+    region: str = Query("深圳"),
+    industry: str = Query("半导体"),
+    start_year: int = Query(2020),
+    end_year: int = Query(2025)
+):
+    """获取产业趋势数据"""
+    try:
+        # 返回模拟趋势数据
+        years = list(range(start_year, end_year + 1))
+        gdp = [30800, 32400, 30800, 32800, 35800, 36800]
+        industry_output = [6800, 8200, 9600, 11000, 12000, 12800]
+        
+        return {
+            "years": years,
+            "series": [
+                {
+                    "name": "GDP (亿元)",
+                    "data": gdp[:len(years)]
+                },
+                {
+                    "name": "半导体产值 (亿元)",
+                    "data": industry_output[:len(years)]
+                }
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/map", summary="获取地图数据")
+def get_map_data(
+    indicator: str = Query("output"),
+    year: int = Query(2025)
+):
+    """获取产业地图数据"""
+    return {
+        "indicator": indicator,
+        "year": year,
+        "values": [
+            {"name": "深圳", "value": 12000},
+            {"name": "上海", "value": 13500},
+            {"name": "北京", "value": 11800},
+            {"name": "广州", "value": 8900},
+            {"name": "苏州", "value": 7200},
+            {"name": "无锡", "value": 5600},
+            {"name": "成都", "value": 4500},
+            {"name": "西安", "value": 3800}
+        ],
+        "geoJson": {}  # 实际项目需加载真实的GeoJSON
+    }

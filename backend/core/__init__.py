@@ -1,4 +1,6 @@
-from backend.core.config import settings
-from backend.core.database import get_db, init_db, Base, engine
+"""
+后端核心模块
+"""
+from backend.core.database import get_db, init_db, engine, SessionLocal, Base, EconomicIndicator, User
 
-__all__ = ["settings", "get_db", "init_db", "Base", "engine"]
+__all__ = ['get_db', 'init_db', 'engine', 'SessionLocal', 'Base', 'EconomicIndicator', 'User']

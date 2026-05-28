@@ -1,5 +1,5 @@
 """
-高级可视化模块 - 时间序列分解、相关性分析、区域对比
+可视化工具模块
 """
 import pandas as pd
 import numpy as np
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class Visualizer:
-    """高级可视化器"""
+    """可视化器"""
     
     def __init__(self, theme: str = "plotly_white"):
         self.theme = theme
@@ -23,8 +23,6 @@ class Visualizer:
             "#4facfe", "#00f2fe", "#43e97b", "#38f9d7",
             "#fa709a", "#fee140"
         ]
-    
-    # ==================== 时间序列分析 ====================
     
     def time_series_plot(
         self,
@@ -39,7 +37,6 @@ class Visualizer:
         """时间序列图（带趋势线和移动平均）"""
         fig = go.Figure()
         
-        # 原始数据
         fig.add_trace(go.Scatter(
             x=df[x], y=df[y],
             mode='lines+markers',
@@ -48,7 +45,6 @@ class Visualizer:
             marker=dict(size=4)
         ))
         
-        # 移动平均
         if show_ma and len(df) >= ma_window:
             ma = df[y].rolling(window=ma_window, center=True).mean()
             fig.add_trace(go.Scatter(
@@ -58,7 +54,6 @@ class Visualizer:
                 line=dict(color=self.color_palette[1], width=2, dash='dash')
             ))
         
-        # 趋势线
         if show_trend and len(df) > 1:
             x_numeric = pd.to_numeric(df[x], errors='coerce')
             mask = ~x_numeric.isna() & ~df[y].isna()
@@ -82,73 +77,6 @@ class Visualizer:
         )
         
         return fig
-    
-    def seasonal_decomposition_plot(
-        self,
-        df: pd.DataFrame,
-        date_col: str,
-        value_col: str,
-        period: int = 12,
-        title: str = "时间序列分解"
-    ) -> go.Figure:
-        """季节分解图（趋势、季节、残差）"""
-        from statsmodels.tsa.seasonal import seasonal_decompose
-        
-        # 准备数据
-        ts = df.set_index(date_col)[value_col]
-        ts = ts.dropna()
-        
-        if len(ts) < 2 * period:
-            raise ValueError(f"数据长度 {len(ts)} 不足以进行周期为 {period} 的分解")
-        
-        # 季节分解
-        result = seasonal_decompose(ts, period=period, model='additive')
-        
-        # 创建子图
-        fig = make_subplots(
-            rows=4, cols=1,
-            subplot_titles=['原始数据', '趋势', '季节', '残差'],
-            vertical_spacing=0.05
-        )
-        
-        # 原始数据
-        fig.add_trace(go.Scatter(
-            x=ts.index, y=ts.values,
-            mode='lines', name='原始',
-            line=dict(color=self.color_palette[0])
-        ), row=1, col=1)
-        
-        # 趋势
-        fig.add_trace(go.Scatter(
-            x=ts.index, y=result.trend.values,
-            mode='lines', name='趋势',
-            line=dict(color=self.color_palette[1])
-        ), row=2, col=1)
-        
-        # 季节
-        fig.add_trace(go.Scatter(
-            x=ts.index, y=result.seasonal.values,
-            mode='lines', name='季节',
-            line=dict(color=self.color_palette[2])
-        ), row=3, col=1)
-        
-        # 残差
-        fig.add_trace(go.Scatter(
-            x=ts.index, y=result.resid.values,
-            mode='lines', name='残差',
-            line=dict(color=self.color_palette[3])
-        ), row=4, col=1)
-        
-        fig.update_layout(
-            title=title,
-            template=self.theme,
-            height=800,
-            showlegend=False
-        )
-        
-        return fig
-    
-    # ==================== 相关性分析 ====================
     
     def correlation_heatmap(
         self,
@@ -175,7 +103,6 @@ class Visualizer:
         
         fig.update_layout(template=self.theme)
         
-        # 添加数值标注
         for i, row in enumerate(corr_matrix.index):
             for j, col in enumerate(corr_matrix.columns):
                 fig.add_annotation(
@@ -186,32 +113,6 @@ class Visualizer:
                 )
         
         return fig
-    
-    def scatter_matrix(
-        self,
-        df: pd.DataFrame,
-        columns: Optional[List[str]] = None,
-        color_col: Optional[str] = None,
-        title: str = "散点矩阵"
-    ) -> go.Figure:
-        """散点矩阵图"""
-        if columns is None:
-            columns = df.select_dtypes(include=[np.number]).columns.tolist()[:5]
-        
-        fig = px.scatter_matrix(
-            df,
-            dimensions=columns,
-            color=color_col,
-            title=title,
-            color_continuous_scale=px.colors.diverging.Tealrose
-        )
-        
-        fig.update_layout(template=self.theme)
-        fig.update_traces(diagonal_visible=False)
-        
-        return fig
-    
-    # ==================== 分布分析 ====================
     
     def distribution_plot(
         self,
@@ -226,7 +127,6 @@ class Visualizer:
         
         data = df[column].dropna()
         
-        # 直方图
         fig.add_trace(go.Histogram(
             x=data,
             nbinsx=bins,
@@ -235,7 +135,6 @@ class Visualizer:
             histnorm='probability density' if show_kde else ''
         ))
         
-        # KDE
         if show_kde:
             kde = stats.gaussian_kde(data)
             x_range = np.linspace(data.min(), data.max(), 200)
@@ -253,28 +152,6 @@ class Visualizer:
         )
         
         return fig
-    
-    def box_plot(
-        self,
-        df: pd.DataFrame,
-        y_col: str,
-        x_col: Optional[str] = None,
-        title: str = ""
-    ) -> go.Figure:
-        """箱线图"""
-        fig = px.box(
-            df,
-            x=x_col, y=y_col,
-            title=title or f'{y_col} 箱线图',
-            color=x_col,
-            color_discrete_sequence=self.color_palette
-        )
-        
-        fig.update_layout(template=self.theme)
-        
-        return fig
-    
-    # ==================== 比较分析 ====================
     
     def comparison_bar(
         self,
@@ -337,22 +214,13 @@ class Visualizer:
         
         return fig
     
-    # ==================== 综合仪表盘 ====================
-    
     def dashboard(
         self,
         df: pd.DataFrame,
         metrics: Dict[str, str],
         time_col: str
     ) -> go.Figure:
-        """
-        综合仪表盘
-        
-        Args:
-            df: 数据框
-            metrics: {指标名: 列名} 字典
-            time_col: 时间列
-        """
+        """综合仪表盘"""
         n_metrics = len(metrics)
         fig = make_subplots(
             rows=n_metrics, cols=1,
@@ -379,5 +247,4 @@ class Visualizer:
         return fig
 
 
-# 单例
 visualizer = Visualizer()

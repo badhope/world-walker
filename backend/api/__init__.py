@@ -1,3 +1,6 @@
-from backend.api.routes import data_router, inference_router, scrape_router
+"""
+API模块
+"""
+from backend.api.main import app
 
-__all__ = ["data_router", "inference_router", "scrape_router"]
+__all__ = ["app"]

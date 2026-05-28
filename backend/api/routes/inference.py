@@ -9,7 +9,7 @@ from backend.models.schemas import (
     InferenceRequest, InferenceResponse,
     BatchInferenceRequest
 )
-from backend.services.inference_engine import engine, models
+from backend.analysis.economic_models import inference_engine, economic_models
 
 router = APIRouter(prefix="/inference", tags=["指标推演"])
 
@@ -26,7 +26,7 @@ def calculate_indicator(request: InferenceRequest):
     - monte_carlo: 蒙特卡洛模拟
     """
     try:
-        result = engine.calculate(
+        result = inference_engine.calculate(
             target=request.target_indicator,
             inputs=request.input_indicators,
             method=request.method.value,
@@ -50,7 +50,7 @@ def calculate_indicator(request: InferenceRequest):
 @lru_cache(maxsize=1)
 def list_available_indicators():
     """获取所有可推演的指标及其要求"""
-    return engine.list_available_indicators()
+    return inference_engine.list_available_indicators()
 
 
 @router.post("/infer_all", summary="推演所有可计算指标")
@@ -60,7 +60,7 @@ def infer_all_indicators(request: Dict[str, float]):
     
     输入任意已知指标，系统将自动识别并计算所有可推演的目标指标。
     """
-    return engine.infer_all(request)
+    return inference_engine.infer_all(request)
 
 
 @router.post("/batch", summary="批量推演")
@@ -70,7 +70,7 @@ def batch_calculate(request: BatchInferenceRequest):
     
     for item in request.items:
         try:
-            result = engine.calculate(
+            result = inference_engine.calculate(
                 target=item.target_indicator,
                 inputs=item.input_indicators,
                 method=item.method.value
@@ -112,7 +112,7 @@ def phillips_curve(
     
     描述失业率与通胀率之间的短期替代关系。
     """
-    return models.phillips_curve(unemployment, natural_unemployment, expected_inflation, beta)
+    return economic_models.phillips_curve(unemployment, natural_unemployment, expected_inflation, beta)
 
 
 @router.get("/models/okun", summary="奥肯定律")
@@ -128,7 +128,7 @@ def okun_law(
     
     描述GDP增速与失业率变化的关系。
     """
-    return models.okun_law(gdp_growth, potential_growth, okun_coefficient)
+    return economic_models.okun_law(gdp_growth, potential_growth, okun_coefficient)
 
 
 @router.get("/models/cobb_douglas", summary="柯布-道格拉斯生产函数")
@@ -145,7 +145,7 @@ def cobb_douglas(
     
     描述产出与资本、劳动投入的关系。
     """
-    return models.cobb_douglas(capital, labor, alpha, technology)
+    return economic_models.cobb_douglas(capital, labor, alpha, technology)
 
 
 @router.get("/models/solow", summary="索洛增长模型")
@@ -161,4 +161,4 @@ def solow_growth(
     
     计算稳态人均资本和人均产出。
     """
-    return models.solow_growth(savings_rate, population_growth, depreciation, alpha, technology)
+    return economic_models.solow_growth(savings_rate, population_growth, depreciation, alpha, technology)

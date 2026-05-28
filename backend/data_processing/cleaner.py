@@ -3,7 +3,7 @@
 """
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from scipy import stats
 import logging
 
@@ -18,7 +18,7 @@ class DataCleaner:
     
     # ==================== 缺失值处理 ====================
     
-    def detect_missing(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def detect_missing(self, df: pd.DataFrame) -> Dict[str, any]:
         """检测缺失值"""
         missing_info = {
             "total_cells": df.size,
@@ -91,7 +91,7 @@ class DataCleaner:
         df: pd.DataFrame,
         threshold: float = 3.0,
         columns: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, any]:
         """使用 Z-score 检测异常值"""
         if columns is None:
             columns = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -121,7 +121,7 @@ class DataCleaner:
         df: pd.DataFrame,
         multiplier: float = 1.5,
         columns: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, any]:
         """使用 IQR 检测异常值"""
         if columns is None:
             columns = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -269,7 +269,7 @@ class DataCleaner:
     
     # ==================== 数据质量报告 ====================
     
-    def generate_quality_report(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def generate_quality_report(self, df: pd.DataFrame) -> Dict[str, any]:
         """生成数据质量报告"""
         report = {
             "shape": df.shape,
@@ -298,4 +298,4 @@ class DataCleaner:
 
 
 # 单例
-cleaner = DataCleaner()
+data_cleaner = DataCleaner()

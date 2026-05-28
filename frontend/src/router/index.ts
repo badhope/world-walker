@@ -1,0 +1,54 @@
+import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+
+const routes: Array<RouteRecordRaw> = [
+  {
+    path: '/',
+    name: 'Home',
+    component: () => import('@/views/Home.vue'),
+    meta: { title: '概览' },
+  },
+  {
+    path: '/enterprise',
+    name: 'Enterprise',
+    component: () => import('@/views/Enterprise.vue'),
+    meta: { title: '企业端分析' },
+  },
+  {
+    path: '/government',
+    name: 'Government',
+    component: () => import('@/views/Government.vue'),
+    meta: { title: '政府端分析' },
+  },
+  {
+    path: '/map',
+    name: 'Map',
+    component: () => import('@/views/Map.vue'),
+    meta: { title: '产业地图' },
+  },
+  {
+    path: '/data',
+    name: 'Data',
+    component: () => import('@/views/DataManager.vue'),
+    meta: { title: '数据管理' },
+  },
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else {
+      return { top: 0 }
+    }
+  },
+})
+
+// 路由守卫
+router.beforeEach((to, from, next) => {
+  document.title = to.meta.title ? `${to.meta.title} - 区域产业经济分析平台` : '区域产业经济分析平台'
+  next()
+})
+
+export default router

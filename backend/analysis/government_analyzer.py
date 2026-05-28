@@ -5,7 +5,7 @@ import logging
 from typing import Dict, Any
 
 from backend.analysis.base_analyzer import BaseAnalyzer
-from config.analysis_config import AnalysisConfig
+from config import config_loader, AnalysisConfig
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,11 @@ class GovernmentAnalyzer(BaseAnalyzer):
     def __init__(self):
         super().__init__()
         self.name = "GovernmentAnalyzer"
+        
+        # 加载配置
+        self.analysis_config = config_loader.get_analysis_config()
+        self.region_config = config_loader.get_region_config()
+        self.industry_config = config_loader.get_industry_config()
     
     def analyze_fiscal_leverage(
         self,
@@ -105,7 +110,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
         
         Args:
             data: 包含产业链环节、关键技术等数据的字典
-        
+            
         Returns:
             产业链分析结果
         """
@@ -116,8 +121,19 @@ class GovernmentAnalyzer(BaseAnalyzer):
             "downstream_coverage": 0.0,
             "bottlenecks": [],
             "strengths": [],
-            "modernization_level": {}
+            "modernization_level": {},
+            "chain_links": [],
+            "key_indicators": {}
         }
+        
+        # 从配置加载产业链信息
+        if self.industry_config:
+            results["chain_links"] = self.industry_config.chain_links
+            results["key_indicators"] = self.industry_config.key_indicators
+            
+            # 如果数据中没有提供瓶颈，使用配置中的
+            if "bottlenecks" not in data and hasattr(self.industry_config, 'chain_analysis'):
+                results["bottlenecks"] = self.industry_config.chain_analysis.get("key_bottlenecks", [])
         
         if "upstream_coverage" in data:
             results["upstream_coverage"] = data["upstream_coverage"]
@@ -153,14 +169,19 @@ class GovernmentAnalyzer(BaseAnalyzer):
         
         Args:
             data: 综合数据字典
-        
+            
         Returns:
             完整分析报告
         """
+        # 从配置获取默认地区和产业
+        default_region = self.region_config.name if self.region_config else "未知地区"
+        default_industry = self.industry_config.name if self.industry_config else "未知产业"
+        default_year = self.analysis_config.DEFAULT_YEAR
+        
         report = {
-            "region": data.get("region", "未知地区"),
-            "industry": data.get("industry", "未知产业"),
-            "year": data.get("year", 2025),
+            "region": data.get("region", default_region),
+            "industry": data.get("industry", default_industry),
+            "year": data.get("year", default_year),
             "overall_score": 0.0,
             "fiscal_leverage": self.analyze_fiscal_leverage(data),
             "industry_driving": self.analyze_industry_driving(data),
@@ -176,11 +197,14 @@ class GovernmentAnalyzer(BaseAnalyzer):
         ]
         report["overall_score"] = sum(scores) / len(scores)
         
+        # 从配置获取阈值
+        thresholds = self.analysis_config.THRESHOLDS
+        
         # 生成政策建议
-        if report["fiscal_leverage"]["fiscal_leverage_score"] < 70:
+        if report["fiscal_leverage"]["fiscal_leverage_score"] < thresholds.get("fiscal_healthy", 70):
             report["policy_recommendations"].append("优化财政资金配置，提高资金使用效率")
         
-        if report["industry_chain"]["chain_completeness_score"] < 75:
+        if report["industry_chain"]["chain_completeness_score"] < thresholds.get("supply_chain_good", 75):
             report["policy_recommendations"].append("针对产业链瓶颈环节，制定专项招商政策")
         
         return report

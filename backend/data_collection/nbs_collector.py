@@ -9,6 +9,7 @@ import logging
 import re
 
 from backend.data_collection.base_collector import BaseCollector
+from config import config_loader
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,11 @@ class NBSCollector(BaseCollector):
     def __init__(self):
         super().__init__()
         self.source_name = "nbs"
+        
+        # 从配置获取默认参数
+        self.analysis_config = config_loader.get_analysis_config()
+        self.default_indicators = self.analysis_config.DATA_COLLECTION["default_indicators"]
+        self.default_years = self.analysis_config.DATA_COLLECTION["years_range"]
     
     def fetch_data(self, **kwargs) -> List[Dict[str, Any]]:
         """
@@ -36,6 +42,8 @@ class NBSCollector(BaseCollector):
             'gdp': self.get_gdp,
             'cpi': self.get_cpi,
             'pmi': self.get_pmi,
+            'fiscal_revenue': self.get_fiscal_revenue,
+            'industrial_output': self.get_industrial_output
         }
         
         if indicator in fetch_methods:
@@ -199,6 +207,58 @@ class NBSCollector(BaseCollector):
             logger.error(f"获取 PMI 失败: {e}")
             return []
     
+    def get_fiscal_revenue(self) -> List[Dict[str, Any]]:
+        """获取财政收入数据"""
+        try:
+            results = []
+            region_config = config_loader.get_region_config()
+            
+            # 模拟数据，实际项目中应该从真实数据源获取
+            for year in self.default_years[-3:]:  # 最近3年
+                results.append({
+                    'code': 'fiscal_revenue',
+                    'name': '财政收入',
+                    'value': 4500.0 + (year - 2023) * 200,
+                    'unit': '亿元',
+                    'year': year,
+                    'region': region_config.name if region_config else '深圳',
+                    'source': 'nbs',
+                    'timestamp': datetime.now().isoformat()
+                })
+            
+            logger.info(f"获取财政收入数据: {len(results)} 条")
+            return results
+            
+        except Exception as e:
+            logger.error(f"获取财政收入失败: {e}")
+            return []
+    
+    def get_industrial_output(self) -> List[Dict[str, Any]]:
+        """获取工业产值数据"""
+        try:
+            results = []
+            industry_config = config_loader.get_industry_config()
+            
+            # 模拟数据，实际项目中应该从真实数据源获取
+            for year in self.default_years[-3:]:
+                results.append({
+                    'code': 'industrial_output',
+                    'name': '工业产值',
+                    'value': 35000.0 + (year - 2023) * 3000,
+                    'unit': '亿元',
+                    'year': year,
+                    'industry': industry_config.name if industry_config else '半导体',
+                    'source': 'nbs',
+                    'timestamp': datetime.now().isoformat()
+                })
+            
+            logger.info(f"获取工业产值数据: {len(results)} 条")
+            return results
+            
+        except Exception as e:
+            logger.error(f"获取工业产值失败: {e}")
+            return []
+    
     def fetch_all(self, indicators: Optional[List[str]] = None) -> Dict[str, List[Dict]]:
         """批量获取所有数据"""
         all_data = {}
@@ -207,18 +267,22 @@ class NBSCollector(BaseCollector):
             'gdp': self.get_gdp,
             'cpi': self.get_cpi,
             'pmi': self.get_pmi,
+            'fiscal_revenue': self.get_fiscal_revenue,
+            'industrial_output': self.get_industrial_output
         }
         
-        if indicators:
-            fetchers = {k: v for k, v in fetchers.items() if k in indicators}
+        # 如果没有指定指标，使用配置中的默认指标
+        if indicators is None:
+            indicators = self.default_indicators
         
-        for name, fetcher in fetchers.items():
-            try:
-                data = fetcher()
-                all_data[name] = data
-            except Exception as e:
-                logger.error(f"获取 {name} 数据失败: {e}")
-                all_data[name] = []
+        for indicator in indicators:
+            if indicator in fetchers:
+                try:
+                    data = fetchers[indicator]()
+                    all_data[indicator] = data
+                except Exception as e:
+                    logger.error(f"获取 {indicator} 数据失败: {e}")
+                    all_data[indicator] = []
         
         return all_data
 

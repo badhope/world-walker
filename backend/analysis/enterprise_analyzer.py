@@ -2,10 +2,10 @@
 企业端分析器 - 面向企业的区域产业经济分析
 """
 import logging
-from typing import Dict, List, Any
-import pandas as pd
+from typing import Dict, Any
 
 from backend.analysis.base_analyzer import BaseAnalyzer
+from config.analysis_config import AnalysisConfig
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
             }
         
         # 计算综合成本评分（简化版）
-        results["total_cost_score"] = 75.0  # 默认评分
+        results["total_cost_score"] = AnalysisConfig.DEFAULT_SCORES["business_cost"]
         
         return results
     
@@ -102,7 +102,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
         if "location_quotient" in data:
             results["agglomeration_index"] = data["location_quotient"]
         
-        results["supply_chain_score"] = 80.0  # 默认评分
+        results["supply_chain_score"] = AnalysisConfig.DEFAULT_SCORES["supply_chain"]
         
         return results
     
@@ -136,7 +136,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
         if "avg_approval_time" in data:
             results["government_efficiency"]["avg_approval_time"] = data["avg_approval_time"]
         
-        results["policy_benefit_score"] = 70.0  # 默认评分
+        results["policy_benefit_score"] = AnalysisConfig.DEFAULT_SCORES["policy_benefit"]
         
         return results
     

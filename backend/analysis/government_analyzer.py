@@ -2,10 +2,10 @@
 政府端分析器 - 面向政府的区域产业经济分析
 """
 import logging
-from typing import Dict, List, Any
-import pandas as pd
+from typing import Dict, Any
 
 from backend.analysis.base_analyzer import BaseAnalyzer
+from config.analysis_config import AnalysisConfig
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
         if "special_funds" in data:
             results["funding_efficiency"] = data.get("fund_utilization", 0.8)
         
-        results["fiscal_leverage_score"] = 75.0  # 默认评分
+        results["fiscal_leverage_score"] = AnalysisConfig.DEFAULT_SCORES["fiscal_leverage"]
         
         return results
     
@@ -92,7 +92,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
         if "sensitivity_coefficient" in data:
             results["input_output_analysis"]["sensitivity_coefficient"] = data["sensitivity_coefficient"]
         
-        results["driving_score"] = 82.0  # 默认评分
+        results["driving_score"] = AnalysisConfig.DEFAULT_SCORES["industry_driving"]
         
         return results
     

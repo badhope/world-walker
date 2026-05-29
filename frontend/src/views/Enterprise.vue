@@ -32,6 +32,17 @@
       </el-button>
     </div>
     
+    <!-- 错误提示 -->
+    <el-alert
+      v-if="store.error"
+      :title="store.error"
+      type="error"
+      show-icon
+      closable
+      @close="store.error = null"
+      style="margin-bottom: 20px"
+    />
+    
     <!-- 加载状态 -->
     <el-skeleton :loading="store.loading" animated v-if="store.loading">
       <template #template>
@@ -46,29 +57,29 @@
     </el-skeleton>
     
     <!-- 分析结果 -->
-    <template v-else>
+    <template v-else-if="store.enterpriseResult">
       <!-- KPI 卡片 -->
-      <div class="kpi-grid" v-if="store.enterpriseResult">
+      <div class="kpi-grid">
         <KpiCard
-          :value="store.enterpriseResult.land_cost.city_average"
+          :value="store.enterpriseResult.land_cost_analysis?.city_average || 0"
           label="平均用地成本"
           unit="元/㎡·年"
           icon-type="box"
         />
         <KpiCard
-          :value="store.enterpriseResult.labor_cost.average_salary"
+          :value="store.enterpriseResult.labor_cost_analysis?.average_salary || 0"
           label="平均工资"
           unit="元/月"
           icon-type="user"
         />
         <KpiCard
-          :value="store.enterpriseResult.supply_chain.localization_rate"
+          :value="store.enterpriseResult.supply_chain_analysis?.localization_rate || 0"
           label="本地化率"
           unit="%"
           icon-type="goods"
         />
         <KpiCard
-          :value="store.enterpriseResult.comprehensive.shenzhen_index"
+          :value="store.enterpriseResult.comprehensive_cost_index?.shenzhen_index || 0"
           label="综合成本指数"
           unit=""
           icon-type="trend"
@@ -92,40 +103,48 @@
       </div>
       
       <!-- 建议区域 -->
-      <div class="suggestions-section" v-if="store.enterpriseResult?.recommendations">
+      <div class="suggestions-section" v-if="store.enterpriseResult.overall_recommendations?.length">
         <h3 class="section-title">优化建议</h3>
         <div class="suggestions-grid">
           <div
-            v-for="(rec, index) in store.enterpriseResult.recommendations"
+            v-for="(rec, index) in store.enterpriseResult.overall_recommendations"
             :key="index"
             class="suggestion-card"
           >
-            <el-tag :type="rec.type === 'critical' ? 'danger' : 'info'">
-              {{ rec.type }}
-            </el-tag>
-            <p class="suggestion-text">{{ rec.suggestion }}</p>
+            <div class="suggestion-header">
+              <el-tag :type="getTagType(rec.type)">{{ rec.type }}</el-tag>
+            </div>
+            <div class="suggestion-text">{{ rec.suggestion }}</div>
           </div>
         </div>
       </div>
     </template>
+    
+    <!-- 空状态 -->
+    <el-empty 
+      v-else 
+      description="请选择参数后点击'开始分析'按钮获取分析结果"
+      :image-size="200"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAnalysisStore } from '@/stores/analysis'
 import KpiCard from '@/components/widgets/KpiCard.vue'
 import EChart from '@/components/charts/EChart.vue'
-import { createBarChart, createLineChart, createRadarChart } from '@/utils/charts'
+import { createBarChart, createRadarChart, createLineChart } from '@/utils/charts'
 
 const store = useAnalysisStore()
 
-// 图表数据
 const costChartData = ref({
-  categories: ['用地成本', '人力成本', '能源成本'],
+  categories: ['用地成本', '人力成本', '能源成本', '融资成本'],
   series: [
-    { name: '深圳', data: [812, 18500, 0.68] },
-    { name: '上海', data: [920, 19200, 0.71] },
+    {
+      name: '深圳',
+      data: [812, 18500, 0.68, 4.85],
+    },
   ],
 })
 
@@ -155,13 +174,24 @@ const supplyChainChartOption = computed(() => createRadarChart(supplyChainData.v
 const trendChartOption = computed(() => createLineChart(trendChartData.value))
 
 const handleAnalysis = async () => {
+  if (!store.currentRegion || !store.currentIndustry || !store.currentYear) {
+    return
+  }
   await store.fetchEnterpriseAnalysis()
+}
+
+const getTagType = (type: string) => {
+  if (type.includes('人力')) return 'warning'
+  if (type.includes('融资')) return 'success'
+  if (type.includes('用地')) return 'primary'
+  return 'info'
 }
 </script>
 
 <style scoped>
 .enterprise-page {
   width: 100%;
+  padding: 0;
 }
 
 .top-filter {
@@ -184,8 +214,9 @@ const handleAnalysis = async () => {
 
 .filter-item label {
   color: #606266;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
+  font-size: 14px;
 }
 
 .kpi-grid {
@@ -244,9 +275,28 @@ const handleAnalysis = async () => {
   padding: 16px;
 }
 
+.suggestion-header {
+  margin-bottom: 12px;
+}
+
 .suggestion-text {
-  margin-top: 12px;
   color: #606266;
   line-height: 1.6;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .top-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-item {
+    width: 100%;
+  }
+  
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

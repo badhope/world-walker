@@ -2,7 +2,7 @@
   <div class="app-wrapper">
     <header class="app-header">
       <div class="header-left">
-        <h1 class="logo">区域产业经济分析平台</h1>
+        <h1 class="logo">🌐 产业经济分析平台</h1>
       </div>
       <nav class="header-nav">
         <router-link
@@ -18,56 +18,7 @@
     </header>
     
     <main class="app-main">
-      <aside
-        :class="{ 'sidebar-collapsed': uiStore.sidebarCollapsed }"
-        class="app-sidebar"
-        v-if="!uiStore.isMobile"
-      >
-        <div class="sidebar-content">
-          <div class="sidebar-header">
-            <h3 v-if="!uiStore.sidebarCollapsed">分析菜单</h3>
-            <el-button
-              text
-              @click="uiStore.toggleSidebar"
-            >
-              <el-icon>
-                <Fold v-if="!uiStore.sidebarCollapsed" />
-                <Expand v-else />
-              </el-icon>
-            </el-button>
-          </div>
-          <el-menu
-            :default-active="activeMenu"
-            router
-            class="sidebar-menu"
-          >
-            <el-menu-item index="/">
-              <el-icon><DataAnalysis /></el-icon>
-              <template #title>概览</template>
-            </el-menu-item>
-            <el-menu-item index="/enterprise">
-              <el-icon><OfficeBuilding /></el-icon>
-              <template #title>企业端</template>
-            </el-menu-item>
-            <el-menu-item index="/government">
-        <el-icon><Reading /></el-icon>
-        <template #title>政府端</template>
-      </el-menu-item>
-            <el-menu-item index="/map">
-              <el-icon><MapLocation /></el-icon>
-              <template #title>产业地图</template>
-            </el-menu-item>
-            <el-menu-item index="/data">
-              <el-icon><FolderOpened /></el-icon>
-              <template #title>数据管理</template>
-            </el-menu-item>
-          </el-menu>
-        </div>
-      </aside>
-      
-      <div class="app-content">
-        <router-view />
-      </div>
+      <router-view />
     </main>
     
     <footer class="app-footer">
@@ -79,26 +30,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useUIStore } from '@/stores/ui'
-import {
-  Fold,
-  Expand,
-  DataAnalysis,
-  OfficeBuilding,
-  Reading,
-  MapLocation,
-  FolderOpened,
-} from '@element-plus/icons-vue'
 
 const route = useRoute()
-const uiStore = useUIStore()
 
 const navItems = [
-  { name: '概览', path: '/' },
-  { name: '企业端', path: '/enterprise' },
-  { name: '政府端', path: '/government' },
-  { name: '产业地图', path: '/map' },
-  { name: '数据管理', path: '/data' },
+  { name: '🏠 首页', path: '/' },
+  { name: '🏢 企业端', path: '/enterprise' },
+  { name: '🏛️ 政府端', path: '/government' },
+  { name: '🗺️ 产业地图', path: '/map' },
+  { name: '📁 数据管理', path: '/data' },
+  { name: '🏙️ 城市对比', path: '/cities' },
+  { name: '🔧 测试', path: '/test' },
 ]
 
 const activeMenu = computed(() => route.path)
@@ -110,6 +52,8 @@ const activeMenu = computed(() => route.path)
   flex-direction: column;
   min-height: 100vh;
   background-color: #f0f2f5;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .app-header {
@@ -117,30 +61,37 @@ const activeMenu = computed(() => route.path)
   align-items: center;
   justify-content: space-between;
   height: 64px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
   padding: 0 32px;
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .header-left .logo {
-  font-size: 24px;
+  font-size: 20px;
   margin: 0;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .header-nav {
   display: flex;
-  gap: 32px;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .nav-item {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: all 0.3s;
+  white-space: nowrap;
 }
 
 .nav-item:hover {
@@ -154,50 +105,10 @@ const activeMenu = computed(() => route.path)
 }
 
 .app-main {
-  display: flex;
   flex: 1;
-  overflow: hidden;
-}
-
-.app-sidebar {
-  width: 256px;
-  background: white;
-  border-right: 1px solid #e0e0e0;
-  transition: width 0.3s ease;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-collapsed {
-  width: 64px;
-}
-
-.sidebar-content {
-  height: 100%;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.sidebar-header h3 {
-  margin: 0;
-  font-size: 16px;
-  color: #303133;
-}
-
-.sidebar-menu {
-  border: none;
-}
-
-.app-content {
-  flex: 1;
-  padding: 24px;
-  overflow-y: auto;
+  padding: 0;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .app-footer {
@@ -208,6 +119,7 @@ const activeMenu = computed(() => route.path)
   justify-content: center;
   border-top: 1px solid #e0e0e0;
   color: #909399;
+  flex-shrink: 0;
 }
 
 .app-footer p {
@@ -216,21 +128,42 @@ const activeMenu = computed(() => route.path)
 }
 
 /* 响应式设计 */
-@media (max-width: 1199px) {
-  .app-sidebar {
-    width: 64px;
-  }
-}
-
-@media (max-width: 767px) {
+@media (max-width: 1200px) {
   .app-header {
     padding: 0 16px;
   }
-  .header-left .logo {
-    font-size: 18px;
-  }
+  
   .header-nav {
-    display: none;
+    gap: 4px;
+  }
+  
+  .nav-item {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    flex-direction: column;
+    height: auto;
+    padding: 12px 16px;
+    gap: 12px;
+  }
+  
+  .header-left .logo {
+    font-size: 16px;
+    text-align: center;
+  }
+  
+  .header-nav {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .nav-item {
+    font-size: 12px;
+    padding: 6px 8px;
   }
 }
 </style>

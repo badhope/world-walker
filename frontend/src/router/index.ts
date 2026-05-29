@@ -5,7 +5,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/',
     name: 'Home',
     component: () => import('@/views/Home.vue'),
-    meta: { title: '概览' },
+    meta: { title: '首页' },
   },
   {
     path: '/enterprise',
@@ -31,6 +31,18 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/DataManager.vue'),
     meta: { title: '数据管理' },
   },
+  {
+    path: '/cities',
+    name: 'Cities',
+    component: () => import('@/views/CityComparison.vue'),
+    meta: { title: '城市对比' },
+  },
+  {
+    path: '/test',
+    name: 'Test',
+    component: () => import('@/views/Test.vue'),
+    meta: { title: 'API测试' },
+  },
 ]
 
 const router = createRouter({
@@ -45,7 +57,6 @@ const router = createRouter({
   },
 })
 
-// 路由守卫
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title ? `${to.meta.title} - 区域产业经济分析平台` : '区域产业经济分析平台'
   next()

@@ -31,8 +31,7 @@ axiosInstance.interceptors.response.use(
     return response.data
   },
   (error: any) => {
-    const message = error?.response?.data?.message || error?.message || '请求失败'
-    ElMessage.error(message)
+    // 不自动显示全局错误消息，让每个页面自己处理
     return Promise.reject(error)
   }
 )

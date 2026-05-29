@@ -9,6 +9,7 @@ from datetime import datetime
 
 from config import settings
 from backend.api.routes import data_router, analysis_router, inference_router
+from backend.api.routes import interactive_router, websocket_router, cities_router
 
 # 日志配置
 logging.basicConfig(
@@ -65,6 +66,9 @@ app.add_middleware(
 app.include_router(data_router, prefix=settings.API_V1_STR)
 app.include_router(analysis_router, prefix=settings.API_V1_STR)
 app.include_router(inference_router, prefix=settings.API_V1_STR)
+app.include_router(interactive_router, prefix=settings.API_V1_STR)
+app.include_router(websocket_router, prefix=settings.API_V1_STR)
+app.include_router(cities_router, prefix=settings.API_V1_STR)
 
 
 @app.get("/", tags=["根路径"])

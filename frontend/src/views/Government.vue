@@ -29,55 +29,91 @@
       </el-button>
     </div>
     
-    <!-- KPI 卡片 -->
-    <div class="kpi-grid" v-if="store.governmentResult">
-      <KpiCard
-        :value="store.governmentResult.fiscal_leverage.fiscal_revenue"
-        label="财政收入 (亿元)"
-        icon-type="wallet"
-      />
-      <KpiCard
-        :value="store.governmentResult.fiscal_leverage.leverage_ratio"
-        label="杠杆倍数"
-        unit="倍"
-        icon-type="trend"
-      />
-      <KpiCard
-        :value="store.governmentResult.industry_drive.employment_effect.total"
-        label="带动就业 (万人)"
-        icon-type="user"
-      />
-    </div>
+    <!-- 错误提示 -->
+    <el-alert
+      v-if="store.error"
+      :title="store.error"
+      type="error"
+      show-icon
+      closable
+      @close="store.error = null"
+      style="margin-bottom: 20px"
+    />
     
-    <!-- 图表区域 -->
-    <div class="charts-grid">
-      <div class="chart-card">
-        <h3 class="chart-title">财政杠杆分析</h3>
-        <EChart :option="fiscalChartOption" height="320px" />
-      </div>
-      <div class="chart-card">
-        <h3 class="chart-title">产业带动效应</h3>
-        <EChart :option="industryChartOption" height="320px" />
-      </div>
-    </div>
+    <!-- 加载状态 -->
+    <el-skeleton :loading="store.loading" animated v-if="store.loading">
+      <template #template>
+        <div style="padding: 20px">
+          <el-skeleton-item variant="h3" style="width: 40%" />
+          <el-skeleton style="margin: 20px 0">
+            <el-skeleton-item variant="text" />
+            <el-skeleton-item variant="text" />
+          </el-skeleton>
+        </div>
+      </template>
+    </el-skeleton>
     
-    <!-- 政策建议 -->
-    <div class="suggestions-section" v-if="store.governmentResult?.policy_suggestions">
-      <h3 class="section-title">政策建议</h3>
-      <div class="suggestions-list">
-        <div
-          v-for="(suggestion, index) in store.governmentResult.policy_suggestions"
-          :key="index"
-          class="suggestion-card"
-        >
-          <div class="suggestion-header">
-            <span class="suggestion-priority">{{ suggestion.priority }}</span>
-            <h4 class="suggestion-title">{{ suggestion.title }}</h4>
-          </div>
-          <p class="suggestion-content">{{ suggestion.content }}</p>
+    <!-- 分析结果 -->
+    <template v-else-if="store.governmentResult">
+      <!-- KPI 卡片 -->
+      <div class="kpi-grid">
+        <KpiCard
+          :value="store.governmentResult.fiscal_leverage?.fiscal_revenue || 0"
+          label="财政收入"
+          unit="亿元"
+          icon-type="wallet"
+        />
+        <KpiCard
+          :value="store.governmentResult.fiscal_leverage?.leverage_ratio || 0"
+          label="杠杆倍数"
+          unit="倍"
+          icon-type="trend"
+        />
+        <KpiCard
+          :value="store.governmentResult.industry_drive?.employment_effect?.total || 0"
+          label="带动就业"
+          unit="万人"
+          icon-type="user"
+        />
+      </div>
+      
+      <!-- 图表区域 -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3 class="chart-title">财政杠杆分析</h3>
+          <EChart :option="fiscalChartOption" height="320px" />
+        </div>
+        <div class="chart-card">
+          <h3 class="chart-title">产业带动效应</h3>
+          <EChart :option="industryChartOption" height="320px" />
         </div>
       </div>
-    </div>
+      
+      <!-- 政策建议 -->
+      <div class="suggestions-section" v-if="store.governmentResult.policy_suggestions?.length">
+        <h3 class="section-title">政策建议</h3>
+        <div class="suggestions-list">
+          <div
+            v-for="(suggestion, index) in store.governmentResult.policy_suggestions"
+            :key="index"
+            class="suggestion-card"
+          >
+            <div class="suggestion-header">
+              <span class="suggestion-priority">{{ suggestion.priority }}</span>
+              <h4 class="suggestion-title">{{ suggestion.title }}</h4>
+            </div>
+            <p class="suggestion-content">{{ suggestion.content }}</p>
+          </div>
+        </div>
+      </div>
+    </template>
+    
+    <!-- 空状态 -->
+    <el-empty 
+      v-else 
+      description="请选择参数后点击'开始分析'按钮获取分析结果"
+      :image-size="200"
+    />
   </div>
 </template>
 
@@ -108,6 +144,9 @@ const fiscalChartOption = computed(() => createBarChart(fiscalChartData.value))
 const industryChartOption = computed(() => createPieChart(industryChartData.value))
 
 const handleAnalysis = async () => {
+  if (!store.currentRegion || !store.currentIndustry || !store.currentYear) {
+    return
+  }
   await store.fetchGovernmentAnalysis()
 }
 </script>
@@ -137,8 +176,9 @@ const handleAnalysis = async () => {
 
 .filter-item label {
   color: #606266;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
+  font-size: 14px;
 }
 
 .kpi-grid {
@@ -223,5 +263,20 @@ const handleAnalysis = async () => {
   margin: 0;
   color: #606266;
   line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .top-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-item {
+    width: 100%;
+  }
+  
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

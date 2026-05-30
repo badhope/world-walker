@@ -50,9 +50,16 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    # 分析参数
+    DEFAULT_YEAR: int = 2025
+    DEFAULT_REGION: str = "深圳"
+    DEFAULT_INDUSTRY: str = "半导体"
+    
+    model_config = {
+        "case_sensitive": True,
+        "env_file": ".env",
+        "extra": "ignore"
+    }
 
 
 def setup_logging(settings: Settings):

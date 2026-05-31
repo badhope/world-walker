@@ -16,14 +16,15 @@ from backend.retail_location.visualizer import RetailVisualizer
 from backend.data_processing.cleaner import DataCleaner
 from backend.report_generator import ReportGenerator
 from backend.model_versioning import ModelVersionManager, FeedbackLoop
+from backend.analysis.base_analyzer import BaseAnalyzer
 
 logger = logging.getLogger(__name__)
 
 
-class RetailLocationAnalyzer:
-    """零售门店选址分析器"""
+class RetailLocationAnalyzer(BaseAnalyzer):
     
     def __init__(self, config: Optional[RetailLocationConfig] = None):
+        super().__init__()
         self.config = config or RetailLocationConfig.get_default_config()
         self.data_adapter = RetailDataAdapter(self.config)
         self.data_cleaner = DataCleaner()
@@ -503,6 +504,9 @@ class RetailLocationAnalyzer:
     
     # ==================== 新店预测 ====================
     
+    def predict(self, data: pd.DataFrame) -> pd.DataFrame:
+        return self.predict_new_location(data)
+
     def predict_new_location(self, new_data: pd.DataFrame) -> pd.DataFrame:
         if not self.model_trainer.is_trained or self.model_trainer.best_model is None:
             raise ValueError("没有训练好的模型，请先运行分析。")

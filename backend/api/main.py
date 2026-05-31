@@ -1,5 +1,5 @@
 """
-国家经济数据分析平台 - FastAPI 后端
+区域产业经济分析平台 - FastAPI 后端（数据分析师作品集）
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,8 +8,12 @@ import logging
 from datetime import datetime
 
 from config import settings
-from backend.api.routes import data_router, analysis_router, inference_router
-from backend.api.routes import interactive_router, websocket_router, cities_router, real_data_router, database_router, static_router
+from backend.api.routes import (
+    data_router, analysis_router, inference_router,
+    interactive_router, websocket_router, cities_router,
+    cities_v2_router, forecast_router, analysis_v3_router,
+    real_data_router, database_router, static_router
+)
 
 # 日志配置
 logging.basicConfig(
@@ -32,21 +36,29 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="""
-## 区域产业经济分析平台 API
+## 区域产业经济分析平台 API - 数据分析师作品集
 
 ### 核心功能
 
-- **数据管理**: 经济指标数据的增删改查
-- **企业端分析**: 营商成本、供应链配套、政策红利分析
-- **政府端分析**: 财政杠杆、产业带动、产业链分析
-- **经济模型**: 菲利普斯曲线、奥肯定律、柯布-道格拉斯等经典模型
-- **可视化**: 多种图表展示分析结果
+- **真实数据采集**: 整合官方统计数据，多源交叉验证
+- **探索性数据分析**: 完整EDA流程，描述性统计，相关性分析
+- **时间序列预测**: Prophet模型，MAE/MAPE评估
+- **企业选址分析**: 基于统计分位数的评分系统
+- **数据可视化**: ECharts交互式图表
+- **数据质量管理**: 质量评估，数据验证
 
 ### 使用说明
 
-1. 使用 `/api/v1/data/*` 管理数据
-2. 使用 `/api/v1/analysis/*` 进行产业分析
-3. 使用 `/api/v1/inference/*` 运行经济模型
+1. 使用 `/api/v1/cities/*` 获取真实城市数据
+2. 使用 `/api/v1/analysis/enterprise/v3` 进行企业选址分析
+3. 使用 `/api/v1/forecast/*` 进行时间序列预测
+4. 访问 `/dashboard` 查看交互式分析仪表盘
+
+### 技术亮点
+
+- 评分基准基于真实数据的统计分位数
+- 权重基于企业调研
+- 完整的单元测试覆盖
     """,
     lifespan=lifespan,
     docs_url="/docs",
@@ -69,6 +81,9 @@ app.include_router(inference_router, prefix=settings.API_V1_STR)
 app.include_router(interactive_router, prefix=settings.API_V1_STR)
 app.include_router(websocket_router, prefix=settings.API_V1_STR)
 app.include_router(cities_router, prefix=settings.API_V1_STR)
+app.include_router(cities_v2_router, prefix=settings.API_V1_STR)
+app.include_router(forecast_router, prefix=settings.API_V1_STR)
+app.include_router(analysis_v3_router, prefix=settings.API_V1_STR)
 app.include_router(real_data_router)
 app.include_router(database_router)
 app.include_router(static_router)
@@ -79,10 +94,14 @@ from pathlib import Path
 
 @app.get("/dashboard", tags=["页面"])
 async def get_dashboard():
-    """分析结果展示页面"""
-    dashboard_path = Path(__file__).parent.parent.parent / "frontend" / "analysis_dashboard.html"
+    """交互式分析仪表盘（Vue + ECharts）"""
+    dashboard_path = Path(__file__).parent.parent.parent / "frontend" / "public" / "dashboard.html"
     if dashboard_path.exists():
         return FileResponse(dashboard_path, media_type="text/html")
+    # 备用路径
+    backup_path = Path(__file__).parent.parent.parent / "frontend" / "analysis_dashboard.html"
+    if backup_path.exists():
+        return FileResponse(backup_path, media_type="text/html")
     return {"error": "页面未找到"}
 
 

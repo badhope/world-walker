@@ -1,11 +1,14 @@
 """
 金融数据采集器 - 人民银行等金融数据
 """
-import akshare as ak
 import pandas as pd
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+try:
+    import akshare as ak
+except ImportError:
+    ak = None
 
 from backend.data_collection.base_collector import BaseCollector
 

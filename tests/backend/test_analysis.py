@@ -81,17 +81,34 @@ class TestEnterpriseAnalyzer:
         assert analyzer is not None
 
     def test_enterprise_analyzer_with_sample_data(self):
-        """测试使用示例数据进行分析"""
-        from examples.shenzhen_semiconductor_2025.enterprise_analysis import EnterpriseAnalysisRunner
+        from backend.analysis.enterprise_analyzer import EnterpriseAnalyzer
 
-        runner = EnterpriseAnalysisRunner()
-        report = runner.generate_report()
+        analyzer = EnterpriseAnalyzer()
+        sample_data = {
+            "region": "深圳市",
+            "industry": "半导体产业",
+            "year": 2025,
+            "land_price": 1000,
+            "salary_level": 15000,
+            "energy_cost": 1.2,
+            "financing_cost": 5.0,
+            "local_support_rate": 75,
+            "avg_delivery_time": 4,
+            "location_quotient": 2.0,
+            "tax_reduction": 500,
+            "tax_coverage": 80,
+            "rd_subsidy": 200,
+            "avg_approval_time": 7,
+        }
+        report = analyzer.generate_comprehensive_report(sample_data)
 
         assert report is not None
         assert isinstance(report, dict)
-        assert "title" in report
         assert "region" in report
         assert "industry" in report
+        assert "business_costs" in report
+        assert "supply_chain" in report
+        assert "policy_benefits" in report
 
 
 @pytest.mark.unit
@@ -106,17 +123,35 @@ class TestGovernmentAnalyzer:
         assert analyzer is not None
 
     def test_government_analyzer_with_sample_data(self):
-        """测试使用示例数据进行分析"""
-        from examples.shenzhen_semiconductor_2025.government_analysis import GovernmentAnalysisRunner
+        from backend.analysis.government_analyzer import GovernmentAnalyzer
 
-        runner = GovernmentAnalysisRunner()
-        report = runner.generate_report()
+        analyzer = GovernmentAnalyzer()
+        sample_data = {
+            "region": "深圳市",
+            "industry": "半导体产业",
+            "year": 2025,
+            "gdp": 30000,
+            "revenue": 4500,
+            "expenditure": 5400,
+            "fund_utilization": 0.82,
+            "employment_driven": 15000,
+            "tax_contribution": 12.0,
+            "influence_coefficient": 1.05,
+            "sensitivity_coefficient": 0.95,
+            "upstream_coverage": 55.0,
+            "midstream_coverage": 65.0,
+            "downstream_coverage": 60.0,
+            "digitalization_level": 55.0,
+        }
+        report = analyzer.generate_comprehensive_report(sample_data)
 
         assert report is not None
         assert isinstance(report, dict)
-        assert "title" in report
         assert "region" in report
         assert "industry" in report
+        assert "fiscal_leverage" in report
+        assert "industry_driving" in report
+        assert "industry_chain" in report
 
 
 @pytest.mark.unit

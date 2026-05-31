@@ -1,6 +1,5 @@
 <template>
   <div class="city-comparison-page">
-    <!-- 顶部导航 -->
     <div class="page-header">
       <h2>城市对比分析</h2>
       <div class="header-actions">
@@ -10,8 +9,7 @@
         </el-button>
       </div>
     </div>
-    
-    <!-- 筛选条件 -->
+
     <div class="filter-section">
       <el-card>
         <el-form :inline="true" :model="filterForm">
@@ -24,7 +22,7 @@
               <el-option label="工业产值" value="industrial_output" />
             </el-select>
           </el-form-item>
-          
+
           <el-form-item label="年份">
             <el-date-picker
               v-model="filterForm.year"
@@ -35,7 +33,7 @@
               style="width: 150px"
             />
           </el-form-item>
-          
+
           <el-form-item label="排名数量">
             <el-input-number
               v-model="filterForm.limit"
@@ -44,7 +42,7 @@
               style="width: 120px"
             />
           </el-form-item>
-          
+
           <el-form-item>
             <el-button type="primary" @click="loadRankings">
               查询
@@ -53,10 +51,8 @@
         </el-form>
       </el-card>
     </div>
-    
-    <!-- 主要内容区域 -->
+
     <div class="main-content">
-      <!-- 左侧：城市排名 -->
       <div class="rankings-section">
         <el-card>
           <template #header>
@@ -65,7 +61,7 @@
               <el-tag type="info">{{ filterForm.indicator }}</el-tag>
             </div>
           </template>
-          
+
           <div v-loading="loading">
             <el-table :data="rankings" stripe border>
               <el-table-column type="index" label="排名" width="80" align="center">
@@ -75,15 +71,15 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              
+
               <el-table-column prop="city" label="城市" min-width="120" />
-              
+
               <el-table-column prop="value" label="数值" width="150" sortable>
                 <template #default="{ row }">
                   <span class="value-text">{{ formatNumber(row.value) }}</span>
                 </template>
               </el-table-column>
-              
+
               <el-table-column label="趋势" width="100" align="center">
                 <template #default="{ $index }">
                   <el-icon :color="getTrendColor($index)">
@@ -96,18 +92,15 @@
           </div>
         </el-card>
       </div>
-      
-      <!-- 右侧：图表区域 -->
+
       <div class="charts-section">
-        <!-- 柱状图 -->
         <el-card>
           <template #header>
             <span>城市对比柱状图</span>
           </template>
           <div ref="barChartRef" class="chart-container"></div>
         </el-card>
-        
-        <!-- 趋势图 -->
+
         <el-card style="margin-top: 20px">
           <template #header>
             <span>时间趋势图</span>
@@ -116,8 +109,7 @@
         </el-card>
       </div>
     </div>
-    
-    <!-- 聚合分析区域 -->
+
     <div class="aggregation-section">
       <el-card>
         <template #header>
@@ -130,7 +122,7 @@
             </el-button-group>
           </div>
         </template>
-        
+
         <el-tabs v-model="activeTab">
           <el-tab-pane label="按城市聚合" name="city">
             <el-table :data="aggregationByCity" stripe border>
@@ -158,7 +150,7 @@
               <el-table-column prop="count" label="数据量" />
             </el-table>
           </el-tab-pane>
-          
+
           <el-tab-pane label="按区域聚合" name="region">
             <el-table :data="aggregationByRegion" stripe border>
               <el-table-column prop="region" label="区域" width="150" />
@@ -178,8 +170,7 @@
         </el-tabs>
       </el-card>
     </div>
-    
-    <!-- 聚合配置对话框 -->
+
     <el-dialog
       v-model="showAggregationDialog"
       title="聚合分析配置"
@@ -194,7 +185,7 @@
             <el-checkbox label="indicator">指标</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
-        
+
         <el-form-item label="聚合指标">
           <el-checkbox-group v-model="aggregationForm.metrics">
             <el-checkbox label="count">计数</el-checkbox>
@@ -205,7 +196,7 @@
             <el-checkbox label="median">中位数</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
-        
+
         <el-form-item label="排序字段">
           <el-select v-model="aggregationForm.sortBy" style="width: 100%">
             <el-option label="无" :value="null" />
@@ -214,14 +205,14 @@
             <el-option label="计数" value="count" />
           </el-select>
         </el-form-item>
-        
+
         <el-form-item label="排序方式">
           <el-radio-group v-model="aggregationForm.sortOrder">
             <el-radio label="desc">降序</el-radio>
             <el-radio label="asc">升序</el-radio>
           </el-radio-group>
         </el-form-item>
-        
+
         <el-form-item label="限制数量">
           <el-input-number
             v-model="aggregationForm.limit"
@@ -230,7 +221,7 @@
           />
         </el-form-item>
       </el-form>
-      
+
       <template #footer>
         <el-button @click="showAggregationDialog = false">取消</el-button>
         <el-button type="primary" @click="runAggregation">执行聚合</el-button>
@@ -240,24 +231,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, Top, Bottom } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import { useAnalysisStore } from '@/stores/analysis'
 
-// 状态
+const store = useAnalysisStore()
+
 const loading = ref(false)
 const showAggregationDialog = ref(false)
 const activeTab = ref('city')
 
-// 筛选表单
 const filterForm = ref({
   indicator: 'gdp',
   year: '2024',
   limit: 10,
 })
 
-// 聚合配置表单
 const aggregationForm = ref({
   groupBy: ['city'],
   metrics: ['sum', 'avg'],
@@ -266,39 +257,36 @@ const aggregationForm = ref({
   limit: 20,
 })
 
-// 数据
 const rankings = ref<any[]>([])
 const aggregationByCity = ref<any[]>([])
 const aggregationByRegion = ref<any[]>([])
 const timeSeriesData = ref<any[]>([])
 
-// 图表引用
 const barChartRef = ref()
 const lineChartRef = ref()
 
-// 方法
+let barChartInstance: echarts.ECharts | null = null
+let lineChartInstance: echarts.ECharts | null = null
+
 const loadRankings = async () => {
   loading.value = true
   try {
-    // 模拟加载排名数据
-    const mockRankings = [
-      { city: '上海', value: 47218.66 },
-      { city: '北京', value: 43430.1 },
-      { city: '深圳', value: 36801.87 },
-      { city: '广州', value: 30355.73 },
-      { city: '重庆', value: 27894.02 },
-      { city: '苏州', value: 23458.36 },
-      { city: '成都', value: 22074.7 },
-      { city: '杭州', value: 20059.0 },
-      { city: '武汉', value: 18866.43 },
-      { city: '南京', value: 16908.0 },
-    ]
-    
-    rankings.value = mockRankings.slice(0, filterForm.value.limit)
-    
+    const yearNum = filterForm.value.year ? parseInt(filterForm.value.year) : undefined
+    const result = await store.fetchCityRankings({
+      indicator: filterForm.value.indicator,
+      year: yearNum,
+      limit: filterForm.value.limit,
+    })
+
+    if (result && result.rankings) {
+      rankings.value = result.rankings
+    } else if (result) {
+      rankings.value = Array.isArray(result) ? result : []
+    }
+
     await nextTick()
     renderBarChart()
-    
+
     ElMessage.success('排名加载成功')
   } catch (error) {
     ElMessage.error('排名加载失败')
@@ -309,35 +297,72 @@ const loadRankings = async () => {
 
 const loadAggregation = async () => {
   try {
-    // 模拟聚合数据
-    aggregationByCity.value = [
-      { city: '上海', sum: 47218.66, avg: 9443.73, min: 3400.0, max: 12000.0, count: 5 },
-      { city: '北京', sum: 43430.1, avg: 8686.02, min: 3200.0, max: 11500.0, count: 5 },
-      { city: '深圳', sum: 36801.87, avg: 7360.37, min: 2800.0, max: 10000.0, count: 5 },
-      { city: '广州', sum: 30355.73, avg: 6071.15, min: 2400.0, max: 8500.0, count: 5 },
-    ]
-    
-    aggregationByRegion.value = [
-      { region: '广东', city_count: 2, avg: 6711.76, total: 67117.6 },
-      { region: '上海', city_count: 1, avg: 8686.02, total: 43430.1 },
-      { region: '北京', city_count: 1, avg: 8686.02, total: 43430.1 },
-      { region: '浙江', city_count: 1, avg: 6071.15, total: 30355.73 },
-    ]
-    
-    // 模拟时间序列数据
-    timeSeriesData.value = [
-      { year: 2020, gdp: 28000, cpi: 100, pmi: 48 },
-      { year: 2021, gdp: 30500, cpi: 101, pmi: 50 },
-      { year: 2022, gdp: 32500, cpi: 102, pmi: 49 },
-      { year: 2023, gdp: 34600, cpi: 101, pmi: 51 },
-      { year: 2024, gdp: 36801, cpi: 102, pmi: 52 },
-    ]
-    
+    const result = await store.aggregateData({
+      group_by: aggregationForm.value.groupBy,
+      metrics: aggregationForm.value.metrics,
+      sort_by: aggregationForm.value.sortBy || undefined,
+      sort_order: aggregationForm.value.sortOrder,
+      limit: aggregationForm.value.limit,
+    })
+
+    if (result && result.result) {
+      const groups = result.result.groups || []
+      if (aggregationForm.value.groupBy.includes('city')) {
+        aggregationByCity.value = groups.map((g: any) => ({
+          city: g.city || g.group_key || '',
+          sum: g.sum ?? g.metrics?.sum ?? 0,
+          avg: g.avg ?? g.metrics?.avg ?? 0,
+          min: g.min ?? g.metrics?.min ?? 0,
+          max: g.max ?? g.metrics?.max ?? 0,
+          count: g.count ?? g.metrics?.count ?? 0,
+        }))
+      }
+      if (aggregationForm.value.groupBy.includes('region')) {
+        aggregationByRegion.value = groups.map((g: any) => ({
+          region: g.region || g.group_key || '',
+          city_count: g.city_count ?? g.metrics?.count ?? 0,
+          avg: g.avg ?? g.metrics?.avg ?? 0,
+          total: g.sum ?? g.metrics?.sum ?? 0,
+        }))
+      }
+    }
+
+    await loadTimeSeries()
+  } catch (error) {
+    ElMessage.error('聚合数据加载失败')
+  }
+}
+
+const loadTimeSeries = async () => {
+  try {
+    const cityCodes = ['sz', 'sh', 'bj', 'gz', 'hz', 'wh', 'cd', 'nj']
+    const result = await store.timeSeriesAnalysis({
+      city_codes: cityCodes,
+      indicator: filterForm.value.indicator,
+      year_start: 2020,
+      year_end: 2025,
+      group_by: ['city_code'],
+    })
+
+    if (result && result.time_series) {
+      const tsData = result.time_series
+      if (tsData.groups && Array.isArray(tsData.groups)) {
+        timeSeriesData.value = tsData.groups.flatMap((g: any) =>
+          (g.values || []).map((v: any) => ({
+            city: g.city || g.group_key || '',
+            year: v.year || v.time,
+            value: v.value ?? v.avg ?? 0,
+          }))
+        )
+      } else if (Array.isArray(tsData)) {
+        timeSeriesData.value = tsData
+      }
+    }
+
     await nextTick()
     renderLineChart()
-    
   } catch (error) {
-    console.error('聚合数据加载失败', error)
+    ElMessage.error('时间序列数据加载失败')
   }
 }
 
@@ -349,9 +374,12 @@ const runAggregation = () => {
 
 const renderBarChart = () => {
   if (!barChartRef.value) return
-  
-  const chart = echarts.init(barChartRef.value)
-  
+
+  if (barChartInstance) {
+    barChartInstance.dispose()
+  }
+  barChartInstance = echarts.init(barChartRef.value)
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -391,25 +419,39 @@ const renderBarChart = () => {
       },
     ],
   }
-  
-  chart.setOption(option)
-  
-  window.addEventListener('resize', () => {
-    chart.resize()
-  })
+
+  barChartInstance.setOption(option)
 }
 
 const renderLineChart = () => {
   if (!lineChartRef.value) return
-  
-  const chart = echarts.init(lineChartRef.value)
-  
+
+  if (lineChartInstance) {
+    lineChartInstance.dispose()
+  }
+  lineChartInstance = echarts.init(lineChartRef.value)
+
+  const years = [...new Set(timeSeriesData.value.map(d => d.year))].sort()
+  const cities = [...new Set(timeSeriesData.value.map(d => d.city))]
+  const colors = ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#667eea', '#764ba2', '#a855f7']
+
+  const series = cities.map((city, idx) => ({
+    name: city,
+    type: 'line' as const,
+    data: years.map(year => {
+      const item = timeSeriesData.value.find(d => d.city === city && d.year === year)
+      return item ? item.value : null
+    }),
+    smooth: true,
+    itemStyle: { color: colors[idx % colors.length] },
+  }))
+
   const option = {
     tooltip: {
       trigger: 'axis',
     },
     legend: {
-      data: ['GDP', 'CPI', 'PMI'],
+      data: cities,
     },
     grid: {
       left: '3%',
@@ -419,43 +461,16 @@ const renderLineChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: timeSeriesData.value.map(d => d.year),
+      data: years.map(String),
       boundaryGap: false,
     },
     yAxis: {
       type: 'value',
     },
-    series: [
-      {
-        name: 'GDP',
-        type: 'line',
-        data: timeSeriesData.value.map(d => d.gdp),
-        smooth: true,
-        itemStyle: { color: '#409eff' },
-      },
-      {
-        name: 'CPI',
-        type: 'line',
-        data: timeSeriesData.value.map(d => d.cpi),
-        smooth: true,
-        yAxisIndex: 0,
-        itemStyle: { color: '#67c23a' },
-      },
-      {
-        name: 'PMI',
-        type: 'line',
-        data: timeSeriesData.value.map(d => d.pmi),
-        smooth: true,
-        itemStyle: { color: '#e6a23c' },
-      },
-    ],
+    series,
   }
-  
-  chart.setOption(option)
-  
-  window.addEventListener('resize', () => {
-    chart.resize()
-  })
+
+  lineChartInstance.setOption(option)
 }
 
 const formatNumber = (value: number) => {
@@ -483,7 +498,6 @@ const refreshData = () => {
   loadAggregation()
 }
 
-// 生命周期
 onMounted(() => {
   loadRankings()
   loadAggregation()
@@ -566,12 +580,11 @@ onMounted(() => {
   margin-top: 20px;
 }
 
-/* 响应式 */
 @media (max-width: 1199px) {
   .main-content {
     grid-template-columns: 1fr;
   }
-  
+
   .charts-section {
     order: -1;
   }

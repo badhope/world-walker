@@ -9,7 +9,10 @@ from functools import wraps
 from datetime import datetime, timedelta
 import logging
 
-import redis
+try:
+    import redis
+except ImportError:
+    redis = None
 
 logger = logging.getLogger(__name__)
 
@@ -18,15 +21,11 @@ class CacheManager:
     """Redis 缓存管理器"""
 
     def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0, password: Optional[str] = None):
-        """
-        初始化缓存管理器
-        
-        Args:
-            host: Redis 主机
-            port: Redis 端口
-            db: 数据库编号
-            password: 密码
-        """
+        self.redis_client = None
+        self.memory_cache = {}
+        if redis is None:
+            logger.warning("redis 模块未安装，使用内存缓存")
+            return
         try:
             self.redis_client = redis.Redis(
                 host=host,

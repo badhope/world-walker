@@ -4,7 +4,10 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, List, Optional
-import akshare as ak
+try:
+    import akshare as ak
+except ImportError:
+    ak = None
 from datetime import datetime
 import logging
 

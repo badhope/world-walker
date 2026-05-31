@@ -1,14 +1,18 @@
 <template>
-  <div class="enterprise-page">
-    <!-- 顶部选择器 -->
+  <div class="enterprise-page" v-loading="store.loading" element-loading-text="正在分析中...">
     <div class="top-filter">
       <div class="filter-item">
-        <label>区域：</label>
-        <el-select v-model="store.currentRegion" placeholder="请选择区域">
-          <el-option label="深圳" value="深圳" />
-          <el-option label="上海" value="上海" />
-          <el-option label="北京" value="北京" />
-          <el-option label="广州" value="广州" />
+        <label>城市：</label>
+        <el-select v-model="store.currentRegion" placeholder="请选择城市" @change="onCityChange">
+          <el-option
+            v-for="city in store.cities"
+            :key="city"
+            :label="city"
+            :value="city"
+          />
+          <el-option v-if="store.cities.length === 0" label="深圳" value="深圳" />
+          <el-option v-if="store.cities.length === 0" label="上海" value="上海" />
+          <el-option v-if="store.cities.length === 0" label="成都" value="成都" />
         </el-select>
       </div>
       <div class="filter-item">
@@ -31,8 +35,7 @@
         开始分析
       </el-button>
     </div>
-    
-    <!-- 错误提示 -->
+
     <el-alert
       v-if="store.error"
       :title="store.error"
@@ -42,156 +45,226 @@
       @close="store.error = null"
       style="margin-bottom: 20px"
     />
-    
-    <!-- 加载状态 -->
-    <el-skeleton :loading="store.loading" animated v-if="store.loading">
-      <template #template>
-        <div style="padding: 20px">
-          <el-skeleton-item variant="h3" style="width: 40%" />
-          <el-skeleton style="margin: 20px 0">
-            <el-skeleton-item variant="text" />
-            <el-skeleton-item variant="text" />
-          </el-skeleton>
-        </div>
-      </template>
-    </el-skeleton>
-    
-    <!-- 分析结果 -->
-    <template v-else-if="store.enterpriseResult">
-      <!-- KPI 卡片 -->
+
+    <template v-if="store.enterpriseResult">
       <div class="kpi-grid">
         <KpiCard
-          :value="store.enterpriseResult.land_cost_analysis?.city_average || 0"
-          label="平均用地成本"
-          unit="元/㎡·年"
+          :value="store.enterpriseResult.business_cost_score?.toFixed(1) || '0'"
+          label="营商成本评分"
+          unit="分"
           icon-type="box"
+          color="#e6a23c"
+          bgColor="#e6a23c"
         />
         <KpiCard
-          :value="store.enterpriseResult.labor_cost_analysis?.average_salary || 0"
-          label="平均工资"
-          unit="元/月"
-          icon-type="user"
-        />
-        <KpiCard
-          :value="store.enterpriseResult.supply_chain_analysis?.localization_rate || 0"
-          label="本地化率"
-          unit="%"
+          :value="store.enterpriseResult.supply_chain_score?.toFixed(1) || '0'"
+          label="供应链配套评分"
+          unit="分"
           icon-type="goods"
+          color="#67c23a"
+          bgColor="#67c23a"
         />
         <KpiCard
-          :value="store.enterpriseResult.comprehensive_cost_index?.shenzhen_index || 0"
-          label="综合成本指数"
-          unit=""
+          :value="store.enterpriseResult.policy_benefit_score?.toFixed(1) || '0'"
+          label="政策红利评分"
+          unit="分"
+          icon-type="wallet"
+          color="#409eff"
+          bgColor="#409eff"
+        />
+        <KpiCard
+          :value="store.enterpriseResult.total_score?.toFixed(1) || '0'"
+          label="综合评分"
+          unit="分"
           icon-type="trend"
+          color="#667eea"
+          bgColor="#667eea"
         />
       </div>
-      
-      <!-- 图表区域 -->
+
       <div class="charts-grid">
         <div class="chart-card">
-          <h3 class="chart-title">成本对比分析</h3>
+          <h3 class="chart-title">营商成本详情</h3>
           <EChart :option="costChartOption" height="300px" />
         </div>
         <div class="chart-card">
-          <h3 class="chart-title">供应链覆盖度</h3>
+          <h3 class="chart-title">供应链配套雷达图</h3>
           <EChart :option="supplyChainChartOption" height="300px" />
         </div>
         <div class="chart-card">
-          <h3 class="chart-title">成本趋势</h3>
-          <EChart :option="trendChartOption" height="300px" />
+          <h3 class="chart-title">政策红利详情</h3>
+          <EChart :option="policyChartOption" height="300px" />
         </div>
       </div>
-      
-      <!-- 建议区域 -->
-      <div class="suggestions-section" v-if="store.enterpriseResult.overall_recommendations?.length">
-        <h3 class="section-title">优化建议</h3>
+
+      <div class="suggestions-section" v-if="store.enterpriseResult.suggestions?.length">
+        <h3 class="section-title">分析建议</h3>
         <div class="suggestions-grid">
           <div
-            v-for="(rec, index) in store.enterpriseResult.overall_recommendations"
+            v-for="(suggestion, index) in store.enterpriseResult.suggestions"
             :key="index"
             class="suggestion-card"
           >
-            <div class="suggestion-header">
-              <el-tag :type="getTagType(rec.type)">{{ rec.type }}</el-tag>
-            </div>
-            <div class="suggestion-text">{{ rec.suggestion }}</div>
+            <div class="suggestion-text">{{ suggestion }}</div>
           </div>
         </div>
       </div>
+
+      <div class="methodology-section" v-if="store.enterpriseResult.methodology">
+        <h3 class="section-title">方法论说明</h3>
+        <div class="methodology-content">
+          <p v-if="store.enterpriseResult.methodology.scoring_basis">
+            {{ store.enterpriseResult.methodology.scoring_basis }}
+          </p>
+          <p v-if="store.enterpriseResult.methodology.weight_source">
+            {{ store.enterpriseResult.methodology.weight_source }}
+          </p>
+        </div>
+      </div>
     </template>
-    
-    <!-- 空状态 -->
-    <el-empty 
-      v-else 
-      description="请选择参数后点击'开始分析'按钮获取分析结果"
+
+    <el-empty
+      v-else-if="!store.loading"
+      description="请选择城市后点击'开始分析'按钮获取分析结果"
       :image-size="200"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useAnalysisStore } from '@/stores/analysis'
 import KpiCard from '@/components/widgets/KpiCard.vue'
 import EChart from '@/components/charts/EChart.vue'
-import { createBarChart, createRadarChart, createLineChart } from '@/utils/charts'
 
 const store = useAnalysisStore()
 
-const costChartData = ref({
-  categories: ['用地成本', '人力成本', '能源成本', '融资成本'],
-  series: [
-    {
-      name: '深圳',
-      data: [812, 18500, 0.68, 4.85],
+const costChartOption = computed(() => {
+  const details = store.enterpriseResult?.details?.cost_details
+  if (!details) return {}
+  const categories = ['土地价格', '平均工资', '能源成本', '融资成本']
+  const rawValues = [details['土地价格'], details['平均工资'], details['能源成本'], details['融资成本']]
+  const scoreValues = [details['土地价格得分'], details['平均工资得分'], details['能源成本得分'], details['融资成本得分']]
+  return {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { data: ['原始值', '得分'] },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: categories },
+    yAxis: [
+      { type: 'value', name: '原始值' },
+      { type: 'value', name: '得分', max: 100 },
+    ],
+    series: [
+      {
+        name: '原始值',
+        type: 'bar',
+        data: rawValues,
+        itemStyle: { color: '#409eff' },
+      },
+      {
+        name: '得分',
+        type: 'line',
+        yAxisIndex: 1,
+        data: scoreValues,
+        itemStyle: { color: '#e6a23c' },
+        lineStyle: { width: 3 },
+      },
+    ],
+  }
+})
+
+const supplyChainChartOption = computed(() => {
+  const details = store.enterpriseResult?.details?.supply_details
+  if (!details) return {}
+  return {
+    tooltip: {},
+    radar: {
+      indicator: [
+        { name: '本地配套率', max: 100 },
+        { name: '交付周期', max: 100 },
+        { name: '产业集聚度', max: 100 },
+      ],
     },
-  ],
+    series: [
+      {
+        name: '供应链评分',
+        type: 'radar',
+        data: [
+          {
+            value: [
+              details['本地配套率得分'] || 0,
+              details['交付周期得分'] || 0,
+              details['产业集聚度得分'] || 0,
+            ],
+            name: store.enterpriseResult?.city || '当前城市',
+            areaStyle: { opacity: 0.3 },
+          },
+        ],
+      },
+    ],
+  }
 })
 
-const supplyChainData = ref({
-  indicator: [
-    { name: '上游覆盖', max: 100 },
-    { name: '中游覆盖', max: 100 },
-    { name: '下游覆盖', max: 100 },
-  ],
-  data: [
-    {
-      name: '深圳',
-      value: [65, 85, 95],
-    },
-  ],
+const policyChartOption = computed(() => {
+  const details = store.enterpriseResult?.details?.policy_details
+  if (!details) return {}
+  const categories = ['减税降费', '政策覆盖率', '研发补贴', '审批效率']
+  const rawValues = [details['减税降费'], details['政策覆盖率'], details['研发补贴'], details['平均审批时间']]
+  const scoreValues = [details['减税降费得分'], details['政策覆盖率得分'], details['研发补贴得分'], details['审批效率得分']]
+  return {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { data: ['原始值', '得分'] },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: categories },
+    yAxis: [
+      { type: 'value', name: '原始值' },
+      { type: 'value', name: '得分', max: 100 },
+    ],
+    series: [
+      {
+        name: '原始值',
+        type: 'bar',
+        data: rawValues,
+        itemStyle: {
+          color: (params: any) => {
+            const colors = ['#409eff', '#67c23a', '#e6a23c', '#f56c6c']
+            return colors[params.dataIndex % colors.length]
+          },
+        },
+      },
+      {
+        name: '得分',
+        type: 'line',
+        yAxisIndex: 1,
+        data: scoreValues,
+        itemStyle: { color: '#667eea' },
+        lineStyle: { width: 3 },
+      },
+    ],
+  }
 })
 
-const trendChartData = ref({
-  categories: ['2020', '2021', '2022', '2023', '2024', '2025'],
-  series: [
-    { name: '综合成本指数', data: [100, 103, 105, 104, 106, 105] },
-  ],
-})
-
-const costChartOption = computed(() => createBarChart(costChartData.value))
-const supplyChainChartOption = computed(() => createRadarChart(supplyChainData.value))
-const trendChartOption = computed(() => createLineChart(trendChartData.value))
+const onCityChange = () => {
+  store.enterpriseResult = null
+}
 
 const handleAnalysis = async () => {
-  if (!store.currentRegion || !store.currentIndustry || !store.currentYear) {
-    return
-  }
-  await store.fetchEnterpriseAnalysis()
+  if (!store.currentRegion) return
+  await store.runEnterpriseAnalysis()
 }
 
-const getTagType = (type: string) => {
-  if (type.includes('人力')) return 'warning'
-  if (type.includes('融资')) return 'success'
-  if (type.includes('用地')) return 'primary'
-  return 'info'
-}
+onMounted(() => {
+  if (store.cities.length === 0) {
+    store.fetchCities()
+  }
+})
 </script>
 
 <style scoped>
 .enterprise-page {
   width: 100%;
   padding: 0;
+  min-height: 200px;
 }
 
 .top-filter {
@@ -254,6 +327,7 @@ const getTagType = (type: string) => {
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
 }
 
 .section-title {
@@ -275,14 +349,24 @@ const getTagType = (type: string) => {
   padding: 16px;
 }
 
-.suggestion-header {
-  margin-bottom: 12px;
-}
-
 .suggestion-text {
   color: #606266;
   line-height: 1.6;
   font-size: 14px;
+}
+
+.methodology-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.methodology-content p {
+  color: #909399;
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 4px 0;
 }
 
 @media (max-width: 768px) {
@@ -290,11 +374,11 @@ const getTagType = (type: string) => {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-item {
     width: 100%;
   }
-  
+
   .charts-grid {
     grid-template-columns: 1fr;
   }

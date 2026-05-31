@@ -235,6 +235,22 @@ class EnterpriseAnalyzerV2(BaseAnalyzer):
         
         return results
     
+    def run_full_analysis(
+        self,
+        data,
+        save_results: bool = True,
+        output_dir: str = "data/output",
+        **kwargs
+    ) -> Dict[str, Any]:
+        if isinstance(data, dict):
+            return self.generate_comprehensive_report(data)
+        raise ValueError("data must be a dict")
+
+    def predict(self, data) -> Dict[str, Any]:
+        if isinstance(data, dict):
+            return self.generate_comprehensive_report(data)
+        raise ValueError("data must be a dict")
+
     def generate_comprehensive_report(
         self,
         data: Dict[str, Any]

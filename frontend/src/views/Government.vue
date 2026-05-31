@@ -1,13 +1,18 @@
 <template>
-  <div class="government-page">
-    <!-- 顶部选择器 -->
+  <div class="government-page" v-loading="store.loading" element-loading-text="正在分析中...">
     <div class="top-filter">
       <div class="filter-item">
-        <label>区域：</label>
-        <el-select v-model="store.currentRegion" placeholder="请选择区域">
-          <el-option label="深圳" value="深圳" />
-          <el-option label="上海" value="上海" />
-          <el-option label="北京" value="北京" />
+        <label>城市：</label>
+        <el-select v-model="store.currentRegion" placeholder="请选择城市" @change="onCityChange">
+          <el-option
+            v-for="city in store.cities"
+            :key="city"
+            :label="city"
+            :value="city"
+          />
+          <el-option v-if="store.cities.length === 0" label="深圳" value="深圳" />
+          <el-option v-if="store.cities.length === 0" label="上海" value="上海" />
+          <el-option v-if="store.cities.length === 0" label="成都" value="成都" />
         </el-select>
       </div>
       <div class="filter-item">
@@ -28,8 +33,7 @@
         开始分析
       </el-button>
     </div>
-    
-    <!-- 错误提示 -->
+
     <el-alert
       v-if="store.error"
       :title="store.error"
@@ -39,45 +43,43 @@
       @close="store.error = null"
       style="margin-bottom: 20px"
     />
-    
-    <!-- 加载状态 -->
-    <el-skeleton :loading="store.loading" animated v-if="store.loading">
-      <template #template>
-        <div style="padding: 20px">
-          <el-skeleton-item variant="h3" style="width: 40%" />
-          <el-skeleton style="margin: 20px 0">
-            <el-skeleton-item variant="text" />
-            <el-skeleton-item variant="text" />
-          </el-skeleton>
-        </div>
-      </template>
-    </el-skeleton>
-    
-    <!-- 分析结果 -->
-    <template v-else-if="store.governmentResult">
-      <!-- KPI 卡片 -->
+
+    <template v-if="store.governmentResult">
       <div class="kpi-grid">
         <KpiCard
-          :value="store.governmentResult.fiscal_leverage?.fiscal_revenue || 0"
-          label="财政收入"
-          unit="亿元"
+          :value="govData.fiscal_leverage?.score?.toFixed(1) || '0'"
+          label="财政杠杆评分"
+          unit="分"
           icon-type="wallet"
+          color="#764ba2"
+          bgColor="#764ba2"
         />
         <KpiCard
-          :value="store.governmentResult.fiscal_leverage?.leverage_ratio || 0"
-          label="杠杆倍数"
-          unit="倍"
+          :value="govData.fiscal_leverage?.revenue_efficiency?.toFixed(1) || '0'"
+          label="收入效率"
+          unit="分"
           icon-type="trend"
+          color="#667eea"
+          bgColor="#667eea"
         />
         <KpiCard
-          :value="store.governmentResult.industry_drive?.employment_effect?.total || 0"
-          label="带动就业"
-          unit="万人"
+          :value="govData.industry_drive?.score?.toFixed(1) || '0'"
+          label="产业带动评分"
+          unit="分"
+          icon-type="data"
+          color="#e6a23c"
+          bgColor="#e6a23c"
+        />
+        <KpiCard
+          :value="govData.industry_drive?.employment_contribution?.toFixed(1) || '0'"
+          label="就业贡献"
+          unit="分"
           icon-type="user"
+          color="#67c23a"
+          bgColor="#67c23a"
         />
       </div>
-      
-      <!-- 图表区域 -->
+
       <div class="charts-grid">
         <div class="chart-card">
           <h3 class="chart-title">财政杠杆分析</h3>
@@ -88,72 +90,115 @@
           <EChart :option="industryChartOption" height="320px" />
         </div>
       </div>
-      
-      <!-- 政策建议 -->
-      <div class="suggestions-section" v-if="store.governmentResult.policy_suggestions?.length">
-        <h3 class="section-title">政策建议</h3>
-        <div class="suggestions-list">
-          <div
-            v-for="(suggestion, index) in store.governmentResult.policy_suggestions"
-            :key="index"
-            class="suggestion-card"
-          >
-            <div class="suggestion-header">
-              <span class="suggestion-priority">{{ suggestion.priority }}</span>
-              <h4 class="suggestion-title">{{ suggestion.title }}</h4>
-            </div>
-            <p class="suggestion-content">{{ suggestion.content }}</p>
-          </div>
-        </div>
+
+      <div class="city-data-section" v-if="store.governmentResult.note">
+        <el-alert
+          :title="store.governmentResult.note"
+          type="info"
+          show-icon
+          :closable="false"
+        />
       </div>
     </template>
-    
-    <!-- 空状态 -->
-    <el-empty 
-      v-else 
-      description="请选择参数后点击'开始分析'按钮获取分析结果"
+
+    <el-empty
+      v-else-if="!store.loading"
+      description="请选择城市后点击'开始分析'按钮获取分析结果"
       :image-size="200"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useAnalysisStore } from '@/stores/analysis'
 import KpiCard from '@/components/widgets/KpiCard.vue'
 import EChart from '@/components/charts/EChart.vue'
-import { createBarChart, createPieChart } from '@/utils/charts'
 
 const store = useAnalysisStore()
 
-// 图表数据
-const fiscalChartData = ref({
-  categories: ['财政收入', '财政支出', '产业支持'],
-  series: [
-    { name: '2025', data: [4512, 5057, 158] },
-  ],
+const govData = computed(() => {
+  return store.governmentResult?.data || store.governmentResult || {}
 })
 
-const industryChartData = ref([
-  { name: '直接就业', value: 45 },
-  { name: '间接就业', value: 28.5 },
-  { name: '带动GDP', value: 320 },
-])
+const fiscalChartOption = computed(() => {
+  const fiscal = govData.value.fiscal_leverage
+  if (!fiscal) return {}
+  const categories = ['综合评分', '收入效率', '支出效率']
+  const values = [
+    fiscal.score || 0,
+    fiscal.revenue_efficiency || 0,
+    fiscal.expenditure_efficiency || 0,
+  ]
+  return {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'category', data: categories },
+    yAxis: { type: 'value', name: '评分', max: 100 },
+    series: [
+      {
+        name: '评分',
+        type: 'bar',
+        data: values,
+        itemStyle: {
+          color: (params: any) => {
+            const colors = ['#764ba2', '#667eea', '#a855f7']
+            return colors[params.dataIndex % colors.length]
+          },
+        },
+        label: { show: true, position: 'top', formatter: '{c}' },
+      },
+    ],
+  }
+})
 
-const fiscalChartOption = computed(() => createBarChart(fiscalChartData.value))
-const industryChartOption = computed(() => createPieChart(industryChartData.value))
+const industryChartOption = computed(() => {
+  const industry = govData.value.industry_drive
+  if (!industry) return {}
+  return {
+    tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
+    legend: { orient: 'vertical', left: 'left' },
+    series: [
+      {
+        name: '产业带动',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        avoidLabelOverlap: false,
+        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+        label: { show: false, position: 'center' },
+        emphasis: {
+          label: { show: true, fontSize: 20, fontWeight: 'bold' },
+        },
+        labelLine: { show: false },
+        data: [
+          { name: '就业贡献', value: industry.employment_contribution || 0 },
+          { name: '税收贡献', value: industry.tax_contribution || 0 },
+        ],
+      },
+    ],
+  }
+})
+
+const onCityChange = () => {
+  store.governmentResult = null
+}
 
 const handleAnalysis = async () => {
-  if (!store.currentRegion || !store.currentIndustry || !store.currentYear) {
-    return
-  }
-  await store.fetchGovernmentAnalysis()
+  if (!store.currentRegion) return
+  await store.runGovernmentAnalysis()
 }
+
+onMounted(() => {
+  if (store.cities.length === 0) {
+    store.fetchCities()
+  }
+})
 </script>
 
 <style scoped>
 .government-page {
   width: 100%;
+  min-height: 200px;
 }
 
 .top-filter {
@@ -211,58 +256,8 @@ const handleAnalysis = async () => {
   padding-bottom: 8px;
 }
 
-.suggestions-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 20px;
-}
-
-.suggestions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.suggestion-card {
-  border-left: 4px solid #667eea;
-  padding: 16px 20px;
-  background: #f8f9fa;
-  border-radius: 0 8px 8px 0;
-}
-
-.suggestion-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.suggestion-priority {
-  padding: 2px 8px;
-  background: #667eea;
-  color: white;
-  font-size: 12px;
-  border-radius: 4px;
-}
-
-.suggestion-title {
-  margin: 0;
-  font-size: 16px;
-  color: #303133;
-}
-
-.suggestion-content {
-  margin: 0;
-  color: #606266;
-  line-height: 1.6;
+.city-data-section {
+  margin-top: 20px;
 }
 
 @media (max-width: 768px) {
@@ -270,11 +265,11 @@ const handleAnalysis = async () => {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-item {
     width: 100%;
   }
-  
+
   .charts-grid {
     grid-template-columns: 1fr;
   }

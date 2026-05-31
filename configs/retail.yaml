@@ -1,0 +1,198 @@
+data: {}
+industry:
+  data_requirements:
+  - foot_traffic
+  - rental_cost
+  - competition_density
+  - accessibility
+  - population
+  - income_level
+  - age_distribution
+  - spending_habit
+  - labor_cost
+  - utilities_cost
+  - logistics_cost
+  - inventory_turnover
+  description: 零售行业选址与经营分析模板
+  dimensions:
+  - description: 评估店铺位置优势
+    display_name: 选址维度
+    higher_is_better:
+      accessibility: true
+      competition_density: false
+      foot_traffic: true
+      rental_cost: false
+    metric_weights:
+      accessibility: 0.2
+      competition_density: 0.2
+      foot_traffic: 0.35
+      rental_cost: 0.25
+    metrics:
+    - foot_traffic
+    - rental_cost
+    - competition_density
+    - accessibility
+    name: location
+    weight: 0.35
+  - description: 评估市场潜力
+    display_name: 市场维度
+    higher_is_better:
+      age_distribution: true
+      income_level: true
+      population: true
+      spending_habit: true
+    metric_weights:
+      age_distribution: 0.15
+      income_level: 0.35
+      population: 0.3
+      spending_habit: 0.2
+    metrics:
+    - population
+    - income_level
+    - age_distribution
+    - spending_habit
+    name: market
+    weight: 0.35
+  - description: 评估运营成本与效率
+    display_name: 运营维度
+    higher_is_better:
+      inventory_turnover: true
+      labor_cost: false
+      logistics_cost: false
+      utilities_cost: false
+    metric_weights:
+      inventory_turnover: 0.3
+      labor_cost: 0.25
+      logistics_cost: 0.25
+      utilities_cost: 0.2
+    metrics:
+    - labor_cost
+    - utilities_cost
+    - logistics_cost
+    - inventory_turnover
+    name: operation
+    weight: 0.3
+  industry_id: retail
+  industry_name: 零售行业
+  industry_type: retail
+  metrics:
+    accessibility:
+      benchmark_method: percentile
+      data_source: 综合评估
+      description: 交通可达性评分
+      display_name: 交通便利度
+      name: accessibility
+      unit: 分
+    age_distribution:
+      benchmark_method: percentile
+      data_source: 统计局
+      description: 目标年龄段占比
+      display_name: 年龄分布
+      name: age_distribution
+      unit: '%'
+    competition_density:
+      benchmark_method: percentile
+      data_source: 市场调研
+      description: 周边竞争对手数量
+      display_name: 竞争密度
+      name: competition_density
+      unit: 家/公里²
+    foot_traffic:
+      benchmark_method: percentile
+      data_source: 实地调查
+      description: 日均客流量
+      display_name: 客流量
+      name: foot_traffic
+      unit: 人次/天
+    income_level:
+      benchmark_method: percentile
+      data_source: 统计局
+      description: 人均可支配收入
+      display_name: 收入水平
+      name: income_level
+      unit: 元/月
+    inventory_turnover:
+      benchmark_method: percentile
+      data_source: ERP系统
+      description: 年库存周转次数
+      display_name: 库存周转率
+      name: inventory_turnover
+      unit: 次/年
+    labor_cost:
+      benchmark_method: percentile
+      data_source: HR数据
+      description: 员工平均月工资
+      display_name: 人力成本
+      name: labor_cost
+      unit: 元/月/人
+    logistics_cost:
+      benchmark_method: percentile
+      data_source: 物流系统
+      description: 单均物流配送成本
+      display_name: 物流成本
+      name: logistics_cost
+      unit: 元/单
+    population:
+      benchmark_method: percentile
+      data_source: 统计局
+      description: 服务半径内人口
+      display_name: 人口规模
+      name: population
+      unit: 万人
+    rental_cost:
+      benchmark_method: percentile
+      data_source: 地产中介
+      description: 店铺日均租金
+      display_name: 租金成本
+      name: rental_cost
+      unit: 元/㎡/天
+    spending_habit:
+      benchmark_method: percentile
+      data_source: 消费调研
+      description: 零售消费偏好评分
+      display_name: 消费习惯
+      name: spending_habit
+      unit: 分
+    utilities_cost:
+      benchmark_method: percentile
+      data_source: 账单数据
+      description: 月均水电费
+      display_name: 水电成本
+      name: utilities_cost
+      unit: 元/月
+  success_metrics:
+  - foot_traffic
+  - income_level
+  - inventory_turnover
+ml:
+  cross_validation_folds: 5
+  feature_columns:
+  - foot_traffic
+  - rental_cost
+  - competition_density
+  - accessibility
+  - population
+  - income_level
+  - age_distribution
+  - spending_habit
+  - labor_cost
+  - utilities_cost
+  - logistics_cost
+  hyperparameter_tuning: true
+  id_column: store_id
+  models:
+  - xgboost
+  - random_forest
+  - gbdt
+  - prophet
+  - linear_regression
+  target_metric: inventory_turnover
+  time_column: year
+  train_size: 0.8
+  validation_size: 0.2
+project_name: retail_store_analysis
+regions:
+- Shanghai
+- Beijing
+- Guangzhou
+- Shenzhen

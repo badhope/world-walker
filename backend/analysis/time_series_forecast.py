@@ -75,7 +75,7 @@ class EconomicForecaster:
             return {"error": f"Unknown method: {method}"}
         
         # 计算增长率
-        forecast_result = self._calculate_growth_rates(forecast_result)
+        growth_rates = self._calculate_growth_rates(forecast_result)
         
         return {
             "city": city,
@@ -83,7 +83,7 @@ class EconomicForecaster:
             "forecast_method": method,
             "historical_data": df[["year", "gdp"]].to_dict(orient="records"),
             "forecast_data": forecast_result["forecast_data"],
-            "growth_rates": forecast_result["growth_rates"],
+            "growth_rates": growth_rates,
             "model_metrics": forecast_result.get("metrics", {}),
         }
 

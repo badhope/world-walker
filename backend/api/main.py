@@ -9,7 +9,7 @@ from datetime import datetime
 
 from config import settings
 from backend.api.routes import data_router, analysis_router, inference_router
-from backend.api.routes import interactive_router, websocket_router, cities_router, real_data_router, database_router
+from backend.api.routes import interactive_router, websocket_router, cities_router, real_data_router, database_router, static_router
 
 # 日志配置
 logging.basicConfig(
@@ -71,6 +71,19 @@ app.include_router(websocket_router, prefix=settings.API_V1_STR)
 app.include_router(cities_router, prefix=settings.API_V1_STR)
 app.include_router(real_data_router)
 app.include_router(database_router)
+app.include_router(static_router)
+
+# 添加静态页面路由
+from fastapi.responses import FileResponse
+from pathlib import Path
+
+@app.get("/dashboard", tags=["页面"])
+async def get_dashboard():
+    """分析结果展示页面"""
+    dashboard_path = Path(__file__).parent.parent.parent / "frontend" / "analysis_dashboard.html"
+    if dashboard_path.exists():
+        return FileResponse(dashboard_path, media_type="text/html")
+    return {"error": "页面未找到"}
 
 
 @app.get("/", tags=["根路径"])

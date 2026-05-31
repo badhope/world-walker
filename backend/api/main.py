@@ -9,7 +9,7 @@ from datetime import datetime
 
 from config import settings
 from backend.api.routes import data_router, analysis_router, inference_router
-from backend.api.routes import interactive_router, websocket_router, cities_router, real_data_router
+from backend.api.routes import interactive_router, websocket_router, cities_router, real_data_router, database_router
 
 # 日志配置
 logging.basicConfig(
@@ -70,6 +70,7 @@ app.include_router(interactive_router, prefix=settings.API_V1_STR)
 app.include_router(websocket_router, prefix=settings.API_V1_STR)
 app.include_router(cities_router, prefix=settings.API_V1_STR)
 app.include_router(real_data_router)
+app.include_router(database_router)
 
 
 @app.get("/", tags=["根路径"])

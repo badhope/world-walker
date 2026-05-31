@@ -473,18 +473,22 @@ class RetailModelTrainer:
         # 3. 训练多个模型
         results = self.train_multiple_models(X_train, y_train, X_test, y_test, model_names)
         
-        # 4. 超参数调优
+        # 4. 超参数调优（真实实现！）
         if do_tuning and self.best_model_name in ["random_forest", "gbm"]:
+            logger.info("="*50)
+            logger.info("开始超参数调优...")
+            logger.info("="*50)
+            
             param_grid = {
                 "random_forest": {
-                    'n_estimators': [50, 100, 200],
-                    'max_depth': [5, 10, None],
-                    'min_samples_split': [2, 5, 10]
+                    'n_estimators': [50, 100],
+                    'max_depth': [5, 10],
+                    'min_samples_split': [2, 5]
                 },
                 "gbm": {
-                    'n_estimators': [50, 100, 200],
-                    'learning_rate': [0.05, 0.1, 0.2],
-                    'max_depth': [3, 5, 7]
+                    'n_estimators': [50, 100],
+                    'learning_rate': [0.05, 0.1],
+                    'max_depth': [3, 5]
                 }
             }
             
@@ -494,14 +498,27 @@ class RetailModelTrainer:
                         X_train, y_train, self.best_model_name, param_grid[self.best_model_name]
                     )
                     
+                    # 评估调优后的模型
                     tuned_metrics = self.evaluate_model(tuned_model, X_test, y_test)
+                    results['tuning_results'] = tuning_results
+                    results['tuned_metrics'] = tuned_metrics
                     
+                    logger.info(f"调优后的测试集R²: {tuned_metrics['r2']:.4f}")
+                    
+                    # 比较，更新最佳模型
                     if tuned_metrics['r2'] > results['best_score']:
+                        logger.info(f"超参数调优有效！R²从 {results['best_score']:.4f} 提升到 {tuned_metrics['r2']:.4f}")
                         self.best_model = tuned_model
                         results['best_model'] = f"{self.best_model_name}_tuned"
                         results['best_score'] = tuned_metrics['r2']
                         self.models[f"{self.best_model_name}_tuned"] = tuned_model
+                        self.model_scores[f"{self.best_model_name}_tuned"] = tuned_metrics
+                    else:
+                        logger.info(f"超参数调优无明显改善，保持原模型")
+                        
                 except Exception as e:
-                    logger.error(f"Error in tuning: {str(e)}")
+                    logger.error(f"超参数调优失败: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
         
         return results

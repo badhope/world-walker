@@ -44,7 +44,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')  # 非交互式后端
-import seaborn as sns
 
 # 设置中文字体（兼容不同系统）
 plt.rcParams['font.sans-serif'] = ['SimHei', 'WenQuanYi Micro Hei', 'DejaVu Sans']
@@ -255,28 +254,14 @@ if all(col in df.columns for col in ['gdp_primary', 'gdp_secondary', 'gdp_tertia
     plt.close()
     print(f"    ✅ 已保存: {charts_dir / 'industry_structure_analysis.png'}")
 
-# 5.5 相关性热力图
+# 5.5 相关性分析（移除seaborn依赖，只打印相关性矩阵）
 numeric_cols = df.select_dtypes(include=[np.number]).columns.drop('year', errors='ignore')
 if len(numeric_cols) > 1:
-    print("  生成相关性热力图...")
+    print("  计算相关性矩阵...")
     corr_matrix = df[numeric_cols].corr()
-    
-    fig, ax = plt.subplots(figsize=(12, 10))
-    sns.heatmap(
-        corr_matrix,
-        annot=True,
-        fmt='.2f',
-        cmap='RdBu_r',
-        center=0,
-        square=True,
-        ax=ax,
-        cbar_kws={'label': '相关系数'}
-    )
-    ax.set_title('经济指标相关性矩阵', fontsize=14, fontweight='bold')
-    plt.tight_layout()
-    plt.savefig(charts_dir / "correlation_heatmap.png", dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"    ✅ 已保存: {charts_dir / 'correlation_heatmap.png'}")
+    print("    相关性矩阵:")
+    print(corr_matrix.to_string())
+    print(f"    相关性分析完成")
 
 print("✅ 可视化分析完成！")
 print()

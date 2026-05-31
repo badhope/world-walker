@@ -321,6 +321,59 @@ class RetailLocationAnalyzer:
             for i, rec in enumerate(insights.get('recommendations', []), 1):
                 f.write(f"{i}. {rec}\n")
     
+    # ==================== 分析器持久化 ====================
+    
+    def save_analyzer(self, output_dir: str):
+        """保存整个分析器（模型+元数据）"""
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # 保存最佳模型
+        if self.model_trainer.best_model is not None:
+            self.model_trainer.save_best_model(str(output_path / "best_model.pkl"))
+        
+        # 保存配置和处理后的特征信息
+        meta = {
+            "feature_names": self.model_trainer.feature_names,
+            "target_col": self.config.target_column,
+            "config": {
+                "target_column": self.config.target_column
+            }
+        }
+        
+        with open(output_path / "analyzer_meta.json", 'w', encoding='utf-8') as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"Analyzer saved to: {output_path}")
+    
+    @classmethod
+    def load_analyzer(cls, input_dir: str) -> 'RetailLocationAnalyzer':
+        """加载保存的分析器"""
+        input_path = Path(input_dir)
+        
+        # 加载元数据
+        with open(input_path / "analyzer_meta.json", 'r', encoding='utf-8') as f:
+            meta = json.load(f)
+        
+        # 创建配置
+        config = RetailLocationConfig(
+            target_column=meta.get("target_col", "monthly_sales")
+        )
+        
+        # 创建分析器
+        analyzer = cls(config)
+        
+        # 加载模型
+        model_path = input_path / "best_model.pkl"
+        if model_path.exists():
+            analyzer.model_trainer.load_model(str(model_path))
+        
+        # 恢复特征信息
+        analyzer.model_trainer.feature_names = meta.get("feature_names", [])
+        
+        logger.info(f"Analyzer loaded from: {input_path}")
+        return analyzer
+    
     # ==================== 新店预测 ====================
     
     def predict_new_location(self, new_data: pd.DataFrame) -> pd.DataFrame:
@@ -333,38 +386,26 @@ class RetailLocationAnalyzer:
         Returns:
             预测结果
         """
-        if self.model_trainer.best_model is None:
+        if not self.model_trainer.is_trained or self.model_trainer.best_model is None:
             raise ValueError("No trained model available. Please run analysis first.")
         
         # 保存原始数据的非特征列
         id_cols = ['store_id', 'store_name', 'address', 'latitude', 'longitude']
         orig_data = new_data[[col for col in id_cols if col in new_data.columns]].copy()
         
-        # 对新数据进行相同的特征处理
-        processed, _ = self.feature_engineer.process_features(
-            new_data,
-            target_col=self.config.target_column,
-            generate_derived=True,
-            encode_categorical=True,
-            standardize=False
-        )
+        # 数据清洗（同训练时）
+        cleaned_data = self._clean_data(new_data)
         
-        # 确保特征一致
-        feature_cols = self.feature_engineer.feature_names
+        # 特征处理（同训练时）
+        processed, _ = self._process_features(cleaned_data)
         
-        # 创建一个包含所有需要特征的DataFrame
-        X_new = pd.DataFrame(index=processed.index)
-        for col in feature_cols:
-            if col in processed.columns:
-                X_new[col] = processed[col]
-            else:
-                X_new[col] = 0
+        # 移除目标列（如果存在）
+        target_col = self.config.target_column
+        if target_col in processed.columns:
+            processed = processed.drop(columns=[target_col])
         
-        # 确保列顺序一致
-        X_new = X_new[feature_cols]
-        
-        # 预测
-        predictions = self.model_trainer.best_model.predict(X_new)
+        # 使用模型训练器的预测功能（自动处理特征一致性）
+        predictions = self.model_trainer.predict(processed)
         
         # 合并结果
         result = orig_data.copy()

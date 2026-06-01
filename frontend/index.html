@@ -155,7 +155,7 @@ tailwind.config = {
 
 <script>
 // ==================== API Client ====================
-const API = 'http://localhost:8001';
+const API = window.location.origin;
 async function get(path) {
   const r = await fetch(API + path);
   if (!r.ok) throw new Error(`HTTP ${r.status}`);

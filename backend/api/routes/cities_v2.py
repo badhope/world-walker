@@ -59,14 +59,22 @@ async def get_city_historical(city_name: str) -> Dict[str, Any]:
     
     - **city_name**: 城市名称
     """
-    df = get_historical_data(city_name)
-    if df.empty:
+    data = get_historical_data(city_name)
+    if not data:
         raise HTTPException(status_code=404, detail=f"城市 {city_name} 历史数据未找到")
+    
+    if hasattr(data, 'empty') and data.empty:
+        raise HTTPException(status_code=404, detail=f"城市 {city_name} 历史数据未找到")
+    
+    if hasattr(data, 'to_dict'):
+        records = data.to_dict(orient="records")
+    else:
+        records = data
     
     return {
         "city": city_name,
         "years": [2020, 2021, 2022, 2023, 2024, 2025],
-        "historical_data": df.to_dict(orient="records") if isinstance(df, type(get_historical_data(city_name))) else HISTORICAL_DATA.get(city_name, [])
+        "historical_data": records
     }
 
 
@@ -81,9 +89,15 @@ async def compare_multiple_cities(city_names: List[str]) -> Dict[str, Any]:
     if not valid_cities:
         raise HTTPException(status_code=400, detail="未提供有效的城市名称")
     
+    comparison_result = compare_cities(valid_cities)
+    if hasattr(comparison_result, 'to_dict'):
+        comparison_data = comparison_result.to_dict(orient="records")
+    else:
+        comparison_data = comparison_result
+    
     return {
         "cities": valid_cities,
-        "comparison": compare_cities(valid_cities).to_dict(orient="records") if hasattr(compare_cities(valid_cities), 'to_dict') else [CITY_DATA[city] for city in valid_cities]
+        "comparison": comparison_data
     }
 
 

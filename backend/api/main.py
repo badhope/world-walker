@@ -135,6 +135,22 @@ def health_check():
     }
 
 
+FAVICON_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
+    '<rect width="100" height="100" rx="20" fill="#2563eb"/>'
+    '<text x="50" y="65" font-size="52" text-anchor="middle" fill="white" '
+    'font-family="Arial" font-weight="bold">N</text>'
+    '</svg>'
+)
+
+
+@app.get("/favicon.ico", tags=["静态资源"], include_in_schema=False)
+def favicon():
+    """返回 SVG favicon"""
+    from fastapi.responses import Response
+    return Response(content=FAVICON_SVG, media_type="image/svg+xml")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)

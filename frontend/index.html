@@ -18,6 +18,7 @@
 <meta name="twitter:description" content="一站式数据智能分析">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563eb'/%3E%3Ctext x='50' y='65' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EN%3C/text%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563eb'/%3E%3Ctext x='50' y='65' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EN%3C/text%3E%3C/svg%3E">
+<meta name="api-base" content="">
 <title>区域产业经济分析平台</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
@@ -900,7 +901,20 @@ tailwind.config = {
 
 <script>
 // ==================== API Client ====================
-var API = window.location.origin;
+function resolveApiBase() {
+  var meta = document.querySelector('meta[name="api-base"]');
+  if (meta && meta.content && meta.content.trim()) {
+    return meta.content.trim().replace(/\/+$/, '');
+  }
+  var loc = window.location;
+  var origin = loc.origin;
+  if (loc.protocol === 'file:') return 'http://localhost:8000';
+  if (loc.port && loc.port !== '8000') {
+    return loc.protocol + '//' + loc.hostname + ':8000';
+  }
+  return origin;
+}
+var API = resolveApiBase();
 
 function apiGet(path, timeoutMs) {
   timeoutMs = timeoutMs || 15000;

@@ -11,450 +11,1465 @@ tailwind.config = {
   theme: {
     extend: {
       colors: {
-        primary: { 50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',300:'#93c5fd',400:'#60a5fa',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',800:'#1e40af',900:'#1e3a8a' },
-        accent: { 50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',300:'#86efac',400:'#4ade80',500:'#22c55e',600:'#16a34a',700:'#15803d',800:'#166534',900:'#14532d' },
+        brand: {
+          50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
+          400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
+          800: '#1e40af', 900: '#1e3a8a',
+        },
+        success: { 50: '#f0fdf4', 100: '#dcfce7', 500: '#22c55e', 600: '#16a34a', 700: '#15803d' },
+        warning: { 50: '#fffbeb', 100: '#fef3c7', 500: '#f59e0b', 600: '#d97706' },
+        danger: { 50: '#fef2f2', 100: '#fee2e2', 500: '#ef4444', 600: '#dc2626' },
       }
     }
   }
 }
 </script>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-  .tab-active { @apply border-primary-500 text-primary-600; }
-  .card { @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6; }
-  .btn { @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed; }
-  .btn-primary { @apply btn bg-primary-600 text-white hover:bg-primary-700; }
-  .btn-outline { @apply btn border border-gray-300 text-gray-700 hover:bg-gray-50; }
-  .badge { @apply px-2.5 py-0.5 rounded-full text-xs font-medium; }
-  .badge-green { @apply badge bg-accent-100 text-accent-700; }
-  .badge-blue { @apply badge bg-primary-100 text-primary-700; }
-  .stat-value { @apply text-2xl font-bold text-gray-900; }
-  .stat-label { @apply text-sm text-gray-500 mt-1; }
-  .select-input { @apply w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none; }
-  .spinner { @apply animate-spin h-5 w-5 border-2 border-primary-500 border-t-transparent rounded-full inline-block; }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-  .fade-in { animation: fadeIn 0.4s ease-out; }
+  :root {
+    --brand: #2563eb;
+    --brand-light: #3b82f6;
+    --brand-dark: #1d4ed8;
+    --brand-muted: #eff6ff;
+    --accent: #8b5cf6;
+    --accent-light: #a78bfa;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --radius-xs: 8px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.05);
+    --shadow: 0 4px 6px -1px rgba(0,0,0,.06), 0 2px 4px -2px rgba(0,0,0,.04);
+    --shadow-lg: 0 10px 25px -5px rgba(0,0,0,.08), 0 8px 10px -6px rgba(0,0,0,.04);
+    --shadow-xl: 0 20px 40px -10px rgba(0,0,0,.1);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --border: #e2e8f0;
+    --border-light: #f1f5f9;
+    --bg: #f8fafc;
+    --bg-card: #ffffff;
+    --transition: .25s cubic-bezier(.4,0,.2,1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+    background-attachment: fixed;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+
+  #app { max-width: 1280px; margin: 0 auto; padding: 24px 20px 48px; }
+
+  /* ============ Header ============ */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: var(--radius);
+    color: #fff;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+  }
+  .app-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(59,130,246,.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .app-header::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: 10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(139,92,246,.1) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .app-header > * { position: relative; z-index: 1; }
+  .logo-icon {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--brand-light), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+    box-shadow: 0 4px 12px rgba(59,130,246,.4);
+  }
+  .app-title { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+  .app-subtitle { font-size: 11px; color: rgba(255,255,255,.5); letter-spacing: .5px; }
+
+  .health-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: var(--transition);
+  }
+  .health-badge.online { background: rgba(34,197,94,.15); color: #4ade80; }
+  .health-badge.offline { background: rgba(239,68,68,.15); color: #f87171; }
+
+  .version-tag {
+    font-size: 11px;
+    color: rgba(255,255,255,.4);
+    background: rgba(255,255,255,.08);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+
+  .header-gradient-bar {
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #f59e0b);
+    margin-top: 0;
+    margin-bottom: 24px;
+    animation: gradientShift 6s ease infinite;
+    background-size: 200% 100%;
+  }
+  @keyframes gradientShift {
+    0%,100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* ============ Tab Navigation ============ */
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    border-radius: 14px;
+    padding: 5px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+  .tab-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 11px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: 11px;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .tab-btn:hover { color: var(--text-primary); background: var(--bg); }
+  .tab-btn.active {
+    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(37,99,235,.3);
+    font-weight: 600;
+  }
+  .tab-btn .tab-icon { font-size: 15px; }
+  .tab-dot { width: 6px; height: 6px; border-radius: 50%; display: none; }
+  .tab-btn.active .tab-dot { display: inline-block; background: rgba(255,255,255,.6); }
+
+  /* ============ Tab Panel Transitions ============ */
+  .tab-panel { animation: fadeSlideIn .3s ease; }
+  .tab-panel.hidden { display: none; }
+  @keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ============ Card ============ */
+  .card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    transition: box-shadow var(--transition), border-color var(--transition);
+    overflow: hidden;
+  }
+  .card:hover { box-shadow: var(--shadow); }
+  .card-accent { border-top: 3px solid var(--brand); }
+  .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-header h3 { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .card-header .header-dot {
+    width: 8px; height: 8px;
+    border-radius: 3px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .header-dot.blue { background: var(--brand); }
+  .header-dot.purple { background: var(--accent); }
+  .header-dot.green { background: #22c55e; }
+  .header-dot.orange { background: #f59e0b; }
+  .card-body { padding: 20px; }
+
+  /* ============ Stat Cards ============ */
+  .stat-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .stat-card .stat-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  .stat-icon.blue { background: var(--brand-muted); color: var(--brand); }
+  .stat-icon.purple { background: #f5f3ff; color: var(--accent); }
+  .stat-icon.green { background: #f0fdf4; color: #16a34a; }
+  .stat-icon.orange { background: #fff7ed; color: #ea580c; }
+  .stat-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .stat-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .stat-trend.up { color: #16a34a; }
+  .stat-trend.down { color: #dc2626; }
+
+  /* ============ City Card Grid ============ */
+  .city-card {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    padding: 18px;
+    transition: var(--transition);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .city-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--brand-light), var(--accent-light));
+    opacity: 0;
+    transition: opacity var(--transition);
+  }
+  .city-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); border-color: var(--brand-light); }
+  .city-card:hover::before { opacity: 1; }
+  .city-card .city-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+  .city-card .city-industry {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: var(--brand-muted);
+    color: var(--brand);
+  }
+  .city-card .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+    font-size: 12px;
+  }
+  .city-card .info-label { color: var(--text-muted); }
+  .city-card .info-value { font-weight: 600; color: var(--text-primary); }
+  .city-card-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 180px;
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  /* ============ Buttons ============ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--radius-xs);
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    letter-spacing: .2px;
+  }
+  .btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(37,99,235,.25);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 4px 14px rgba(37,99,235,.35);
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: #fff;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--bg); border-color: #cbd5e1; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; border-radius: 7px; }
+  .btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+
+  /* ============ Badge ============ */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-success { background: #dcfce7; color: #15803d; }
+  .badge-danger { background: #fee2e2; color: #dc2626; }
+  .badge-info { background: #dbeafe; color: #1d4ed8; }
+  .badge-warning { background: #fef3c7; color: #92400e; }
+  .badge-purple { background: #f3e8ff; color: #7c3aed; }
+
+  /* ============ Skeleton ============ */
+  .skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s infinite;
+    border-radius: var(--radius-xs);
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* ============ Spinner ============ */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 16px; height: 16px;
+    display: inline-block;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    border-top-color: transparent;
+    animation: spin .7s linear infinite;
+  }
+  .spinner.dark { border-color: var(--border); border-top-color: var(--brand); }
+
+  /* ============ Toast ============ */
+  .toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow-xl);
+    pointer-events: auto;
+    animation: slideIn .35s ease;
+    max-width: 380px;
+    backdrop-filter: blur(8px);
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+  .toast-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .toast-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .toast-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+  /* ============ Select ============ */
+  .select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    font-size: 14px;
+    color: var(--text-primary);
+    background: #fff;
+    outline: none;
+    transition: var(--transition);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+  .select:focus { border-color: var(--brand-light); box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+
+  /* ============ Table ============ */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    background: var(--bg);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-light);
+    white-space: nowrap;
+  }
+  .data-table tbody tr { transition: background var(--transition); }
+  .data-table tbody tr:hover { background: #f8fafc; }
+  .cell-high { color: #16a34a; font-weight: 600; }
+  .cell-mid { color: var(--brand); font-weight: 600; }
+  .cell-low { color: var(--text-muted); }
+
+  /* ============ Checkbox Pill ============ */
+  .checkbox-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 7px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+    background: #fff;
+  }
+  .checkbox-pill:hover { border-color: var(--brand-light); background: var(--brand-muted); }
+  .checkbox-pill.checked {
+    background: var(--brand-muted);
+    border-color: var(--brand);
+    color: var(--brand);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(37,99,235,.1);
+  }
+  .checkbox-pill input { display: none; }
+
+  /* ============ Empty State ============ */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 56px 24px;
+    color: var(--text-muted);
+  }
+  .empty-state-icon { font-size: 52px; margin-bottom: 16px; opacity: .4; }
+  .empty-state-text { font-size: 14px; max-width: 280px; text-align: center; line-height: 1.6; }
+
+  /* ============ Detail Grid Items ============ */
+  .detail-item {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    text-align: center;
+    transition: var(--transition);
+    border: 1px solid transparent;
+  }
+  .detail-item:hover { background: #fff; border-color: var(--border); box-shadow: var(--shadow-sm); }
+  .detail-item .detail-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+  .detail-item .detail-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+
+  /* ============ Score Ring ============ */
+  .score-ring-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .score-ring {
+    position: relative;
+    width: 120px; height: 120px;
+  }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-ring .ring-bg { fill: none; stroke: var(--border-light); stroke-width: 8; }
+  .score-ring .ring-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+  .score-ring .ring-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+  }
+  .score-ring .ring-number { font-size: 32px; font-weight: 800; line-height: 1; }
+  .score-ring .ring-label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+  /* ============ Pulse Dot ============ */
+  .pulse-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .pulse-dot.green { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.25); animation: pulse 2s infinite; }
+  .pulse-dot.red { background: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,.25); }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 3px rgba(74,222,128,.25); } 50% { box-shadow: 0 0 0 8px rgba(74,222,128,.08); } }
+
+  /* ============ Chart Container ============ */
+  .chart-container { min-height: 300px; position: relative; }
+  .chart-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,.7);
+    z-index: 2;
+    border-radius: var(--radius);
+  }
+
+  /* ============ Footer ============ */
+  .app-footer {
+    margin-top: 40px;
+    padding: 24px 0 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .footer-dot { width: 4px; height: 4px; background: var(--border); border-radius: 50%; }
+
+  /* ============ Responsive ============ */
+  @media (max-width: 768px) {
+    #app { padding: 12px; }
+    .app-header { padding: 16px; border-radius: 12px; }
+    .app-title { font-size: 17px; }
+    .tab-btn { padding: 8px 12px; font-size: 11px; }
+    .tab-btn .tab-icon { font-size: 14px; }
+    .stat-value { font-size: 24px; }
+    .stat-card { padding: 14px; }
+    .grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+    .grid-2 { grid-template-columns: 1fr !important; }
+    .city-card { padding: 14px; }
+  }
+
+  @media (max-width: 480px) {
+    .tab-btn { font-size: 10px; padding: 7px 8px; }
+    .tab-btn .tab-icon { font-size: 13px; }
+    .stat-value { font-size: 20px; }
+    .grid-4 { grid-template-columns: 1fr 1fr !important; }
+  }
 </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-
-<div class="max-w-7xl mx-auto px-4 py-6">
-  <!-- Header -->
-  <header class="flex items-center justify-between mb-6">
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900">区域产业经济分析平台</h1>
-      <p class="text-sm text-gray-500 mt-0.5">Multi-Region Industrial Economic Analysis</p>
+<body>
+<div id="app">
+  <header class="app-header">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="logo-icon">E</div>
+      <div>
+        <div class="app-title">区域产业经济分析平台</div>
+        <div class="app-subtitle">Multi-Region Industrial Economic Analysis System</div>
+      </div>
     </div>
-    <div class="flex items-center gap-3">
-      <span id="healthBadge" class="badge badge-green">● 系统正常</span>
-      <span class="text-xs text-gray-400" id="versionTag">v4.0.0</span>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div id="healthPill" class="health-badge online">
+        <span class="pulse-dot green"></span>
+        <span id="healthText">系统正常</span>
+      </div>
+      <span class="version-tag" id="versionTag">v4.0</span>
     </div>
   </header>
 
-  <!-- Tab Navigation -->
-  <nav class="flex gap-1 bg-white rounded-xl shadow-sm border border-gray-100 p-1 mb-6 overflow-x-auto">
-    <button class="tab-btn tab-active px-5 py-2.5 rounded-lg text-sm font-medium transition-colors" data-tab="dashboard">📊 总览仪表盘</button>
-    <button class="tab-btn px-5 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors" data-tab="enterprise">🏢 企业选址分析</button>
-    <button class="tab-btn px-5 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors" data-tab="government">🏛️ 政府产业分析</button>
-    <button class="tab-btn px-5 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors" data-tab="cities">🏙️ 城市数据对比</button>
+  <div class="header-gradient-bar"></div>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="dashboard">
+      <span class="tab-icon">📊</span> 总览仪表盘 <span class="tab-dot"></span>
+    </button>
+    <button class="tab-btn" data-tab="enterprise">
+      <span class="tab-icon">🏢</span> 企业选址分析 <span class="tab-dot"></span>
+    </button>
+    <button class="tab-btn" data-tab="government">
+      <span class="tab-icon">🏛️</span> 政府产业分析 <span class="tab-dot"></span>
+    </button>
+    <button class="tab-btn" data-tab="cities">
+      <span class="tab-icon">🏙️</span> 城市数据对比 <span class="tab-dot"></span>
+    </button>
   </nav>
 
-  <!-- Tab: Dashboard -->
-  <div id="tab-dashboard" class="tab-content fade-in">
-    <!-- Stats Row -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div class="card"><div class="stat-value" id="statCities">--</div><div class="stat-label">覆盖城市</div></div>
-      <div class="card"><div class="stat-value" id="statApiCalls">--</div><div class="stat-label">API 端点</div></div>
-      <div class="card"><div class="stat-value text-accent-600" id="statHealth">--</div><div class="stat-label">系统状态</div></div>
-      <div class="card"><div class="stat-value" id="statVersion">--</div><div class="stat-label">版本号</div></div>
+  <!-- ============ TAB: Dashboard ============ -->
+  <section id="tab-dashboard" class="tab-panel">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 grid-4">
+      <div class="stat-card">
+        <div class="stat-icon blue">🏙️</div>
+        <div class="stat-value" id="statCities">--</div>
+        <div class="stat-label">覆盖城市</div>
+        <div class="stat-trend up">实时接入</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple">🔌</div>
+        <div class="stat-value" id="statEndpoints" style="color:var(--accent)">--</div>
+        <div class="stat-label">API 端点</div>
+        <div class="stat-trend up">全部可用</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">💚</div>
+        <div class="stat-value" id="statHealth" style="color:#16a34a">--</div>
+        <div class="stat-label">系统状态</div>
+        <div class="stat-trend up">运行正常</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange">📦</div>
+        <div class="stat-value" id="statVersion" style="color:#475569">--</div>
+        <div class="stat-label">版本号</div>
+        <div class="stat-trend up" id="statLastUpdate">已更新</div>
+      </div>
     </div>
 
-    <!-- Charts Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-      <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📈 城市 GDP 排名</h3><div id="chartGdpRank" style="height:320px"></div></div>
-      <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📊 城市产业数据概览</h3><div id="chartIndustryOverview" style="height:320px"></div></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 grid-2">
+      <div class="card">
+        <div class="card-header">
+          <span class="header-dot blue"></span>
+          <h3>城市 GDP 排名</h3>
+          <span class="text-xs text-slate-400 ml-auto">2025 年度</span>
+        </div>
+        <div class="card-body"><div class="chart-container"><div id="chartGdpRank" style="height:340px"></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="header-dot purple"></span>
+          <h3>核心指标横向对比</h3>
+          <span class="text-xs text-slate-400 ml-auto">归一化展示</span>
+        </div>
+        <div class="card-body"><div class="chart-container"><div id="chartIndustryOverview" style="height:340px"></div></div></div>
+      </div>
     </div>
 
-    <!-- City Cards -->
-    <div class="mb-4"><h3 class="text-sm font-semibold text-gray-600 mb-3">🏙️ 城市详情速览</h3></div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="cityCards"></div>
-  </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="header-dot green"></span>
+        <h3>城市详情速览</h3>
+        <span class="text-xs text-slate-400 ml-auto" id="cityCardHint">加载中...</span>
+      </div>
+      <div class="card-body">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="cityCards">
+          <div class="skeleton" style="height:180px;border-radius:var(--radius)"></div>
+          <div class="skeleton" style="height:180px;border-radius:var(--radius)"></div>
+          <div class="skeleton" style="height:180px;border-radius:var(--radius)"></div>
+          <div class="skeleton" style="height:180px;border-radius:var(--radius)"></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-  <!-- Tab: Enterprise -->
-  <div id="tab-enterprise" class="tab-content fade-in hidden">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- ============ TAB: Enterprise ============ -->
+  <section id="tab-enterprise" class="tab-panel hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 grid-2">
       <div class="lg:col-span-1 space-y-4">
         <div class="card">
-          <h3 class="text-sm font-semibold text-gray-600 mb-4">🎯 选择分析目标</h3>
-          <label class="block text-xs text-gray-500 mb-1">目标城市</label>
-          <select id="entCitySelect" class="select-input mb-3"></select>
-          <button id="btnEntAnalyze" class="btn-primary w-full" onclick="runEnterpriseAnalysis()">
-            开始分析
-          </button>
+          <div class="card-header">
+            <span class="header-dot blue"></span>
+            <h3>分析参数配置</h3>
+          </div>
+          <div class="card-body">
+            <label class="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">目标城市</label>
+            <select id="entCitySelect" class="select"></select>
+            <button id="btnEntAnalyze" class="btn btn-primary w-full mt-5" onclick="runEnterpriseAnalysis()">
+              🔍 开始选址分析
+            </button>
+          </div>
         </div>
-        <div class="card" id="entScoreCard" style="display:none">
-          <h3 class="text-sm font-semibold text-gray-600 mb-3">📍 选址综合评分</h3>
-          <div class="text-center">
-            <div class="text-5xl font-bold text-primary-600" id="entTotalScore">--</div>
-            <div class="text-xs text-gray-400 mt-1">综合评分 (满分 100)</div>
+
+        <div id="entScoreCard" class="card hidden">
+          <div class="card-header">
+            <span class="header-dot green"></span>
+            <h3>综合评估得分</h3>
+          </div>
+          <div class="card-body" style="display:flex;flex-direction:column;align-items:center;padding:28px 20px;">
+            <div class="score-ring">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="52"/>
+                <circle class="ring-fill" id="scoreRingFill" cx="60" cy="60" r="52" stroke="#2563eb"/>
+              </svg>
+              <div class="ring-center">
+                <div class="ring-number" id="entTotalScore">--</div>
+                <div class="ring-label">/ 100 分</div>
+              </div>
+            </div>
+            <div class="text-xs text-slate-400 mt-3">基于统计分位数的多维度评分</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-2 space-y-4">
+        <div class="card">
+          <div class="card-header">
+            <span class="header-dot purple"></span>
+            <h3>评分维度雷达分析</h3>
+          </div>
+          <div class="card-body"><div class="chart-container"><div id="chartEntRadar" style="height:340px"></div></div></div>
+        </div>
+        <div id="entDetailCard" class="card hidden">
+          <div class="card-header">
+            <span class="header-dot blue"></span>
+            <h3>细分指标详情</h3>
+          </div>
+          <div class="card-body">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="entDetails"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: Government ============ -->
+  <section id="tab-government" class="tab-panel hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 grid-2">
+      <div class="lg:col-span-1 space-y-4">
+        <div class="card">
+          <div class="card-header">
+            <span class="header-dot blue"></span>
+            <h3>分析参数配置</h3>
+          </div>
+          <div class="card-body">
+            <label class="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">目标城市</label>
+            <select id="govCitySelect" class="select"></select>
+            <button class="btn btn-primary w-full mt-5" onclick="runGovernmentAnalysis()">
+              📈 运行产业分析
+            </button>
           </div>
         </div>
       </div>
       <div class="lg:col-span-2 space-y-4">
-        <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📈 评分维度分解</h3><div id="chartEntRadar" style="height:340px"></div></div>
-        <div class="card" id="entDetailCard" style="display:none">
-          <h3 class="text-sm font-semibold text-gray-600 mb-3">📋 详细指标</h3>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="entDetails"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tab: Government -->
-  <div id="tab-government" class="tab-content fade-in hidden">
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div class="lg:col-span-1 space-y-4">
         <div class="card">
-          <h3 class="text-sm font-semibold text-gray-600 mb-4">🏛️ 政策分析参数</h3>
-          <label class="block text-xs text-gray-500 mb-1">目标城市</label>
-          <select id="govCitySelect" class="select-input mb-3"></select>
-          <button class="btn-primary w-full" onclick="runGovernmentAnalysis()">
-            运行分析
-          </button>
+          <div class="card-header">
+            <span class="header-dot purple"></span>
+            <h3>GDP 历史趋势与预测</h3>
+            <span class="text-xs text-slate-400 ml-auto">3年预测</span>
+          </div>
+          <div class="card-body"><div class="chart-container"><div id="chartGdpForecast" style="height:370px"></div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="header-dot green"></span>
+            <h3>核心经济指标</h3>
+          </div>
+          <div class="card-body">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3" id="govDetails">
+              <div class="text-center text-slate-400 text-sm py-10 col-span-full">
+                <div style="font-size:36px;margin-bottom:8px;opacity:.3">📊</div>
+                请选择城市后点击"运行产业分析"
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="lg:col-span-2 space-y-4">
-        <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📊 GDP 历史与预测</h3><div id="chartGdpForecast" style="height:360px"></div></div>
-        <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📋 经济指标详情</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="govDetails"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ TAB: City Comparison ============ -->
+  <section id="tab-cities" class="tab-panel hidden">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-body" style="padding:16px 20px;">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">对比城市</span>
+          <div id="cityCheckboxes" class="flex flex-wrap gap-2"></div>
+          <div class="flex gap-2" style="margin-left:auto;">
+            <button class="btn btn-sm btn-secondary" onclick="toggleAllCities(true)">✓ 全选</button>
+            <button class="btn btn-sm btn-secondary" onclick="toggleAllCities(false)">✕ 清空</button>
+            <button class="btn btn-sm btn-primary" onclick="runCityComparison()">🔍 对比分析</button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Tab: City Comparison -->
-  <div id="tab-cities" class="tab-content fade-in hidden">
-    <div class="flex flex-wrap items-center gap-3 mb-4">
-      <label class="text-xs text-gray-500 font-medium">选择对比城市：</label>
-      <div id="cityCheckboxes" class="flex flex-wrap gap-2"></div>
-      <button class="btn-primary ml-auto" onclick="runCityComparison()">对比分析</button>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 grid-2">
+      <div class="card">
+        <div class="card-header">
+          <span class="header-dot blue"></span>
+          <h3>GDP 时序趋势对比</h3>
+        </div>
+        <div class="card-body"><div class="chart-container"><div id="chartCityCompare" style="height:360px"></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="header-dot purple"></span>
+          <h3>多指标热力图</h3>
+        </div>
+        <div class="card-body"><div class="chart-container"><div id="chartCityHeatmap" style="height:360px"></div></div></div>
+      </div>
     </div>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📈 城市 GDP 对比</h3><div id="chartCityCompare" style="height:360px"></div></div>
-      <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📊 城市关键指标热力</h3><div id="chartCityHeatmap" style="height:360px"></div></div>
-    </div>
-    <div class="card mt-6">
-      <h3 class="text-sm font-semibold text-gray-600 mb-4">📋 城市对比详情</h3>
-      <div class="overflow-x-auto"><table class="w-full text-sm" id="compareTable"><thead class="bg-gray-50"></thead><tbody></tbody></table></div>
-    </div>
-  </div>
 
-  <!-- Footer -->
-  <footer class="mt-10 pt-6 border-t border-gray-200 text-center text-xs text-gray-400">
-    区域产业经济分析平台 · 数据分析师作品集 · Powered by FastAPI + ECharts
+    <div class="card">
+      <div class="card-header">
+        <span class="header-dot green"></span>
+        <h3>城市对比详情表</h3>
+      </div>
+      <div class="card-body" style="padding:0;overflow-x:auto;">
+        <table class="data-table" id="compareTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+        <div class="empty-state" id="compareEmpty">
+          <div class="empty-state-icon">📋</div>
+          <div class="empty-state-text">选择 2 个以上城市，点击"对比分析"查看详细对比结果</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="app-footer">
+    <span>区域产业经济分析平台</span>
+    <span class="footer-dot"></span>
+    <span>数据分析师作品集</span>
+    <span class="footer-dot"></span>
+    <span>Powered by FastAPI + ECharts</span>
   </footer>
 </div>
 
+<div class="toast-container" id="toastContainer"></div>
+
 <script>
 // ==================== API Client ====================
-const API = window.location.origin;
-async function get(path) {
-  const r = await fetch(API + path);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+var API = window.location.origin;
+
+function apiGet(path, timeoutMs) {
+  timeoutMs = timeoutMs || 15000;
+  var ctrl = new AbortController();
+  var timer = setTimeout(function(){ ctrl.abort(); }, timeoutMs);
+  return fetch(API + path, { signal: ctrl.signal }).then(function(r){
+    if (!r.ok) {
+      return r.json().then(function(err){ throw new Error(err.detail || 'HTTP ' + r.status); }).catch(function(){
+        throw new Error('HTTP ' + r.status);
+      });
+    }
+    return r.json();
+  }).finally(function(){ clearTimeout(timer); });
 }
-async function post(path, body) {
-  const r = await fetch(API + path, {
-    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+
+function apiPost(path, body, timeoutMs) {
+  timeoutMs = timeoutMs || 15000;
+  var ctrl = new AbortController();
+  var timer = setTimeout(function(){ ctrl.abort(); }, timeoutMs);
+  return fetch(API + path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: ctrl.signal
+  }).then(function(r){
+    if (!r.ok) {
+      return r.json().then(function(err){ throw new Error(err.detail || 'HTTP ' + r.status); }).catch(function(){
+        throw new Error('HTTP ' + r.status);
+      });
+    }
+    return r.json();
+  }).finally(function(){ clearTimeout(timer); });
+}
+
+// ==================== Toast ====================
+function toast(msg, type) {
+  type = type || 'info';
+  var c = document.getElementById('toastContainer');
+  var el = document.createElement('div');
+  var icons = { error: '❌ ', success: '✅ ', warning: '⚠️ ', info: 'ℹ️ ' };
+  el.className = 'toast toast-' + type;
+  el.textContent = (icons[type] || '') + msg;
+  c.appendChild(el);
+  setTimeout(function(){ el.style.opacity='0'; el.style.transform='translateX(40px)'; el.style.transition='all .3s'; }, 3200);
+  setTimeout(function(){ el.remove(); }, 3600);
 }
 
 // ==================== State ====================
-let cities = [];
+var state = { cities: [], healthy: false };
 
 // ==================== Tab Switching ====================
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active','text-primary-600'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.add('text-gray-500'));
-    btn.classList.add('tab-active','text-primary-600');
-    btn.classList.remove('text-gray-500');
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-    document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.add('hidden'); });
+    var panel = document.getElementById('tab-' + btn.dataset.tab);
+    panel.classList.remove('hidden');
+    panel.style.animation = 'none';
+    panel.offsetHeight;
+    panel.style.animation = '';
+    setTimeout(resizeAllCharts, 250);
   });
 });
 
-// ==================== Init ====================
-async function init() {
-  try {
-    const health = await get('/health');
-    document.getElementById('healthBadge').textContent = '● 系统正常';
-    document.getElementById('healthBadge').className = 'badge badge-green';
-    document.getElementById('statHealth').textContent = '正常';
-    document.getElementById('statVersion').textContent = health.version;
-    document.getElementById('versionTag').textContent = health.version;
+function resizeAllCharts() {
+  ['chartGdpRank','chartIndustryOverview','chartEntRadar','chartGdpForecast','chartCityCompare','chartCityHeatmap'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    try { var inst = echarts.getInstanceByDom(el); if (inst) inst.resize(); } catch(_){}
+  });
+}
 
-    const cityData = await get('/api/v1/cities/list');
-    cities = cityData.cities || [];
-    document.getElementById('statCities').textContent = cities.length;
-    document.getElementById('statApiCalls').textContent = '40+';
-    loadDashboard(cities);
-    populateCitySelects(cities);
-  } catch (e) {
-    document.getElementById('healthBadge').textContent = '● 连接失败';
-    document.getElementById('healthBadge').className = 'badge bg-red-100 text-red-700';
-    document.getElementById('statHealth').textContent = '异常';
-    console.error('初始化失败:', e);
-  }
+// ==================== Init ====================
+function init() {
+  apiGet('/health').then(function(health){
+    state.healthy = true;
+    document.getElementById('healthPill').className = 'health-badge online';
+    document.getElementById('healthPill').innerHTML = '<span class="pulse-dot green"></span><span id="healthText">系统正常</span>';
+    document.getElementById('statHealth').textContent = '在线';
+    document.getElementById('statVersion').textContent = health.version || '4.0';
+    document.getElementById('versionTag').textContent = health.version || 'v4.0';
+    document.getElementById('statEndpoints').textContent = '40+';
+  }).catch(function(e){
+    state.healthy = false;
+    document.getElementById('healthPill').className = 'health-badge offline';
+    document.getElementById('healthPill').innerHTML = '<span class="pulse-dot red"></span><span id="healthText">连接失败</span>';
+    document.getElementById('statHealth').textContent = '离线';
+    document.getElementById('statHealth').style.color = '#dc2626';
+    toast('无法连接后端服务，请确认服务已启动', 'error');
+    return;
+  });
+
+  apiGet('/api/v1/cities/list').then(function(cityData){
+    state.cities = cityData.cities || [];
+    document.getElementById('statCities').textContent = state.cities.length;
+    document.getElementById('cityCardHint').textContent = '共 ' + state.cities.length + ' 个城市已接入';
+    loadDashboard(state.cities);
+    populateCitySelects(state.cities);
+  }).catch(function(e){
+    toast('城市数据加载失败: ' + e.message, 'error');
+  });
 }
 
 function populateCitySelects(cityList) {
-  const options = cityList.map(c => `<option value="${c}">${c}</option>`).join('');
+  var options = cityList.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('');
   document.getElementById('entCitySelect').innerHTML = options;
   document.getElementById('govCitySelect').innerHTML = options;
-  const checkboxes = cityList.map(c =>
-    `<label class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm cursor-pointer hover:border-primary-300"><input type="checkbox" value="${c}" class="city-cb accent-primary-600" checked>${c}</label>`
-  ).join('');
+  var checkboxes = cityList.map(function(c){
+    return '<label class="checkbox-pill checked"><input type="checkbox" value="'+c+'" class="city-cb" checked onchange="this.parentElement.classList.toggle(\'checked\',this.checked)">'+c+'</label>';
+  }).join('');
   document.getElementById('cityCheckboxes').innerHTML = checkboxes;
 }
 
+function toggleAllCities(checked) {
+  document.querySelectorAll('.city-cb').forEach(function(cb){
+    cb.checked = checked;
+    cb.parentElement.classList.toggle('checked', checked);
+  });
+}
+
+// ==================== Helpers ====================
+function fmt(val, fallback) { return (val !== null && val !== undefined) ? val : (fallback || '--'); }
+function fmtNum(val, decimals) {
+  if (val === null || val === undefined) return '--';
+  var n = Number(val);
+  if (isNaN(n)) return '--';
+  decimals = decimals || 0;
+  if (n >= 100000000) return (n/100000000).toFixed(2) + '亿';
+  if (n >= 10000) return (n/10000).toFixed(1) + '万';
+  return n.toFixed(decimals);
+}
+
+function ratingStar(score) {
+  if (!score && score !== 0) return '--';
+  var s = typeof score === 'number' ? score : parseFloat(score);
+  if (isNaN(s)) return '--';
+  var stars = Math.round(s / 20);
+  return '⭐'.repeat(Math.min(stars, 5)) + ' (' + s.toFixed(0) + ')';
+}
+
+function fmtScore(v) { return v !== undefined && v !== null ? v.toFixed(1)+' 分' : '--'; }
+
 // ==================== Dashboard ====================
-async function loadDashboard(cityList) {
+function loadDashboard(cityList) {
   loadCityCards(cityList);
   loadGdpRankChart(cityList);
   loadIndustryOverview(cityList);
 }
 
-async function loadCityCards(cityList) {
-  const container = document.getElementById('cityCards');
-  let html = '';
-  for (const city of cityList.slice(0, 8)) {
-    try {
-      const d = await get(`/api/v1/cities/${encodeURIComponent(city)}`);
-      const data = d.data || {};
-      html += `<div class="card hover:shadow-md transition-shadow">
-        <div class="flex items-center justify-between mb-3">
-          <span class="font-semibold text-gray-800">${city}</span>
-          <span class="badge-blue">${data.industry || '--'}</span>
-        </div>
-        <div class="space-y-2 text-sm">
-          <div class="flex justify-between"><span class="text-gray-500">土地价格</span><span class="font-medium">${data.land_price || '--'} 元/㎡</span></div>
-          <div class="flex justify-between"><span class="text-gray-500">平均工资</span><span class="font-medium">${data.salary_level || '--'} 元/月</span></div>
-          <div class="flex justify-between"><span class="text-gray-500">配套率</span><span class="font-medium">${data.local_support_rate || '--'}%</span></div>
-          <div class="flex justify-between"><span class="text-gray-500">供应商</span><span class="font-medium">${data.supplier_count || '--'} 家</span></div>
-        </div>
-      </div>`;
-    } catch(e) { html += `<div class="card"><span class="text-gray-400">${city}: 加载失败</span></div>`; }
+function loadCityCards(cityList) {
+  var container = document.getElementById('cityCards');
+  var html = '';
+  var cities = cityList.slice(0, 8);
+
+  function buildCards(i) {
+    if (i >= cities.length) { container.innerHTML = html; return; }
+    var city = cities[i];
+    apiGet('/api/v1/cities/' + encodeURIComponent(city)).then(function(d){
+      var data = d.data || {};
+      var industry = data.industry || data.leading_industry || '综合';
+      html += '<div class="city-card">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+          '<span class="city-name">' + city + '</span>' +
+          '<span class="city-industry">' + industry + '</span>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:2px;">' +
+          '<div class="info-row"><span class="info-label">土地价格</span><span class="info-value">' + fmt(data.land_price, '--') + ' 元/㎡</span></div>' +
+          '<div class="info-row"><span class="info-label">平均工资</span><span class="info-value">' + fmt(data.salary_level, '--') + ' 元/月</span></div>' +
+          '<div class="info-row"><span class="info-label">税收优惠</span><span class="info-value" style="color:#16a34a">' + fmt(data.tax_reduction, '--') + '%</span></div>' +
+          '<div class="info-row"><span class="info-label">本地配套率</span><span class="info-value">' + fmt(data.local_support_rate, '--') + '%</span></div>' +
+          '<div class="info-row"><span class="info-label">供应商数量</span><span class="info-value">' + fmt(data.supplier_count, '--') + ' 家</span></div>' +
+          '<div class="info-row"><span class="info-label">能源成本</span><span class="info-value">' + fmt(data.energy_cost, '--') + ' 元/度</span></div>' +
+        '</div>' +
+      '</div>';
+      buildCards(i + 1);
+    }).catch(function(e){
+      html += '<div class="city-card-error">' + city + '<br>数据加载失败</div>';
+      buildCards(i + 1);
+    });
   }
-  container.innerHTML = html;
+  buildCards(0);
 }
 
 function loadGdpRankChart(cityList) {
-  const chart = echarts.init(document.getElementById('chartGdpRank'));
-  Promise.all(cityList.slice(0,6).map(async c => {
-    try {
-      const hist = await get(`/api/v1/cities/${encodeURIComponent(c)}/historical`);
-      const records = hist.historical_data || [];
-      const latest = records[records.length - 1];
+  var el = document.getElementById('chartGdpRank');
+  try { var old = echarts.getInstanceByDom(el); if (old) old.dispose(); } catch(_){}
+  var chart = echarts.init(el);
+
+  var promises = cityList.slice(0,6).map(function(c){
+    return apiGet('/api/v1/cities/' + encodeURIComponent(c) + '/historical').then(function(hist){
+      var records = hist.historical_data || [];
+      var latest = records[records.length - 1];
       return { city: c, gdp: latest ? (latest.gdp || 0) : 0 };
-    } catch(e) { return { city: c, gdp: 0 }; }
-  })).then(data => {
-    data.sort((a,b) => b.gdp - a.gdp);
+    }).catch(function(){ return { city: c, gdp: 0 }; });
+  });
+  Promise.all(promises).then(function(data){
+    data.sort(function(a,b){ return b.gdp - a.gdp; });
     chart.setOption({
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      grid: { left: 80, right: 40, top: 10, bottom: 20 },
-      xAxis: { type: 'value', name: '亿元', axisLabel: { formatter: v => (v/10000).toFixed(1)+'万' } },
-      yAxis: { type: 'category', data: data.map(d => d.city), inverse: true },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: function(p){ return p[0].name + '<br/>GDP: ' + fmtNum(p[0].value) + ' 亿元'; }
+      },
+      grid: { left: 70, right: 80, top: 10, bottom: 10 },
+      xAxis: {
+        type: 'value', name: '亿元',
+        axisLabel: { formatter: function(v){ return (v/10000).toFixed(1)+'万亿'; }, fontSize: 11 },
+        nameTextStyle: { fontSize: 11, color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#f1f5f9' } }
+      },
+      yAxis: {
+        type: 'category', data: data.map(function(d){ return d.city; }),
+        inverse: true, axisLabel: { fontSize: 12, fontWeight: 600, color: '#475569' },
+        axisLine: { show: false }, axisTick: { show: false }
+      },
       series: [{
-        type: 'bar', data: data.map(d => d.gdp),
-        itemStyle: { color: new echarts.graphic.LinearGradient(0,0,1,0,[
-          {offset:0,color:'#3b82f6'},{offset:1,color:'#60a5fa'}
-        ]), borderRadius: [0,4,4,0] },
-        label: { show: true, position: 'right', formatter: p => (p.value/10000).toFixed(1)+'万' }
+        type: 'bar', data: data.map(function(d){ return d.gdp; }),
+        barWidth: 22,
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0,0,1,0,[
+            {offset:0, color:'#3b82f6'},{offset:0.5, color:'#6366f1'},{offset:1, color:'#8b5cf6'}
+          ]),
+          borderRadius: [0, 8, 8, 0]
+        },
+        label: {
+          show: true, position: 'right',
+          formatter: function(p){ return (p.value/10000).toFixed(1)+'万亿'; },
+          fontSize: 11, color: '#64748b', fontWeight: 600
+        },
+        emphasis: { itemStyle: { shadowBlur: 12, shadowColor: 'rgba(37,99,235,.3)' } }
       }]
     });
   });
 }
 
 function loadIndustryOverview(cityList) {
-  const chart = echarts.init(document.getElementById('chartIndustryOverview'));
-  Promise.all(cityList.slice(0,6).map(async c => {
-    try { const d = await get(`/api/v1/cities/${encodeURIComponent(c)}`); return { city: c, data: d.data||{} }; }
-    catch(e) { return { city: c, data: {} }; }
-  })).then(results => {
-    const indicators = ['土地价格','平均工资','配套率','供应商','税率优惠'];
-    const series = results.map((r,i) => ({
-      name: r.city, type: 'bar',
-      data: [r.data.land_price||0, (r.data.salary_level||0)/100, r.data.local_support_rate||0, (r.data.supplier_count||0)/100, r.data.tax_reduction||0],
-      emphasis: { focus: 'series' }
-    }));
+  var el = document.getElementById('chartIndustryOverview');
+  try { var old = echarts.getInstanceByDom(el); if (old) old.dispose(); } catch(_){}
+  var chart = echarts.init(el);
+
+  var promises = cityList.slice(0,6).map(function(c){
+    return apiGet('/api/v1/cities/' + encodeURIComponent(c)).then(function(d){
+      return { city: c, data: d.data||{} };
+    }).catch(function(){ return { city: c, data: {} }; });
+  });
+  Promise.all(promises).then(function(results){
+    var indicators = ['土地价格\n(元/㎡)','平均工资\n(元/月)','配套率\n(%)','税收优惠\n(%)','供应商\n(家)'];
+    var colors = ['#3b82f6','#8b5cf6','#22c55e','#f59e0b','#ef4444','#06b6d4'];
+    var series = results.map(function(r,i){
+      return {
+        name: r.city, type: 'bar',
+        data: [
+          r.data.land_price||0,
+          (r.data.salary_level||0)/100,
+          r.data.local_support_rate||0,
+          r.data.tax_reduction||0,
+          (r.data.supplier_count||0)/100
+        ],
+        emphasis: { focus: 'series' },
+        itemStyle: { color: colors[i] || colors[0], borderRadius: [4,4,0,0] }
+      };
+    });
     chart.setOption({
-      tooltip: { trigger: 'axis' },
-      legend: { bottom: 0 },
-      grid: { left: 10, right: 10, bottom: 50, top: 10, containLabel: true },
-      xAxis: { type: 'category', data: indicators },
-      yAxis: { type: 'value' },
-      series
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { bottom: 0, textStyle: { fontSize: 11 }, itemWidth: 12, itemHeight: 12 },
+      grid: { left: 10, right: 10, bottom: 50, top: 15, containLabel: true },
+      xAxis: { type: 'category', data: indicators, axisLabel: { fontSize: 10, color: '#64748b' }, axisTick: { alignWithLabel: true } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#f1f5f9' } }, axisLabel: { fontSize: 10 } },
+      series: series
     });
   });
 }
 
 // ==================== Enterprise Analysis ====================
-async function runEnterpriseAnalysis() {
-  const city = document.getElementById('entCitySelect').value;
-  if (!city) return;
-  const btn = document.getElementById('btnEntAnalyze');
-  btn.disabled = true; btn.textContent = '分析中...';
-  try {
-    const result = await get(`/api/v1/analysis/enterprise/v3/${encodeURIComponent(city)}`);
-    document.getElementById('entScoreCard').style.display = '';
-    document.getElementById('entTotalScore').textContent = (result.total_score||0).toFixed(1);
-    document.getElementById('entDetailCard').style.display = '';
-    const details = result.details || {};
-    const costDetails = details.cost_details || {};
-    const supplyDetails = details.supply_details || {};
-    document.getElementById('entDetails').innerHTML = [
-      { label:'经营成本', value:(result.business_cost_score||0).toFixed(1)+'分' },
-      { label:'供应链', value:(result.supply_chain_score||0).toFixed(1)+'分' },
-      { label:'政策福利', value:(result.policy_benefit_score||0).toFixed(1)+'分' },
-      { label:'土地价格', value:(costDetails['土地价格']||'--')+' 元/㎡' },
-      { label:'平均工资', value:(costDetails['平均工资']||'--')+' 元/月' },
-      { label:'能源成本', value:(costDetails['能源成本']||'--')+' 元/度' },
-      { label:'融资成本', value:(costDetails['融资成本']||'--')+'%' },
-      { label:'配套率', value:(supplyDetails['本地配套率']||'--')+'%' },
-      { label:'交付周期', value:(supplyDetails['平均交付周期']||'--')+' 天' },
-      { label:'区位熵', value:(supplyDetails['区位熵']||'--') },
-      { label:'供应商数', value:(supplyDetails['供应商数量']||'--')+' 家' },
-      { label:'税率优惠', value:(costDetails['税率优惠']||'--')+'%' },
-    ].map(d => `<div class="bg-gray-50 rounded-lg p-3"><div class="text-xs text-gray-500">${d.label}</div><div class="text-base font-semibold text-gray-800 mt-0.5">${d.value}</div></div>`).join('');
+function runEnterpriseAnalysis() {
+  var city = document.getElementById('entCitySelect').value;
+  if (!city) { toast('请先选择目标城市', 'warning'); return; }
+  var btn = document.getElementById('btnEntAnalyze');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 分析中...';
 
-    const radar = echarts.init(document.getElementById('chartEntRadar'));
+  apiGet('/api/v1/analysis/enterprise/v3/' + encodeURIComponent(city)).then(function(result){
+    var scoreCard = document.getElementById('entScoreCard');
+    scoreCard.classList.remove('hidden');
+
+    var totalScore = (result.total_score||0).toFixed(1);
+    document.getElementById('entTotalScore').textContent = totalScore;
+
+    var circumference = 2 * Math.PI * 52;
+    var offset = circumference - (totalScore / 100) * circumference;
+    var fill = document.getElementById('scoreRingFill');
+    fill.setAttribute('stroke-dasharray', circumference);
+    fill.setAttribute('stroke-dashoffset', offset);
+
+    var color;
+    if (totalScore >= 70) { color = '#16a34a'; }
+    else if (totalScore >= 50) { color = '#f59e0b'; }
+    else { color = '#dc2626'; }
+    fill.setAttribute('stroke', color);
+
+    document.getElementById('entDetailCard').classList.remove('hidden');
+    var details = result.details || {};
+    var costD = details.cost_details || {};
+    var supplyD = details.supply_details || {};
+    var policyD = details.policy_details || {};
+
+    var items = [
+      { l:'经营成本', v:fmtScore(result.business_cost_score), cls:'detail-value', sub:'' },
+      { l:'供应链', v:fmtScore(result.supply_chain_score), cls:'detail-value', sub:'' },
+      { l:'政策福利', v:fmtScore(result.policy_benefit_score), cls:'detail-value', sub:'' },
+      { l:'土地价格', v:fmt(costD['土地价格'],'--'), sub:'元/㎡' },
+      { l:'平均工资', v:fmt(costD['平均工资'],'--'), sub:'元/月' },
+      { l:'能源成本', v:fmt(costD['能源成本'],'--'), sub:'元/度' },
+      { l:'融资成本', v:fmt(costD['融资成本'],'--'), sub:'%' },
+      { l:'本地配套率', v:fmt(supplyD['本地配套率'],'--'), sub:'%' },
+      { l:'交付周期', v:fmt(supplyD['平均交付周期'],'--'), sub:'天' },
+      { l:'区位熵', v:fmt(supplyD['区位熵'],'--'), sub:'' },
+      { l:'供应商数', v:fmt(supplyD['供应商数量'],'--'), sub:'家' },
+      { l:'减税降费', v:fmt(policyD['减税降费'],'--'), sub:'%' },
+    ];
+    document.getElementById('entDetails').innerHTML = items.map(function(d){
+      return '<div class="detail-item"><div class="detail-label">'+d.l+'</div><div class="'+d.cls+'">'+d.v+(d.sub?' <span style="font-size:10px;color:#94a3b8;font-weight:400">'+d.sub+'</span>':'')+'</div></div>';
+    }).join('');
+
+    try { var old = echarts.getInstanceByDom(document.getElementById('chartEntRadar')); if (old) old.dispose(); } catch(_){}
+    var radar = echarts.init(document.getElementById('chartEntRadar'));
     radar.setOption({
-      radar: { indicator: [
-        { name:'经营成本', max:100 }, { name:'供应链', max:100 }, { name:'政策福利', max:100 }
-      ], center:['50%','55%'], radius:'70%' },
+      tooltip: {},
+      radar: {
+        indicator: [
+          { name: '经营成本', max: 100 },
+          { name: '供应链', max: 100 },
+          { name: '政策福利', max: 100 }
+        ],
+        center: ['50%','52%'], radius: '65%',
+        axisName: { fontSize: 11, color: '#475569', fontWeight: 600 },
+        splitArea: { areaStyle: { color: ['rgba(37,99,235,.02)','rgba(37,99,235,.04)','rgba(37,99,235,.02)','rgba(37,99,235,.04)','rgba(37,99,235,.02)'] } }
+      },
       series: [{
         type: 'radar',
-        data: [{ value: [result.business_cost_score||0, result.supply_chain_score||0, result.policy_benefit_score||0], name: city,
-          areaStyle: { color: 'rgba(59,130,246,0.2)' }, lineStyle: { color: '#3b82f6' } }]
+        data: [{
+          value: [result.business_cost_score||0, result.supply_chain_score||0, result.policy_benefit_score||0],
+          name: city,
+          areaStyle: { color: 'rgba(37,99,235,0.12)' },
+          lineStyle: { color: '#2563eb', width: 2.5 },
+          itemStyle: { color: '#2563eb', borderColor: '#fff', borderWidth: 2 }
+        }]
       }]
     });
-  } catch(e) { alert('企业分析失败: ' + e.message); }
-  finally { btn.disabled = false; btn.textContent = '开始分析'; }
+    toast(city + ' 企业选址分析完成', 'success');
+  }).catch(function(e){
+    toast('分析失败: ' + e.message, 'error');
+  }).finally(function(){
+    btn.disabled = false;
+    btn.innerHTML = '🔍 开始选址分析';
+  });
 }
 
 // ==================== Government Analysis ====================
-async function runGovernmentAnalysis() {
-  const city = document.getElementById('govCitySelect').value;
-  if (!city) return;
-  try {
-    const histResp = await get(`/api/v1/cities/${encodeURIComponent(city)}/historical`);
-    const hist = histResp.historical_data || [];
-    const forecastResp = await get(`/api/v1/forecast/gdp/${encodeURIComponent(city)}?forecast_years=3`);
-    const fcast = forecastResp.historical_data || [];
+function runGovernmentAnalysis() {
+  var city = document.getElementById('govCitySelect').value;
+  if (!city) { toast('请先选择城市', 'warning'); return; }
 
-    const chart = echarts.init(document.getElementById('chartGdpForecast'));
-    const years = hist.map(h => h.year);
-    const values = hist.map(h => h.gdp || 0);
+  document.getElementById('govDetails').innerHTML = '<div class="col-span-full" style="text-align:center;padding:20px;"><span class="spinner dark"></span> <span style="color:#94a3b8;font-size:13px;">加载中...</span></div>';
+
+  Promise.all([
+    apiGet('/api/v1/cities/' + encodeURIComponent(city) + '/historical'),
+    apiGet('/api/v1/forecast/gdp/' + encodeURIComponent(city) + '?forecast_years=3')
+  ]).then(function(results){
+    var histResp = results[0], forecastResp = results[1];
+    var hist = histResp.historical_data || [];
+    var years = hist.map(function(h){ return h.year; });
+    var values = hist.map(function(h){ return h.gdp || 0; });
+
+    var fcastData = forecastResp.forecast_data || [];
+    var fcastYears = fcastData.map(function(f){ return f.year; });
+    var fcastValues = fcastData.map(function(f){ return f.forecast || 0; });
+    var fcastLow = fcastData.map(function(f){ return f.forecast_lower || 0; });
+    var fcastUp = fcastData.map(function(f){ return f.forecast_upper || 0; });
+
+    try { var oldC = echarts.getInstanceByDom(document.getElementById('chartGdpForecast')); if (oldC) oldC.dispose(); } catch(_){}
+    var chart = echarts.init(document.getElementById('chartGdpForecast'));
+
+    var allYears = years.concat(fcastYears);
+    var histWithGap = values.concat(new Array(fcastValues.length).fill(null));
+    var fcastWithGap = new Array(values.length - 1).fill(null).concat([values[values.length-1]]).concat(fcastValues);
+    var lowWithGap = new Array(values.length - 1).fill(null).concat([values[values.length-1]]).concat(fcastLow);
+    var upWithGap = new Array(values.length - 1).fill(null).concat([values[values.length-1]]).concat(fcastUp);
+
     chart.setOption({
       tooltip: { trigger: 'axis' },
-      grid: { left: 60, right: 20, top: 20, bottom: 30 },
-      xAxis: { type: 'category', data: years },
-      yAxis: { type: 'value', name: 'GDP (亿元)' },
-      series: [{
-        name: 'GDP', type: 'line', smooth: true, data: values,
-        areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
-          {offset:0,color:'rgba(59,130,246,0.25)'},{offset:1,color:'rgba(59,130,246,0.02)'}
-        ]) },
-        lineStyle: { color: '#3b82f6', width: 2 },
-        itemStyle: { color: '#3b82f6' }
-      }]
+      legend: { bottom: 0, data: ['历史GDP','预测GDP','置信区间'], textStyle: { fontSize: 11 }, itemWidth: 14, itemHeight: 10 },
+      grid: { left: 60, right: 30, bottom: 40, top: 20 },
+      xAxis: { type: 'category', data: allYears, axisLabel: { fontSize: 11, color: '#64748b' }, axisLine: { lineStyle: { color: '#e2e8f0' } } },
+      yAxis: {
+        type: 'value', name: 'GDP (亿元)',
+        nameTextStyle: { fontSize: 11, color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#f1f5f9' } },
+        axisLabel: { formatter: function(v){ return (v/10000).toFixed(1)+'万'; }, fontSize: 10 }
+      },
+      series: [
+        {
+          name: '历史GDP', type: 'line', smooth: true, data: histWithGap, symbol: 'circle', symbolSize: 5,
+          areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
+            {offset:0,color:'rgba(37,99,235,0.15)'},{offset:1,color:'rgba(37,99,235,0.01)'}
+          ])},
+          lineStyle: { color: '#2563eb', width: 3 }, itemStyle: { color: '#2563eb' }
+        },
+        {
+          name: '预测GDP', type: 'line', smooth: true, data: fcastWithGap, symbol: 'diamond', symbolSize: 6,
+          lineStyle: { color: '#f59e0b', width: 3, type: 'dashed' },
+          itemStyle: { color: '#f59e0b' }
+        },
+        {
+          name: '置信区间', type: 'line', smooth: true,
+          data: lowWithGap, lineStyle: { opacity: 0 }, symbol: 'none',
+          areaStyle: { color: 'rgba(245,158,11,0.08)' },
+          stack: 'confidence', emphasis: { focus: 'none' }
+        },
+        {
+          name: '置信上限', type: 'line', smooth: true,
+          data: upWithGap, lineStyle: { opacity: 0 }, symbol: 'none',
+          areaStyle: { color: 'rgba(245,158,11,0.08)' },
+          stack: 'confidence', emphasis: { focus: 'none' }
+        }
+      ]
     });
 
-    const latest = hist[hist.length - 1] || {};
-    document.getElementById('govDetails').innerHTML = [
-      { label:'GDP', value:((latest.gdp||0)/10000).toFixed(2)+' 万亿元' },
-      { label:'人口', value:(latest.population||'--')+' 万人' },
-      { label:'财政收入', value:(latest.fiscal_revenue||'--')+' 亿元' },
-      { label:'研发强度', value:(latest.rd_intensity||'--')+'%' },
-      { label:'高技术占比', value:(latest.industry_high_tech_ratio||'--')+'%' },
-    ].map(d => `<div class="bg-gray-50 rounded-lg p-3"><div class="text-xs text-gray-500">${d.label}</div><div class="text-base font-semibold text-gray-800 mt-0.5">${d.value}</div></div>`).join('');
-  } catch(e) { alert('政府分析失败: ' + e.message); }
+    var latest = hist[hist.length - 1] || {};
+    var items = [
+      { l:'GDP 总量', v:((latest.gdp||0)/10000).toFixed(2), sub:'万亿元' },
+      { l:'常住人口', v:fmt(latest.population,'--'), sub:'万人' },
+      { l:'财政收入', v:fmt(latest.fiscal_revenue,'--'), sub:'亿元' },
+      { l:'研发强度', v:fmt(latest.rd_intensity,'--'), sub:'%' },
+      { l:'高技术产值占比', v:fmt(latest.industry_high_tech_ratio,'--'), sub:'%' },
+      { l:'预测方法', v:forecastResp.forecast_method||'AutoARIMA', sub:'', cls:'badge badge-purple' },
+    ];
+    document.getElementById('govDetails').innerHTML = items.map(function(d){
+      if (d.cls) {
+        return '<div class="detail-item"><div class="detail-label">'+d.l+'</div><span class="'+d.cls+'">'+d.v+'</span></div>';
+      }
+      return '<div class="detail-item"><div class="detail-label">'+d.l+'</div><div class="detail-value">'+d.v+(d.sub?' <span style="font-size:10px;color:#94a3b8;font-weight:400">'+d.sub+'</span>':'')+'</div></div>';
+    }).join('');
+
+    toast(city + ' 政府产业分析完成', 'success');
+  }).catch(function(e){
+    document.getElementById('govDetails').innerHTML = '<div class="col-span-full" style="text-align:center;color:#dc2626;font-size:13px;padding:24px;">❌ 分析失败: ' + e.message + '</div>';
+    toast('分析失败: ' + e.message, 'error');
+  });
 }
 
 // ==================== City Comparison ====================
-async function runCityComparison() {
-  const selected = [...document.querySelectorAll('.city-cb:checked')].map(cb => cb.value);
-  if (selected.length < 2) { alert('请至少选择 2 个城市'); return; }
-  try {
-    const resp = await post('/api/v1/cities/time-series', {
-      city_codes: selected, indicator: 'gdp', year_start: 2020, year_end: 2025, group_by: ['city_code']
-    });
-    const groups = (resp.time_series && resp.time_series.groups) ? resp.time_series.groups : [];
-    const cityData = {};
-    groups.forEach(g => {
-      const name = g.groups ? g.groups[0] : g.city_code;
+function runCityComparison() {
+  var selected = [];
+  document.querySelectorAll('.city-cb:checked').forEach(function(cb){ selected.push(cb.value); });
+  if (selected.length < 2) { toast('请至少选择 2 个城市进行对比', 'warning'); return; }
+
+  document.getElementById('compareTable').querySelector('tbody').innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;"><span class="skeleton" style="display:inline-block;width:200px;height:16px;"></span></td></tr>';
+
+  apiPost('/api/v1/cities/time-series', {
+    city_codes: selected, indicator: 'gdp', year_start: 2020, year_end: 2025
+  }).then(function(resp){
+    var groups = (resp.time_series && resp.time_series.groups) ? resp.time_series.groups : [];
+
+    var cityData = {};
+    groups.forEach(function(g){
+      var name = g.groups ? g.groups[0] : g.city_code;
       cityData[name] = { timePoints: g.time_points || [], values: g.values || [] };
     });
 
-    const compareChart = echarts.init(document.getElementById('chartCityCompare'));
-    const allYears = [...new Set(Object.values(cityData).flatMap(d => d.timePoints))].sort();
+    try { var oldC = echarts.getInstanceByDom(document.getElementById('chartCityCompare')); if (oldC) oldC.dispose(); } catch(_){}
+    var compareChart = echarts.init(document.getElementById('chartCityCompare'));
+    var allYears = [];
+    Object.values(cityData).forEach(function(d){
+      d.timePoints.forEach(function(y){ if (allYears.indexOf(y) < 0) allYears.push(y); });
+    });
+    allYears.sort();
+
+    var colors = ['#3b82f6','#8b5cf6','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16'];
     compareChart.setOption({
       tooltip: { trigger: 'axis' },
-      legend: { bottom: 0, data: selected },
+      legend: { bottom: 0, data: selected, textStyle: { fontSize: 11 }, itemWidth: 14, itemHeight: 10 },
       grid: { left: 60, right: 20, bottom: 40, top: 20 },
-      xAxis: { type: 'category', data: allYears },
-      yAxis: { type: 'value', name: 'GDP (亿元)' },
-      series: selected.map(c => ({
-        name: c, type: 'line', smooth: true,
-        data: (cityData[c] || { values: [] }).values
-      }))
+      xAxis: { type: 'category', data: allYears, axisLabel: { fontSize: 11, color: '#64748b' }, axisLine: { lineStyle: { color: '#e2e8f0' } } },
+      yAxis: {
+        type: 'value', name: 'GDP (亿元)',
+        nameTextStyle: { fontSize: 11, color: '#94a3b8' },
+        splitLine: { lineStyle: { color: '#f1f5f9' } },
+        axisLabel: { formatter: function(v){ return (v/10000).toFixed(1)+'万'; }, fontSize: 10 }
+      },
+      series: selected.map(function(c,i){
+        var cd = cityData[c] || { values: [] };
+        return {
+          name: c, type: 'line', smooth: true, symbol: 'circle', symbolSize: 4,
+          data: cd.values,
+          lineStyle: { width: 2.5, color: colors[i % colors.length] },
+          itemStyle: { color: colors[i % colors.length] }
+        };
+      })
     });
 
-    const heatmap = echarts.init(document.getElementById('chartCityHeatmap'));
-    const detailResults = await Promise.all(selected.map(async c => {
-      try { const d = await get(`/api/v1/cities/${encodeURIComponent(c)}`); return { city: c, data: d.data||{} }; }
-      catch(e) { return { city: c, data: {} }; }
+    return Promise.all(selected.map(function(c){
+      return apiGet('/api/v1/cities/' + encodeURIComponent(c)).then(function(d){
+        return { city: c, data: d.data||{} };
+      }).catch(function(){ return { city: c, data: {} }; });
     }));
-    const hIndicators = ['土地价格(元/㎡)','工资(元/月)','配套率(%)','供应商(家)'];
-    const hData = detailResults.flatMap((r,i) => [
-      [i, 0, r.data.land_price||0], [i, 1, r.data.salary_level||0],
-      [i, 2, r.data.local_support_rate||0], [i, 3, r.data.supplier_count||0]
-    ]);
+  }).then(function(detailResults){
+    try { var oldH = echarts.getInstanceByDom(document.getElementById('chartCityHeatmap')); if (oldH) oldH.dispose(); } catch(_){}
+    var heatmap = echarts.init(document.getElementById('chartCityHeatmap'));
+    var hIndicators = ['土地价格','平均工资','配套率','税收优惠','能源成本'];
+    var hData = [];
+    detailResults.forEach(function(r,i){
+      hData.push(
+        [i,0,r.data.land_price||0],
+        [i,1,r.data.salary_level||0],
+        [i,2,r.data.local_support_rate||0],
+        [i,3,r.data.tax_reduction||0],
+        [i,4,r.data.energy_cost||0]
+      );
+    });
+    var hMax = Math.max.apply(null, hData.map(function(d){ return d[2]; })) || 1;
     heatmap.setOption({
-      tooltip: { formatter: p => `${selected[p.value[0]]} - ${hIndicators[p.value[1]]}: ${p.value[2]}` },
-      grid: { left: 80, right: 40, top: 10, bottom: 30 },
-      xAxis: { type: 'category', data: hIndicators, axisLabel: { fontSize: 10 } },
-      yAxis: { type: 'category', data: selected },
-      visualMap: { min: 0, max: Math.max(...hData.map(d=>d[2]),1), orient:'horizontal', bottom:0, left:'center' },
-      series: [{ type: 'heatmap', data: hData, label: { show: true, fontSize: 10 } }]
+      tooltip: {
+        formatter: function(p){
+          return '<b>'+selected[p.value[0]]+'</b><br/>'+hIndicators[p.value[1]]+': <b>'+p.value[2]+'</b>';
+        }
+      },
+      grid: { left: 80, right: 40, bottom: 60, top: 10 },
+      xAxis: { type: 'category', data: hIndicators, axisLabel: { fontSize: 10, color: '#64748b' } },
+      yAxis: { type: 'category', data: selected, axisLabel: { fontSize: 11, fontWeight: 600, color: '#475569' } },
+      visualMap: {
+        min: 0, max: hMax, orient: 'horizontal', bottom: 0, left: 'center',
+        textStyle: { fontSize: 10 },
+        inRange: { color: ['#eff6ff','#bfdbfe','#60a5fa','#2563eb','#1e40af'] }
+      },
+      series: [{
+        type: 'heatmap', data: hData,
+        label: { show: true, fontSize: 10, fontWeight: 600 },
+        emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,.2)' } }
+      }]
     });
 
-    const tableHead = '<tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500">指标</th>' +
-      selected.map(c => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500">${c}</th>`).join('') + '</tr>';
-    const fields = [
-      { key:'land_price', label:'土地价格', unit:'元/㎡' },
-      { key:'salary_level', label:'平均工资', unit:'元/月' },
-      { key:'local_support_rate', label:'配套率', unit:'%' },
-      { key:'supplier_count', label:'供应商', unit:'家' },
-      { key:'tax_reduction', label:'税率优惠', unit:'%' },
-      { key:'energy_cost', label:'能源成本', unit:'元/度' },
+    var tableHead = '<tr><th>指标</th>' + selected.map(function(c){ return '<th>'+c+'</th>'; }).join('') + '</tr>';
+    var fields = [
+      { key:'land_price', label:'土地价格', unit:'元/㎡', type:'price' },
+      { key:'salary_level', label:'平均工资', unit:'元/月', type:'salary' },
+      { key:'local_support_rate', label:'配套率', unit:'%', type:'pct' },
+      { key:'supplier_count', label:'供应商', unit:'家', type:'count' },
+      { key:'tax_reduction', label:'税率优惠', unit:'%', type:'pct' },
+      { key:'energy_cost', label:'能源成本', unit:'元/度', type:'price' },
+      { key:'financing_cost', label:'融资成本', unit:'%', type:'pct' },
     ];
-    const tableBody = fields.map(f => {
-      return '<tr class="border-t border-gray-100"><td class="px-4 py-2 text-sm text-gray-600">'+f.label+'</td>' +
-        detailResults.map(r => `<td class="px-4 py-2 text-sm font-medium">${(r.data[f.key] !== undefined ? r.data[f.key]+' '+f.unit : '--')}</td>`).join('') + '</tr>';
+
+    var colorMap = ['#3b82f6','#8b5cf6','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16'];
+    var tableBody = fields.map(function(f){
+      return '<tr>' +
+        '<td style="font-weight:600;color:#475569;">'+f.label+'</td>' +
+        detailResults.map(function(r){
+          var v = r.data[f.key];
+          if (v !== undefined && v !== null) {
+            return '<td><span style="font-weight:700;">'+v+'</span> <span style="font-size:10px;color:#94a3b8;">'+f.unit+'</span></td>';
+          }
+          return '<td><span style="color:#94a3b8;">--</span></td>';
+        }).join('') +
+      '</tr>';
     }).join('');
+
     document.getElementById('compareTable').innerHTML = '<thead>'+tableHead+'</thead><tbody>'+tableBody+'</tbody>';
-  } catch(e) { alert('城市对比失败: ' + e.message); }
+    document.getElementById('compareEmpty').style.display = 'none';
+    toast(selected.length + ' 个城市对比分析完成', 'success');
+  }).catch(function(e){
+    document.getElementById('compareEmpty').style.display = 'flex';
+    document.getElementById('compareEmpty').querySelector('.empty-state-text').textContent = '分析失败: ' + e.message;
+    toast('对比失败: ' + e.message, 'error');
+  });
 }
 
 // ==================== Start ====================
-window.addEventListener('load', init);
-window.addEventListener('resize', () => {
-  ['chartGdpRank','chartIndustryOverview','chartEntRadar','chartGdpForecast','chartCityCompare','chartCityHeatmap'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { const instance = echarts.getInstanceByDom(el); if (instance) instance.resize(); }
-  });
+window.addEventListener('load', function(){
+  setTimeout(init, 100);
+});
+window.addEventListener('resize', function(){
+  clearTimeout(window._resizeTimer);
+  window._resizeTimer = setTimeout(resizeAllCharts, 250);
 });
 </script>
 </body>

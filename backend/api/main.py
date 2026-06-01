@@ -132,22 +132,18 @@ def health_check():
 
 import os
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
-frontend_dist = Path(__file__).parent.parent.parent / "frontend" / "dist"
-if frontend_dist.exists():
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="frontend_assets")
+frontend_index = Path(__file__).parent.parent.parent / "frontend" / "index.html"
 
-    @app.get("/{full_path:path}")
-    async def serve_frontend(full_path: str):
-        if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi"):
-            from fastapi.responses import JSONResponse
-            return JSONResponse({"detail": "Not Found"}, status_code=404)
-        index_path = frontend_dist / "index.html"
-        if index_path.exists():
-            return FileResponse(str(index_path))
-        return JSONResponse({"detail": "Not Found"}, status_code=404)
+if frontend_index.exists():
+    @app.get("/app", response_class=HTMLResponse, tags=["页面"])
+    async def serve_app():
+        return FileResponse(str(frontend_index), media_type="text/html")
 
+    @app.get("/dashboard", response_class=HTMLResponse, tags=["页面"])
+    async def serve_dashboard():
+        return FileResponse(str(frontend_index), media_type="text/html")
 
 if __name__ == "__main__":
     import uvicorn

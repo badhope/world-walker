@@ -1,13 +1,461 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="/vite.svg">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>区域产业经济分析平台</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>区域产业经济分析平台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: { 50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',300:'#93c5fd',400:'#60a5fa',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',800:'#1e40af',900:'#1e3a8a' },
+        accent: { 50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',300:'#86efac',400:'#4ade80',500:'#22c55e',600:'#16a34a',700:'#15803d',800:'#166534',900:'#14532d' },
+      }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  .tab-active { @apply border-primary-500 text-primary-600; }
+  .card { @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6; }
+  .btn { @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary { @apply btn bg-primary-600 text-white hover:bg-primary-700; }
+  .btn-outline { @apply btn border border-gray-300 text-gray-700 hover:bg-gray-50; }
+  .badge { @apply px-2.5 py-0.5 rounded-full text-xs font-medium; }
+  .badge-green { @apply badge bg-accent-100 text-accent-700; }
+  .badge-blue { @apply badge bg-primary-100 text-primary-700; }
+  .stat-value { @apply text-2xl font-bold text-gray-900; }
+  .stat-label { @apply text-sm text-gray-500 mt-1; }
+  .select-input { @apply w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none; }
+  .spinner { @apply animate-spin h-5 w-5 border-2 border-primary-500 border-t-transparent rounded-full inline-block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  .fade-in { animation: fadeIn 0.4s ease-out; }
+</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<div class="max-w-7xl mx-auto px-4 py-6">
+  <!-- Header -->
+  <header class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">区域产业经济分析平台</h1>
+      <p class="text-sm text-gray-500 mt-0.5">Multi-Region Industrial Economic Analysis</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="healthBadge" class="badge badge-green">● 系统正常</span>
+      <span class="text-xs text-gray-400" id="versionTag">v4.0.0</span>
+    </div>
+  </header>
+
+  <!-- Tab Navigation -->
+  <nav class="flex gap-1 bg-white rounded-xl shadow-sm border border-gray-100 p-1 mb-6 overflow-x-auto">
+    <button class="tab-btn tab-active px-5 py-2.5 rounded-lg text-sm font-medium transition-colors" data-tab="dashboard">📊 总览仪表盘</button>
+    <button class="tab-btn px-5 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors" data-tab="enterprise">🏢 企业选址分析</button>
+    <button class="tab-btn px-5 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors" data-tab="government">🏛️ 政府产业分析</button>
+    <button class="tab-btn px-5 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors" data-tab="cities">🏙️ 城市数据对比</button>
+  </nav>
+
+  <!-- Tab: Dashboard -->
+  <div id="tab-dashboard" class="tab-content fade-in">
+    <!-- Stats Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="card"><div class="stat-value" id="statCities">--</div><div class="stat-label">覆盖城市</div></div>
+      <div class="card"><div class="stat-value" id="statApiCalls">--</div><div class="stat-label">API 端点</div></div>
+      <div class="card"><div class="stat-value text-accent-600" id="statHealth">--</div><div class="stat-label">系统状态</div></div>
+      <div class="card"><div class="stat-value" id="statVersion">--</div><div class="stat-label">版本号</div></div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📈 城市 GDP 排名</h3><div id="chartGdpRank" style="height:320px"></div></div>
+      <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📊 城市产业数据概览</h3><div id="chartIndustryOverview" style="height:320px"></div></div>
+    </div>
+
+    <!-- City Cards -->
+    <div class="mb-4"><h3 class="text-sm font-semibold text-gray-600 mb-3">🏙️ 城市详情速览</h3></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="cityCards"></div>
+  </div>
+
+  <!-- Tab: Enterprise -->
+  <div id="tab-enterprise" class="tab-content fade-in hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-1 space-y-4">
+        <div class="card">
+          <h3 class="text-sm font-semibold text-gray-600 mb-4">🎯 选择分析目标</h3>
+          <label class="block text-xs text-gray-500 mb-1">目标城市</label>
+          <select id="entCitySelect" class="select-input mb-3"></select>
+          <button id="btnEntAnalyze" class="btn-primary w-full" onclick="runEnterpriseAnalysis()">
+            开始分析
+          </button>
+        </div>
+        <div class="card" id="entScoreCard" style="display:none">
+          <h3 class="text-sm font-semibold text-gray-600 mb-3">📍 选址综合评分</h3>
+          <div class="text-center">
+            <div class="text-5xl font-bold text-primary-600" id="entTotalScore">--</div>
+            <div class="text-xs text-gray-400 mt-1">综合评分 (满分 100)</div>
+          </div>
+        </div>
+      </div>
+      <div class="lg:col-span-2 space-y-4">
+        <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📈 评分维度分解</h3><div id="chartEntRadar" style="height:340px"></div></div>
+        <div class="card" id="entDetailCard" style="display:none">
+          <h3 class="text-sm font-semibold text-gray-600 mb-3">📋 详细指标</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="entDetails"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Government -->
+  <div id="tab-government" class="tab-content fade-in hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-1 space-y-4">
+        <div class="card">
+          <h3 class="text-sm font-semibold text-gray-600 mb-4">🏛️ 政策分析参数</h3>
+          <label class="block text-xs text-gray-500 mb-1">目标城市</label>
+          <select id="govCitySelect" class="select-input mb-3"></select>
+          <button class="btn-primary w-full" onclick="runGovernmentAnalysis()">
+            运行分析
+          </button>
+        </div>
+      </div>
+      <div class="lg:col-span-2 space-y-4">
+        <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📊 GDP 历史与预测</h3><div id="chartGdpForecast" style="height:360px"></div></div>
+        <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📋 经济指标详情</h3><div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="govDetails"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: City Comparison -->
+  <div id="tab-cities" class="tab-content fade-in hidden">
+    <div class="flex flex-wrap items-center gap-3 mb-4">
+      <label class="text-xs text-gray-500 font-medium">选择对比城市：</label>
+      <div id="cityCheckboxes" class="flex flex-wrap gap-2"></div>
+      <button class="btn-primary ml-auto" onclick="runCityComparison()">对比分析</button>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📈 城市 GDP 对比</h3><div id="chartCityCompare" style="height:360px"></div></div>
+      <div class="card"><h3 class="text-sm font-semibold text-gray-600 mb-4">📊 城市关键指标热力</h3><div id="chartCityHeatmap" style="height:360px"></div></div>
+    </div>
+    <div class="card mt-6">
+      <h3 class="text-sm font-semibold text-gray-600 mb-4">📋 城市对比详情</h3>
+      <div class="overflow-x-auto"><table class="w-full text-sm" id="compareTable"><thead class="bg-gray-50"></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-10 pt-6 border-t border-gray-200 text-center text-xs text-gray-400">
+    区域产业经济分析平台 · 数据分析师作品集 · Powered by FastAPI + ECharts
+  </footer>
+</div>
+
+<script>
+// ==================== API Client ====================
+const API = 'http://localhost:8001';
+async function get(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+async function post(path, body) {
+  const r = await fetch(API + path, {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+// ==================== State ====================
+let cities = [];
+
+// ==================== Tab Switching ====================
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active','text-primary-600'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.add('text-gray-500'));
+    btn.classList.add('tab-active','text-primary-600');
+    btn.classList.remove('text-gray-500');
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+    document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
+  });
+});
+
+// ==================== Init ====================
+async function init() {
+  try {
+    const health = await get('/health');
+    document.getElementById('healthBadge').textContent = '● 系统正常';
+    document.getElementById('healthBadge').className = 'badge badge-green';
+    document.getElementById('statHealth').textContent = '正常';
+    document.getElementById('statVersion').textContent = health.version;
+    document.getElementById('versionTag').textContent = health.version;
+
+    const cityData = await get('/api/v1/cities/list');
+    cities = cityData.cities || [];
+    document.getElementById('statCities').textContent = cities.length;
+    document.getElementById('statApiCalls').textContent = '40+';
+    loadDashboard(cities);
+    populateCitySelects(cities);
+  } catch (e) {
+    document.getElementById('healthBadge').textContent = '● 连接失败';
+    document.getElementById('healthBadge').className = 'badge bg-red-100 text-red-700';
+    document.getElementById('statHealth').textContent = '异常';
+    console.error('初始化失败:', e);
+  }
+}
+
+function populateCitySelects(cityList) {
+  const options = cityList.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('entCitySelect').innerHTML = options;
+  document.getElementById('govCitySelect').innerHTML = options;
+  const checkboxes = cityList.map(c =>
+    `<label class="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm cursor-pointer hover:border-primary-300"><input type="checkbox" value="${c}" class="city-cb accent-primary-600" checked>${c}</label>`
+  ).join('');
+  document.getElementById('cityCheckboxes').innerHTML = checkboxes;
+}
+
+// ==================== Dashboard ====================
+async function loadDashboard(cityList) {
+  loadCityCards(cityList);
+  loadGdpRankChart(cityList);
+  loadIndustryOverview(cityList);
+}
+
+async function loadCityCards(cityList) {
+  const container = document.getElementById('cityCards');
+  let html = '';
+  for (const city of cityList.slice(0, 8)) {
+    try {
+      const d = await get(`/api/v1/cities/${encodeURIComponent(city)}`);
+      const data = d.data || {};
+      html += `<div class="card hover:shadow-md transition-shadow">
+        <div class="flex items-center justify-between mb-3">
+          <span class="font-semibold text-gray-800">${city}</span>
+          <span class="badge-blue">${data.industry || '--'}</span>
+        </div>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-gray-500">土地价格</span><span class="font-medium">${data.land_price || '--'} 元/㎡</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">平均工资</span><span class="font-medium">${data.salary_level || '--'} 元/月</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">配套率</span><span class="font-medium">${data.local_support_rate || '--'}%</span></div>
+          <div class="flex justify-between"><span class="text-gray-500">供应商</span><span class="font-medium">${data.supplier_count || '--'} 家</span></div>
+        </div>
+      </div>`;
+    } catch(e) { html += `<div class="card"><span class="text-gray-400">${city}: 加载失败</span></div>`; }
+  }
+  container.innerHTML = html;
+}
+
+function loadGdpRankChart(cityList) {
+  const chart = echarts.init(document.getElementById('chartGdpRank'));
+  Promise.all(cityList.slice(0,6).map(async c => {
+    try {
+      const hist = await get(`/api/v1/cities/${encodeURIComponent(c)}/historical`);
+      const records = hist.historical_data || [];
+      const latest = records[records.length - 1];
+      return { city: c, gdp: latest ? (latest.gdp || 0) : 0 };
+    } catch(e) { return { city: c, gdp: 0 }; }
+  })).then(data => {
+    data.sort((a,b) => b.gdp - a.gdp);
+    chart.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: 80, right: 40, top: 10, bottom: 20 },
+      xAxis: { type: 'value', name: '亿元', axisLabel: { formatter: v => (v/10000).toFixed(1)+'万' } },
+      yAxis: { type: 'category', data: data.map(d => d.city), inverse: true },
+      series: [{
+        type: 'bar', data: data.map(d => d.gdp),
+        itemStyle: { color: new echarts.graphic.LinearGradient(0,0,1,0,[
+          {offset:0,color:'#3b82f6'},{offset:1,color:'#60a5fa'}
+        ]), borderRadius: [0,4,4,0] },
+        label: { show: true, position: 'right', formatter: p => (p.value/10000).toFixed(1)+'万' }
+      }]
+    });
+  });
+}
+
+function loadIndustryOverview(cityList) {
+  const chart = echarts.init(document.getElementById('chartIndustryOverview'));
+  Promise.all(cityList.slice(0,6).map(async c => {
+    try { const d = await get(`/api/v1/cities/${encodeURIComponent(c)}`); return { city: c, data: d.data||{} }; }
+    catch(e) { return { city: c, data: {} }; }
+  })).then(results => {
+    const indicators = ['土地价格','平均工资','配套率','供应商','税率优惠'];
+    const series = results.map((r,i) => ({
+      name: r.city, type: 'bar',
+      data: [r.data.land_price||0, (r.data.salary_level||0)/100, r.data.local_support_rate||0, (r.data.supplier_count||0)/100, r.data.tax_reduction||0],
+      emphasis: { focus: 'series' }
+    }));
+    chart.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { bottom: 0 },
+      grid: { left: 10, right: 10, bottom: 50, top: 10, containLabel: true },
+      xAxis: { type: 'category', data: indicators },
+      yAxis: { type: 'value' },
+      series
+    });
+  });
+}
+
+// ==================== Enterprise Analysis ====================
+async function runEnterpriseAnalysis() {
+  const city = document.getElementById('entCitySelect').value;
+  if (!city) return;
+  const btn = document.getElementById('btnEntAnalyze');
+  btn.disabled = true; btn.textContent = '分析中...';
+  try {
+    const result = await get(`/api/v1/analysis/enterprise/v3/${encodeURIComponent(city)}`);
+    document.getElementById('entScoreCard').style.display = '';
+    document.getElementById('entTotalScore').textContent = (result.total_score||0).toFixed(1);
+    document.getElementById('entDetailCard').style.display = '';
+    const details = result.details || {};
+    const costDetails = details.cost_details || {};
+    const supplyDetails = details.supply_details || {};
+    document.getElementById('entDetails').innerHTML = [
+      { label:'经营成本', value:(result.business_cost_score||0).toFixed(1)+'分' },
+      { label:'供应链', value:(result.supply_chain_score||0).toFixed(1)+'分' },
+      { label:'政策福利', value:(result.policy_benefit_score||0).toFixed(1)+'分' },
+      { label:'土地价格', value:(costDetails['土地价格']||'--')+' 元/㎡' },
+      { label:'平均工资', value:(costDetails['平均工资']||'--')+' 元/月' },
+      { label:'能源成本', value:(costDetails['能源成本']||'--')+' 元/度' },
+      { label:'融资成本', value:(costDetails['融资成本']||'--')+'%' },
+      { label:'配套率', value:(supplyDetails['本地配套率']||'--')+'%' },
+      { label:'交付周期', value:(supplyDetails['平均交付周期']||'--')+' 天' },
+      { label:'区位熵', value:(supplyDetails['区位熵']||'--') },
+      { label:'供应商数', value:(supplyDetails['供应商数量']||'--')+' 家' },
+      { label:'税率优惠', value:(costDetails['税率优惠']||'--')+'%' },
+    ].map(d => `<div class="bg-gray-50 rounded-lg p-3"><div class="text-xs text-gray-500">${d.label}</div><div class="text-base font-semibold text-gray-800 mt-0.5">${d.value}</div></div>`).join('');
+
+    const radar = echarts.init(document.getElementById('chartEntRadar'));
+    radar.setOption({
+      radar: { indicator: [
+        { name:'经营成本', max:100 }, { name:'供应链', max:100 }, { name:'政策福利', max:100 }
+      ], center:['50%','55%'], radius:'70%' },
+      series: [{
+        type: 'radar',
+        data: [{ value: [result.business_cost_score||0, result.supply_chain_score||0, result.policy_benefit_score||0], name: city,
+          areaStyle: { color: 'rgba(59,130,246,0.2)' }, lineStyle: { color: '#3b82f6' } }]
+      }]
+    });
+  } catch(e) { alert('企业分析失败: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '开始分析'; }
+}
+
+// ==================== Government Analysis ====================
+async function runGovernmentAnalysis() {
+  const city = document.getElementById('govCitySelect').value;
+  if (!city) return;
+  try {
+    const histResp = await get(`/api/v1/cities/${encodeURIComponent(city)}/historical`);
+    const hist = histResp.historical_data || [];
+    const forecastResp = await get(`/api/v1/forecast/gdp/${encodeURIComponent(city)}?forecast_years=3`);
+    const fcast = forecastResp.historical_data || [];
+
+    const chart = echarts.init(document.getElementById('chartGdpForecast'));
+    const years = hist.map(h => h.year);
+    const values = hist.map(h => h.gdp || 0);
+    chart.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: 60, right: 20, top: 20, bottom: 30 },
+      xAxis: { type: 'category', data: years },
+      yAxis: { type: 'value', name: 'GDP (亿元)' },
+      series: [{
+        name: 'GDP', type: 'line', smooth: true, data: values,
+        areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[
+          {offset:0,color:'rgba(59,130,246,0.25)'},{offset:1,color:'rgba(59,130,246,0.02)'}
+        ]) },
+        lineStyle: { color: '#3b82f6', width: 2 },
+        itemStyle: { color: '#3b82f6' }
+      }]
+    });
+
+    const latest = hist[hist.length - 1] || {};
+    document.getElementById('govDetails').innerHTML = [
+      { label:'GDP', value:((latest.gdp||0)/10000).toFixed(2)+' 万亿元' },
+      { label:'人口', value:(latest.population||'--')+' 万人' },
+      { label:'财政收入', value:(latest.fiscal_revenue||'--')+' 亿元' },
+      { label:'研发强度', value:(latest.rd_intensity||'--')+'%' },
+      { label:'高技术占比', value:(latest.industry_high_tech_ratio||'--')+'%' },
+    ].map(d => `<div class="bg-gray-50 rounded-lg p-3"><div class="text-xs text-gray-500">${d.label}</div><div class="text-base font-semibold text-gray-800 mt-0.5">${d.value}</div></div>`).join('');
+  } catch(e) { alert('政府分析失败: ' + e.message); }
+}
+
+// ==================== City Comparison ====================
+async function runCityComparison() {
+  const selected = [...document.querySelectorAll('.city-cb:checked')].map(cb => cb.value);
+  if (selected.length < 2) { alert('请至少选择 2 个城市'); return; }
+  try {
+    const resp = await post('/api/v1/cities/time-series', {
+      city_codes: selected, indicator: 'gdp', year_start: 2020, year_end: 2025, group_by: ['city_code']
+    });
+    const groups = (resp.time_series && resp.time_series.groups) ? resp.time_series.groups : [];
+    const cityData = {};
+    groups.forEach(g => {
+      const name = g.groups ? g.groups[0] : g.city_code;
+      cityData[name] = { timePoints: g.time_points || [], values: g.values || [] };
+    });
+
+    const compareChart = echarts.init(document.getElementById('chartCityCompare'));
+    const allYears = [...new Set(Object.values(cityData).flatMap(d => d.timePoints))].sort();
+    compareChart.setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { bottom: 0, data: selected },
+      grid: { left: 60, right: 20, bottom: 40, top: 20 },
+      xAxis: { type: 'category', data: allYears },
+      yAxis: { type: 'value', name: 'GDP (亿元)' },
+      series: selected.map(c => ({
+        name: c, type: 'line', smooth: true,
+        data: (cityData[c] || { values: [] }).values
+      }))
+    });
+
+    const heatmap = echarts.init(document.getElementById('chartCityHeatmap'));
+    const detailResults = await Promise.all(selected.map(async c => {
+      try { const d = await get(`/api/v1/cities/${encodeURIComponent(c)}`); return { city: c, data: d.data||{} }; }
+      catch(e) { return { city: c, data: {} }; }
+    }));
+    const hIndicators = ['土地价格(元/㎡)','工资(元/月)','配套率(%)','供应商(家)'];
+    const hData = detailResults.flatMap((r,i) => [
+      [i, 0, r.data.land_price||0], [i, 1, r.data.salary_level||0],
+      [i, 2, r.data.local_support_rate||0], [i, 3, r.data.supplier_count||0]
+    ]);
+    heatmap.setOption({
+      tooltip: { formatter: p => `${selected[p.value[0]]} - ${hIndicators[p.value[1]]}: ${p.value[2]}` },
+      grid: { left: 80, right: 40, top: 10, bottom: 30 },
+      xAxis: { type: 'category', data: hIndicators, axisLabel: { fontSize: 10 } },
+      yAxis: { type: 'category', data: selected },
+      visualMap: { min: 0, max: Math.max(...hData.map(d=>d[2]),1), orient:'horizontal', bottom:0, left:'center' },
+      series: [{ type: 'heatmap', data: hData, label: { show: true, fontSize: 10 } }]
+    });
+
+    const tableHead = '<tr><th class="px-4 py-2 text-left text-xs font-medium text-gray-500">指标</th>' +
+      selected.map(c => `<th class="px-4 py-2 text-left text-xs font-medium text-gray-500">${c}</th>`).join('') + '</tr>';
+    const fields = [
+      { key:'land_price', label:'土地价格', unit:'元/㎡' },
+      { key:'salary_level', label:'平均工资', unit:'元/月' },
+      { key:'local_support_rate', label:'配套率', unit:'%' },
+      { key:'supplier_count', label:'供应商', unit:'家' },
+      { key:'tax_reduction', label:'税率优惠', unit:'%' },
+      { key:'energy_cost', label:'能源成本', unit:'元/度' },
+    ];
+    const tableBody = fields.map(f => {
+      return '<tr class="border-t border-gray-100"><td class="px-4 py-2 text-sm text-gray-600">'+f.label+'</td>' +
+        detailResults.map(r => `<td class="px-4 py-2 text-sm font-medium">${(r.data[f.key] !== undefined ? r.data[f.key]+' '+f.unit : '--')}</td>`).join('') + '</tr>';
+    }).join('');
+    document.getElementById('compareTable').innerHTML = '<thead>'+tableHead+'</thead><tbody>'+tableBody+'</tbody>';
+  } catch(e) { alert('城市对比失败: ' + e.message); }
+}
+
+// ==================== Start ====================
+window.addEventListener('load', init);
+window.addEventListener('resize', () => {
+  ['chartGdpRank','chartIndustryOverview','chartEntRadar','chartGdpForecast','chartCityCompare','chartCityHeatmap'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { const instance = echarts.getInstanceByDom(el); if (instance) instance.resize(); }
+  });
+});
+</script>
+</body>
 </html>

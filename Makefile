@@ -1,23 +1,16 @@
-.PHONY: install test run-backend run-frontend run-demo build lint clean
+.PHONY: install test run run-demo lint clean
 
 install:
 	pip install -r requirements.txt
-	cd frontend && npm install
 
 test:
 	python -m pytest tests/ -v --tb=short
 
-run-backend:
-	uvicorn backend.api.main:app --reload --port 8001 --host 0.0.0.0
-
-run-frontend:
-	cd frontend && npm run dev
+run:
+	uvicorn backend.api.main:app --port 8001 --host 0.0.0.0
 
 run-demo:
 	python demo_complete.py
-
-build:
-	cd frontend && npx vite build
 
 lint:
 	ruff check .

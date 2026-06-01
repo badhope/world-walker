@@ -1,132 +1,15 @@
-# 区域产业经济分析平台 - Docker Compose 配置
-version: '3.8'
-
 services:
-  # Redis 缓存服务
-  redis:
-    image: redis:7-alpine
-    container_name: national-stats-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-    networks:
-      - national-stats-network
-
-  # 后端 API 服务
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: national-stats-backend
-    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8001:8001"
     environment:
-      - API_HOST=0.0.0.0
-      - API_PORT=8000
-      - DEBUG=True
-      - LOG_LEVEL=INFO
-      - DATABASE_URL=sqlite:///data/national_stats.db
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DEBUG=false
+      - CORS_ORIGINS=["http://localhost:5173","http://localhost:8001"]
+      - MODEL_SIGNING_KEY=${MODEL_SIGNING_KEY:-change-me-in-production}
     volumes:
-      - ./data:/app/data
-      - ./exports:/app/exports
-      - ./logs:/app/logs
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - national-stats-network
-
-  # Celery Worker (后台任务处理)
-  celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: national-stats-celery-worker
+      - ./data:/workspace/data
     restart: unless-stopped
-    command: celery -A backend.core.tasks worker --loglevel=info --concurrency=4
-    environment:
-      - DEBUG=True
-      - LOG_LEVEL=INFO
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    depends_on:
-      redis:
-        condition: service_healthy
-      backend:
-        condition: service_started
-    networks:
-      - national-stats-network
-
-  # Celery Beat (定时任务调度)
-  celery-beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: national-stats-celery-beat
-    restart: unless-stopped
-    command: celery -A backend.core.tasks beat --loglevel=info
-    environment:
-      - DEBUG=True
-      - LOG_LEVEL=INFO
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
-    depends_on:
-      redis:
-        condition: service_healthy
-      celery-worker:
-        condition: service_started
-    networks:
-      - national-stats-network
-
-  # 前端开发服务器 (可选，仅用于开发)
-  frontend-dev:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    container_name: national-stats-frontend-dev
-    restart: unless-stopped
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    environment:
-      - VITE_API_BASE_URL=http://localhost:8000
-    depends_on:
-      - backend
-    networks:
-      - national-stats-network
-    profiles:
-      - dev
-
-networks:
-  national-stats-network:
-    driver: bridge
-
-volumes:
-  data:
-  exports:
-  logs:
-  redis-data:

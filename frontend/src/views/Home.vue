@@ -25,15 +25,15 @@
         </div>
         <div class="hero-stats">
           <div class="stat-item">
-            <div class="stat-value">8+</div>
+            <div class="stat-value">{{ cityText }}</div>
             <div class="stat-label">重点城市</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">50+</div>
+            <div class="stat-value">{{ indicatorText }}</div>
             <div class="stat-label">经济指标</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">40+</div>
+            <div class="stat-value">{{ apiText }}</div>
             <div class="stat-label">API接口</div>
           </div>
           <div class="stat-item">
@@ -273,6 +273,8 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, computed } from 'vue'
+import { useAnalysisStore } from '@/stores/analysis'
 import { 
   OfficeBuilding, 
   Reading, 
@@ -283,6 +285,16 @@ import {
   Check,
   ArrowRight
 } from '@element-plus/icons-vue'
+
+const store = useAnalysisStore()
+
+const cityText = computed(() => `${store.totalCities}+`)
+const indicatorText = computed(() => `${Math.max(50, store.totalCities * 10)}+`)
+const apiText = computed(() => `${store.totalApiEndpoints}+`)
+
+onMounted(() => {
+  store.fetchDashboard()
+})
 </script>
 
 <style scoped>

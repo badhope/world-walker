@@ -1,165 +1,171 @@
 # National Stats — 国家经济数据分析平台
 
-**多场景产业经济智能分析与预测系统**
-
-支持零售门店选址、销售预测、企业营商环境评估、政府产业政策分析四个垂直场景，覆盖 8 个中国主要城市，提供 REST API + Vue 3 交互式前端。
+多场景产业经济智能分析与预测系统。覆盖 **8个中国主要城市**，支持 **4个分析场景**，提供 **REST API + Vue 3 交互式前端**。
 
 ---
 
-## 技术定位
+## 🔥 快速了解：这个项目能干什么？
 
-| 维度 | 说明 |
-|------|------|
-| **项目类型** | 全栈数据科学平台（后端 Python + 前端 Vue 3） |
-| **核心能力** | 多场景分析器、ML 模型训练/调优/版本管理、多格式报告生成 |
-| **安全等级** | JWT 认证、HMAC 模型签名、AST 安全表达式求值 |
-| **质量保证** | 159 个 pytest 用例、vue-tsc 类型检查、GitHub Actions CI/CD |
-
----
-
-## 系统架构
-
-```
-┌──────────────────────────────────────────────┐
-│                 Vue 3 前端                    │
-│  Enterprise / Government / CityComparison    │
-│  Element Plus + ECharts + Pinia              │
-└──────────────────┬───────────────────────────┘
-                   │ HTTP/WebSocket
-┌──────────────────┴───────────────────────────┐
-│              FastAPI 后端 (8001)              │
-│  Auth (JWT) / Cities / Analysis / Forecast   │
-└──────────────────┬───────────────────────────┘
-                   │
-┌──────────────────┴───────────────────────────┐
-│              分析引擎层                        │
-│  ┌──────────┐ ┌───────────┐ ┌─────────────┐  │
-│  │ Retail   │ │ Sales     │ │ Enterprise  │  │
-│  │ Location │ │ Forecast  │ │ Analyzer    │  │
-│  └──────────┘ └───────────┘ └─────────────┘  │
-│  ┌──────────┐ ┌───────────┐ ┌─────────────┐  │
-│  │ Gov      │ │ ML Core   │ │ Report Gen  │  │
-│  │ Analyzer │ │ (Models)  │ │ (PDF/Excel) │  │
-│  └──────────┘ └───────────┘ └─────────────┘  │
-└──────────────────┬───────────────────────────┘
-                   │
-┌──────────────────┴───────────────────────────┐
-│              数据层                            │
-│  8城市经济指标 / 历史时序 / 评分基准 / 统计年鉴 │
-└──────────────────────────────────────────────┘
-```
+| 场景 | 解决什么问题 | 适合谁用 |
+|------|-------------|---------|
+| 🏪 零售门店选址 | 新店开在哪？基于流量/竞品/租金预测营收 | 连锁零售企业 |
+| 📈 销售预测 | 下季度卖多少？基于历史数据+多模型预测 | 运营/销售团队 |
+| 🏢 企业营商环境评估 | 哪个城市营商成本低？供应链配套好？ | 企业战略/选址部门 |
+| 🏛️ 政府产业政策分析 | 产业链完整度？财政杠杆效率？ | 政府产业/发改部门 |
 
 ---
 
-## 四个垂直场景
+## 🚀 5分钟快速上手
 
-### 1. 零售门店选址分析
-- 基于流量、竞品、租金等特征预测门店营收
-- RandomForest/GBM 模型 + GridSearchCV 超参数调优
-- 嵌套交叉验证防数据泄漏
-
-### 2. 销售预测
-- 时序特征工程 + 多模型对比
-- StatsForecast AutoARIMA 真实预测（非硬编码假数据）
-- 预测结果可视化 + 置信区间
-
-### 3. 企业营商环境评估（企业端）
-- 营商成本 / 供应链配套 / 政策红利 三维度评分
-- 基于 8 城市统计分位数基准的动态评分
-- 城市对比排序 + 针对性建议
-
-### 4. 政府产业政策分析（政府端）
-- 财政杠杆 / 产业带动 / 产业链完整性 三维度
-- 投入产出分析 + 产业链瓶颈识别
-- 政策建议自动生成
-
----
-
-## 快速开始
+### 方式一：纯Python运行（最简单，不需要前端）
 
 ```bash
-# 安装依赖
+# 1. 安装依赖
 pip install -r requirements.txt
 
-# 运行完整演示
+# 2. 运行完整演示（生成数据→训练模型→预测→报告输出）
 python demo_complete.py
+```
 
-# 启动 API 服务
-uvicorn backend.api.main:app --host 0.0.0.0 --port 8001
+演示完成后，在 `data/retail_complete/` 目录下查看生成的分析报告（PDF/Excel/JSON/TXT）和可视化图表。
 
-# 启动前端开发服务器
-cd frontend && npm install && npm run dev
+### 方式二：启动Web界面（前后端完整运行）
+
+**终端1 — 启动后端API服务**
+```bash
+# 首次需安装依赖
+pip install -r requirements.txt
+
+# 启动API服务（默认端口8001，API文档自动生成在 http://localhost:8001/docs）
+uvicorn backend.api.main:app --reload --port 8001 --host 0.0.0.0
+```
+
+**终端2 — 启动前端开发服务器**
+```bash
+cd frontend
+npm install
+npm run dev
+# 访问 http://localhost:5173
+```
+
+### 方式三：Docker一键启动
+
+```bash
+docker-compose up --build
+# 访问 http://localhost:8001
 ```
 
 ---
 
-## 项目结构
+## 🧭 Web界面使用流程
 
-```
-/workspace/
-├── backend/
-│   ├── api/                  # FastAPI 路由 + JWT 认证
-│   │   ├── main.py
-│   │   ├── auth.py
-│   │   └── routes/           # cities, analysis, forecast, interactive
-│   ├── analysis/             # 分析器引擎
-│   │   ├── base_analyzer.py  # 抽象基类（统一接口）
-│   │   ├── enterprise_analyzer.py
-│   │   ├── government_analyzer.py
-│   │   └── custom_indicators.py
-│   ├── retail_location/      # 零售选址场景
-│   │   ├── analyzer.py
-│   │   ├── model_trainer.py
-│   │   └── visualizer.py
-│   ├── sales_forecast/       # 销售预测场景
-│   │   ├── analyzer.py
-│   │   ├── model_trainer.py
-│   │   └── visualizer.py
-│   ├── ml/                   # 通用 ML 层（9 种模型）
-│   ├── data/                 # 城市经济数据（8 城市）
-│   ├── data_processing/      # 数据清洗 + 验证
-│   ├── data_collection/      # NBS/AKShare 数据采集
-│   ├── core/                 # 缓存、配置、数据库
-│   ├── utils/                # 模型安全（HMAC 签名）
-│   ├── report_generator.py   # 多格式报告（PDF/Excel/JSON/Text）
-│   └── model_versioning.py   # 模型版本管理 + 反馈闭环
-├── frontend/
-│   └── src/
-│       ├── views/            # Enterprise / Government / CityComparison / DataManager
-│       ├── stores/           # Pinia 状态管理
-│       ├── api/              # API 接口定义
-│       └── components/       # ECharts 图表 / KPI 卡片 / 布局
-├── tests/
-│   └── backend/              # 159 个 pytest 测试
-├── config/
-│   └── settings.py           # 全局配置（环境变量驱动）
-├── .github/workflows/        # CI/CD（Python + Node.js）
-├── pyproject.toml            # 项目元数据 + pytest/ruff/mypy 配置
-├── requirements.txt
-└── demo_complete.py          # 端到端完整演示
-```
+打开前端后，按照以下流程使用各个功能：
+
+### 步骤1：首页概览
+打开 http://localhost:5173 → 首页显示系统概览，包括支持城市、可用指标、API端点等统计。页面顶部的导航栏可以切换到各个分析页面。
+
+### 步骤2：企业端分析
+点击导航栏"企业端"
+1. **选择城市**：从下拉框选择一个城市（深圳/上海/成都/北京/广州/杭州/武汉/南京）
+2. **选择产业**：选择要分析的产业（半导体/新能源汽车/人工智能）
+3. **选择年份**：选择分析年份
+4. **点击「开始分析」**：系统会基于真实统计数据计算出营商成本、供应链配套、政策红利三个维度的评分
+5. **查看结果**：
+   - 顶部KPI卡片：显示各维度综合评分
+   - 营商成本详情图：土地、人力、能源、融资成本的分项评分
+   - 供应链雷达图：本地配套率、交付效率、产业集聚度
+   - 政策红利详情图：税收减免、研发补贴、审批效率
+   - 建议区域：系统自动生成的针对性优化建议
+
+### 步骤3：政府端分析
+点击导航栏"政府端"
+1. 选择城市和产业
+2. 点击「开始分析」
+3. 查看财政杠杆、产业带动效应、产业链完整度三个维度的评分和图表
+
+### 步骤4：城市对比
+点击导航栏"城市对比"
+1. 选择多个城市
+2. 选择对比指标（GDP、人口、财政收入等）
+3. 查看柱状图/折线图对比
 
 ---
 
-## 安全特性
+## 🏗️ 系统架构
 
-| 特性 | 实现 |
+```
+┌──────────────────────────────────────────┐
+│            Vue 3 前端 (5173)              │
+│  Home / Enterprise / Government / Map    │
+│  通过 Axios 调用后端 REST API             │
+└──────────┬───────────────────────────────┘
+           │ HTTP/JSON
+┌──────────┴───────────────────────────────┐
+│        FastAPI 后端 (8001)               │
+│  /api/v1/cities/* 城市数据               │
+│  /api/v1/analysis/* 分析引擎             │
+│  /api/v1/forecast/* 时间序列预测         │
+│  /api/v1/auth/* JWT认证                  │
+│  /docs Swagger API文档                   │
+└──────────┬───────────────────────────────┘
+           │
+┌──────────┴───────────────────────────────┐
+│          分析引擎层                       │
+│  EnterpriseAnalyzer / GovernmentAnalyzer │
+│  RetailLocationAnalyzer / SalesAnalyzer  │
+│  继承 BaseAnalyzer 统一接口              │
+└──────────┬───────────────────────────────┘
+           │
+┌──────────┴───────────────────────────────┐
+│          数据层                           │
+│  8城市真实经济数据 / ML模型 / 报告生成器  │
+│  模型版本管理 / HMAC签名安全模块          │
+└──────────────────────────────────────────┘
+```
+
+### 前后端如何协调？
+
+| 交互方式 | 说明 |
+|---------|------|
+| **开发模式** | 前端 `npm run dev` (5173) + 后端 `uvicorn` (8001)，前端通过代理请求后端 |
+| **生产模式** | 后端在 `/var/www/` 路径下托管构建好的前端静态文件，同一端口提供服务 |
+| **认证** | 登录获取JWT Token，后续请求在Header中携带 `Authorization: Bearer <token>` |
+| **数据流** | 前端 → Axios → API路由 → 分析引擎 → 返回JSON → ECharts渲染图表 |
+
+---
+
+## 📚 更多文档
+
+| 文件 | 内容 |
 |------|------|
-| JWT 认证 | python-jose + OAuth2PasswordBearer |
-| 模型签名 | HMAC-SHA256 签名校验 |
-| 表达式安全 | numexpr + AST 白名单（替代 eval） |
-| API 防护 | traceback 不泄露、CORS 白名单 |
-| DEBUG 模式 | 默认关闭，环境变量控制 |
+| [QUICK_START.md](QUICK_START.md) | 5分钟极速入门指南 |
+| [pyproject.toml](pyproject.toml) | 项目元数据、测试配置 |
+| 后端 `/docs` | Swagger API 交互式文档 |
 
 ---
 
-## 验证结果
+## 🧪 测试
 
+```bash
+# 运行全部 159 个测试
+cd /workspace
+python -m pytest tests/ -v
+
+# 运行前端类型检查
+cd frontend && npx vue-tsc --noEmit
+
+# 构建前端
+cd frontend && npx vite build
 ```
-✅ pytest: 159 passed, 0 failed (19.05s)
-✅ vue-tsc: 0 type errors
-✅ Vite build: 成功 (9.06s)
-✅ 端到端演示: 10/10 通过
+
+---
+
+## 🔒 安全配置
+
+```bash
+# 复制并修改环境变量配置
+cp .env.example .env
+# 编辑 .env 文件，修改 SECRET_KEY 和 ADMIN_PASSWORD
 ```
 
 ---

@@ -1,7 +1,8 @@
 {
   "name": "national-stats-frontend",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
+  "description": "国家经济数据分析平台前端 — Vue 3 + Element Plus + ECharts 交互式分析界面",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",

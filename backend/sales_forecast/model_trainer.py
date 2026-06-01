@@ -4,7 +4,7 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Any, Tuple
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.model_selection import train_test_split, cross_validate, GridSearchCV
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
@@ -12,6 +12,8 @@ import joblib
 import logging
 from pathlib import Path
 import json
+
+from backend.utils.model_security import save_with_signature, load_with_signature
 
 logger = logging.getLogger(__name__)
 
@@ -119,32 +121,40 @@ class SalesModelTrainer:
         
         try:
             model = self._get_model(model_name, params)
-            
+
             if len(X_train) < 5:
                 logger.warning(f"训练数据太少，跳过交叉验证")
                 model.fit(X_train, y_train)
-                cv_scores = [0.0]
+                cv_results = {'test_r2': np.array([0.0]), 'test_mae': np.array([0.0]), 'test_rmse': np.array([0.0]), 'test_mape': np.array([0.0])}
             else:
-                cv = min(5, len(X_train) // 5)
-                cv = max(2, cv)
-                cv_scores = cross_val_score(model, X_train, y_train, cv=cv, scoring='r2')
-            
+                cv_num = min(5, len(X_train) // 5)
+                cv_num = max(2, cv_num)
+                cv_results = cross_validate(
+                    model, X_train, y_train, cv=cv_num,
+                    scoring={
+                        'r2': 'r2',
+                        'mae': 'neg_mean_absolute_error',
+                        'rmse': 'neg_root_mean_squared_error',
+                        'mape': 'neg_mean_absolute_percentage_error'
+                    }
+                )
+
             model.fit(X_train, y_train)
-            
+
             scores = {
-                "cv_mean_r2": float(np.mean(cv_scores)),
-                "cv_std_r2": float(np.std(cv_scores))
+                "cv_mean_r2": float(np.mean(cv_results['test_r2'])),
+                "cv_std_r2": float(np.std(cv_results['test_r2'])),
+                "cv_mean_mae": float(np.mean(-cv_results.get('test_mae', [0]))),
+                "cv_mean_rmse": float(np.mean(-cv_results.get('test_rmse', [0]))),
+                "cv_score": float(np.mean(cv_results['test_r2'])),
             }
-            
+
             logger.info(f"{model_name} CV R²: {scores['cv_mean_r2']:.4f} (±{scores['cv_std_r2']:.4f})")
             return model, scores
             
         except Exception as e:
             logger.error(f"Error training {model_name}: {str(e)}")
-            if model_name != "linear":
-                logger.info(f"Falling back to linear model")
-                return self.train_single_model(X_train, y_train, "linear")
-            raise
+            raise RuntimeError(f"Model training failed for {model_name}: {e}") from e
     
     def train_multiple_models(
         self,
@@ -214,7 +224,7 @@ class SalesModelTrainer:
     def save_model(self, model: Any, file_path: str, metadata: Optional[Dict] = None):
         file_path_obj = Path(file_path)
         file_path_obj.parent.mkdir(parents=True, exist_ok=True)
-        joblib.dump(model, file_path)
+        save_with_signature(model, file_path)
         
         if metadata is None:
             metadata = {}
@@ -235,7 +245,7 @@ class SalesModelTrainer:
         logger.info(f"Metadata saved to: {meta_path}")
     
     def load_model(self, file_path: str) -> Tuple[Any, Dict]:
-        model = joblib.load(file_path)
+        model = load_with_signature(file_path)
         self.best_model = model
         
         file_path_obj = Path(file_path)

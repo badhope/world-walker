@@ -136,6 +136,7 @@ import { computed, onMounted } from 'vue'
 import { useAnalysisStore } from '@/stores/analysis'
 import KpiCard from '@/components/widgets/KpiCard.vue'
 import EChart from '@/components/charts/EChart.vue'
+import type { EChartsOption } from 'echarts'
 
 const store = useAnalysisStore()
 
@@ -170,7 +171,7 @@ const costChartOption = computed(() => {
         lineStyle: { width: 3 },
       },
     ],
-  }
+  } as EChartsOption
 })
 
 const supplyChainChartOption = computed(() => {
@@ -202,7 +203,7 @@ const supplyChainChartOption = computed(() => {
         ],
       },
     ],
-  }
+} as EChartsOption
 })
 
 const policyChartOption = computed(() => {
@@ -226,7 +227,7 @@ const policyChartOption = computed(() => {
         type: 'bar',
         data: rawValues,
         itemStyle: {
-          color: (params: any) => {
+          color: (params: { dataIndex: number }) => {
             const colors = ['#409eff', '#67c23a', '#e6a23c', '#f56c6c']
             return colors[params.dataIndex % colors.length]
           },
@@ -241,7 +242,7 @@ const policyChartOption = computed(() => {
         lineStyle: { width: 3 },
       },
     ],
-  }
+  } as EChartsOption
 })
 
 const onCityChange = () => {

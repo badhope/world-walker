@@ -52,7 +52,7 @@ class DataCleaner:
     ) -> pd.DataFrame:
         """
         填充缺失值
-        
+
         Args:
             df: 数据框
             method: 填充方法 (linear, mean, median, mode, forward, backward, zero)
@@ -60,12 +60,13 @@ class DataCleaner:
         """
         df_clean = df.copy()
         target_columns = self._get_numeric_columns(df_clean, columns)
-        
+        categorical_cols = df_clean.select_dtypes(include=['object', 'category']).columns
+
         for col in target_columns:
             missing_mask = df_clean[col].isna()
             if not missing_mask.any():
                 continue
-            
+
             if method == "linear":
                 df_clean[col] = df_clean[col].interpolate(method='linear')
             elif method == "mean":
@@ -82,7 +83,11 @@ class DataCleaner:
                 df_clean[col] = df_clean[col].fillna(method='bfill')
             elif method == "zero":
                 df_clean[col] = df_clean[col].fillna(0)
-        
+
+        for col in categorical_cols:
+            if df_clean[col].isnull().sum() > 0:
+                df_clean[col] = df_clean[col].fillna(df_clean[col].mode()[0] if not df_clean[col].mode().empty else 'unknown')
+
         return df_clean
     
     # ==================== 异常值处理 ====================
@@ -161,15 +166,18 @@ class DataCleaner:
         """移除异常值"""
         df_clean = df.copy()
         target_columns = self._get_numeric_columns(df_clean, columns)
-        
+
         for col in target_columns:
             if method == "iqr":
                 lower, upper = self._get_iqr_bounds(df_clean[col], threshold)
                 df_clean = df_clean[(df_clean[col] >= lower) & (df_clean[col] <= upper)]
             elif method == "zscore":
-                z_scores = np.abs(stats.zscore(df_clean[col].dropna()))
-                df_clean = df_clean[z_scores <= threshold]
-        
+                clean_vals = df_clean[col].dropna()
+                z_scores = np.abs(stats.zscore(clean_vals))
+                mask = z_scores <= threshold
+                valid_indices = clean_vals[mask].index
+                df_clean = df_clean.loc[df_clean.index.isin(valid_indices) | df_clean[col].isna()]
+
         return df_clean
     
     def cap_outliers(

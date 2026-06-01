@@ -12,7 +12,7 @@ from .models import (
     LassoModel,
     SVRModel,
     KNNModel,
-    get_model,
+    get_model_instance,
     get_available_models,
 )
 
@@ -52,7 +52,7 @@ __all__ = [
     'LassoModel',
     'SVRModel',
     'KNNModel',
-    'get_model',
+    'get_model_instance',
     'get_available_models',
     'TrainingConfig',
     'TrainingResult',

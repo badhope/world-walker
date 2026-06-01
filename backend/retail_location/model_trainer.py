@@ -4,7 +4,7 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Any, Tuple
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+from sklearn.model_selection import train_test_split, cross_validate, GridSearchCV
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
@@ -12,6 +12,8 @@ import joblib
 import logging
 from pathlib import Path
 import json
+
+from backend.utils.model_security import save_with_signature, load_with_signature
 
 logger = logging.getLogger(__name__)
 
@@ -158,37 +160,41 @@ class RetailModelTrainer:
         
         try:
             model = self._get_model(model_name, params)
-            
-            # 检查数据量
+
             if len(X_train) < 5:
                 logger.warning(f"训练数据太少，跳过交叉验证")
                 model.fit(X_train, y_train)
-                cv_scores = [0.0]
+                cv_results = {'test_r2': np.array([0.0]), 'test_mae': np.array([0.0]), 'test_rmse': np.array([0.0]), 'test_mape': np.array([0.0])}
             else:
-                # 交叉验证
-                cv = min(5, len(X_train) // 5)
-                cv = max(2, cv)
-                cv_scores = cross_val_score(model, X_train, y_train, cv=cv, scoring='r2')
-            
-            # 训练完整模型
+                cv_num = min(5, len(X_train) // 5)
+                cv_num = max(2, cv_num)
+                cv_results = cross_validate(
+                    model, X_train, y_train, cv=cv_num,
+                    scoring={
+                        'r2': 'r2',
+                        'mae': 'neg_mean_absolute_error',
+                        'rmse': 'neg_root_mean_squared_error',
+                        'mape': 'neg_mean_absolute_percentage_error'
+                    }
+                )
+
             model.fit(X_train, y_train)
-            
+
             scores = {
-                "cv_mean_r2": float(np.mean(cv_scores)),
-                "cv_std_r2": float(np.std(cv_scores))
+                "cv_mean_r2": float(np.mean(cv_results['test_r2'])),
+                "cv_std_r2": float(np.std(cv_results['test_r2'])),
+                "cv_mean_mae": float(np.mean(-cv_results.get('test_mae', [0]))),
+                "cv_mean_rmse": float(np.mean(-cv_results.get('test_rmse', [0]))),
+                "cv_score": float(np.mean(cv_results['test_r2'])),
             }
-            
+
             logger.info(f"{model_name} CV R²: {scores['cv_mean_r2']:.4f} (±{scores['cv_std_r2']:.4f})")
-            
+
             return model, scores
             
         except Exception as e:
             logger.error(f"Error training {model_name}: {str(e)}")
-            # 降级策略：尝试简单模型
-            if model_name != "linear":
-                logger.info(f"Falling back to linear model")
-                return self.train_single_model(X_train, y_train, "linear")
-            raise
+            raise RuntimeError(f"Model training failed for {model_name}: {e}") from e
     
     # ==================== 多模型对比与自动选择 ====================
     
@@ -356,7 +362,7 @@ class RetailModelTrainer:
             "r2": float(r2_score(y_test, y_pred)),
             "mae": float(mean_absolute_error(y_test, y_pred)),
             "rmse": float(np.sqrt(mean_squared_error(y_test, y_pred))),
-            "mape": float(np.mean(np.abs((y_test - y_pred) / y_test)) * 100)
+            "mape": float(np.nanmean(np.abs((y_test - y_pred) / np.where(y_test == 0, np.nan, y_test))) * 100)
         }
         
         return metrics
@@ -369,7 +375,7 @@ class RetailModelTrainer:
         file_path_obj.parent.mkdir(parents=True, exist_ok=True)
         
         # 保存模型
-        joblib.dump(model, file_path)
+        save_with_signature(model, file_path)
         
         # 保存元数据
         if metadata is None:
@@ -392,7 +398,7 @@ class RetailModelTrainer:
     
     def load_model(self, file_path: str) -> Tuple[Any, Dict]:
         """加载模型（包含元数据）"""
-        model = joblib.load(file_path)
+        model = load_with_signature(file_path)
         self.best_model = model
         
         # 加载元数据
@@ -473,12 +479,11 @@ class RetailModelTrainer:
         # 3. 训练多个模型
         results = self.train_multiple_models(X_train, y_train, X_test, y_test, model_names)
         
-        # 4. 超参数调优（真实实现！）
         if do_tuning and self.best_model_name in ["random_forest", "gbm"]:
             logger.info("="*50)
             logger.info("开始超参数调优...")
             logger.info("="*50)
-            
+
             param_grid = {
                 "random_forest": {
                     'n_estimators': [50, 100],
@@ -491,34 +496,27 @@ class RetailModelTrainer:
                     'max_depth': [3, 5]
                 }
             }
-            
+
             if self.best_model_name in param_grid:
                 try:
                     tuned_model, tuning_results = self.hyperparameter_tuning(
                         X_train, y_train, self.best_model_name, param_grid[self.best_model_name]
                     )
-                    
-                    # 评估调优后的模型
-                    tuned_metrics = self.evaluate_model(tuned_model, X_test, y_test)
-                    results['tuning_results'] = tuning_results
-                    results['tuned_metrics'] = tuned_metrics
-                    
-                    logger.info(f"调优后的测试集R²: {tuned_metrics['r2']:.4f}")
-                    
-                    # 比较，更新最佳模型
-                    if tuned_metrics['r2'] > results['best_score']:
-                        logger.info(f"超参数调优有效！R²从 {results['best_score']:.4f} 提升到 {tuned_metrics['r2']:.4f}")
+                    tuned_cv_score = tuning_results.get('best_score', 0)
+                    original_cv_score = self.model_scores.get(self.best_model_name, {}).get('cv_score', 0)
+
+                    if tuned_cv_score > original_cv_score:
+                        logger.info(f"超参数调优有效！CV从 {original_cv_score:.4f} 提升到 {tuned_cv_score:.4f}")
                         self.best_model = tuned_model
                         results['best_model'] = f"{self.best_model_name}_tuned"
-                        results['best_score'] = tuned_metrics['r2']
+                        results['best_score'] = tuned_cv_score
                         self.models[f"{self.best_model_name}_tuned"] = tuned_model
+                        tuned_metrics = self.evaluate_model(tuned_model, X_test, y_test)
                         self.model_scores[f"{self.best_model_name}_tuned"] = tuned_metrics
                     else:
-                        logger.info(f"超参数调优无明显改善，保持原模型")
-                        
+                        logger.info(f"超参数调优无改善，保持原模型")
+
                 except Exception as e:
-                    logger.error(f"超参数调优失败: {str(e)}")
-                    import traceback
-                    traceback.print_exc()
+                    logger.exception(f"超参数调优失败: {str(e)}")
         
         return results

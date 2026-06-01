@@ -126,12 +126,12 @@ class TestCompareCities:
 
     def test_has_city_column(self):
         result = compare_cities(["深圳", "上海"])
-        assert "城市" in result.columns
+        assert "name" in result.columns
 
     def test_has_key_metrics(self):
         result = compare_cities(["深圳", "上海"])
-        assert "GDP" in result.columns
-        assert "土地价格" in result.columns
+        assert "gdp" in result.columns
+        assert "land_price" in result.columns
 
     def test_empty_list_returns_empty_df(self):
         result = compare_cities([])

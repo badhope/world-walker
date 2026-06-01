@@ -135,7 +135,7 @@ def get_basic_data():
             "data": data
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"加载数据失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/trend", summary="获取趋势数据")

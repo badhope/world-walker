@@ -5,6 +5,7 @@ import pandas as pd
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+import concurrent.futures
 try:
     import akshare as ak
 except ImportError:
@@ -13,6 +14,15 @@ except ImportError:
 from backend.data_collection.base_collector import BaseCollector
 
 logger = logging.getLogger(__name__)
+
+
+def _call_with_timeout(func, timeout=30, *args, **kwargs):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            raise TimeoutError(f"调用超时 ({timeout}s): {func.__name__}")
 
 
 class FinanceCollector(BaseCollector):
@@ -47,7 +57,7 @@ class FinanceCollector(BaseCollector):
     def get_money_supply(self) -> List[Dict[str, Any]]:
         """获取货币供应量"""
         try:
-            df = ak.macro_china_m2_yearly()
+            df = _call_with_timeout(ak.macro_china_m2_yearly, timeout=30)
             results = []
             
             for _, row in df.iterrows():

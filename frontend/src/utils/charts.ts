@@ -1,4 +1,3 @@
-import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 
 // 图表预设 - 折线图

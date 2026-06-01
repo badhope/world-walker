@@ -166,14 +166,14 @@
               width="180"
               fixed="right"
             >
-              <template #default="{ row, $index }">
+              <template #default="{ row }">
                 <el-button link type="primary" size="small" @click="viewDetail(row)">
                   详情
                 </el-button>
                 <el-button link type="primary" size="small" @click="editRow(row)">
                   编辑
                 </el-button>
-                <el-button link type="danger" size="small" @click="deleteRow(row, $index)">
+                <el-button link type="danger" size="small" @click="deleteRow(row)">
                   删除
                 </el-button>
               </template>
@@ -362,7 +362,7 @@
       
       <template #footer>
         <el-button @click="showDetailDialog = false">关闭</el-button>
-        <el-button type="primary" @click="editRow(selectedRow)">编辑</el-button>
+        <el-button type="primary" @click="editRow(selectedRow!)">编辑</el-button>
       </template>
     </el-dialog>
     
@@ -403,6 +403,17 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Download, Refresh, Location } from '@element-plus/icons-vue'
 import { interactiveApi } from '@/api'
+import type {
+  TableDataRow,
+  FilterForm,
+  UploadFormData,
+  ExportFormData,
+  CityCompareForm,
+  CityInfo,
+  ExportResponseData,
+  InteractiveCitiesResponse,
+} from '@/types'
+import type { UploadFile } from 'element-plus'
 
 // 状态
 const loading = ref(false)
@@ -412,7 +423,7 @@ const comparing = ref(false)
 const showQuarter = ref(false)
 
 // 筛选
-const filters = ref({
+const filters = ref<FilterForm>({
   type: '',
   region: '',
   years: [],
@@ -425,7 +436,7 @@ const pageSize = ref(20)
 const total = computed(() => filteredData.value.length)
 
 // 数据
-const tableData = ref<any[]>([])
+const tableData = ref<TableDataRow[]>([])
 const filteredData = computed(() => {
   let data = [...tableData.value]
   
@@ -464,16 +475,16 @@ const paginatedData = computed(() => {
 
 // 上传相关
 const showUploadDialog = ref(false)
-const uploadForm = ref({
+const uploadForm = ref<UploadFormData>({
   format: 'json',
   validate: true,
 })
-const fileList = ref<any[]>([])
+const fileList = ref<UploadFile[]>([])
 const uploadRef = ref()
 
 // 导出相关
 const showExportDialog = ref(false)
-const exportForm = ref({
+const exportForm = ref<ExportFormData>({
   format: 'json',
   filename: '',
   range: 'filtered',
@@ -481,24 +492,23 @@ const exportForm = ref({
 
 // 城市对比
 const showCitiesDialog = ref(false)
-const cityForm = ref({
+const cityForm = ref<CityCompareForm>({
   cities: [],
   year: '2024',
   indicators: ['gdp'],
 })
-const availableCities = ref<any[]>([])
+const availableCities = ref<CityInfo[]>([])
 
 // 详情和编辑
 const showDetailDialog = ref(false)
 const showEditDialog = ref(false)
-const selectedRow = ref<any>(null)
-const editForm = ref<any>({})
+const selectedRow = ref<TableDataRow | null>(null)
+const editForm = ref<Partial<TableDataRow>>({})
 
 // 方法
 const loadData = async () => {
   loading.value = true
   try {
-    // 模拟加载数据
     tableData.value = [
       {
         year: '2025',
@@ -530,7 +540,7 @@ const loadData = async () => {
       },
     ]
     ElMessage.success('数据加载成功')
-  } catch (error) {
+  } catch {
     ElMessage.error('数据加载失败')
   } finally {
     loading.value = false
@@ -570,43 +580,54 @@ const formatNumber = (value: number) => {
   }).format(value)
 }
 
-const viewDetail = (row: any) => {
+const viewDetail = (row: TableDataRow) => {
   selectedRow.value = row
   showDetailDialog.value = true
 }
 
-const editRow = (row: any) => {
+const editRow = (row: TableDataRow) => {
   editForm.value = { ...row }
   showEditDialog.value = true
   showDetailDialog.value = false
 }
 
 const saveEdit = () => {
-  // 模拟保存
-  const index = tableData.value.findIndex(item => item === selectedRow.value)
+  if (!selectedRow.value) return
+  const index = tableData.value.findIndex(item =>
+    item.year === selectedRow.value!.year &&
+    item.region === selectedRow.value!.region &&
+    item.indicator === selectedRow.value!.indicator
+  )
   if (index !== -1) {
-    tableData.value[index] = { ...editForm.value }
+    tableData.value[index] = { ...editForm.value as TableDataRow }
     ElMessage.success('保存成功')
     showEditDialog.value = false
   }
 }
 
-const deleteRow = async (row: any, index: number) => {
+const deleteRow = async (row: TableDataRow) => {
   try {
     await ElMessageBox.confirm('确定要删除这条数据吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning',
     })
-    
-    tableData.value.splice(index, 1)
-    ElMessage.success('删除成功')
+
+    const realIndex = tableData.value.findIndex(item =>
+      item.year === row.year &&
+      item.region === row.region &&
+      item.indicator === row.indicator
+    )
+    if (realIndex !== -1) {
+      tableData.value.splice(realIndex, 1)
+      ElMessage.success('删除成功')
+    }
   } catch {
     // 用户取消
   }
 }
 
-const handleFileChange = (file: any) => {
+const handleFileChange = (file: UploadFile) => {
   fileList.value = [file]
 }
 
@@ -615,29 +636,33 @@ const handleUpload = async () => {
     ElMessage.warning('请选择文件')
     return
   }
-  
+
   uploading.value = true
   try {
-    const file = fileList.value[0].raw
+    const file = fileList.value[0]
+    if (!file.raw) {
+      ElMessage.warning('文件读取失败')
+      return
+    }
     const reader = new FileReader()
-    
+
     reader.onload = async (e) => {
       const content = btoa(e.target?.result as string)
-      
+
       await interactiveApi.importData({
         file_name: file.name,
         file_content: content,
         format_type: uploadForm.value.format,
         validate: uploadForm.value.validate,
       })
-      
+
       ElMessage.success('数据上传成功')
       showUploadDialog.value = false
       loadData()
     }
-    
-    reader.readAsText(file)
-  } catch (error) {
+
+    reader.readAsText(file.raw)
+  } catch {
     ElMessage.error('数据上传失败')
   } finally {
     uploading.value = false
@@ -647,8 +672,8 @@ const handleUpload = async () => {
 const handleExport = async () => {
   exporting.value = true
   try {
-    let dataToExport: any[] = []
-    
+    let dataToExport: TableDataRow[] = []
+
     switch (exportForm.value.range) {
       case 'current':
         dataToExport = paginatedData.value
@@ -660,22 +685,21 @@ const handleExport = async () => {
         dataToExport = tableData.value
         break
     }
-    
+
     const result = await interactiveApi.exportData({
-      data: dataToExport,
+      data: dataToExport as unknown as Record<string, unknown>[],
       format_type: exportForm.value.format,
       file_name: exportForm.value.filename || undefined,
-    })
-    
-    // 下载文件
+    }) as ExportResponseData
+
     const link = document.createElement('a')
     link.href = `data:application/octet-stream;base64,${result.file_content}`
     link.download = result.file_name
     link.click()
-    
+
     ElMessage.success('数据导出成功')
     showExportDialog.value = false
-  } catch (error) {
+  } catch {
     ElMessage.error('数据导出失败')
   } finally {
     exporting.value = false
@@ -684,10 +708,11 @@ const handleExport = async () => {
 
 const loadCities = async () => {
   try {
-    const result = await interactiveApi.getCities()
-    availableCities.value = result.cities
-  } catch (error) {
-    console.error('加载城市列表失败', error)
+    const result = await interactiveApi.getCities() as InteractiveCitiesResponse
+    availableCities.value = result.cities || []
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : '加载城市列表失败'
+    ElMessage.error(message)
   }
 }
 
@@ -696,7 +721,7 @@ const compareCities = async () => {
     ElMessage.warning('请至少选择两个城市进行对比')
     return
   }
-  
+
   comparing.value = true
   try {
     await interactiveApi.compareCities({
@@ -704,10 +729,10 @@ const compareCities = async () => {
       year: parseInt(cityForm.value.year),
       indicators: cityForm.value.indicators,
     })
-    
+
     ElMessage.success('城市对比分析完成')
     showCitiesDialog.value = false
-  } catch (error) {
+  } catch {
     ElMessage.error('城市对比分析失败')
   } finally {
     comparing.value = false

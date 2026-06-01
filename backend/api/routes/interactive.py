@@ -6,6 +6,9 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
+import ast
+import operator as op
+import math
 
 from backend.core.data_import_export import data_manager, DataImportExportManager
 from backend.core.multi_city import city_manager, CityConfig, CityData
@@ -14,6 +17,46 @@ from backend.core.cache import cache_manager
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/interactive", tags=["交互操作"])
+
+_SAFE_OPS = {
+    ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
+    ast.Div: op.truediv, ast.Pow: op.pow, ast.USub: op.neg,
+}
+
+_SAFE_FUNCS = {
+    'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
+    'sqrt': math.sqrt, 'log': math.log, 'exp': math.exp,
+    'abs': abs, 'round': round, 'max': max, 'min': min,
+    'sum': sum,
+}
+
+
+def _safe_eval(expr: str, variables: dict) -> float:
+    try:
+        import numexpr
+        return float(numexpr.evaluate(expr, local_dict=variables))
+    except ImportError:
+        pass
+    tree = ast.parse(expr, mode='eval')
+    return _eval_node(tree.body, variables)
+
+
+def _eval_node(node, variables):
+    if isinstance(node, ast.Constant):
+        return node.value
+    elif isinstance(node, ast.Name):
+        if node.id in variables:
+            return variables[node.id]
+        raise ValueError(f"Unknown variable: {node.id}")
+    elif isinstance(node, ast.BinOp):
+        return _SAFE_OPS[type(node.op)](_eval_node(node.left, variables), _eval_node(node.right, variables))
+    elif isinstance(node, ast.UnaryOp):
+        return _SAFE_OPS[type(node.op)](_eval_node(node.operand, variables))
+    elif isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Name) and node.func.id in _SAFE_FUNCS:
+            args = [_eval_node(a, variables) for a in node.args]
+            return _SAFE_FUNCS[node.func.id](*args)
+    raise ValueError(f"Unsafe expression: {type(node)}")
 
 
 # ==================== 请求和响应模型 ====================
@@ -81,7 +124,7 @@ async def import_data(request: DataImportRequest):
         try:
             content = base64.b64decode(request.file_content)
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Base64解码失败: {str(e)}")
+            raise HTTPException(status_code=400, detail="Base64 decoding failed")
         
         # 保存临时文件
         temp_dir = Path("temp_uploads")
@@ -128,8 +171,7 @@ async def import_data(request: DataImportRequest):
         
     except Exception as e:
         logger.error(f"数据导入失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"数据导入失败: {str(e)}")
-
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/export", summary="导出数据")
 async def export_data(request: DataExportRequest):
@@ -175,7 +217,7 @@ async def export_data(request: DataExportRequest):
         
     except Exception as e:
         logger.error(f"数据导出失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"数据导出失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/formats", summary="获取支持的格式")
@@ -296,7 +338,7 @@ async def compare_cities(request: CityQueryRequest):
         
     except Exception as e:
         logger.error(f"城市对比分析失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"城市对比分析失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ==================== 指标分析接口 ====================
@@ -349,7 +391,7 @@ async def analyze_indicators(request: IndicatorAnalysisRequest):
         
     except Exception as e:
         logger.error(f"指标分析失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"指标分析失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/indicators/calculate", summary="自定义指标计算")
@@ -397,7 +439,7 @@ async def calculate_custom_indicator(request: CustomCalculationRequest):
         local_vars = request.variables.copy()
         local_vars.update(allowed_names)
         
-        result = eval(request.formula, {"__builtins__": {}}, local_vars)
+        result = _safe_eval(request.formula, local_vars)
         
         return {
             'success': True,
@@ -411,7 +453,7 @@ async def calculate_custom_indicator(request: CustomCalculationRequest):
         raise
     except Exception as e:
         logger.error(f"指标计算失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"指标计算失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ==================== 场景管理接口 ====================
@@ -439,8 +481,7 @@ async def create_scenario(request: ScenarioCreateRequest):
         
     except Exception as e:
         logger.error(f"创建场景失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"创建场景失败: {str(e)}")
-
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/scenarios", summary="获取场景列表")
 async def get_scenarios():
@@ -460,8 +501,7 @@ async def get_scenarios():
         
     except Exception as e:
         logger.error(f"获取场景列表失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"获取场景列表失败: {str(e)}")
-
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/scenarios/{scenario_id}", summary="获取场景详情")
 async def get_scenario_detail(scenario_id: str):
@@ -485,7 +525,7 @@ async def get_scenario_detail(scenario_id: str):
         raise
     except Exception as e:
         logger.error(f"获取场景详情失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"获取场景详情失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # ==================== 缓存管理接口 ====================

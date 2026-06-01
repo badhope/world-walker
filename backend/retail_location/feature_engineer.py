@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Any, Tuple
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.feature_selection import mutual_info_regression
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,12 +13,13 @@ logger = logging.getLogger(__name__)
 
 class FeatureEngineer:
     """特征工程器"""
-    
+
     def __init__(self, config: Optional[Any] = None):
         self.config = config
         self.categorical_encoders = {}
         self.scalers = {}
         self.feature_names = []
+        self.bins = None
     
     # ==================== 衍生特征生成 ====================
     
@@ -56,11 +58,15 @@ class FeatureEngineer:
         
         # 3. 区间特征
         if "distance_to_subway" in df_out.columns:
-            df_out["subway_proximity"] = pd.cut(
-                df_out["distance_to_subway"],
-                bins=[0, 100, 300, 500, 1000, np.inf],
-                labels=["very_close", "close", "medium", "far", "very_far"]
-            )
+            col_name = "subway_proximity"
+            if self.bins is None:
+                df_out[col_name], self.bins = pd.qcut(
+                    df_out["distance_to_subway"], q=4, labels=False, duplicates='drop', retbins=True
+                )
+            else:
+                df_out[col_name] = pd.cut(
+                    df_out["distance_to_subway"], bins=self.bins, labels=False, include_lowest=True
+                )
         
         # 4. 交互特征
         if "store_area" in df_out.columns and "population_1km" in df_out.columns:
@@ -205,26 +211,37 @@ class FeatureEngineer:
         self,
         df: pd.DataFrame,
         target_col: str,
-        method: str = "correlation",
+        method: str = "mutual_info",
         top_k: int = 20
     ) -> List[str]:
         """
         特征选择
-        
+
         Args:
             df: 数据
             target_col: 目标列
-            method: 选择方法
+            method: 选择方法 (mutual_info, correlation)
             top_k: 保留的特征数量
-        
+
         Returns:
             选中的特征列表
         """
         feature_cols = [col for col in df.columns if col != target_col]
         numeric_features = [col for col in feature_cols if pd.api.types.is_numeric_dtype(df[col])]
-        
+
+        if not numeric_features:
+            return numeric_features[:top_k]
+
+        if method == "mutual_info":
+            X = df[numeric_features].fillna(0)
+            y = df[target_col].fillna(df[target_col].median())
+            mi = mutual_info_regression(X, y, random_state=42)
+            mi_series = pd.Series(mi, index=numeric_features).sort_values(ascending=False)
+            selected_features = mi_series.head(top_k).index.tolist()
+            logger.info(f"Selected top {len(selected_features)} features by mutual information")
+            return selected_features
+
         if method == "correlation":
-            # 基于相关性的特征选择
             correlations = []
             for col in numeric_features:
                 if df[col].isna().any():
@@ -232,14 +249,13 @@ class FeatureEngineer:
                 corr = df[col].corr(df[target_col])
                 if not np.isnan(corr):
                     correlations.append((col, abs(corr)))
-            
-            # 按相关性排序
+
             correlations.sort(key=lambda x: x[1], reverse=True)
             selected_features = [col for col, corr in correlations[:top_k]]
-            
+
             logger.info(f"Selected top {len(selected_features)} features by correlation")
             return selected_features
-        
+
         return numeric_features[:top_k]
     
     # ==================== 完整处理流程 ====================

@@ -35,14 +35,14 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Close, InfoFilled, CircleCheckFilled, WarningFilled, CircleCloseFilled } from '@element-plus/icons-vue'
-import { useWebSocket } from '@/utils/websocket'
+import { useWebSocket, type WebSocketMessage } from '@/utils/websocket'
 
 interface Notification {
   id: string
   title: string
   message: string
   level: 'info' | 'success' | 'warning' | 'error'
-  duration?: number
+  duration: number
 }
 
 const notifications = ref<Notification[]>([])
@@ -53,23 +53,22 @@ const addNotification = (notification: Omit<Notification, 'id'>) => {
   const newNotification: Notification = {
     id,
     ...notification,
-    duration: notification.duration ?? 5000
+    duration: notification.duration
   }
-  
+
   notifications.value.push(newNotification)
-  
-  // 自动移除
+
   if (newNotification.duration > 0) {
     setTimeout(() => {
       removeNotification(id)
     }, newNotification.duration)
   }
-  
+
   return id
 }
 
 const removeNotification = (id: string) => {
-  const index = notifications.value.findIndex(n => n.id === id)
+  const index = notifications.value.findIndex((n: Notification) => n.id === id)
   if (index > -1) {
     notifications.value.splice(index, 1)
   }
@@ -79,21 +78,20 @@ const clearAll = () => {
   notifications.value = []
 }
 
-// WebSocket 集成
-const { state, connect, disconnect, subscribe } = useWebSocket()
+const { connect, disconnect, subscribe } = useWebSocket()
 
 onMounted(async () => {
-  // 连接到 WebSocket
   try {
     await connect(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/v1/ws/notifications`)
-    
-    // 订阅通知频道
-    subscribe('notifications:*', (message) => {
+
+    subscribe('notifications:*', (message: WebSocketMessage) => {
       if (message.type === 'notification' || message.type === 'success' || message.type === 'warning' || message.type === 'error' || message.type === 'info') {
+        const data = message.data as { title?: string; content?: string; level?: string }
         addNotification({
-          title: message.data.title,
-          message: message.data.content,
-          level: message.data.level || 'info'
+          title: data.title || '',
+          message: data.content || '',
+          level: (data.level as Notification['level']) || 'info',
+          duration: 5000,
         })
       }
     })
@@ -106,19 +104,18 @@ onUnmounted(() => {
   disconnect()
 })
 
-// 导出给外部使用
 defineExpose({
   addNotification,
   removeNotification,
   clearAll,
-  success: (title: string, message: string) => 
-    addNotification({ title, message, level: 'success' }),
-  warning: (title: string, message: string) => 
-    addNotification({ title, message, level: 'warning' }),
-  error: (title: string, message: string) => 
-    addNotification({ title, message, level: 'error' }),
-  info: (title: string, message: string) => 
-    addNotification({ title, message, level: 'info' })
+  success: (title: string, message: string) =>
+    addNotification({ title, message, level: 'success', duration: 5000 }),
+  warning: (title: string, message: string) =>
+    addNotification({ title, message, level: 'warning', duration: 5000 }),
+  error: (title: string, message: string) =>
+    addNotification({ title, message, level: 'error', duration: 5000 }),
+  info: (title: string, message: string) =>
+    addNotification({ title, message, level: 'info', duration: 5000 })
 })
 </script>
 
@@ -204,7 +201,6 @@ defineExpose({
   padding: 4px;
 }
 
-/* 动画 */
 .notification-slide-enter-active,
 .notification-slide-leave-active {
   transition: all 0.3s ease;

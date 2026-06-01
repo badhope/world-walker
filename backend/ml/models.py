@@ -11,6 +11,8 @@ import logging
 from pathlib import Path
 import joblib
 
+from backend.utils.model_security import save_with_signature, load_with_signature
+
 # Scikit-learn models
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
@@ -131,25 +133,28 @@ class BaseModel(ABC):
             })
             self.model.fit(prophet_df)
         else:
+            self.scaler.fit(X)
+            X = self.scaler.transform(X)
             self.model.fit(X, y)
         
         self.is_trained = True
         return self
     
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        """预测"""
         if not self.is_trained:
             raise RuntimeError("Model not trained")
-        
+
         if self.name == 'prophet':
+            has_datetime_index = isinstance(X.index, pd.DatetimeIndex)
             prophet_df = pd.DataFrame({
-                'ds': X.index if isinstance(X.index, pd.DatetimeIndex)
+                'ds': X.index if has_datetime_index
                      else pd.date_range(start='2020-01-01', periods=len(X))
             })
             forecast = self.model.predict(prophet_df)
             return forecast['yhat'].values
         else:
-            return self.model.predict(X)
+            X_transformed = self.scaler.transform(X)
+            return self.model.predict(X_transformed)
     
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series,
                 cv: Optional[int] = None, X_train: Optional[pd.DataFrame] = None,
@@ -197,12 +202,12 @@ class BaseModel(ABC):
             'feature_names': self.feature_names,
             'scaler': self.scaler,
         }
-        joblib.dump(model_data, path)
+        save_with_signature(model_data, path)
         logger.info(f"Model saved to {path}")
     
     def load(self, path: str) -> 'BaseModel':
         """加载模型"""
-        model_data = joblib.load(path)
+        model_data = load_with_signature(path)
         self.model = model_data['model']
         self.feature_names = model_data['feature_names']
         self.scaler = model_data['scaler']
@@ -477,34 +482,25 @@ class KNNModel(BaseModel):
         }
 
 
-# 模型注册表
-MODEL_REGISTRY: Dict[str, BaseModel] = {
-    'linear_regression': LinearRegressionModel(),
-    'ridge': RidgeModel(),
-    'lasso': LassoModel(),
-    'random_forest': RandomForestModel(),
-    'gbdt': GBDTModel(),
-    'svr': SVRModel(),
-    'knn': KNNModel(),
-}
-
-if XGBOOST_AVAILABLE:
-    MODEL_REGISTRY['xgboost'] = XGBoostModel()
-
-if LIGHTGBM_AVAILABLE:
-    MODEL_REGISTRY['lightgbm'] = LightGBMModel()
-
-if PROPHET_AVAILABLE:
-    MODEL_REGISTRY['prophet'] = ProphetModel()
-
-
-def get_model(name: str) -> BaseModel:
-    """获取模型实例"""
-    if name not in MODEL_REGISTRY:
-        raise ValueError(f"Model {name} not available. Available models: {list(MODEL_REGISTRY.keys())}")
-    return MODEL_REGISTRY[name]
+def get_model_instance(model_name: str) -> BaseModel:
+    _model_classes = {
+        'linear_regression': LinearRegressionModel,
+        'random_forest': RandomForestModel,
+        'gbdt': GBDTModel,
+        'xgboost': XGBoostModel,
+        'lightgbm': LightGBMModel,
+        'svr': SVRModel,
+        'knn': KNNModel,
+        'prophet': ProphetModel,
+    }
+    cls = _model_classes.get(model_name)
+    if cls is None:
+        raise ValueError(f"Model {model_name} not available. Available models: {list(_model_classes.keys())}")
+    return cls()
 
 
 def get_available_models() -> List[str]:
-    """获取可用模型列表"""
-    return list(MODEL_REGISTRY.keys())
+    return [
+        'linear_regression', 'random_forest', 'gbdt',
+        'xgboost', 'lightgbm', 'svr', 'knn', 'prophet',
+    ]

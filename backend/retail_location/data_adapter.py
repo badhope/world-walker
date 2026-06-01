@@ -199,59 +199,51 @@ class RetailDataAdapter:
             样本 DataFrame
         """
         np.random.seed(random_seed)
-        
-        # 基础门店信息
+
+        rng = np.random.default_rng(random_seed)
+
         store_ids = [f"STORE_{i:03d}" for i in range(1, num_stores + 1)]
         store_names = [f"便利店 {i}号店" for i in range(1, num_stores + 1)]
         addresses = [f"上海市浦东新区某某路 {i}号" for i in range(1, num_stores + 1)]
-        
-        # GPS坐标（上海范围内）
-        latitudes = np.random.uniform(31.1, 31.3, num_stores)
-        longitudes = np.random.uniform(121.4, 121.6, num_stores)
-        
-        # 门店面积
-        store_areas = np.random.randint(40, 150, num_stores)
-        
-        # 位置特征
-        distance_to_subway = np.random.exponential(300, num_stores)
-        bus_stop_count = np.random.poisson(4, num_stores)
-        parking_count = np.random.poisson(30, num_stores)
-        is_main_street = np.random.choice([0, 1], num_stores, p=[0.4, 0.6])
-        business_types = np.random.choice(
+
+        latitudes = rng.uniform(31.1, 31.3, num_stores)
+        longitudes = rng.uniform(121.4, 121.6, num_stores)
+
+        store_areas = rng.integers(40, 150, num_stores)
+
+        distance_to_subway = rng.exponential(300, num_stores)
+        bus_stop_count = rng.poisson(4, num_stores)
+        parking_count = rng.poisson(30, num_stores)
+        is_main_street = rng.choice([0, 1], num_stores, p=[0.4, 0.6])
+        business_types = rng.choice(
             ["business_district", "residential", "mixed"],
             num_stores,
             p=[0.3, 0.4, 0.3]
         )
-        
-        # 人口特征
-        population_1km = np.random.randint(5000, 50000, num_stores)
-        population_2km = population_1km * np.random.uniform(2.5, 3.5, num_stores)
-        avg_age = np.random.normal(35, 5, num_stores)
-        young_ratio = np.random.beta(2, 3, num_stores)
-        avg_income = np.random.randint(60000, 150000, num_stores)
-        
-        # 竞争特征
-        competitor_count_1km = np.random.poisson(2, num_stores)
-        competitor_count_2km = competitor_count_1km + np.random.poisson(3, num_stores)
-        distance_to_competitor = np.random.exponential(400, num_stores)
-        
-        # 租金特征
-        rent_per_sqm = np.random.uniform(5, 20, num_stores)
-        regional_avg_rent = rent_per_sqm * np.random.uniform(0.8, 1.2, num_stores)
-        
-        # 目标变量：月均销售额（有业务逻辑的模拟）
-        # 销售额 = 基础销量 + 面积影响 + 人口影响 - 竞争影响 + 噪音
+
+        population_1km = rng.integers(5000, 50000, num_stores)
+        population_2km = population_1km * rng.uniform(2.5, 3.5, num_stores)
+        avg_age = rng.normal(35, 5, num_stores)
+        young_ratio = rng.beta(2, 3, num_stores)
+        avg_income = rng.integers(60000, 150000, num_stores)
+
+        competitor_count_1km = rng.poisson(2, num_stores)
+        competitor_count_2km = competitor_count_1km + rng.poisson(3, num_stores)
+        distance_to_competitor = rng.exponential(400, num_stores)
+
+        rent_per_sqm = rng.uniform(5, 20, num_stores)
+        regional_avg_rent = rent_per_sqm * rng.uniform(0.8, 1.2, num_stores)
+
         base_sales = 150000
         area_effect = store_areas * 500
         population_effect = np.log1p(population_1km) * 8000
         competition_effect = competitor_count_1km * 10000
         subway_effect = np.maximum(0, 50000 - distance_to_subway * 50)
-        noise = np.random.normal(0, 25000, num_stores)
-        
+        noise = rng.normal(0, 25000, num_stores)
+
         monthly_sales = base_sales + area_effect + population_effect - competition_effect + subway_effect + noise
-        monthly_sales = np.maximum(monthly_sales, 30000)  # 最低3万
-        
-        # 构造 DataFrame
+        monthly_sales = np.maximum(monthly_sales, 30000)
+
         data = {
             "store_id": store_ids,
             "store_name": store_names,
@@ -282,7 +274,7 @@ class RetailDataAdapter:
         # 随机引入一些缺失值，测试清洗能力
         for col in df.columns:
             if col not in ["store_id", "store_name", "monthly_sales"]:
-                mask = np.random.random(len(df)) < 0.05
+                mask = rng.random(len(df)) < 0.05
                 df.loc[mask, col] = np.nan
         
         return df

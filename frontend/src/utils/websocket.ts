@@ -1,12 +1,9 @@
-/**
- * WebSocket 服务 - 处理实时通信
- */
 import { ref, computed } from 'vue'
 
 export interface WebSocketMessage {
   type: string
   channel: string
-  data: any
+  data: unknown
   timestamp: string
   sender?: string
   target?: string
@@ -61,10 +58,9 @@ class WebSocketService {
 
     return new Promise((resolve, reject) => {
       try {
-        // 构建 WebSocket URL
         const wsUrl = new URL(url, window.location.origin)
         wsUrl.protocol = wsUrl.protocol.replace('http', 'ws')
-        
+
         if (userId) {
           wsUrl.searchParams.set('user_id', userId)
         }
@@ -76,10 +72,9 @@ class WebSocketService {
           this.connectionState.value.connected = true
           this.connectionState.value.lastError = null
           this.reconnectAttempts = 0
-          
-          // 启动心跳
+
           this.startHeartbeat()
-          
+
           resolve()
         }
 
@@ -102,8 +97,7 @@ class WebSocketService {
           console.log('WebSocket 连接已关闭')
           this.connectionState.value.connected = false
           this.stopHeartbeat()
-          
-          // 尝试重连
+
           if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++
             console.log(`尝试重连 (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`)
@@ -138,7 +132,6 @@ class WebSocketService {
   private handleMessage(message: WebSocketMessage) {
     console.log('收到消息:', message)
 
-    // 处理系统消息
     if (message.type === 'ping') {
       this.send({ type: 'ping', channel: 'system', data: {} })
       return
@@ -161,23 +154,21 @@ class WebSocketService {
 
     if (message.type === 'error') {
       console.error('WebSocket 错误消息:', message.data)
-      this.connectionState.value.lastError = message.data.error
+      this.connectionState.value.lastError = (message.data as Record<string, string>).error
     }
 
-    // 触发消息处理器
     const handlers = this.messageHandlers.get(message.channel)
     if (handlers) {
       handlers.forEach(handler => handler(message))
     }
 
-    // 触发全局处理器
     const globalHandlers = this.messageHandlers.get('*')
     if (globalHandlers) {
       globalHandlers.forEach(handler => handler(message))
     }
   }
 
-  send(message: { type: string; channel?: string; data?: any; target?: string }) {
+  send(message: { type: string; channel?: string; data?: unknown; target?: string }) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.warn('WebSocket 未连接，无法发送消息')
       return
@@ -193,7 +184,7 @@ class WebSocketService {
     this.ws.send(JSON.stringify(messageData))
   }
 
-  subscribe(channel: string, filters?: Record<string, any>) {
+  subscribe(channel: string, filters?: Record<string, unknown>) {
     this.send({
       type: 'subscribe',
       channel,
@@ -208,7 +199,7 @@ class WebSocketService {
     })
   }
 
-  broadcast(channel: string, data: any) {
+  broadcast(channel: string, data: unknown) {
     this.send({
       type: 'broadcast',
       channel,
@@ -235,7 +226,7 @@ class WebSocketService {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.send({ type: 'ping', channel: 'system', data: {} })
       }
-    }, 30000) // 30秒心跳
+    }, 30000)
   }
 
   private stopHeartbeat() {
@@ -246,10 +237,8 @@ class WebSocketService {
   }
 }
 
-// 创建单例
 export const wsService = new WebSocketService()
 
-// 导出 composable
 export function useWebSocket() {
   const subscribe = (channel: string, handler: (message: WebSocketMessage) => void) => {
     wsService.on(channel, handler)
@@ -263,7 +252,7 @@ export function useWebSocket() {
     disconnect: () => wsService.disconnect(),
     subscribe,
     unsubscribe: (channel: string) => wsService.unsubscribe(channel),
-    broadcast: (channel: string, data: any) => wsService.broadcast(channel, data),
-    send: (message: any) => wsService.send(message)
+    broadcast: (channel: string, data: unknown) => wsService.broadcast(channel, data),
+    send: (message: { type: string; channel?: string; data?: unknown; target?: string }) => wsService.send(message)
   }
 }

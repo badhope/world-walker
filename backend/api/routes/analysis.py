@@ -70,10 +70,8 @@ def enterprise_analysis_v2(request: AnalysisRequest):
         }
         
     except Exception as e:
-        import traceback
-        error_detail = f"{str(e)}\n{traceback.format_exc()}"
-        logger.error(f"企业端分析 v2 失败: {error_detail}")
-        raise HTTPException(status_code=500, detail=error_detail)
+        logger.exception(f"分析失败: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/enterprise/sample", summary="获取企业端示例数据")
@@ -163,7 +161,6 @@ def government_analysis(request: AnalysisRequest):
         return report
         
     except Exception as e:
-        import traceback
-        error_detail = f"{str(e)}\n{traceback.format_exc()}"
-        logger.error(f"政府端分析失败: {error_detail}")
-        raise HTTPException(status_code=500, detail=error_detail)
+        error_detail = f"{str(e)}"
+        logger.error(f"政府端分析失败: {error_detail}", exc_info=True)
+        raise HTTPException(status_code=500, detail="政府端分析失败，请稍后重试")

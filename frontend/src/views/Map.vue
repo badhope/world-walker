@@ -50,6 +50,7 @@
 import { ref, computed } from 'vue'
 import { useAnalysisStore } from '@/stores/analysis'
 import EChart from '@/components/charts/EChart.vue'
+import type { EChartsOption } from 'echarts'
 
 const store = useAnalysisStore()
 const currentIndicator = ref('output')
@@ -97,7 +98,7 @@ const mapChartOption = computed(() => ({
       data: regionData.value.map(r => ({ name: r.name, value: r.value })),
     },
   ],
-}))
+} as EChartsOption))
 
 // 趋势图表配置
 const trendChartData = ref({
@@ -123,7 +124,7 @@ const trendChartOption = computed(() => ({
     smooth: true,
     data: s.data,
   })),
-}))
+} as EChartsOption))
 </script>
 
 <style scoped>

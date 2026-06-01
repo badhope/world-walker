@@ -1,95 +1,208 @@
-// TypeScript 类型定义
-
-// 数据相关类型
-export interface BasicData {
-  region: string;
-  industry: string;
-  year: number;
-  data: {
-    macro_economy: {
-      gdp: number;
-      gdp_growth: number;
-      cpi: number;
-      pmi: number;
-    };
-    semiconductor_industry: {
-      output_value: number;
-      market_share: {
-        domestic: number;
-        global: number;
-      };
-    };
-  };
+export interface CityRanking {
+  city: string
+  value: number
 }
 
-export interface TrendData {
-  years: number[];
-  series: {
-    name: string;
-    data: number[];
-  }[];
+export interface CityRankingsResponse {
+  rankings: CityRanking[]
 }
 
-// 企业端分析结果类型
-export interface EnterpriseAnalysisResult {
-  land_cost: {
-    city_average: number;
-    city_average_yoy: number;
-  };
-  labor_cost: {
-    average_salary: number;
-    yoy_growth: number;
-  };
-  supply_chain: {
-    chain_coverage: {
-      upstream: number;
-      midstream: number;
-      downstream: number;
-    };
-    localization_rate: number;
-  };
-  comprehensive: {
-    shenzhen_index: number;
-    ranking: number;
-  };
-  recommendations: Array<{
-    type: string;
-    suggestion: string;
-  }>;
+export interface CitiesListResponse {
+  cities: string[]
 }
 
-// 政府端分析结果类型
-export interface GovernmentAnalysisResult {
-  fiscal_leverage: {
-    fiscal_revenue: number;
-    fiscal_expenditure: number;
-    total_support: number;
-    leverage_ratio: number;
-  };
-  industry_drive: {
-    employment_effect: {
-      total: number;
-    };
-  };
-  policy_suggestions: Array<{
-    priority: string;
-    title: string;
-    content: string;
-  }>;
+export interface CityHistoricalRecord {
+  year: number
+  [key: string]: unknown
 }
 
-// API 请求类型
-export interface AnalysisRequest {
-  region: string;
-  industry: string;
-  year: number;
+export interface CityHistoricalResponse {
+  historical_data: CityHistoricalRecord[]
 }
 
-// 图表相关类型
-export interface ChartData {
-  categories: string[];
-  series: {
-    name: string;
-    data: number[];
-  }[];
+export interface AggregationGroupItem {
+  city?: string
+  region?: string
+  group_key?: string
+  sum?: number
+  avg?: number
+  min?: number
+  max?: number
+  count?: number
+  city_count?: number
+  total?: number
+  metrics?: Record<string, number>
+}
+
+export interface AggregationResponse {
+  result: {
+    groups: AggregationGroupItem[]
+  }
+}
+
+export interface TimeSeriesValue {
+  city?: string
+  group_key?: string
+  year?: number | string
+  time?: number | string
+  value?: number
+  avg?: number
+}
+
+export interface TimeSeriesGroup {
+  city?: string
+  group_key?: string
+  values?: TimeSeriesValue[]
+}
+
+export interface TimeSeriesResponse {
+  time_series: {
+    groups?: TimeSeriesGroup[]
+  } | TimeSeriesValue[]
+}
+
+export interface EnterpriseCostDetails {
+  [key: string]: number
+}
+
+export interface EnterpriseSupplyDetails {
+  [key: string]: number
+}
+
+export interface EnterprisePolicyDetails {
+  [key: string]: number
+}
+
+export interface EnterpriseDetails {
+  cost_details?: EnterpriseCostDetails
+  supply_details?: EnterpriseSupplyDetails
+  policy_details?: EnterprisePolicyDetails
+}
+
+export interface EnterpriseMethodology {
+  scoring_basis?: string
+  weight_source?: string
+}
+
+export interface EnterpriseResult {
+  city?: string
+  business_cost_score?: number
+  supply_chain_score?: number
+  policy_benefit_score?: number
+  total_score?: number
+  details?: EnterpriseDetails
+  suggestions?: string[]
+  methodology?: EnterpriseMethodology
+}
+
+export interface FiscalLeverageData {
+  score?: number
+  revenue_efficiency?: number
+  expenditure_efficiency?: number
+}
+
+export interface IndustryDriveData {
+  score?: number
+  employment_contribution?: number
+  tax_contribution?: number
+}
+
+export interface GovernmentDataSection {
+  fiscal_leverage?: FiscalLeverageData
+  industry_drive?: IndustryDriveData
+}
+
+export interface GovernmentResult {
+  data?: GovernmentDataSection
+  note?: string
+  fiscal_leverage?: FiscalLeverageData
+  industry_drive?: IndustryDriveData
+}
+
+export interface CityInfo {
+  code: string
+  name: string
+  province?: string
+}
+
+export interface InteractiveCitiesResponse {
+  cities: CityInfo[]
+}
+
+export interface ExportResponseData {
+  file_content: string
+  file_name: string
+}
+
+// Table data types for DataManager
+export interface TableDataRow {
+  year: string
+  quarter?: string
+  region: string
+  indicator: string
+  value: number
+  unit: string
+  source: string
+  updateTime?: string
+  type?: string
+}
+
+export interface FilterForm {
+  type: string
+  region: string
+  years: string[]
+  keyword: string
+}
+
+export interface AggregationFormData {
+  groupBy: string[]
+  metrics: string[]
+  sortBy: string | null
+  sortOrder: string
+  limit: number
+}
+
+export interface UploadFormData {
+  format: string
+  validate: boolean
+}
+
+export interface ExportFormData {
+  format: string
+  filename: string
+  range: string
+}
+
+export interface CityCompareForm {
+  cities: string[]
+  year: string
+  indicators: string[]
+}
+
+export interface FilterFormData {
+  indicator: string
+  year: string
+  limit: number
+}
+
+export interface TimeSeriesDisplayItem {
+  city: string
+  year: number | string
+  value: number
+}
+
+export interface AggregationCityItem {
+  city: string
+  sum: number
+  avg: number
+  min: number
+  max: number
+  count: number
+}
+
+export interface AggregationRegionItem {
+  region: string
+  city_count: number
+  avg: number
+  total: number
 }

@@ -108,7 +108,7 @@ async def aggregate_data(request: AggregationRequest):
         
     except Exception as e:
         logger.error(f"聚合分析失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"聚合分析失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/compare", summary="城市对比分析")
@@ -226,7 +226,7 @@ async def time_series_analysis(request: TimeSeriesRequest):
         
     except Exception as e:
         logger.error(f"时间序列分析失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"时间序列分析失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/regional", summary="区域分析")
@@ -255,8 +255,7 @@ async def regional_analysis(request: RegionalRequest):
         
     except Exception as e:
         logger.error(f"区域分析失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"区域分析失败: {str(e)}")
-
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/correlation", summary="相关性分析")
 async def correlation_analysis(request: CorrelationRequest):
@@ -287,8 +286,7 @@ async def correlation_analysis(request: CorrelationRequest):
         
     except Exception as e:
         logger.error(f"相关性分析失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"相关性分析失败: {str(e)}")
-
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/rankings", summary="城市排名")
 async def get_city_rankings(
@@ -339,8 +337,7 @@ async def get_city_rankings(
         
     except Exception as e:
         logger.error(f"获取城市排名失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"获取城市排名失败: {str(e)}")
-
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/dashboard", summary="城市仪表盘")
 async def get_city_dashboard(city_code: str = Query(..., description="城市代码")):
@@ -407,8 +404,7 @@ async def get_city_dashboard(city_code: str = Query(..., description="城市代�
         raise
     except Exception as e:
         logger.error(f"获取城市仪表盘失败: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"获取城市仪表盘失败: {str(e)}")
-
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 def _generate_mock_city_data() -> List[Dict[str, Any]]:
     """生成模拟城市数据"""
@@ -435,15 +431,13 @@ def _generate_mock_city_data() -> List[Dict[str, Any]]:
     
     data = []
     
-    import random
-    random.seed(42)  # 保证数据一致性
-    
+    rng = random.Random(42)
+
     for city in cities:
         for indicator in indicators:
             for year in years:
                 base_value = indicator['base']
-                
-                # 根据城市调整基础值
+
                 if city['code'] == 'sz':
                     multiplier = 1.2
                 elif city['code'] == 'sh':
@@ -452,12 +446,11 @@ def _generate_mock_city_data() -> List[Dict[str, Any]]:
                     multiplier = 1.4
                 else:
                     multiplier = 1.0
-                
-                # 根据年份增长
+
                 year_multiplier = 1 + (year - 2020) * 0.05
-                
-                value = (base_value * multiplier * year_multiplier + 
-                        random.uniform(-indicator['variance'], indicator['variance']))
+
+                value = (base_value * multiplier * year_multiplier +
+                        rng.uniform(-indicator['variance'], indicator['variance']))
                 
                 data.append({
                     'city': city['name'],

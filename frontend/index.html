@@ -3,6 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="区域产业经济分析平台 - 提供企业选址评估、政府产业分析、多城市横向对比、GDP预测等智能化决策支持">
+<meta name="keywords" content="产业经济,选址分析,GDP预测,城市对比,投资决策">
+<meta name="author" content="National Stats">
+<meta name="theme-color" content="#2563eb">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="区域产业经济分析平台">
+<meta property="og:description" content="企业选址·政府招商·城市对比·GDP预测 一站式数据智能分析">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:site_name" content="National Stats">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="区域产业经济分析平台">
+<meta name="twitter:description" content="一站式数据智能分析">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563eb'/%3E%3Ctext x='50' y='65' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EN%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563eb'/%3E%3Ctext x='50' y='65' font-size='52' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EN%3C/text%3E%3C/svg%3E">
 <title>区域产业经济分析平台</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
@@ -635,23 +650,23 @@ tailwind.config = {
 
   <div class="header-gradient-bar"></div>
 
-  <nav class="tab-nav">
-    <button class="tab-btn active" data-tab="dashboard">
-      <span class="tab-icon">📊</span> 总览仪表盘 <span class="tab-dot"></span>
+  <nav class="tab-nav" role="tablist" aria-label="主导航">
+    <button type="button" tabindex="0" role="tab" aria-selected="true" aria-controls="tab-dashboard" class="tab-btn active" data-tab="dashboard">
+      <span class="tab-icon" aria-hidden="true">📊</span> 总览仪表盘 <span class="tab-dot" aria-hidden="true"></span>
     </button>
-    <button class="tab-btn" data-tab="enterprise">
-      <span class="tab-icon">🏢</span> 企业选址分析 <span class="tab-dot"></span>
+    <button type="button" tabindex="0" role="tab" aria-selected="false" aria-controls="tab-enterprise" class="tab-btn" data-tab="enterprise">
+      <span class="tab-icon" aria-hidden="true">🏢</span> 企业选址分析 <span class="tab-dot" aria-hidden="true"></span>
     </button>
-    <button class="tab-btn" data-tab="government">
-      <span class="tab-icon">🏛️</span> 政府产业分析 <span class="tab-dot"></span>
+    <button type="button" tabindex="0" role="tab" aria-selected="false" aria-controls="tab-government" class="tab-btn" data-tab="government">
+      <span class="tab-icon" aria-hidden="true">🏛️</span> 政府产业分析 <span class="tab-dot" aria-hidden="true"></span>
     </button>
-    <button class="tab-btn" data-tab="cities">
-      <span class="tab-icon">🏙️</span> 城市数据对比 <span class="tab-dot"></span>
+    <button type="button" tabindex="0" role="tab" aria-selected="false" aria-controls="tab-cities" class="tab-btn" data-tab="cities">
+      <span class="tab-icon" aria-hidden="true">🏙️</span> 城市数据对比 <span class="tab-dot" aria-hidden="true"></span>
     </button>
   </nav>
 
   <!-- ============ TAB: Dashboard ============ -->
-  <section id="tab-dashboard" class="tab-panel">
+  <section id="tab-dashboard" class="tab-panel" role="tabpanel" aria-labelledby="tab-dashboard-btn">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 grid-4">
       <div class="stat-card">
         <div class="stat-icon blue">🏙️</div>
@@ -726,8 +741,9 @@ tailwind.config = {
           </div>
           <div class="card-body">
             <label class="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">目标城市</label>
-            <select id="entCitySelect" class="select"></select>
-            <button id="btnEntAnalyze" class="btn btn-primary w-full mt-5" onclick="runEnterpriseAnalysis()">
+            <label for="entCitySelect" class="block text-sm font-semibold text-slate-700 mb-2">选择分析城市</label>
+            <select id="entCitySelect" class="select" aria-label="企业分析城市选择"></select>
+            <button id="btnEntAnalyze" type="button" class="btn btn-primary w-full mt-5" onclick="runEnterpriseAnalysis()" aria-label="开始企业选址分析">
               🔍 开始选址分析
             </button>
           </div>
@@ -776,7 +792,7 @@ tailwind.config = {
   </section>
 
   <!-- ============ TAB: Government ============ -->
-  <section id="tab-government" class="tab-panel hidden">
+  <section id="tab-government" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-government-btn">
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 grid-2">
       <div class="lg:col-span-1 space-y-4">
         <div class="card">
@@ -785,9 +801,9 @@ tailwind.config = {
             <h3>分析参数配置</h3>
           </div>
           <div class="card-body">
-            <label class="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">目标城市</label>
-            <select id="govCitySelect" class="select"></select>
-            <button class="btn btn-primary w-full mt-5" onclick="runGovernmentAnalysis()">
+            <label for="govCitySelect" class="block text-sm font-semibold text-slate-700 mb-2">选择分析城市</label>
+            <select id="govCitySelect" class="select" aria-label="政府分析城市选择"></select>
+            <button type="button" class="btn btn-primary w-full mt-5" onclick="runGovernmentAnalysis()" aria-label="运行政府产业分析">
               📈 运行产业分析
             </button>
           </div>
@@ -821,16 +837,16 @@ tailwind.config = {
   </section>
 
   <!-- ============ TAB: City Comparison ============ -->
-  <section id="tab-cities" class="tab-panel hidden">
+  <section id="tab-cities" class="tab-panel hidden" role="tabpanel" aria-labelledby="tab-cities-btn">
     <div class="card" style="margin-bottom:20px;">
       <div class="card-body" style="padding:16px 20px;">
         <div class="flex flex-wrap items-center gap-3">
           <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">对比城市</span>
           <div id="cityCheckboxes" class="flex flex-wrap gap-2"></div>
           <div class="flex gap-2" style="margin-left:auto;">
-            <button class="btn btn-sm btn-secondary" onclick="toggleAllCities(true)">✓ 全选</button>
-            <button class="btn btn-sm btn-secondary" onclick="toggleAllCities(false)">✕ 清空</button>
-            <button class="btn btn-sm btn-primary" onclick="runCityComparison()">🔍 对比分析</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllCities(true)" aria-label="全选所有城市">✓ 全选</button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllCities(false)" aria-label="清空所有城市选择">✕ 清空</button>
+            <button type="button" class="btn btn-sm btn-primary" onclick="runCityComparison()" aria-label="开始城市对比分析">🔍 对比分析</button>
           </div>
         </div>
       </div>
@@ -919,6 +935,40 @@ function apiPost(path, body, timeoutMs) {
   }).finally(function(){ clearTimeout(timer); });
 }
 
+// ==================== HTML 转义工具 ====================
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ==================== Global Error Handlers ====================
+window.addEventListener('error', function(e){
+  try {
+    console.error('[GlobalError]', e.message, e.filename, e.lineno);
+    if (typeof toast === 'function') {
+      toast('页面错误: ' + (e.message || '未知错误'), 'error');
+    }
+  } catch(_){}
+});
+window.addEventListener('unhandledrejection', function(e){
+  try {
+    var msg = (e.reason && (e.reason.message || e.reason.toString())) || '未知Promise错误';
+    console.error('[UnhandledRejection]', msg);
+    if (typeof toast === 'function') {
+      toast('异步操作失败: ' + msg, 'error');
+    }
+  } catch(_){}
+});
+// ECharts 错误降级
+window.addEventListener('echarts:initError', function(){
+  if (typeof toast === 'function') toast('图表加载失败', 'warning');
+});
+
 // ==================== Toast ====================
 function toast(msg, type) {
   type = type || 'info';
@@ -990,11 +1040,11 @@ function init() {
 }
 
 function populateCitySelects(cityList) {
-  var options = cityList.map(function(c){ return '<option value="'+c+'">'+c+'</option>'; }).join('');
+  var options = cityList.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('');
   document.getElementById('entCitySelect').innerHTML = options;
   document.getElementById('govCitySelect').innerHTML = options;
   var checkboxes = cityList.map(function(c){
-    return '<label class="checkbox-pill checked"><input type="checkbox" value="'+c+'" class="city-cb" checked onchange="this.parentElement.classList.toggle(\'checked\',this.checked)">'+c+'</label>';
+    return '<label class="checkbox-pill checked"><input type="checkbox" value="'+esc(c)+'" class="city-cb" checked aria-label="选择城市 '+esc(c)+'" onchange="this.parentElement.classList.toggle(\'checked\',this.checked)">'+esc(c)+'</label>';
   }).join('');
   document.getElementById('cityCheckboxes').innerHTML = checkboxes;
 }
@@ -1149,6 +1199,9 @@ function loadIndustryOverview(cityList) {
       };
     });
     chart.setOption({
+      animation: true,
+      animationDuration: 800,
+      animationEasing: 'cubicOut',
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
       legend: { bottom: 0, textStyle: { fontSize: 11 }, itemWidth: 12, itemHeight: 12 },
       grid: { left: 10, right: 10, bottom: 50, top: 15, containLabel: true },
@@ -1206,9 +1259,29 @@ function runEnterpriseAnalysis() {
       { l:'供应商数', v:fmt(supplyD['供应商数量'],'--'), sub:'家' },
       { l:'减税降费', v:fmt(policyD['减税降费'],'--'), sub:'%' },
     ];
-    document.getElementById('entDetails').innerHTML = items.map(function(d){
-      return '<div class="detail-item"><div class="detail-label">'+d.l+'</div><div class="'+d.cls+'">'+d.v+(d.sub?' <span style="font-size:10px;color:#94a3b8;font-weight:400">'+d.sub+'</span>':'')+'</div></div>';
-    }).join('');
+    var entDetails = document.getElementById('entDetails');
+    entDetails.textContent = '';
+    items.forEach(function(d){
+      var item = document.createElement('div');
+      item.className = 'detail-item';
+      var label = document.createElement('div');
+      label.className = 'detail-label';
+      label.textContent = d.l;
+      var val = document.createElement('div');
+      val.className = d.cls || 'detail-value';
+      val.textContent = d.v;
+      if (d.sub) {
+        var sp = document.createElement('span');
+        sp.style.fontSize = '10px';
+        sp.style.color = '#94a3b8';
+        sp.style.fontWeight = '400';
+        sp.textContent = ' ' + d.sub;
+        val.appendChild(sp);
+      }
+      item.appendChild(label);
+      item.appendChild(val);
+      entDetails.appendChild(item);
+    });
 
     try { var old = echarts.getInstanceByDom(document.getElementById('chartEntRadar')); if (old) old.dispose(); } catch(_){}
     var radar = echarts.init(document.getElementById('chartEntRadar'));
@@ -1323,16 +1396,46 @@ function runGovernmentAnalysis() {
       { l:'高技术产值占比', v:fmt(latest.industry_high_tech_ratio,'--'), sub:'%' },
       { l:'预测方法', v:forecastResp.forecast_method||'AutoARIMA', sub:'', cls:'badge badge-purple' },
     ];
-    document.getElementById('govDetails').innerHTML = items.map(function(d){
+    var govDetails = document.getElementById('govDetails');
+    govDetails.textContent = '';
+    items.forEach(function(d){
+      var item = document.createElement('div');
+      item.className = 'detail-item';
+      var label = document.createElement('div');
+      label.className = 'detail-label';
+      label.textContent = d.l;
+      var val;
       if (d.cls) {
-        return '<div class="detail-item"><div class="detail-label">'+d.l+'</div><span class="'+d.cls+'">'+d.v+'</span></div>';
+        val = document.createElement('span');
+        val.className = d.cls;
+        val.textContent = d.v;
+      } else {
+        val = document.createElement('div');
+        val.className = 'detail-value';
+        val.textContent = d.v;
+        if (d.sub) {
+          var sp = document.createElement('span');
+          sp.style.fontSize = '10px';
+          sp.style.color = '#94a3b8';
+          sp.style.fontWeight = '400';
+          sp.textContent = ' ' + d.sub;
+          val.appendChild(sp);
+        }
       }
-      return '<div class="detail-item"><div class="detail-label">'+d.l+'</div><div class="detail-value">'+d.v+(d.sub?' <span style="font-size:10px;color:#94a3b8;font-weight:400">'+d.sub+'</span>':'')+'</div></div>';
-    }).join('');
+      item.appendChild(label);
+      item.appendChild(val);
+      govDetails.appendChild(item);
+    });
 
     toast(city + ' 政府产业分析完成', 'success');
   }).catch(function(e){
-    document.getElementById('govDetails').innerHTML = '<div class="col-span-full" style="text-align:center;color:#dc2626;font-size:13px;padding:24px;">❌ 分析失败: ' + e.message + '</div>';
+    var errBox = document.getElementById('govDetails');
+    errBox.textContent = '';
+    var div = document.createElement('div');
+    div.className = 'col-span-full';
+    div.style.cssText = 'text-align:center;color:#dc2626;font-size:13px;padding:24px;';
+    div.textContent = '❌ 分析失败: ' + e.message;
+    errBox.appendChild(div);
     toast('分析失败: ' + e.message, 'error');
   });
 }
@@ -1428,7 +1531,6 @@ function runCityComparison() {
       }]
     });
 
-    var tableHead = '<tr><th>指标</th>' + selected.map(function(c){ return '<th>'+c+'</th>'; }).join('') + '</tr>';
     var fields = [
       { key:'land_price', label:'土地价格', unit:'元/㎡', type:'price' },
       { key:'salary_level', label:'平均工资', unit:'元/月', type:'salary' },
@@ -1439,21 +1541,54 @@ function runCityComparison() {
       { key:'financing_cost', label:'融资成本', unit:'%', type:'pct' },
     ];
 
-    var colorMap = ['#3b82f6','#8b5cf6','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16'];
-    var tableBody = fields.map(function(f){
-      return '<tr>' +
-        '<td style="font-weight:600;color:#475569;">'+f.label+'</td>' +
-        detailResults.map(function(r){
-          var v = r.data[f.key];
-          if (v !== undefined && v !== null) {
-            return '<td><span style="font-weight:700;">'+v+'</span> <span style="font-size:10px;color:#94a3b8;">'+f.unit+'</span></td>';
-          }
-          return '<td><span style="color:#94a3b8;">--</span></td>';
-        }).join('') +
-      '</tr>';
-    }).join('');
+    var compareTable = document.getElementById('compareTable');
+    compareTable.textContent = '';
+    var thead = document.createElement('thead');
+    var headRow = document.createElement('tr');
+    var th0 = document.createElement('th');
+    th0.textContent = '指标';
+    headRow.appendChild(th0);
+    selected.forEach(function(c){
+      var th = document.createElement('th');
+      th.textContent = c;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    compareTable.appendChild(thead);
 
-    document.getElementById('compareTable').innerHTML = '<thead>'+tableHead+'</thead><tbody>'+tableBody+'</tbody>';
+    var tbody = document.createElement('tbody');
+    fields.forEach(function(f){
+      var tr = document.createElement('tr');
+      var labelTd = document.createElement('td');
+      labelTd.style.fontWeight = '600';
+      labelTd.style.color = '#475569';
+      labelTd.textContent = f.label;
+      tr.appendChild(labelTd);
+      detailResults.forEach(function(r){
+        var td = document.createElement('td');
+        var v = r.data[f.key];
+        if (v !== undefined && v !== null) {
+          var num = document.createElement('span');
+          num.style.fontWeight = '700';
+          num.textContent = String(v);
+          td.appendChild(num);
+          td.appendChild(document.createTextNode(' '));
+          var unit = document.createElement('span');
+          unit.style.fontSize = '10px';
+          unit.style.color = '#94a3b8';
+          unit.textContent = f.unit;
+          td.appendChild(unit);
+        } else {
+          var none = document.createElement('span');
+          none.style.color = '#94a3b8';
+          none.textContent = '--';
+          td.appendChild(none);
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    compareTable.appendChild(tbody);
     document.getElementById('compareEmpty').style.display = 'none';
     toast(selected.length + ' 个城市对比分析完成', 'success');
   }).catch(function(e){

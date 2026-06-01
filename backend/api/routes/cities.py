@@ -1,7 +1,7 @@
 """
 城市数据 API 路由 - 多城市数据聚合和对比分析
 """
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, HTTPException, Query, Body, Request
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -114,50 +114,93 @@ async def aggregate_data(request: AggregationRequest):
 
 
 @router.post("/compare", summary="城市对比分析")
-async def compare_cities(request: ComparisonRequest):
+async def compare_cities(request: Request):
     """
     城市对比分析
-    
+
     对比多个城市在指定指标上的表现
+
+    兼容两种请求体格式：
+    1. 完整格式: {"city_codes":[...], "indicators":[...], "year_start":2020, "year_end":2025}
+    2. 简单数组: ["深圳", "北京", "广州"]  → 自动使用gdp指标和2020-2025年
     """
     try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    if isinstance(body, list):
+        request_city_codes = [str(x) for x in body]
+        request_indicators = ['gdp']
+        request_year_start = 2020
+        request_year_end = 2025
+    else:
+        request_city_codes = body.get('city_codes', [])
+        request_indicators = body.get('indicators', ['gdp'])
+        request_year_start = int(body.get('year_start', 2020))
+        request_year_end = int(body.get('year_end', 2025))
+
+    if not request_city_codes:
+        raise HTTPException(status_code=400, detail="city_codes 不能为空")
+
+    try:
         data = []
-        for orig_code in request.city_codes:
+        for orig_code in request_city_codes:
             city_code = _resolve_city_code(orig_code)
             city_config = city_manager.get_city(city_code)
+
             if not city_config:
+                mock_data = _generate_mock_city_data()
+                for item in mock_data:
+                    if item.get('city') == orig_code and item.get('indicator') in request_indicators:
+                        if request_year_start <= item.get('year', 0) <= request_year_end:
+                            data.append(item)
                 continue
-            
+
             city_data = city_manager.get_city_data(city_code)
-            
+
             for item in city_data:
-                if request.year_start <= item.year <= request.year_end:
-                    if item.indicators.get(request.indicators):
+                if request_year_start <= item.year <= request_year_end:
+                    if item.indicators.get(request_indicators[0]):
                         data.append({
                             'city': city_config.name,
                             'city_code': city_code,
-                            'indicator': request.indicators[0],
-                            'value': item.indicators.get(request.indicators[0]),
+                            'indicator': request_indicators[0],
+                            'value': item.indicators.get(request_indicators[0]),
                             'year': item.year
                         })
-        
+
         if not data:
             data = _generate_mock_city_data()
-            resolved_codes = [_resolve_city_code(c) for c in request.city_codes]
+            resolved_codes = [_resolve_city_code(c) for c in request_city_codes]
             data = [
-                item for item in data 
+                item for item in data
                 if item.get('city_code') in resolved_codes
-                and item.get('indicator') in request.indicators
+                or item.get('city') in request_city_codes
             ]
-        
-        # 执行对比分析
+            data = [
+                item for item in data
+                if item.get('indicator') in request_indicators
+                and request_year_start <= item.get('year', 0) <= request_year_end
+            ]
+
+        if not data:
+            return {
+                'success': True,
+                'comparison': {
+                    'cities': [{'name': c, 'values': {}, 'rank': 0} for c in request_city_codes],
+                    'rankings': {},
+                    'insights': ['暂无对比数据']
+                }
+            }
+
         result = city_aggregator.compare_cities(
-            data, 
+            data,
             city_field='city',
             indicator_field='indicator',
             value_field='value'
         )
-        
+
         return {
             'success': True,
             'comparison': {
@@ -166,7 +209,9 @@ async def compare_cities(request: ComparisonRequest):
                 'insights': result.insights
             }
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"城市对比分析失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"城市对比分析失败: {str(e)}")
@@ -218,17 +263,28 @@ async def time_series_analysis(request: TimeSeriesRequest):
             value_field='value',
             group_by=request.group_by or ['city']
         )
-        
-        if isinstance(result, dict) and not any(isinstance(k, int) for k in result.keys()):
-            groups = list(result.values()) if result else []
-            return {
-                'success': True,
-                'time_series': {'groups': groups}
-            }
-        
+
+        groups_list = []
+        if isinstance(result, dict):
+            for key, series in result.items():
+                if not isinstance(series, dict):
+                    continue
+                groups_val = series.get('groups')
+                if isinstance(groups_val, list) and groups_val:
+                    name = str(groups_val[0])
+                else:
+                    name = str(key)
+                groups_list.append({
+                    'groups': [name],
+                    'city': name,
+                    'time_points': series.get('time_points', []),
+                    'values': series.get('values', []),
+                    'trend': series.get('trend', [])
+                })
+
         return {
             'success': True,
-            'time_series': result
+            'time_series': {'groups': groups_list}
         }
         
     except Exception as e:

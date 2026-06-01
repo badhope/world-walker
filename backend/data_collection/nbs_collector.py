@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
 import re
+import concurrent.futures
 try:
     import akshare as ak
 except ImportError:
@@ -15,6 +16,15 @@ from backend.data_collection.base_collector import BaseCollector
 from config import config_loader
 
 logger = logging.getLogger(__name__)
+
+
+def _call_with_timeout(func, timeout=30, *args, **kwargs):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            raise TimeoutError(f"调用超时 ({timeout}s): {func.__name__}")
 
 
 class NBSCollector(BaseCollector):
@@ -58,7 +68,7 @@ class NBSCollector(BaseCollector):
     def get_gdp(self) -> List[Dict[str, Any]]:
         """获取 GDP 数据"""
         try:
-            df = ak.macro_china_gdp()
+            df = _call_with_timeout(ak.macro_china_gdp, timeout=30)
             results = []
             
             for _, row in df.iterrows():
@@ -141,7 +151,7 @@ class NBSCollector(BaseCollector):
     def get_cpi(self) -> List[Dict[str, Any]]:
         """获取 CPI 数据"""
         try:
-            df = ak.macro_china_cpi_yearly()
+            df = _call_with_timeout(ak.macro_china_cpi_yearly, timeout=30)
             results = []
             
             for _, row in df.iterrows():
@@ -177,7 +187,7 @@ class NBSCollector(BaseCollector):
     def get_pmi(self) -> List[Dict[str, Any]]:
         """获取 PMI 数据"""
         try:
-            df = ak.macro_china_pmi_yearly()
+            df = _call_with_timeout(ak.macro_china_pmi_yearly, timeout=30)
             results = []
             
             for _, row in df.iterrows():
@@ -221,7 +231,7 @@ class NBSCollector(BaseCollector):
 
     def _fetch_fiscal_revenue_from_akshare(self) -> List[Dict[str, Any]]:
         try:
-            df = ak.macro_china_gdp()
+            df = _call_with_timeout(ak.macro_china_gdp, timeout=30)
             results = []
             region_config = config_loader.get_region_config()
             region_name = region_config.name if region_config else '深圳'
@@ -303,7 +313,7 @@ class NBSCollector(BaseCollector):
 
     def _fetch_industrial_output_from_akshare(self) -> List[Dict[str, Any]]:
         try:
-            df = ak.macro_china_gdp()
+            df = _call_with_timeout(ak.macro_china_gdp, timeout=30)
             results = []
             industry_config = config_loader.get_industry_config()
             industry_name = industry_config.name if industry_config else '半导体'

@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw, type RouteLocationNormalized, type NavigationGuardNext } from 'vue-router'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -48,7 +48,7 @@ const routes: Array<RouteRecordRaw> = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(_to: RouteLocationNormalized, _from: RouteLocationNormalized, savedPosition) {
     if (savedPosition) {
       return savedPosition
     } else {
@@ -57,7 +57,7 @@ const router = createRouter({
   },
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to: RouteLocationNormalized, _from: RouteLocationNormalized, next: NavigationGuardNext) => {
   document.title = to.meta.title ? `${to.meta.title} - 区域产业经济分析平台` : '区域产业经济分析平台'
   next()
 })

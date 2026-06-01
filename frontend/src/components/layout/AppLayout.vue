@@ -16,11 +16,11 @@
         </router-link>
       </nav>
     </header>
-    
+
     <main class="app-main">
       <router-view />
     </main>
-    
+
     <footer class="app-footer">
       <p>© 2025 区域产业经济分析平台 | All Rights Reserved.</p>
     </footer>
@@ -28,12 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
-
-const route = useRoute()
-
-const navItems = [
+const navItems: { name: string; path: string }[] = [
   { name: '🏠 首页', path: '/' },
   { name: '🏢 企业端', path: '/enterprise' },
   { name: '🏛️ 政府端', path: '/government' },
@@ -42,8 +37,6 @@ const navItems = [
   { name: '🏙️ 城市对比', path: '/cities' },
   { name: '🔧 测试', path: '/test' },
 ]
-
-const activeMenu = computed(() => route.path)
 </script>
 
 <style scoped>
@@ -127,16 +120,15 @@ const activeMenu = computed(() => route.path)
   font-size: 14px;
 }
 
-/* 响应式设计 */
 @media (max-width: 1200px) {
   .app-header {
     padding: 0 16px;
   }
-  
+
   .header-nav {
     gap: 4px;
   }
-  
+
   .nav-item {
     padding: 6px 10px;
     font-size: 13px;
@@ -150,17 +142,17 @@ const activeMenu = computed(() => route.path)
     padding: 12px 16px;
     gap: 12px;
   }
-  
+
   .header-left .logo {
     font-size: 16px;
     text-align: center;
   }
-  
+
   .header-nav {
     width: 100%;
     justify-content: center;
   }
-  
+
   .nav-item {
     font-size: 12px;
     padding: 6px 8px;

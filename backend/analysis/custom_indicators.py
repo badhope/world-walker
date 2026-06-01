@@ -6,10 +6,49 @@ from typing import Dict, Any, List, Callable, Optional, Union
 import numpy as np
 import pandas as pd
 import logging
+import ast
+import operator as op
+import math
 from dataclasses import dataclass
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+_SAFE_OPS = {
+    ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
+    ast.Div: op.truediv, ast.Pow: op.pow, ast.USub: op.neg,
+}
+
+_SAFE_FUNCS = {
+    'sin': math.sin, 'cos': math.cos, 'tan': math.tan,
+    'sqrt': math.sqrt, 'log': math.log, 'exp': math.exp,
+    'abs': abs, 'round': round, 'max': max, 'min': min,
+    'sum': sum,
+}
+
+
+def _safe_eval_math(expr: str) -> float:
+    try:
+        import numexpr
+        return float(numexpr.evaluate(expr))
+    except ImportError:
+        pass
+    tree = ast.parse(expr, mode='eval')
+    return _eval_node_math(tree.body)
+
+
+def _eval_node_math(node):
+    if isinstance(node, ast.Constant):
+        return node.value
+    elif isinstance(node, ast.BinOp):
+        return _SAFE_OPS[type(node.op)](_eval_node_math(node.left), _eval_node_math(node.right))
+    elif isinstance(node, ast.UnaryOp):
+        return _SAFE_OPS[type(node.op)](_eval_node_math(node.operand))
+    elif isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Name) and node.func.id in _SAFE_FUNCS:
+            args = [_eval_node_math(a) for a in node.args]
+            return _SAFE_FUNCS[node.func.id](*args)
+    raise ValueError(f"Unsafe expression: {type(node)}")
 
 
 class CalculationStatus(Enum):
@@ -327,19 +366,12 @@ class CustomIndicatorEngine:
     
     def _evaluate_expression(self, expr: str) -> float:
         """评估数学表达式"""
-        # 处理平方和
         expr = expr.replace("**", "**")
         
-        # 处理Σ求和 (简化版)
         if "Σ(" in expr:
             expr = self._handle_sum(expr)
         
-        # 安全评估（只允许基本数学运算）
-        allowed_chars = set("0123456789.+-*/()** ")
-        if all(c in allowed_chars or c.isalnum() for c in expr):
-            return eval(expr)
-        else:
-            raise ValueError(f"表达式包含非法字符: {expr}")
+        return _safe_eval_math(expr)
     
     def _handle_sum(self, expr: str) -> str:
         """处理求和表达式"""

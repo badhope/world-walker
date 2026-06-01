@@ -1,6 +1,7 @@
 """
 模型训练器 - 支持多模型对比、自动调优、集成学习
 """
+import os
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Any, Optional, Tuple
@@ -10,8 +11,10 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split, TimeSeriesSplit, GridSearchCV, RandomizedSearchCV
 import joblib
 
+from backend.utils.model_security import save_with_signature, load_with_signature
+
 from .models import (
-    BaseModel, get_model, get_available_models,
+    BaseModel, get_model_instance,
     ModelMetrics, ModelResult
 )
 
@@ -100,7 +103,7 @@ class ModelTrainer:
         """训练单个模型"""
         logger.info(f"Training model: {model_name}")
         
-        model = get_model(model_name)
+        model = get_model_instance(model_name)
         
         if self.config.hyperparameter_tuning:
             model = self._tune_hyperparameters(model)
@@ -149,26 +152,25 @@ class ModelTrainer:
         logger.info(f"Tuning hyperparameters for {model.name}")
         
         param_grid = model.get_param_grid()
+        n_jobs = min(os.cpu_count() or 1, 4)
         
         if self.config.tuning_method == 'grid':
-            # 网格搜索 - 为了速度，我们用较少的参数
             search = GridSearchCV(
                 model.build_model(),
-                param_grid={k: v[:2] for k, v in param_grid.items()},  # 只取前两个值
+                param_grid=param_grid,
                 cv=self.config.cv_folds,
                 scoring=self.config.scoring,
-                n_jobs=-1,
+                n_jobs=n_jobs,
                 verbose=1,
             )
         else:
-            # 随机搜索
             search = RandomizedSearchCV(
                 model.build_model(),
                 param_distributions=param_grid,
                 n_iter=self.config.tuning_iterations,
                 cv=self.config.cv_folds,
                 scoring=self.config.scoring,
-                n_jobs=-1,
+                n_jobs=n_jobs,
                 random_state=self.config.random_state,
                 verbose=1,
             )
@@ -332,7 +334,7 @@ class AutoML:
 
 def load_model(path: str) -> BaseModel:
     """加载已保存的模型"""
-    model = joblib.load(path)
+    model = load_with_signature(path)
     return model
 
 
@@ -344,4 +346,4 @@ def save_result(result: TrainingResult, path: str):
         'all_metrics': {r.model_name: r.metrics.to_dict() for r in result.all_results},
         'config': result.config,
     }
-    joblib.dump(data, path)
+    save_with_signature(data, path)

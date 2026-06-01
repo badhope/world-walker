@@ -114,6 +114,7 @@ import { computed, onMounted } from 'vue'
 import { useAnalysisStore } from '@/stores/analysis'
 import KpiCard from '@/components/widgets/KpiCard.vue'
 import EChart from '@/components/charts/EChart.vue'
+import type { EChartsOption } from 'echarts'
 
 const store = useAnalysisStore()
 
@@ -141,7 +142,7 @@ const fiscalChartOption = computed(() => {
         type: 'bar',
         data: values,
         itemStyle: {
-          color: (params: any) => {
+          color: (params: { dataIndex: number }) => {
             const colors = ['#764ba2', '#667eea', '#a855f7']
             return colors[params.dataIndex % colors.length]
           },
@@ -149,7 +150,7 @@ const fiscalChartOption = computed(() => {
         label: { show: true, position: 'top', formatter: '{c}' },
       },
     ],
-  }
+  } as EChartsOption
 })
 
 const industryChartOption = computed(() => {
@@ -176,7 +177,7 @@ const industryChartOption = computed(() => {
         ],
       },
     ],
-  }
+  } as EChartsOption
 })
 
 const onCityChange = () => {

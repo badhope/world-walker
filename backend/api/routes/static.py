@@ -22,7 +22,7 @@ async def get_chart(filename: str):
         else:
             raise HTTPException(status_code=404, detail="图表未找到")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取图表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/charts/list")
 async def list_charts():
@@ -37,4 +37,4 @@ async def list_charts():
                 })
         return {"status": "success", "charts": charts}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取图表列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

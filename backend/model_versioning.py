@@ -9,6 +9,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 
+from backend.utils.model_security import save_with_signature, load_with_signature
+
 logger = logging.getLogger(__name__)
 
 class ModelVersionManager:
@@ -32,9 +34,10 @@ class ModelVersionManager:
         return []
     
     def _save_versions(self):
-        """保存版本列表"""
-        with open(self.versions_file, 'w', encoding='utf-8') as f:
+        tmp_file = self.versions_file.with_suffix('.json.tmp')
+        with open(tmp_file, 'w', encoding='utf-8') as f:
             json.dump(self.versions, f, ensure_ascii=False, indent=2, default=str)
+        os.replace(tmp_file, self.versions_file)
     
     def save_version(
         self,
@@ -57,10 +60,16 @@ class ModelVersionManager:
         """
         # 生成版本ID
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        version_id = f"v_{timestamp}"
+        unique_id = uuid.uuid4().hex[:8]
+        version_id = f"v_{timestamp}_{unique_id}"
         
-        # 创建版本目录
         version_dir = self.base_dir / version_id
+        retry_count = 0
+        while version_dir.exists() and retry_count < 3:
+            retry_count += 1
+            unique_id = uuid.uuid4().hex[:8]
+            version_id = f"v_{timestamp}_{unique_id}"
+            version_dir = self.base_dir / version_id
         version_dir.mkdir(parents=True, exist_ok=True)
         
         # 保存模型
@@ -69,7 +78,7 @@ class ModelVersionManager:
         else:
             model_path = Path(model_path)
         
-        joblib.dump(model, model_path)
+        save_with_signature(model, model_path)
         logger.info(f"模型已保存到: {model_path}")
         
         # 保存元数据
@@ -128,7 +137,7 @@ class ModelVersionManager:
         if not model_path.exists():
             raise FileNotFoundError(f"模型文件不存在: {model_path}")
         
-        model = joblib.load(model_path)
+        model = load_with_signature(model_path)
         
         # 加载元数据
         metadata_path = model_path.parent / "metadata.json"

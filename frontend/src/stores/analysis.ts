@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { citiesApi, analysisApi, forecastApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import type { EnterpriseResult, GovernmentResult, CityRankingsResponse, AggregationResponse, TimeSeriesResponse } from '@/types'
 
 export const useAnalysisStore = defineStore('analysis', () => {
   const currentRegion = ref('深圳')
@@ -9,14 +10,14 @@ export const useAnalysisStore = defineStore('analysis', () => {
   const currentYear = ref(2025)
 
   const cities = ref<string[]>([])
-  const cityData = ref<Record<string, any> | null>(null)
-  const cityHistorical = ref<any[]>([])
-  const enterpriseResult = ref<any>(null)
-  const governmentResult = ref<any>(null)
-  const comparisonResult = ref<any>(null)
-  const forecastResult = ref<any>(null)
-  const benchmarks = ref<any>(null)
-  const mapData = ref<any>(null)
+  const cityData = ref<Record<string, unknown> | null>(null)
+  const cityHistorical = ref<Record<string, unknown>[]>([])
+  const enterpriseResult = ref<EnterpriseResult | null>(null)
+  const governmentResult = ref<GovernmentResult | null>(null)
+  const comparisonResult = ref<unknown>(null)
+  const forecastResult = ref<unknown>(null)
+  const benchmarks = ref<unknown>(null)
+  const mapData = ref<unknown>(null)
 
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -29,11 +30,12 @@ export const useAnalysisStore = defineStore('analysis', () => {
     loading.value = true
     error.value = null
     try {
-      const response: any = await citiesApi.getCities()
+      const response = await citiesApi.getCities() as { cities?: string[] }
       cities.value = response.cities || []
-    } catch (err: any) {
-      error.value = err?.message || '获取城市列表失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '获取城市列表失败'
+      error.value = message
+      ElMessage.error(message)
     } finally {
       loading.value = false
     }
@@ -43,11 +45,12 @@ export const useAnalysisStore = defineStore('analysis', () => {
     loading.value = true
     error.value = null
     try {
-      const response: any = await citiesApi.getCityDetail(cityName)
+      const response = await citiesApi.getCityDetail(cityName) as Record<string, unknown>
       cityData.value = response
-    } catch (err: any) {
-      error.value = err?.message || '获取城市数据失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '获取城市数据失败'
+      error.value = message
+      ElMessage.error(message)
     } finally {
       loading.value = false
     }
@@ -57,11 +60,12 @@ export const useAnalysisStore = defineStore('analysis', () => {
     loading.value = true
     error.value = null
     try {
-      const response: any = await citiesApi.getCityHistorical(cityName)
+      const response = await citiesApi.getCityHistorical(cityName) as { historical_data?: Record<string, unknown>[] }
       cityHistorical.value = response.historical_data || []
-    } catch (err: any) {
-      error.value = err?.message || '获取历史数据失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '获取历史数据失败'
+      error.value = message
+      ElMessage.error(message)
     } finally {
       loading.value = false
     }
@@ -72,11 +76,12 @@ export const useAnalysisStore = defineStore('analysis', () => {
     error.value = null
     const target = cityName || currentRegion.value
     try {
-      const response: any = await analysisApi.enterpriseV3(target)
+      const response = await analysisApi.enterpriseV3(target) as EnterpriseResult
       enterpriseResult.value = response
-    } catch (err: any) {
-      error.value = err?.message || '获取企业端分析失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '获取企业端分析失败'
+      error.value = message
+      ElMessage.error(message)
     } finally {
       loading.value = false
     }
@@ -87,15 +92,16 @@ export const useAnalysisStore = defineStore('analysis', () => {
     error.value = null
     const target = cityName || currentRegion.value
     try {
-      const response: any = await analysisApi.government({
+      const response = await analysisApi.government({
         region: target,
         industry: currentIndustry.value,
         year: currentYear.value,
-      })
+      }) as GovernmentResult
       governmentResult.value = response
-    } catch (err: any) {
-      error.value = err?.message || '获取政府端分析失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '获取政府端分析失败'
+      error.value = message
+      ElMessage.error(message)
     } finally {
       loading.value = false
     }
@@ -105,11 +111,12 @@ export const useAnalysisStore = defineStore('analysis', () => {
     loading.value = true
     error.value = null
     try {
-      const response: any = await citiesApi.compareCities(cityNames)
+      const response = await citiesApi.compareCities(cityNames) as unknown
       comparisonResult.value = response
-    } catch (err: any) {
-      error.value = err?.message || '城市对比失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '城市对比失败'
+      error.value = message
+      ElMessage.error(message)
     } finally {
       loading.value = false
     }
@@ -119,34 +126,42 @@ export const useAnalysisStore = defineStore('analysis', () => {
     loading.value = true
     error.value = null
     try {
-      const response: any = await forecastApi.forecastGdp(cityName, forecastYears)
+      const response = await forecastApi.forecastGdp(cityName, forecastYears) as unknown
       forecastResult.value = response
-    } catch (err: any) {
-      error.value = err?.message || '获取预测数据失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '获取预测数据失败'
+      error.value = message
+      ElMessage.error(message)
     } finally {
       loading.value = false
     }
   }
 
   async function fetchBenchmarks() {
-    try {
-      const response: any = await citiesApi.getBenchmarks()
-      benchmarks.value = response
-    } catch (err: any) {
-      ElMessage.error('获取评分基准失败')
-    }
-  }
-
-  async function fetchCityRankings(params: { indicator?: string; year?: number; limit?: number }) {
     loading.value = true
     error.value = null
     try {
-      const response: any = await citiesApi.getCityRankings(params)
+      const response = await citiesApi.getBenchmarks() as unknown
+      benchmarks.value = response
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '获取评分基准失败'
+      error.value = message
+      ElMessage.error(message)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function fetchCityRankings(params: { indicator?: string; year?: number; limit?: number }): Promise<CityRankingsResponse | null> {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await citiesApi.getCityRankings(params) as CityRankingsResponse
       return response
-    } catch (err: any) {
-      error.value = err?.message || '获取排名数据失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '获取排名数据失败'
+      error.value = message
+      ElMessage.error(message)
       return null
     } finally {
       loading.value = false
@@ -156,19 +171,20 @@ export const useAnalysisStore = defineStore('analysis', () => {
   async function aggregateData(data: {
     group_by: string[]
     metrics: string[]
-    filters?: Record<string, any>
+    filters?: Record<string, unknown>
     sort_by?: string
     sort_order?: string
     limit?: number
-  }) {
+  }): Promise<AggregationResponse | null> {
     loading.value = true
     error.value = null
     try {
-      const response: any = await citiesApi.aggregateData(data)
+      const response = await citiesApi.aggregateData(data) as AggregationResponse
       return response
-    } catch (err: any) {
-      error.value = err?.message || '聚合分析失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '聚合分析失败'
+      error.value = message
+      ElMessage.error(message)
       return null
     } finally {
       loading.value = false
@@ -181,15 +197,16 @@ export const useAnalysisStore = defineStore('analysis', () => {
     year_start: number
     year_end: number
     group_by?: string[]
-  }) {
+  }): Promise<TimeSeriesResponse | null> {
     loading.value = true
     error.value = null
     try {
-      const response: any = await citiesApi.timeSeriesAnalysis(data)
+      const response = await citiesApi.timeSeriesAnalysis(data) as TimeSeriesResponse
       return response
-    } catch (err: any) {
-      error.value = err?.message || '时间序列分析失败'
-      ElMessage.error(error.value!)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '时间序列分析失败'
+      error.value = message
+      ElMessage.error(message)
       return null
     } finally {
       loading.value = false

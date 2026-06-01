@@ -22,7 +22,7 @@ from backend.ml.models import (
     GBDTModel,
     RidgeModel,
     ModelMetrics,
-    get_model,
+    get_model_instance,
     get_available_models,
 )
 from backend.ml.trainer import ModelTrainer, TrainingConfig, AutoML
@@ -302,9 +302,9 @@ class TestModelEvaluationMetrics:
         assert "random_forest" in models
 
     def test_get_model(self):
-        model = get_model("linear_regression")
+        model = get_model_instance("linear_regression")
         assert isinstance(model, BaseModel)
 
     def test_get_model_invalid(self):
         with pytest.raises(ValueError):
-            get_model("nonexistent_model")
+            get_model_instance("nonexistent_model")

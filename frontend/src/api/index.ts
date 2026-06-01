@@ -28,7 +28,7 @@ export const citiesApi = {
   aggregateData(data: {
     group_by: string[]
     metrics: string[]
-    filters?: Record<string, any>
+    filters?: Record<string, unknown>
     sort_by?: string
     sort_order?: string
     limit?: number
@@ -67,7 +67,7 @@ export const analysisApi = {
     region: string
     industry: string
     year: number
-    data?: Record<string, any>
+    data?: Record<string, unknown>
   }) {
     return request.post('/api/v1/analysis/enterprise/v2', data)
   },
@@ -110,7 +110,7 @@ export const interactiveApi = {
   },
 
   exportData(data: {
-    data: any[]
+    data: Record<string, unknown>[]
     format_type: string
     file_name?: string
   }) {
@@ -162,7 +162,7 @@ export const interactiveApi = {
   createScenario(data: {
     name: string
     description?: string
-    config: any
+    config: Record<string, unknown>
     tags?: string[]
   }) {
     return request.post('/api/v1/interactive/scenarios', data)

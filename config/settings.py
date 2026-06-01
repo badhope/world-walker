@@ -4,6 +4,7 @@
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 from pathlib import Path
+import json
 import os
 import logging
 
@@ -18,13 +19,13 @@ class Settings(BaseSettings):
     # API服务
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8001
-    DEBUG: bool = True
+    DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
     
     # 数据库
     DATABASE_URL: str = "sqlite:///./data/national_stats.db"
     
     # CORS
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: List[str] = json.loads(os.getenv("CORS_ORIGINS", '["http://localhost:5173"]'))
     
     # 爬虫配置
     SCRAPER_TIMEOUT: int = 30
@@ -46,10 +47,10 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     LOG_FILE: Optional[str] = None
     
-    # 安全
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
-    
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+
     # 分析参数
     DEFAULT_YEAR: int = 2025
     DEFAULT_REGION: str = "深圳"
@@ -80,12 +81,20 @@ def setup_logging(settings: Settings):
 settings = Settings()
 setup_logging(settings)
 
-# 确保目录存在
-for dir_path in [
-    settings.DATA_DIR,
-    settings.CACHE_DIR,
-    settings.EXPORT_DIR,
-    settings.RAW_DATA_DIR,
-    settings.PROCESSED_DATA_DIR
-]:
-    Path(dir_path).mkdir(parents=True, exist_ok=True)
+if settings.SECRET_KEY == "dev-secret-key-change-in-production":
+    import warnings
+    warnings.warn(
+        "SECRET_KEY is using the default development value. "
+        "Set the SECRET_KEY environment variable for production.",
+        RuntimeWarning
+    )
+
+if settings.ALGORITHM == "RS256" and not settings.SECRET_KEY.startswith("-----BEGIN"):
+    import warnings
+    warnings.warn(
+        "SECRET_KEY does not appear to be an RSA private key. "
+        "For RS256, a valid RSA key pair is required.",
+        RuntimeWarning
+    )
+
+Path("data").mkdir(parents=True, exist_ok=True)

@@ -14,6 +14,7 @@ from backend.api.routes import (
     cities_v2_router, forecast_router, analysis_v3_router,
     real_data_router, database_router, static_router
 )
+from backend.api.routes.auth import router as auth_router
 
 # 日志配置
 logging.basicConfig(
@@ -66,15 +67,17 @@ app = FastAPI(
 )
 
 # CORS 配置
+allow_credentials = "*" not in settings.CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # 注册路由
+app.include_router(auth_router)
 app.include_router(data_router, prefix=settings.API_V1_STR)
 app.include_router(analysis_router, prefix=settings.API_V1_STR)
 app.include_router(inference_router, prefix=settings.API_V1_STR)

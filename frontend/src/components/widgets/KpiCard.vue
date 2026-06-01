@@ -11,7 +11,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, computed } from 'vue'
+import { h, computed, type VNode } from 'vue'
 import { TrendCharts, DataLine, Wallet, User, Box, Goods } from '@element-plus/icons-vue'
 
 interface Props {
@@ -30,7 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
   iconType: 'trend',
 })
 
-const iconMap = {
+const iconMap: Record<string, VNode> = {
   trend: h(TrendCharts),
   data: h(DataLine),
   wallet: h(Wallet),

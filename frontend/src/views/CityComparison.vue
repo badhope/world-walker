@@ -231,11 +231,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, Top, Bottom } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useAnalysisStore } from '@/stores/analysis'
+import type {
+  CityRanking,
+  AggregationGroupItem,
+  AggregationCityItem,
+  AggregationRegionItem,
+  TimeSeriesValue,
+  TimeSeriesGroup,
+  TimeSeriesDisplayItem,
+  FilterFormData,
+  AggregationFormData,
+} from '@/types'
 
 const store = useAnalysisStore()
 
@@ -243,13 +254,13 @@ const loading = ref(false)
 const showAggregationDialog = ref(false)
 const activeTab = ref('city')
 
-const filterForm = ref({
+const filterForm = ref<FilterFormData>({
   indicator: 'gdp',
   year: '2024',
   limit: 10,
 })
 
-const aggregationForm = ref({
+const aggregationForm = ref<AggregationFormData>({
   groupBy: ['city'],
   metrics: ['sum', 'avg'],
   sortBy: 'sum',
@@ -257,10 +268,10 @@ const aggregationForm = ref({
   limit: 20,
 })
 
-const rankings = ref<any[]>([])
-const aggregationByCity = ref<any[]>([])
-const aggregationByRegion = ref<any[]>([])
-const timeSeriesData = ref<any[]>([])
+const rankings = ref<CityRanking[]>([])
+const aggregationByCity = ref<AggregationCityItem[]>([])
+const aggregationByRegion = ref<AggregationRegionItem[]>([])
+const timeSeriesData = ref<TimeSeriesDisplayItem[]>([])
 
 const barChartRef = ref()
 const lineChartRef = ref()
@@ -308,7 +319,7 @@ const loadAggregation = async () => {
     if (result && result.result) {
       const groups = result.result.groups || []
       if (aggregationForm.value.groupBy.includes('city')) {
-        aggregationByCity.value = groups.map((g: any) => ({
+        aggregationByCity.value = groups.map((g: AggregationGroupItem) => ({
           city: g.city || g.group_key || '',
           sum: g.sum ?? g.metrics?.sum ?? 0,
           avg: g.avg ?? g.metrics?.avg ?? 0,
@@ -318,7 +329,7 @@ const loadAggregation = async () => {
         }))
       }
       if (aggregationForm.value.groupBy.includes('region')) {
-        aggregationByRegion.value = groups.map((g: any) => ({
+        aggregationByRegion.value = groups.map((g: AggregationGroupItem) => ({
           region: g.region || g.group_key || '',
           city_count: g.city_count ?? g.metrics?.count ?? 0,
           avg: g.avg ?? g.metrics?.avg ?? 0,
@@ -346,16 +357,16 @@ const loadTimeSeries = async () => {
 
     if (result && result.time_series) {
       const tsData = result.time_series
-      if (tsData.groups && Array.isArray(tsData.groups)) {
-        timeSeriesData.value = tsData.groups.flatMap((g: any) =>
-          (g.values || []).map((v: any) => ({
+      if ('groups' in tsData && tsData.groups && Array.isArray(tsData.groups)) {
+        timeSeriesData.value = tsData.groups.flatMap((g: TimeSeriesGroup) =>
+          (g.values || []).map((v: TimeSeriesValue) => ({
             city: g.city || g.group_key || '',
-            year: v.year || v.time,
+            year: v.year || v.time || '',
             value: v.value ?? v.avg ?? 0,
           }))
         )
       } else if (Array.isArray(tsData)) {
-        timeSeriesData.value = tsData
+        timeSeriesData.value = tsData as TimeSeriesDisplayItem[]
       }
     }
 
@@ -501,6 +512,13 @@ const refreshData = () => {
 onMounted(() => {
   loadRankings()
   loadAggregation()
+})
+
+onUnmounted(() => {
+  barChartInstance?.dispose()
+  barChartInstance = null
+  lineChartInstance?.dispose()
+  lineChartInstance = null
 })
 </script>
 

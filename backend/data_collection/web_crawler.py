@@ -121,10 +121,11 @@ class WebCrawler(BaseCollector):
                                         'source': 'nbs',
                                         'timestamp': datetime.now().isoformat()
                                     })
-                        except:
+                        except Exception as e:
+                            logger.debug(f"解析NBS表格行失败: {e}")
                             continue
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"NBS GDP爬取失败: {e}")
         return results
     
     def _crawl_gdp_from_wiki(self) -> List[Dict[str, Any]]:
@@ -160,10 +161,11 @@ class WebCrawler(BaseCollector):
                                             'source': 'wikipedia',
                                             'timestamp': datetime.now().isoformat()
                                         })
-                        except:
+                        except Exception as e:
+                            logger.debug(f"解析wiki表格行失败: {e}")
                             continue
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"wiki GDP爬取失败: {e}")
         return results
     
     def _crawl_gdp_from_statista(self) -> List[Dict[str, Any]]:
@@ -193,10 +195,11 @@ class WebCrawler(BaseCollector):
                                     'source': 'statista',
                                     'timestamp': datetime.now().isoformat()
                                 })
-                except:
+                except Exception as e:
+                    logger.debug(f"解析statista JSON失败: {e}")
                     continue
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"statista GDP爬取失败: {e}")
         return results
     
     def _generate_simulated_gdp_data(self) -> List[Dict[str, Any]]:
@@ -252,7 +255,8 @@ class WebCrawler(BaseCollector):
                                         'source': 'nbs',
                                         'timestamp': datetime.now().isoformat()
                                     })
-                        except:
+                        except Exception as e:
+                            logger.debug(f"解析CPI表格行失败: {e}")
                             continue
             
             if not results:
@@ -324,9 +328,11 @@ class WebCrawler(BaseCollector):
                                         'source': 'mof',
                                         'timestamp': datetime.now().isoformat()
                                     })
-                            except:
+                            except Exception as e:
+                                logger.debug(f"解析MOF财政数据失败: {e}")
                                 continue
-                    except:
+                    except Exception as e:
+                        logger.debug(f"MOF页面爬取失败: {e}")
                         continue
             
             if not results:
@@ -397,9 +403,11 @@ class WebCrawler(BaseCollector):
                                         'source': 'miit',
                                         'timestamp': datetime.now().isoformat()
                                     })
-                            except:
+                            except Exception as e:
+                                logger.debug(f"解析MIIT工业数据失败: {e}")
                                 continue
-                    except:
+                    except Exception as e:
+                        logger.debug(f"MIIT页面爬取失败: {e}")
                         continue
             
             if not results:
@@ -467,9 +475,11 @@ class WebCrawler(BaseCollector):
                                     'source': 'nbs',
                                     'timestamp': datetime.now().isoformat()
                                 })
-                            except:
+                            except Exception as e:
+                                logger.debug(f"解析NBS劳动力数据失败: {e}")
                                 continue
-                    except:
+                    except Exception as e:
+                        logger.debug(f"NBS页面爬取失败: {e}")
                         continue
             
             if not results:
@@ -533,9 +543,11 @@ class WebCrawler(BaseCollector):
                                 'source': url.split('/')[2],
                                 'timestamp': datetime.now().isoformat()
                             })
-                        except:
+                        except Exception as e:
+                            logger.debug(f"解析半导体数据失败: {e}")
                             continue
-                except:
+                except Exception as e:
+                    logger.debug(f"半导体页面爬取失败: {e}")
                     continue
             
             if not results:

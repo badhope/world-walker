@@ -17,53 +17,51 @@ class SalesDataAdapter:
         self.config = config
     
     def generate_sample_data(self, num_records: int = 1000, num_products: int = 10):
-        """生成模拟的销售数据"""
         logger.info(f"Generating {num_records} sales records...")
-        
+
         start_date = pd.to_datetime("2024-01-01")
         dates = pd.date_range(start=start_date, periods=num_records, freq='D')
-        
+
         categories = ['Electronics', 'Clothing', 'Food', 'Home', 'Beauty']
-        
+        rng = np.random.default_rng(42)
+
         data = {
             "date": dates,
-            "product_id": [f"PROD_{str(i).zfill(3)}" for i in np.random.randint(1, num_products+1, num_records)],
-            "category": np.random.choice(categories, num_records),
-            "price": np.random.uniform(10, 1000, num_records).round(2),
-            "discount": np.random.uniform(0, 0.5, num_records).round(2),
-            "inventory": np.random.randint(10, 1000, num_records),
-            "promotion_budget": np.random.uniform(0, 5000, num_records).round(2),
-            "is_holiday": np.random.choice([0, 1], num_records, p=[0.9, 0.1])
+            "product_id": [f"PROD_{str(i).zfill(3)}" for i in rng.integers(1, num_products+1, num_records)],
+            "category": rng.choice(categories, num_records),
+            "price": rng.uniform(10, 1000, num_records).round(2),
+            "discount": rng.uniform(0, 0.5, num_records).round(2),
+            "inventory": rng.integers(10, 1000, num_records),
+            "promotion_budget": rng.uniform(0, 5000, num_records).round(2),
+            "is_holiday": rng.choice([0, 1], num_records, p=[0.9, 0.1])
         }
-        
+
         df = pd.DataFrame(data)
-        
-        # 生成有业务逻辑的销售量
+
         base_sales = 100
         price_effect = np.maximum(0, -0.3 * df['price'] / 100)
         discount_effect = 2 * df['discount']
         inventory_effect = 0.1 * df['inventory'] / 100
         promotion_effect = 0.5 * df['promotion_budget'] / 1000
         holiday_effect = 50 * df['is_holiday']
-        
+
         df['sales'] = (
-            base_sales + 
-            price_effect * 1000 + 
-            discount_effect * 100 + 
-            inventory_effect * 100 + 
-            promotion_effect * 100 + 
-            holiday_effect + 
-            np.random.normal(0, 50, num_records)
+            base_sales +
+            price_effect * 1000 +
+            discount_effect * 100 +
+            inventory_effect * 100 +
+            promotion_effect * 100 +
+            holiday_effect +
+            rng.normal(0, 50, num_records)
         )
-        
+
         df['sales'] = df['sales'].round().astype(int)
         df.loc[df['sales'] < 0, 'sales'] = 0
-        
-        # 加入一些缺失值
+
         for col in ['price', 'discount', 'inventory']:
-            mask = np.random.random(len(df)) < 0.05
+            mask = rng.random(len(df)) < 0.05
             df.loc[mask, col] = np.nan
-        
+
         logger.info(f"Generated data: {df.shape}")
         return df
     

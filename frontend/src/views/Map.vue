@@ -1,6 +1,5 @@
 <template>
   <div class="map-page">
-    <!-- 顶部选择器 -->
     <div class="top-filter">
       <div class="filter-item">
         <label>指标：</label>
@@ -18,44 +17,51 @@
         </el-select>
       </div>
     </div>
-    
+
     <div class="map-container">
-      <!-- 左侧地图 -->
       <div class="map-main">
-        <EChart :option="mapChartOption" height="100%" />
+        <el-card>
+          <template #header>
+            <span>城市产业分布</span>
+          </template>
+          <EChart :option="barChartOption" height="400px" />
+        </el-card>
       </div>
-      
-      <!-- 右侧统计 -->
+
       <div class="map-sidebar">
-        <div class="sidebar-card">
-          <h3 class="sidebar-title">区域分布</h3>
+        <el-card>
+          <template #header>
+            <span>区域分布</span>
+          </template>
           <div class="region-list">
             <div v-for="region in regionData" :key="region.name" class="region-item">
               <span class="region-name">{{ region.name }}</span>
               <span class="region-value">{{ region.value }}{{ region.unit }}</span>
             </div>
           </div>
-        </div>
-        
-        <div class="sidebar-card">
-          <h3 class="sidebar-title">趋势分析</h3>
+        </el-card>
+
+        <el-card>
+          <template #header>
+            <span>趋势分析</span>
+          </template>
           <EChart :option="trendChartOption" height="200px" />
-        </div>
+        </el-card>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAnalysisStore } from '@/stores/analysis'
 import EChart from '@/components/charts/EChart.vue'
 import type { EChartsOption } from 'echarts'
+import { citiesApi } from '@/api'
 
 const store = useAnalysisStore()
 const currentIndicator = ref('output')
 
-// 地图数据
 const regionData = ref([
   { name: '深圳', value: 12000, unit: '亿元' },
   { name: '上海', value: 13500, unit: '亿元' },
@@ -64,43 +70,39 @@ const regionData = ref([
   { name: '苏州', value: 7200, unit: '亿元' },
 ])
 
-// 地图图表配置
-const mapChartOption = computed(() => ({
-  tooltip: {
-    trigger: 'item',
-    formatter: '{b}: {c} 亿元',
-  },
-  visualMap: {
-    min: 0,
-    max: 15000,
-    left: 'left',
-    top: 'bottom',
-    text: ['高', '低'],
-    inRange: {
-      color: ['#e0f3f8', '#abd9e9', '#74add1', '#4575b4', '#313695'],
+const barChartOption = computed(() => {
+  const data = [...regionData.value].sort((a, b) => b.value - a.value)
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: '{b}: {c} 亿元',
     },
-  },
-  geo: {
-    map: 'china',
-    roam: true,
-    emphasis: {
-      itemStyle: {
-        areaColor: '#2a333d',
+    grid: { left: '3%', right: '8%', bottom: '3%', containLabel: true },
+    xAxis: { type: 'value', name: '亿元' },
+    yAxis: {
+      type: 'category',
+      data: data.map(r => r.name),
+      inverse: true,
+    },
+    series: [
+      {
+        name: '产业产值',
+        type: 'bar',
+        data: data.map(r => r.value),
+        itemStyle: {
+          color: (params: { dataIndex: number }) => {
+            const colors = ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8']
+            return colors[params.dataIndex % colors.length]
+          },
+          borderRadius: [0, 4, 4, 0],
+        },
+        label: { show: true, position: 'right', formatter: '{c} 亿元' },
       },
-    },
-  },
-  series: [
-    {
-      name: '产业产值',
-      type: 'map',
-      map: 'china',
-      geoIndex: 0,
-      data: regionData.value.map(r => ({ name: r.name, value: r.value })),
-    },
-  ],
-} as EChartsOption))
+    ],
+  } as EChartsOption
+})
 
-// 趋势图表配置
 const trendChartData = ref({
   categories: ['2020', '2021', '2022', '2023', '2024', '2025'],
   series: [
@@ -113,10 +115,7 @@ const trendChartOption = computed(() => ({
   tooltip: { trigger: 'axis' },
   legend: { bottom: 0, data: ['深圳', '上海'] },
   grid: { left: '10%', right: '5%', bottom: '15%', top: '10%', containLabel: true },
-  xAxis: {
-    type: 'category',
-    data: trendChartData.value.categories,
-  },
+  xAxis: { type: 'category', data: trendChartData.value.categories },
   yAxis: { type: 'value' },
   series: trendChartData.value.series.map(s => ({
     name: s.name,
@@ -125,6 +124,14 @@ const trendChartOption = computed(() => ({
     data: s.data,
   })),
 } as EChartsOption))
+
+onMounted(async () => {
+  try {
+    await citiesApi.getCities()
+  } catch {
+    // fallback to hardcoded data
+  }
+})
 </script>
 
 <style scoped>
@@ -160,14 +167,11 @@ const trendChartOption = computed(() => ({
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 20px;
-  height: calc(100vh - 260px);
-  min-height: 500px;
 }
 
 .map-main {
   background: white;
   border-radius: 12px;
-  padding: 20px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
@@ -175,20 +179,6 @@ const trendChartOption = computed(() => ({
   display: flex;
   flex-direction: column;
   gap: 20px;
-}
-
-.sidebar-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.sidebar-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 16px;
 }
 
 .region-list {
@@ -215,7 +205,6 @@ const trendChartOption = computed(() => ({
   font-weight: 600;
 }
 
-/* 响应式 */
 @media (max-width: 1199px) {
   .map-container {
     grid-template-columns: 1fr;

@@ -6,13 +6,13 @@
           <span>API 测试页面</span>
         </div>
       </template>
-      
+
       <div class="test-content">
         <h3>测试说明</h3>
-        <p>这个页面用于测试前后端API连接是否正常。</p>
-        
+        <p>这个页面用于测试前后端API连接是否正常。后端应运行在端口 8001。</p>
+
         <el-divider />
-        
+
         <div class="test-section">
           <h4>1. 测试后端连接</h4>
           <el-button @click="testBackendHealth" :loading="testing">
@@ -22,11 +22,23 @@
             <pre>{{ healthResult }}</pre>
           </div>
         </div>
-        
+
         <el-divider />
-        
+
         <div class="test-section">
-          <h4>2. 测试企业端分析API</h4>
+          <h4>2. 测试城市列表API</h4>
+          <el-button @click="testCitiesAPI" :loading="testing">
+            获取城市列表
+          </el-button>
+          <div v-if="citiesResult" class="result-box">
+            <pre>{{ citiesResult }}</pre>
+          </div>
+        </div>
+
+        <el-divider />
+
+        <div class="test-section">
+          <h4>3. 测试企业端分析API (V3)</h4>
           <el-button @click="testEnterpriseAPI" :loading="testing">
             调用企业端分析
           </el-button>
@@ -34,14 +46,14 @@
             <pre>{{ enterpriseResult }}</pre>
           </div>
         </div>
-        
+
         <el-divider />
-        
+
         <div class="test-section">
-          <h4>3. 错误状态</h4>
-          <p>如果以上测试都失败，请检查：</p>
+          <h4>错误排查</h4>
+          <p>如果测试失败，请检查：</p>
           <ul>
-            <li>后端服务器是否正在运行（端口8000）</li>
+            <li>后端服务器是否正在运行 (端口 8001)</li>
             <li>前端代理配置是否正确</li>
             <li>网络连接是否正常</li>
           </ul>
@@ -54,23 +66,40 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { healthApi, citiesApi, analysisApi } from '@/api'
 
 const testing = ref(false)
 const healthResult = ref('')
+const citiesResult = ref('')
 const enterpriseResult = ref('')
 
 const testBackendHealth = async () => {
   testing.value = true
   healthResult.value = ''
-  
+
   try {
-    const response = await fetch('/api/v1/health')
-    const data = await response.json()
+    const data = await healthApi.check()
     healthResult.value = JSON.stringify(data, null, 2)
-    ElMessage.success('健康检查成功！')
+    ElMessage.success('✅ 健康检查成功！')
   } catch (error) {
-    healthResult.value = `错误: ${error}`
+    healthResult.value = `❌ 错误: ${error}`
     ElMessage.error('健康检查失败')
+  } finally {
+    testing.value = false
+  }
+}
+
+const testCitiesAPI = async () => {
+  testing.value = true
+  citiesResult.value = ''
+
+  try {
+    const data = await citiesApi.getCities()
+    citiesResult.value = JSON.stringify(data, null, 2)
+    ElMessage.success('✅ 城市列表获取成功！')
+  } catch (error) {
+    citiesResult.value = `❌ 错误: ${error}`
+    ElMessage.error('获取城市列表失败')
   } finally {
     testing.value = false
   }
@@ -79,29 +108,13 @@ const testBackendHealth = async () => {
 const testEnterpriseAPI = async () => {
   testing.value = true
   enterpriseResult.value = ''
-  
+
   try {
-    const response = await fetch('/api/v1/analysis/enterprise', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        region: '深圳',
-        industry: '半导体',
-        year: 2025,
-      }),
-    })
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-    }
-    
-    const data = await response.json()
+    const data = await analysisApi.enterpriseV3('深圳')
     enterpriseResult.value = JSON.stringify(data, null, 2)
-    ElMessage.success('企业端分析API测试成功！')
+    ElMessage.success('✅ 企业端分析API测试成功！')
   } catch (error) {
-    enterpriseResult.value = `错误: ${error}`
+    enterpriseResult.value = `❌ 错误: ${error}`
     ElMessage.error('企业端分析API测试失败')
   } finally {
     testing.value = false

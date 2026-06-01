@@ -346,7 +346,9 @@ const loadAggregation = async () => {
 
 const loadTimeSeries = async () => {
   try {
-    const cityCodes = ['sz', 'sh', 'bj', 'gz', 'hz', 'wh', 'cd', 'nj']
+    const cityCodes = store.cities.length > 0
+      ? store.cities.slice(0, 8)
+      : ['深圳', '上海', '北京', '广州', '杭州', '武汉', '成都', '南京']
     const result = await store.timeSeriesAnalysis({
       city_codes: cityCodes,
       indicator: filterForm.value.indicator,

@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./data/national_stats.db"
     
     # CORS
-    CORS_ORIGINS: List[str] = json.loads(os.getenv("CORS_ORIGINS", '["http://localhost:5173","http://localhost:8001","http://127.0.0.1:8001","http://0.0.0.0:8001"]'))
+    CORS_ORIGINS: List[str] = json.loads(os.getenv(
+        "CORS_ORIGINS",
+        '["http://localhost:5173","http://localhost:8000","http://localhost:8001","http://localhost:8080","http://127.0.0.1:8000","http://127.0.0.1:8001","http://127.0.0.1:8080","http://0.0.0.0:8000","http://0.0.0.0:8001"]'
+    ))
     
     # 爬虫配置
     SCRAPER_TIMEOUT: int = 30

@@ -216,7 +216,7 @@ async def time_series_analysis(request: TimeSeriesRequest):
             data,
             time_field='year',
             value_field='value',
-            group_by=request.group_by or ['city_code']
+            group_by=request.group_by or ['city']
         )
         
         if isinstance(result, dict) and not any(isinstance(k, int) for k in result.keys()):

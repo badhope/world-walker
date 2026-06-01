@@ -3,6 +3,7 @@
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 import logging
 from datetime import datetime
@@ -92,20 +93,24 @@ app.include_router(database_router)
 app.include_router(static_router)
 
 # 添加静态页面路由
-from fastapi.responses import FileResponse
 from pathlib import Path
+
+frontend_index = Path(__file__).parent.parent.parent / "frontend" / "index.html"
 
 @app.get("/dashboard", tags=["页面"])
 async def get_dashboard():
-    """交互式分析仪表盘（Vue + ECharts）"""
-    dashboard_path = Path(__file__).parent.parent.parent / "frontend" / "public" / "dashboard.html"
-    if dashboard_path.exists():
-        return FileResponse(dashboard_path, media_type="text/html")
-    # 备用路径
-    backup_path = Path(__file__).parent.parent.parent / "frontend" / "analysis_dashboard.html"
-    if backup_path.exists():
-        return FileResponse(backup_path, media_type="text/html")
-    return {"error": "页面未找到"}
+    """交互式分析仪表盘"""
+    if frontend_index.exists():
+        return FileResponse(frontend_index, media_type="text/html")
+    return {"error": "页面未找到", "hint": "请确保 frontend/index.html 存在"}
+
+
+@app.get("/app", tags=["页面"])
+async def get_app():
+    """前端应用主入口"""
+    if frontend_index.exists():
+        return FileResponse(frontend_index, media_type="text/html")
+    return {"error": "页面未找到", "hint": "请确保 frontend/index.html 存在"}
 
 
 @app.get("/", tags=["根路径"])
@@ -129,21 +134,6 @@ def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
-
-import os
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
-
-frontend_index = Path(__file__).parent.parent.parent / "frontend" / "index.html"
-
-if frontend_index.exists():
-    @app.get("/app", response_class=HTMLResponse, tags=["页面"])
-    async def serve_app():
-        return FileResponse(str(frontend_index), media_type="text/html")
-
-    @app.get("/dashboard", response_class=HTMLResponse, tags=["页面"])
-    async def serve_dashboard():
-        return FileResponse(str(frontend_index), media_type="text/html")
 
 if __name__ == "__main__":
     import uvicorn

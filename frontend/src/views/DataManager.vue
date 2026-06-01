@@ -402,7 +402,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Upload, Download, Refresh, Location } from '@element-plus/icons-vue'
-import { interactiveApi } from '@/api'
+import { interactiveApi, citiesApi } from '@/api'
 import type {
   TableDataRow,
   FilterForm,
@@ -509,39 +509,106 @@ const editForm = ref<Partial<TableDataRow>>({})
 const loadData = async () => {
   loading.value = true
   try {
-    tableData.value = [
-      {
-        year: '2025',
-        quarter: 'Q1',
-        region: '深圳',
-        indicator: 'GDP',
-        value: 36801.87,
-        unit: '亿元',
-        source: '国家统计局',
-        updateTime: '2025-03-15',
-      },
-      {
-        year: '2025',
-        region: '深圳',
-        indicator: '半导体产业产值',
-        value: 12000,
-        unit: '亿元',
-        source: '深圳统计局',
-        updateTime: '2025-03-15',
-      },
-      {
-        year: '2024',
-        region: '深圳',
-        indicator: 'GDP',
-        value: 32800,
-        unit: '亿元',
-        source: '国家统计局',
-        updateTime: '2024-12-31',
-      },
-    ]
-    ElMessage.success('数据加载成功')
+    const citiesResult = await citiesApi.getCities() as { cities?: string[] }
+    const cityNames = citiesResult?.cities || ['深圳', '上海', '北京', '广州']
+
+    const records: TableDataRow[] = []
+    for (const city of cityNames.slice(0, 6)) {
+      try {
+        const detail = await citiesApi.getCityDetail(city) as {
+          city?: string
+          data?: {
+            gdp?: number
+            population?: number
+            fiscal_revenue?: number
+            rd_intensity?: number
+            industry_high_tech_ratio?: number
+            name?: string
+            region?: string
+            year?: number
+          }
+        }
+        if (detail?.data) {
+          const d = detail.data
+          if (d.gdp) {
+            records.push({
+              year: String(d.year || 2025),
+              region: detail.city || city,
+              indicator: 'GDP',
+              value: d.gdp,
+              unit: '亿元',
+              source: '国家统计局',
+              updateTime: new Date().toISOString().split('T')[0],
+            })
+          }
+          if (d.population) {
+            records.push({
+              year: String(d.year || 2025),
+              region: detail.city || city,
+              indicator: '常住人口',
+              value: d.population,
+              unit: '万人',
+              source: '国家统计局',
+              updateTime: new Date().toISOString().split('T')[0],
+            })
+          }
+          if (d.fiscal_revenue) {
+            records.push({
+              year: String(d.year || 2025),
+              region: detail.city || city,
+              indicator: '财政收入',
+              value: d.fiscal_revenue,
+              unit: '亿元',
+              source: '财政部',
+              updateTime: new Date().toISOString().split('T')[0],
+            })
+          }
+          if (d.rd_intensity !== undefined) {
+            records.push({
+              year: String(d.year || 2025),
+              region: detail.city || city,
+              indicator: '研发投入强度',
+              value: d.rd_intensity,
+              unit: '%',
+              source: '科技部',
+              updateTime: new Date().toISOString().split('T')[0],
+            })
+          }
+          if (d.industry_high_tech_ratio !== undefined) {
+            records.push({
+              year: String(d.year || 2025),
+              region: detail.city || city,
+              indicator: '高技术产业占比',
+              value: d.industry_high_tech_ratio,
+              unit: '%',
+              source: '工信部',
+              updateTime: new Date().toISOString().split('T')[0],
+            })
+          }
+        }
+      } catch {
+        // skip individual city errors
+      }
+    }
+
+    if (records.length > 0) {
+      tableData.value = records
+      ElMessage.success(`加载了 ${records.length} 条数据`)
+    } else {
+      tableData.value = [
+        { year: '2025', region: '深圳', indicator: 'GDP', value: 36801.87, unit: '亿元', source: '国家统计局', updateTime: '2025-03-15' },
+        { year: '2025', region: '深圳', indicator: '半导体产业产值', value: 12000, unit: '亿元', source: '深圳统计局', updateTime: '2025-03-15' },
+        { year: '2024', region: '深圳', indicator: 'GDP', value: 32800, unit: '亿元', source: '国家统计局', updateTime: '2024-12-31' },
+      ]
+      ElMessage.info('使用本地样本数据')
+    }
   } catch {
-    ElMessage.error('数据加载失败')
+    tableData.value = [
+      { year: '2025', region: '深圳', indicator: 'GDP', value: 36801.87, unit: '亿元', source: '国家统计局', updateTime: '2025-03-15' },
+      { year: '2025', region: '深圳', indicator: '半导体产业产值', value: 12000, unit: '亿元', source: '深圳统计局', updateTime: '2025-03-15' },
+      { year: '2024', region: '深圳', indicator: 'GDP', value: 32800, unit: '亿元', source: '国家统计局', updateTime: '2024-12-31' },
+    ]
+    ElMessage.warning('API连接失败，使用本地样本数据')
   } finally {
     loading.value = false
   }

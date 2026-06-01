@@ -10,6 +10,8 @@ import logging
 from backend.core.city_aggregation import city_aggregator, AggregationConfig, AggregationResult, ComparisonResult
 from backend.core.multi_city import city_manager
 
+import random
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/cities", tags=["城市数据"])
@@ -119,14 +121,13 @@ async def compare_cities(request: ComparisonRequest):
     对比多个城市在指定指标上的表现
     """
     try:
-        # 获取城市数据
         data = []
-        for city_code in request.city_codes:
+        for orig_code in request.city_codes:
+            city_code = _resolve_city_code(orig_code)
             city_config = city_manager.get_city(city_code)
             if not city_config:
                 continue
             
-            # 获取该城市的数据
             city_data = city_manager.get_city_data(city_code)
             
             for item in city_data:
@@ -140,15 +141,13 @@ async def compare_cities(request: ComparisonRequest):
                             'year': item.year
                         })
         
-        # 如果没有真实数据，使用模拟数据
         if not data:
             data = _generate_mock_city_data()
+            resolved_codes = [_resolve_city_code(c) for c in request.city_codes]
             data = [
                 item for item in data 
-                if item.get('city') in [
-                    city_manager.get_city(c).name 
-                    for c in request.city_codes
-                ] and item.get('indicator') in request.indicators
+                if item.get('city_code') in resolved_codes
+                and item.get('indicator') in request.indicators
             ]
         
         # 执行对比分析
@@ -181,9 +180,9 @@ async def time_series_analysis(request: TimeSeriesRequest):
     分析城市指标随时间的变化趋势
     """
     try:
-        # 获取城市数据
         data = []
-        for city_code in request.city_codes:
+        for orig_code in request.city_codes:
+            city_code = _resolve_city_code(orig_code)
             city_config = city_manager.get_city(city_code)
             if not city_config:
                 continue
@@ -204,9 +203,10 @@ async def time_series_analysis(request: TimeSeriesRequest):
         # 如果没有真实数据，使用模拟数据
         if not data:
             data = _generate_mock_city_data()
+            resolved_codes = [_resolve_city_code(c) for c in request.city_codes]
             data = [
                 item for item in data 
-                if item.get('city_code') in request.city_codes
+                if item.get('city_code') in resolved_codes
                 and item.get('indicator') == request.indicator
                 and request.year_start <= item.get('year', 0) <= request.year_end
             ]
@@ -218,6 +218,13 @@ async def time_series_analysis(request: TimeSeriesRequest):
             value_field='value',
             group_by=request.group_by or ['city_code']
         )
+        
+        if isinstance(result, dict) and not any(isinstance(k, int) for k in result.keys()):
+            groups = list(result.values()) if result else []
+            return {
+                'success': True,
+                'time_series': {'groups': groups}
+            }
         
         return {
             'success': True,
@@ -405,6 +412,21 @@ async def get_city_dashboard(city_code: str = Query(..., description="城市代�
     except Exception as e:
         logger.error(f"获取城市仪表盘失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
+
+def _resolve_city_code(city_name_or_code: str) -> str:
+    """将中文城市名或简称转换为代码"""
+    name_to_code = {
+        '深圳': 'sz', '上海': 'sh', '北京': 'bj', '广州': 'gz',
+        '杭州': 'hz', '武汉': 'wh', '成都': 'cd', '南京': 'nj',
+    }
+    code_to_code = {'sz': 'sz', 'sh': 'sh', 'bj': 'bj', 'gz': 'gz',
+                    'hz': 'hz', 'wh': 'wh', 'cd': 'cd', 'nj': 'nj'}
+    if city_name_or_code in name_to_code:
+        return name_to_code[city_name_or_code]
+    if city_name_or_code in code_to_code:
+        return city_name_or_code
+    return city_name_or_code
+
 
 def _generate_mock_city_data() -> List[Dict[str, Any]]:
     """生成模拟城市数据"""

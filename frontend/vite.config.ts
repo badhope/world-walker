@@ -10,25 +10,24 @@ export default defineConfig({
     },
   },
   server: {
-    host: '0.0.0.0',
     port: 5173,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
         target: 'http://localhost:8001',
         changeOrigin: true,
       },
-    },
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'echarts-vendor': ['echarts'],
-          'element-plus': ['element-plus'],
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-        },
+      '/health': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/docs': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
+      '/openapi.json': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
       },
     },
   },

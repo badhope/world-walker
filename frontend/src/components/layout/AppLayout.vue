@@ -99,9 +99,11 @@ const navItems: { name: string; path: string }[] = [
 
 .app-main {
   flex: 1;
-  padding: 0;
+  padding: 24px;
   overflow-x: hidden;
   width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .app-footer {

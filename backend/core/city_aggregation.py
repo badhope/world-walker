@@ -267,6 +267,7 @@ class CityDataAggregator:
             
             result = {}
             for key, time_series in grouped_series.items():
+                key_str = '_'.join(str(k) for k in key)
                 series_data = {
                     'groups': list(key),
                     'time_points': [],
@@ -280,7 +281,7 @@ class CityDataAggregator:
                     series_data['values'].append(statistics.mean(values))
                 
                 series_data['trend'] = self._calculate_trend(series_data['values'])
-                result[key] = series_data
+                result[key_str] = series_data
             
             return result
     

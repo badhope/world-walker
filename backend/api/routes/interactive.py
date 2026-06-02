@@ -66,7 +66,7 @@ class DataImportRequest(BaseModel):
     file_name: str = Field(..., description="文件名")
     file_content: str = Field(..., description="文件内容（Base64编码）")
     format_type: str = Field(..., description="格式类型: json, csv, xlsx")
-    validate: bool = Field(True, description="是否验证数据")
+    do_validate: bool = Field(True, description="是否验证数据", alias="validate")
 
 
 class DataExportRequest(BaseModel):

@@ -1,0 +1,73 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "Regional Industrial Economic Analysis Platform"
+type: software
+version: 4.0.0
+date-released: 2026-06-02
+license: GPL-3.0-or-later
+repository-code: "https://github.com/your-org/regional-economic-analysis"
+repository: "https://github.com/your-org/regional-economic-analysis"
+homepage: "https://github.com/your-org/regional-economic-analysis"
+doi: "10.5281/zenodo.0000000"
+keywords:
+  - regional-economy
+  - economic-analysis
+  - city-comparison
+  - industry-analysis
+  - retail-location
+  - sales-forecast
+  - site-selection
+  - policy-evaluation
+  - time-series-forecasting
+  - data-visualization
+  - fastapi
+  - echarts
+  - data-science
+  - machine-learning
+  - python
+abstract: >
+  A production-grade, multi-scenario analytics platform for regional economic
+  comparison, retail site selection, sales forecasting and government
+  industry-policy evaluation. Covers 10 major Chinese cities with 4 analysis
+  scenarios, REST API and zero-build web UI. Built with FastAPI, pandas,
+  scikit-learn, statsmodels, and ECharts.
+authors:
+  - family-names: "Maintainers"
+    given-names: "Regional Economic Analysis Team"
+    affiliation: "your-org"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+contact:
+  - family-names: "Maintainers"
+    given-names: "Regional Economic Analysis Team"
+    email: "contact@example.com"
+    affiliation: "your-org"
+preferred-citation:
+  type: article
+  title: "Regional Industrial Economic Analysis Platform: A Production-Grade Multi-Scenario Analytics System"
+  authors:
+    - family-names: "Maintainers"
+      given-names: "Regional Economic Analysis Team"
+  journal: "GitHub"
+  year: 2026
+  url: "https://github.com/your-org/regional-economic-analysis"
+references:
+  - type: software
+    title: "FastAPI"
+    version: ">=0.115.0"
+    url: "https://github.com/tiangolo/fastapi"
+  - type: software
+    title: "Pandas"
+    version: ">=2.0.0"
+    url: "https://github.com/pandas-dev/pandas"
+  - type: software
+    title: "ECharts"
+    version: ">=5.4.0"
+    url: "https://github.com/apache/echarts"
+  - type: software
+    title: "scikit-learn"
+    version: ">=1.3.0"
+    url: "https://github.com/scikit-learn/scikit-learn"
+  - type: software
+    title: "Tailwind CSS"
+    version: ">=3.4.0"
+    url: "https://github.com/tailwindlabs/tailwindcss"

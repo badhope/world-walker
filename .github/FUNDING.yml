@@ -1,0 +1,13 @@
+# These are supported funding model platforms
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+github: your-org
+open_collective: regional-economic-analysis
+tidelift: pypi/regional-economic-analysis
+community_bridge: regional-economic-analysis
+liberapay: regional-economic-analysis
+issuehunt: regional-economic-analysis
+ko_fi: regional-economic-analysis
+custom:
+  - https://example.com/donate
+  - https://opencollective.com/regional-economic-analysis

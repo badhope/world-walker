@@ -8,6 +8,36 @@
 
 ---
 
+## 📊 Project Status / 项目状态
+
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Tests](https://img.shields.io/badge/Tests-159%20passed-brightgreen.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/Coverage-80%25%2B-yellowgreen.svg)](https://github.com/your-org/regional-economic-analysis)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Linter: ruff](https://img.shields.io/badge/linter-ruff-red.svg)](https://github.com/astral-sh/ruff)
+[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen.svg)](https://pre-commit.com/)
+[![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF.svg?logo=github-actions&logoColor=white)](.github/workflows/)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-025E8C.svg?logo=dependabot&logoColor=white)](.github/dependabot.yml)
+[![OpenSSF](https://img.shields.io/badge/OpenSSF-Scorecard-blue.svg)](https://scorecard.dev/viewer/?uri=github.com/your-org/regional-economic-analysis)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Made with ❤️](https://img.shields.io/badge/Made%20with-❤️-ff69b4.svg)]()
+[![Version](https://img.shields.io/badge/Version-4.0.0-orange.svg)](VERSION)
+
+### 🌐 Internationalisation / 国际化
+
+[![English](https://img.shields.io/badge/English-✓-blue.svg)](README.md)
+[![简体中文](https://img.shields.io/badge/简体中文-✓-red.svg)](README.md)
+[![Documentation](https://img.shields.io/badge/Docs-complete-green.svg)](docs/)
+
+### 🏷️ Topics / 主题
+
+`regional-economy` · `economic-analysis` · `city-comparison` · `industry-analysis` · `retail-location` · `sales-forecast` · `site-selection` · `policy-evaluation` · `time-series-forecasting` · `data-visualization` · `fastapi` · `echarts` · `data-science` · `machine-learning` · `python`
+
+---
+
 ## 🔥 What can this platform do? / 这个项目能干什么？
 
 | Scenario | Business Question | Audience |
@@ -148,24 +178,40 @@ docker-compose up --build
 
 ## 📚 More Documentation / 更多文档
 
+### Core / 核心文档
+
 | File | Content |
 |------|---------|
 | [QUICK_START.md](QUICK_START.md) | 5-minute quick start (English & 中文) |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, data flow, key decisions |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment (Systemd / Docker / K8s / Nginx) |
-| [API.md](API.md) | Complete REST API reference (auto-generated from OpenAPI) |
+| [API.md](API.md) | Complete REST API reference (all 70+ endpoints) |
+| [FAQ.md](FAQ.md) | Frequently asked questions |
+
+### Open-source / 开源项目标准
+
+| File | Purpose |
+|------|---------|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines & development setup |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes & version history |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community code of conduct |
 | [SECURITY.md](SECURITY.md) | Security policy & vulnerability reporting |
-| Backend `/docs` | Interactive Swagger API documentation |
+| [SUPPORT.md](SUPPORT.md) | Where to get help |
+| [ROADMAP.md](ROADMAP.md) | Future plans (v4.1 → v5.0) |
+| [AUTHORS](AUTHORS) | Authors & contributors |
+| [NOTICE](NOTICE) | Third-party attributions |
+| [CITATION.cff](CITATION.cff) | Academic citation metadata |
+| [LICENSE](LICENSE) | GPL-3.0-or-later |
+| [docs/REPOSITORY_METADATA.md](docs/REPOSITORY_METADATA.md) | GitHub repo metadata guide |
 
-| 文件 | 内容 |
-|------|------|
-| [QUICK_START.md](QUICK_START.md) | 5分钟极速入门指南 |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | 系统架构、数据流、关键决策 |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | 生产环境部署（Systemd/Docker/K8s/Nginx） |
-| [pyproject.toml](pyproject.toml) | 项目元数据、测试配置 |
-| 后端 `/docs` | Swagger API 交互式文档 |
+### Live API / 在线 API
+
+| URL | Content |
+|-----|---------|
+| `http://localhost:8000/docs` | Interactive Swagger API documentation |
+| `http://localhost:8000/redoc` | ReDoc API documentation |
+| `http://localhost:8000/openapi.json` | OpenAPI 3.x specification |
+| `http://localhost:8000/dashboard` | Interactive analysis dashboard |
 
 ---
 

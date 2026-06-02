@@ -474,7 +474,7 @@ PUT    /api/v1/indicators/custom/{id} # 更新指标
 ## 📁 最终项目结构
 
 ```
-national_stats/
+regional_economic_analysis/
 ├── backend/
 │   ├── api/
 │   │   ├── main.py

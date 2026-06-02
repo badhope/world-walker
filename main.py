@@ -172,7 +172,7 @@ class APIMode:
     """API模式"""
     
     @staticmethod
-    def run(port: int = 8001, host: str = "0.0.0.0", reload: bool = False):
+    def run(port: int = 8000, host: str = "0.0.0.0", reload: bool = False):
         """启动API服务"""
         print("\n" + "=" * 60)
         print("🚀 启动API服务")
@@ -371,7 +371,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 使用示例:
-  %(prog)s --mode api                    # 启动API服务（默认端口8001）
+  %(prog)s --mode api                    # 启动API服务（默认端口8000）
   %(prog)s --mode api --port 8080        # 自定义端口
   %(prog)s --mode example                 # 运行所有示例
   %(prog)s --mode example --type enterprise  # 仅运行企业端分析
@@ -379,8 +379,8 @@ def main():
   %(prog)s --mode analysis               # 运行自定义分析
 
 更多信息:
-  API文档: http://localhost:8001/docs
-  项目主页: https://github.com/your-project
+  API文档: http://localhost:8000/docs
+  项目主页: https://github.com/your-org/regional-economic-analysis
         """
     )
     
@@ -394,8 +394,8 @@ def main():
     parser.add_argument(
         '--port',
         type=int,
-        default=8001,
-        help='API服务端口 (默认: 8001)'
+        default=8000,
+        help='API服务端口 (默认: 8000)'
     )
     
     parser.add_argument(

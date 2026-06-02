@@ -10,7 +10,7 @@
 
 **`regional-economic-analysis`**
 
-(原 `national-stats` 太泛，与实际场景不一致。)
+(原 `regional-economic-analysis` 太泛，与实际场景不一致。)
 
 ---
 

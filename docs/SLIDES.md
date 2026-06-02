@@ -43,7 +43,7 @@ style: |
 ## 🏗️ 系统架构
 
 ```
-national-stats-analyzer/
+regional-economic-analysis-analyzer/
 ├── backend/          # 后端核心
 │   ├── api/         # FastAPI接口
 │   ├── analysis/    # 分析模块
@@ -158,7 +158,7 @@ python main.py --mode check
 
 ### 🔌 接口文档
 
-访问 `http://localhost:8001/docs`
+访问 `http://localhost:8000/docs`
 
 ### 📡 主要接口
 
@@ -349,7 +349,7 @@ output = cobb_douglas(capital, labor, technology)
 
 ### 📬 联系方式
 
-- GitHub: github.com/your-project/national-stats-analyzer
+- GitHub: github.com/your-org/regional-economic-analysis
 - 邮箱: contact@example.com
 
 ### 📚 更多资源

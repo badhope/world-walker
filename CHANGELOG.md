@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 新增 / Added
-- 浏览器自动化端到端测试套件（[screenshots/browser_test.py](screenshots/browser_test.py)）
+- 浏览器自动化端到端测试套件（[scripts/diagnostics/browser_test.py](scripts/diagnostics/browser_test.py)）
 - 全面诊断脚本（[full_diagnose.py](full_diagnose.py)）
 - `CONTRIBUTING.md` / `CODE_OF_CONDUCT.md` / `SECURITY.md` / `ARCHITECTURE.md` / `DEPLOYMENT.md`
 - `.github/dependabot.yml` 自动依赖更新
@@ -76,7 +76,7 @@
 - Docker Compose 新增 `frontend` (nginx) 服务
 - CI Workflow `frontend.yml` 移除 npm 依赖
 - `requirements.txt` 移除错误的 `python>=3.11` 头行
-- 项目名称 `national-stats` / `national-stats-analyzer` → **`regional-economic-analysis`**
+- 项目名称 `national-stats-analyzer` / `national-stats` → **`regional-economic-analysis`**
 - 项目描述统一为英文（PyPI/GitHub 国际化最佳实践）
 - 主题标签 7 个 → **15 个**（更精准的搜索发现）
 - 版本对齐：pyproject `2.0.0` → **`4.0.0`**（与 VERSION / setup.py 一致）
@@ -123,4 +123,4 @@
 
 ## [3.x] - 历史版本
 
-历史迭代记录已迁移至 Git 提交历史（[git log](https://github.com/<owner>/national-stats/commits/main)）。
+历史迭代记录已迁移至 Git 提交历史（[git log](https://github.com/your-org/regional-economic-analysis/commits/main)）。

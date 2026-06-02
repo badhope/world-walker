@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # 配置 Celery
 app = Celery(
-    'national_stats',
+    'regional_economic_analysis',
     broker='redis://localhost:6379/1',  # Redis 作为 broker
     backend='redis://localhost:6379/2',  # Redis 作为结果存储
 )

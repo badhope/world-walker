@@ -36,7 +36,7 @@
 
 ### 模块化设计
 ```
-national_stats/
+regional_economic_analysis/
 ├── api/              # API接口层
 ├── core/             # 核心业务逻辑
 ├── data/             # 数据采集处理

@@ -138,12 +138,20 @@ docker-compose down
 ### 单独构建镜像
 
 ```bash
-# 后端
+# 后端 (FastAPI)
 docker build -t rea-backend:latest .
 
-# 前端 (使用独立 Dockerfile)
-docker build -t rea-frontend:latest -f Dockerfile.frontend .
+# 前端是纯静态 HTML，直接由 docker-compose 里的 nginx:alpine 挂载 ./frontend 即可，
+# 不需要单独的 Dockerfile.frontend——也避免引入多余的构建层。
 ```
+
+> 💡 如果需要把前端打成独立镜像（例如推到私有 registry），可以这样：
+> ```bash
+> # 把 frontend/ 内容打成一个最小 nginx 镜像（多阶段构建，单层）
+> echo 'FROM nginx:alpine
+> COPY frontend/ /usr/share/nginx/html' > Dockerfile.frontend
+> docker build -t rea-frontend:latest -f Dockerfile.frontend .
+> ```
 
 ### 推送至镜像仓库
 

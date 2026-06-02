@@ -23,10 +23,10 @@ diagnose:
 	python full_diagnose.py
 
 browser-test:
-	python screenshots/browser_test.py
+	python scripts/diagnostics/browser_test.py
 
 docker-build:
-	docker build -t national-stats:latest .
+	docker build -t regional-economic-analysis:latest .
 
 docker-up:
 	docker-compose up -d
@@ -35,7 +35,7 @@ docker-down:
 	docker-compose down
 
 run-demo:
-	python demo_complete.py
+	python main.py --mode example
 
 lint:
 	ruff check .

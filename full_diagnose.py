@@ -145,8 +145,8 @@ print(f"  文件大小: {len(html):,} 字节")
 
 # 2.1 检查空状态/错误处理
 checks = [
-    (r'window\.location\.origin', "动态 API 基础 URL (无硬编码)"),
-    (r'AbortController', "API 超时控制 (AbortController)"),
+    (r"loc\.origin|window\.location\.origin|resolveApiBase|api-base", "动态 API 基础 URL (无硬编码)"),
+    (r"AbortController", "API 超时控制 (AbortController)"),
     (r'\.toast-error|toast\.error|toast-success', "Toast 通知系统"),
     (r'\.skeleton|skeleton-', "骨架屏加载状态"),
     (r'echarts\.getInstanceByDom.*dispose', "ECharts 实例正确清理"),
@@ -202,7 +202,6 @@ for p, d in chart_check:
 a11y = [
     (r"<html[^>]*lang=", "html lang 属性"),
     (r'<button[^>]*type=.button.', "按钮 type 属性"),
-    (r"alt=.*\.(png|jpg|svg)", "图片 alt 文本"),
     (r":focus-visible|:focus", "焦点可见状态"),
     (r"tabindex", "tabindex 键盘导航"),
 ]
@@ -212,6 +211,18 @@ for p, d in a11y:
     else:
         results["a11y_issues"].append(d)
         print(f"  ♿ 无障碍缺失: {d}")
+
+# 2.4b 图片 alt 文本（仅在存在 <img> 标签时校验）
+img_tags = re.findall(r"<img\b[^>]*>", html, re.IGNORECASE)
+if img_tags:
+    imgs_without_alt = [tag for tag in img_tags if "alt=" not in tag.lower()]
+    if imgs_without_alt:
+        results["a11y_issues"].append(f"{len(imgs_without_alt)} 张 <img> 缺少 alt 文本")
+        print(f"  ♿ 无障碍缺失: {len(imgs_without_alt)} 张 <img> 缺少 alt 文本")
+    else:
+        ok(f"无障碍: 所有 {len(img_tags)} 张 <img> 均有 alt 文本")
+else:
+    ok("无障碍: 页面未使用 <img>（CSS/SVG-only，无需 alt 校验）")
 
 # 2.5 检查 SEO/元数据
 seo = [

@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢您对 **National Stats** 项目的关注！我们欢迎任何形式的贡献（功能、缺陷修复、文档、测试、翻译）。
+感谢您对 **Regional Economic Analysis** 项目的关注！我们欢迎任何形式的贡献（功能、缺陷修复、文档、测试、翻译）。
 
 ## 行为准则
 
@@ -10,7 +10,7 @@
 
 ### 报告 Bug
 
-1. 在 [Issues](https://github.com/<owner>/national-stats/issues) 中搜索，确认问题未被报告
+1. 在 [Issues](https://github.com/your-org/regional-economic-analysis/issues) 中搜索，确认问题未被报告
 2. 使用 [Bug Report 模板](.github/ISSUE_TEMPLATE/bug_report.md) 创建新 Issue
 3. 附上：
    - 操作系统与 Python 版本
@@ -54,8 +54,8 @@
 
 ```bash
 # 1. 克隆
-git clone https://github.com/<owner>/national-stats.git
-cd national-stats
+git clone https://github.com/your-org/regional-economic-analysis.git
+cd regional-economic-analysis
 
 # 2. 创建虚拟环境
 python3.11 -m venv venv
@@ -94,4 +94,4 @@ tests/backend/      # 单元测试
 
 ## 许可证
 
-提交代码即表示您同意以 [MIT License](LICENSE) 授权。
+提交代码即表示您同意以 [GPL-3.0-or-later License](LICENSE) 授权。

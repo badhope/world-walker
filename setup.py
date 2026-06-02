@@ -89,7 +89,6 @@ setup(
     entry_points={
         "console_scripts": [
             "rea-api=backend.api.main:run",
-            "regional-stats-api=backend.api.main:run",
         ],
     },
     include_package_data=True,

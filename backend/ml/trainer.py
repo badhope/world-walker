@@ -14,7 +14,7 @@ import joblib
 from backend.utils.model_security import save_with_signature, load_with_signature
 
 from .models import (
-    BaseModel, get_model_instance,
+    BaseModel, get_model_instance, get_available_models,
     ModelMetrics, ModelResult
 )
 

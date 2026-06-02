@@ -191,7 +191,7 @@ ls examples/shenzhen_semiconductor_2025/outputs/
 **操作**:
 ```bash
 # 启动API服务
-python main.py --mode api --port 8001
+python main.py --mode api --port 8000
 ```
 
 **旁白**:
@@ -200,7 +200,7 @@ python main.py --mode api --port 8001
 **切换画面**: 浏览器打开API文档
 
 **操作**:
-打开 http://localhost:8001/docs
+打开 http://localhost:8000/docs
 
 **旁白**:
 > "API文档使用Swagger UI，提供完整的接口说明和在线测试功能。"
@@ -208,7 +208,7 @@ python main.py --mode api --port 8001
 **操作**: 演示一个API调用
 
 ```bash
-curl -X POST http://localhost:8001/api/v1/analysis/enterprise \
+curl -X POST http://localhost:8000/api/v1/analysis/enterprise \
   -H "Content-Type: application/json" \
   -d '{"region": "深圳", "industry": "半导体"}'
 ```
@@ -273,7 +273,7 @@ ls docs/
 ```
 感谢观看！
 
-项目地址: https://github.com/your-project/national-stats-analyzer
+项目地址: https://github.com/your-org/regional-economic-analysis
 联系邮箱: contact@example.com
 ```
 

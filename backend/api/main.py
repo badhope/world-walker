@@ -22,7 +22,8 @@ from backend.api.routes import (
     data_router, analysis_router, inference_router,
     interactive_router, websocket_router, cities_router,
     cities_v2_router, forecast_router, analysis_v3_router,
-    real_data_router, database_router, static_router
+    real_data_router, database_router, static_router,
+    ml_router,
 )
 from backend.api.routes.auth import router as auth_router
 
@@ -122,6 +123,7 @@ app.include_router(analysis_v3_router, prefix=settings.API_V1_STR)
 app.include_router(real_data_router)
 app.include_router(database_router)
 app.include_router(static_router)
+app.include_router(ml_router, prefix=settings.API_V1_STR)
 
 # 添加静态页面路由
 from pathlib import Path

@@ -297,4 +297,4 @@ Y = A × K^α × L^β
 
 - 📖 查看 [USAGE_GUIDE.md](./USAGE_GUIDE.md) - 使用指南
 - ⚙️ 查看 [CONFIG_GUIDE.md](./CONFIG_GUIDE.md) - 配置详解
-- 🐛 问题反馈：https://github.com/your-project/national-stats-analyzer/issues
+- 🐛 问题反馈：https://github.com/your-org/regional-economic-analysis/issues

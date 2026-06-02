@@ -19,7 +19,7 @@
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/Tests-176%20passed-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/Tests-185%20passed-brightgreen.svg)](tests/)
 [![codecov](https://codecov.io/gh/your-org/regional-economic-analysis/branch/main/graph/badge.svg)](https://codecov.io/gh/your-org/regional-economic-analysis)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Linter: ruff](https://img.shields.io/badge/linter-ruff-red.svg)](https://github.com/astral-sh/ruff)
@@ -70,7 +70,7 @@
 pip install -r requirements.txt
 
 # 2. 运行完整演示（生成数据→训练模型→预测→报告输出）
-python demo_complete.py
+python main.py --mode example
 ```
 
 演示完成后，在 `data/retail_complete/` 目录下查看生成的分析报告（PDF/Excel/JSON/TXT）和可视化图表。
@@ -236,7 +236,7 @@ python -m pytest tests/backend/ -v
 python full_diagnose.py
 
 # Browser-automation tests (produces screenshots)
-python screenshots/browser_test.py
+python scripts/diagnostics/browser_test.py
 ```
 
 ---

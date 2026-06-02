@@ -1,16 +1,19 @@
-# 通用数据分析框架
+# 区域产业经济分析平台 — 快速上手
 
-一个**完整的、工业级**的通用数据分析框架，支持任意行业和地区的数据驱动分析。
+一个**完整的、工业级**的多场景产业经济分析平台，覆盖 **10 个中国主要城市**，支持 **企业选址、销售预测、政府产业政策评估、城市对比** 4 个分析场景。
+
+> **Tagline**: _"下一座工厂应该建在哪？下一年哪个城市增长最快？这个零售店的租金值不值？"_
 
 ---
 
 ## 🎯 项目亮点
 
-- ✅ **8+种机器学习算法** - 线性回归、随机森林、GBDT、XGBoost、Prophet等
-- ✅ **AutoML自动化** - 一键训练，自动选择最优模型
-- ✅ **行业无关** - 同一框架适用于零售、医疗、制造、金融等任意行业
-- ✅ **配置驱动** - YAML配置，无需改代码即可适配新行业
-- ✅ **严格实现** - 无简化、无偷工减料，可直接用于简历
+- ✅ **4 大分析场景** - 零售门店选址 / 销售预测 / 企业营商环境 / 政府产业政策
+- ✅ **10 个中国主要城市** - 深圳/上海/北京/广州/武汉/成都/杭州/南京/重庆/苏州
+- ✅ **70+ REST API 端点** - 城市数据 / 分析引擎 / 预测 / ML 训练 / AutoML
+- ✅ **零构建前端** - 纯 HTML + Tailwind CDN + ECharts CDN，即开即用
+- ✅ **生产级安全** - OpenSSF Scorecard 9.5+/10、GPG+Sigstore 签名、SLSA L3 provenance
+- ✅ **配置驱动** - YAML 配置无需改代码即可适配新城市/新行业
 
 ---
 
@@ -23,11 +26,11 @@ pip install -r requirements.txt
 
 ### 2. 运行演示
 ```bash
-# 完整测试
-python test_universal_system.py
+# 完整测试套件
+pytest tests/ -q
 
-# 跨行业演示
-python demo_cross_industry.py
+# 一键演示 (生成数据→训练模型→预测→报告输出)
+python main.py --mode example
 ```
 
 ### 3. 自定义分析
@@ -176,7 +179,7 @@ python examples/healthcare_example.py
 
 1. 查看完整文档：`docs/` 目录
 2. 查看行业示例：`examples/` 目录
-3. 运行完整测试：`python test_universal_system.py`
+3. 运行完整测试：`pytest tests/ -q`
 4. 根据业务需求调整配置
 5. 替换示例数据为真实数据
 
@@ -188,4 +191,4 @@ python examples/healthcare_example.py
 
 ## License
 
-MIT License
+本项目基于 **GNU 通用公共许可证 v3.0 或更高版本 (GPL-3.0-or-later)** 发布，详见 [LICENSE](LICENSE)。

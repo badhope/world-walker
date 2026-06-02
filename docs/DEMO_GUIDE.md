@@ -142,14 +142,14 @@ bash scripts/start_api.sh
 
 **标注要点**:
 - 标注"API服务已启动"
-- 标注访问地址 `http://localhost:8001/docs`
+- 标注访问地址 `http://localhost:8000/docs`
 
 ### 8. API文档截图
 
 **文件命名**: `08-api-docs.png`
 
 **截图内容**:
-访问 `http://localhost:8001/docs`
+访问 `http://localhost:8000/docs`
 
 **预期显示**:
 - Swagger UI界面
@@ -166,7 +166,7 @@ bash scripts/start_api.sh
 
 **截图内容**:
 ```bash
-curl -X POST http://localhost:8001/api/v1/analysis/enterprise \
+curl -X POST http://localhost:8000/api/v1/analysis/enterprise \
   -H "Content-Type: application/json" \
   -d '{"region": "深圳", "industry": "半导体", "year": 2025}'
 ```
@@ -296,7 +296,7 @@ tree -L 2 -I '__pycache__|*.pyc|.git'
 ```
 "以上就是我的项目展示。
 
-项目地址：https://github.com/your-project/national-stats-analyzer
+项目地址：https://github.com/your-org/regional-economic-analysis
 
 感谢大家的聆听！"
 ```

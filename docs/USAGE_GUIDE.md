@@ -35,8 +35,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/your-project/national-stats-analyzer.git
-cd national-stats-analyzer
+git clone https://github.com/your-org/regional-economic-analysis.git
+cd regional-economic-analysis-analyzer
 
 # 一键安装
 bash scripts/setup.sh --venv
@@ -46,8 +46,8 @@ bash scripts/setup.sh --venv
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/your-project/national-stats-analyzer.git
-cd national-stats-analyzer
+git clone https://github.com/your-org/regional-economic-analysis.git
+cd regional-economic-analysis-analyzer
 
 # 2. 创建虚拟环境（推荐）
 python3 -m venv venv
@@ -90,10 +90,10 @@ python main.py --mode example --type government
 ### 3. 启动API服务
 
 ```bash
-python main.py --mode api --port 8001
+python main.py --mode api --port 8000
 ```
 
-访问 http://localhost:8001/docs 查看API文档。
+访问 http://localhost:8000/docs 查看API文档。
 
 ---
 
@@ -107,7 +107,7 @@ python main.py --mode api --port 8001
 python main.py --mode api [选项]
 
 # 选项：
-#   --port 8001      API服务端口
+#   --port 8000      API服务端口
 #   --host 0.0.0.0   服务地址
 #   --reload         启用代码热重载（开发模式）
 ```
@@ -179,15 +179,15 @@ runner.visualize_results(report)
 
 ```bash
 # 健康检查
-curl http://localhost:8001/api/v1/health
+curl http://localhost:8000/api/v1/health
 
 # 企业端分析
-curl -X POST http://localhost:8001/api/v1/analysis/enterprise \
+curl -X POST http://localhost:8000/api/v1/analysis/enterprise \
   -H "Content-Type: application/json" \
   -d '{"region": "深圳", "industry": "半导体", "year": 2025}'
 
 # 政府端分析
-curl -X POST http://localhost:8001/api/v1/analysis/government \
+curl -X POST http://localhost:8000/api/v1/analysis/government \
   -H "Content-Type: application/json" \
   -d '{"region": "深圳", "industry": "半导体", "year": 2025}'
 ```
@@ -230,7 +230,7 @@ pyenv global 3.11.0
 
 ```bash
 # 查找占用端口的进程
-lsof -ti:8001
+lsof -ti:8000
 
 # 关闭进程
 kill <PID>
@@ -260,7 +260,7 @@ python main.py --mode check
 ps aux | grep uvicorn
 
 # 检查端口
-netstat -tuln | grep 8001
+netstat -tuln | grep 8000
 
 # 查看日志
 tail -f logs/app.log
@@ -273,4 +273,4 @@ tail -f logs/app.log
 - 📖 查看 [README.md](../README.md) - 项目主页
 - ⚙️ 查看 [CONFIG_GUIDE.md](./CONFIG_GUIDE.md) - 配置详解
 - 📊 查看 [EXAMPLE_ANALYSIS.md](./EXAMPLE_ANALYSIS.md) - 示例分析
-- 🐛 问题反馈：https://github.com/your-project/national-stats-analyzer/issues
+- 🐛 问题反馈：https://github.com/your-org/regional-economic-analysis/issues

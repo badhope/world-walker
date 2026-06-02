@@ -25,8 +25,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/your-project/national-stats-analyzer.git
-cd national-stats-analyzer
+git clone https://github.com/your-org/regional-economic-analysis.git
+cd regional-economic-analysis-analyzer
 
 # 安装开发依赖
 pip install -r requirements.txt
@@ -516,8 +516,8 @@ git push origin v4.0.0
 ## 联系我们
 
 - 📧 技术支持：contact@example.com
-- 🐛 问题反馈：https://github.com/your-project/national-stats-analyzer/issues
-- 💬 讨论群：https://gitter.im/your-project
+- 🐛 问题反馈：https://github.com/your-org/regional-economic-analysis/issues
+- 💬 讨论群：https://gitter.im/your-org-regional-economic-analysis
 
 ---
 

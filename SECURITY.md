@@ -15,7 +15,7 @@
 我们非常重视安全问题。如果您发现了本项目的安全漏洞，
 **请勿** 在公开 Issue 中披露，请通过以下方式私下联系：
 
-📧 **security@example.com** （替换为实际邮箱）
+📧 **security@regional-economic-analysis.org** （替换为实际邮箱）
 
 请在邮件中包含：
 

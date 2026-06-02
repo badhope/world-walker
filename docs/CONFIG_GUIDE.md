@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     
     # API配置
     API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8001
+    API_PORT: int = 8000
     DEBUG: bool = True
     
     # 数据目录
@@ -232,7 +232,7 @@ VERSION=4.0.0
 
 # API配置
 API_HOST=0.0.0.0
-API_PORT=8001
+API_PORT=8000
 DEBUG=True
 
 # 日志配置
@@ -340,4 +340,4 @@ config_loader.__init__()
 
 - 📖 查看 [USAGE_GUIDE.md](./USAGE_GUIDE.md) - 使用指南
 - 📊 查看 [EXAMPLE_ANALYSIS.md](./EXAMPLE_ANALYSIS.md) - 示例分析
-- 🐛 问题反馈：https://github.com/your-project/national-stats-analyzer/issues
+- 🐛 问题反馈：https://github.com/your-org/regional-economic-analysis/issues

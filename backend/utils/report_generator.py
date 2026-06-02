@@ -306,7 +306,7 @@ class FlexibleReportGenerator:
     def __init__(self):
         self._default_config = ReportConfig(
             title="分析报告",
-            author="National Stats"
+            author="Regional Economic Analysis Team"
         )
     
     def generate_report(

@@ -34,7 +34,7 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
-            requirements-lock.txt
+            requirements.lock
 
       - name: Install lint tools
         run: |
@@ -73,12 +73,12 @@ jobs:
           cache-dependency-path: |
             requirements.txt
             requirements-dev.txt
-            requirements-lock.txt
+            requirements.lock
 
       - name: Install dependencies (locked)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-lock.txt
+          pip install -r requirements.lock
           pip install -r requirements-dev.txt
 
       - name: Run tests with coverage

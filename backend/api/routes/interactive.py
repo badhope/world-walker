@@ -144,7 +144,7 @@ async def import_data(request: DataImportRequest):
             raise HTTPException(status_code=400, detail="数据导入失败或数据为空")
         
         # 验证数据
-        if request.validate:
+        if request.do_validate:
             validation_result = {
                 'total_records': len(data),
                 'required_fields': ['code', 'name', 'value', 'year'],

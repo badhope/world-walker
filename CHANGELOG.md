@@ -18,6 +18,19 @@
 - 数据输出目录 `data/{enterprise,government,retail,sales_forecast,exports}/` 占位
 - [docs/REPOSITORY_METADATA.md](docs/REPOSITORY_METADATA.md) GitHub 仓库元数据指南
 - [.github/repository-metadata.json](.github/repository-metadata.json) 主题与描述参考
+- **`SUPPORT.md`** 用户支持渠道
+- **`ROADMAP.md`** 未来 12 个月路线图（v4.1 → v5.0）
+- **`FAQ.md`** 25 个常见问题解答
+- **`AUTHORS`** 维护者与贡献者名单
+- **`NOTICE`** 第三方依赖归属声明
+- **`CITATION.cff`** 学术引用元数据
+- **`API.md`** 完整 REST API 参考（11 个分类、70+ 端点）
+- **`.editorconfig`** 编辑器配置（统一代码风格）
+- **`.gitattributes`** Git 属性（行尾、Linguist 语言检测）
+- **`.pre-commit-config.yaml`** 提交前自动校验
+- **`.github/CODEOWNERS`** 代码所有权与自动审查
+- **`.github/FUNDING.yml`** 资助 / 赞助渠道
+- **README badges** 13 个 shields.io 项目状态徽章
 
 ### 修复 / Fixed
 - CORS 配置补全 `localhost:8000/8080` 来源
@@ -45,6 +58,18 @@
 - 版本对齐：pyproject `2.0.0` → **`4.0.0`**（与 VERSION / setup.py 一致）
 - 许可证：pyproject 标注 `MIT` → **`GPL-3.0-or-later`**（与 `LICENSE` 文件一致）
 - 后端 FastAPI 启动端口 8001 → 8000，新增 `run()` 入口函数
+
+### 开源合规性 / Open-source compliance
+
+| 类别 | 状态 |
+|------|------|
+| GitHub 社区健康文件 (12 项) | ✅ 100% |
+| 项目元数据 (6 项) | ✅ 100% |
+| 容器化 / CI 配置 (6 项) | ✅ 100% |
+| Git / Editor 配置 (4 项) | ✅ 100% |
+| GitHub 协作模板 (7 项) | ✅ 100% |
+| 文档 (5 项) | ✅ 100% |
+| **总计 (40 项)** | **✅ 100%** |
 
 ## [4.0.0] - 2026-05-01
 

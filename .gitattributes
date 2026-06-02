@@ -1,0 +1,73 @@
+# Git attributes: https://git-scm.com/docs/gitattributes
+# Ensures consistent line endings, diff handling and linguist detection.
+
+# ============================================
+# Default behaviour: LF line endings everywhere
+# ============================================
+*               text=auto eol=lf
+
+# Explicit line ending rules
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+*.ps1           text eol=crlf
+*.sh            text eol=lf
+*.py            text eol=lf
+*.md            text eol=lf
+
+# ============================================
+# Binary files (do not touch)
+# ============================================
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary
+*.zip           binary
+*.tar.gz        binary
+*.tgz           binary
+*.gz            binary
+*.7z            binary
+*.woff          binary
+*.woff2         binary
+*.ttf           binary
+*.eot           binary
+*.mp4           binary
+*.mov           binary
+*.webm          binary
+*.mp3           binary
+
+# ============================================
+# Linguist (GitHub language detection)
+# ============================================
+# Exclude vendored / generated files from language stats
+docs/REPOSITORY_METADATA.md    linguist-documentation
+docs/*                          linguist-documentation
+*.min.js                       linguist-generated
+*.min.css                      linguist-generated
+package-lock.json              linguist-generated
+yarn.lock                      linguist-generated
+data/**                        linguist-vendored
+screenshots/**                 linguist-documentation
+*.lock                         linguist-generated
+CHANGELOG.md                   linguist-documentation
+CODE_OF_CONDUCT.md             linguist-documentation
+SECURITY.md                    linguist-documentation
+
+# Force specific languages for ambiguous files
+*.proto                        linguist-language=Protocol-Buffer
+*.feature                      linguist-language=Cucumber
+
+# ============================================
+# Git LFS (uncomment when adopting LFS)
+# ============================================
+# *.psd filter=lfs diff=lfs merge=lfs -text
+# *.ai filter=lfs diff=lfs merge=lfs -text
+# *.sketch filter=lfs diff=lfs merge=lfs -text
+# *.fig filter=lfs diff=lfs merge=lfs -text
+
+# ============================================
+# Diff / merge drivers
+# ============================================
+# *.docx diff=word
+# *.pdf diff=pdf

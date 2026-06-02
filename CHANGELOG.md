@@ -7,7 +7,7 @@
 
 ## [Unreleased]
 
-### 新增
+### 新增 / Added
 - 浏览器自动化端到端测试套件（[screenshots/browser_test.py](screenshots/browser_test.py)）
 - 全面诊断脚本（[full_diagnose.py](full_diagnose.py)）
 - `CONTRIBUTING.md` / `CODE_OF_CONDUCT.md` / `SECURITY.md` / `ARCHITECTURE.md` / `DEPLOYMENT.md`
@@ -16,8 +16,10 @@
 - `backend/data/city_data.py` 数据模块（10 城市 × 20+ 指标 + 评分基准自动计算）
 - `HISTORICAL_DATA` 预生成缓存 + `generate_data_quality_report()`
 - 数据输出目录 `data/{enterprise,government,retail,sales_forecast,exports}/` 占位
+- [docs/REPOSITORY_METADATA.md](docs/REPOSITORY_METADATA.md) GitHub 仓库元数据指南
+- [.github/repository-metadata.json](.github/repository-metadata.json) 主题与描述参考
 
-### 修复
+### 修复 / Fixed
 - CORS 配置补全 `localhost:8000/8080` 来源
 - 后端 `/favicon.ico` 路由（避免 404）
 - 前端 API 基础 URL 智能解析（[frontend/index.html](frontend/index.html)）
@@ -28,14 +30,21 @@
 - 全局 `window.error` / `unhandledrejection` 监听
 - 修复 `cities_v2.py` 中 DataFrame 真值判断歧义
 - 修复 `enterprise_analyzer_v3.py` 缺失 `supplier_count` 字段导致 500
+- 修正 README.md 末尾的 "MIT License" → "GPL-3.0-or-later"（与 `LICENSE` 文件保持一致）
 
-### 变更
+### 变更 / Changed
 - README / QUICK_START / Dockerfile / docker-compose / Makefile / start_api.sh
   端口从 8001 → **8000**，前端端口 5173 → **8080**
 - 前端技术栈描述从「Vue 3 + Vite」更新为「纯 HTML + Tailwind CDN + ECharts CDN」
 - Docker Compose 新增 `frontend` (nginx) 服务
 - CI Workflow `frontend.yml` 移除 npm 依赖
 - `requirements.txt` 移除错误的 `python>=3.11` 头行
+- 项目名称 `national-stats` / `national-stats-analyzer` → **`regional-economic-analysis`**
+- 项目描述统一为英文（PyPI/GitHub 国际化最佳实践）
+- 主题标签 7 个 → **15 个**（更精准的搜索发现）
+- 版本对齐：pyproject `2.0.0` → **`4.0.0`**（与 VERSION / setup.py 一致）
+- 许可证：pyproject 标注 `MIT` → **`GPL-3.0-or-later`**（与 `LICENSE` 文件一致）
+- 后端 FastAPI 启动端口 8001 → 8000，新增 `run()` 入口函数
 
 ## [4.0.0] - 2026-05-01
 

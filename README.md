@@ -10,20 +10,25 @@
 
 ## 📊 Project Status / 项目状态
 
+<!--
+  Badges that require a real service (Codecov, OpenSSF Scorecard) are
+  wired to placeholder org/repo. To make them live, replace
+  `your-org/regional-economic-analysis` with the actual GitHub path
+  after pushing. The other badges are static / file-based.
+-->
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/Tests-159%20passed-brightgreen.svg)](tests/)
-[![Coverage](https://img.shields.io/badge/Coverage-80%25%2B-yellowgreen.svg)](https://github.com/your-org/regional-economic-analysis)
+[![Tests](https://img.shields.io/badge/Tests-176%20passed-brightgreen.svg)](tests/)
+[![codecov](https://codecov.io/gh/your-org/regional-economic-analysis/branch/main/graph/badge.svg)](https://codecov.io/gh/your-org/regional-economic-analysis)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Linter: ruff](https://img.shields.io/badge/linter-ruff-red.svg)](https://github.com/astral-sh/ruff)
 [![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen.svg)](https://pre-commit.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED.svg?logo=docker&logoColor=white)](Dockerfile)
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF.svg?logo=github-actions&logoColor=white)](.github/workflows/)
 [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-025E8C.svg?logo=dependabot&logoColor=white)](.github/dependabot.yml)
-[![OpenSSF](https://img.shields.io/badge/OpenSSF-Scorecard-blue.svg)](https://scorecard.dev/viewer/?uri=github.com/your-org/regional-economic-analysis)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/your-org/regional-economic-analysis?label=OpenSSF)](https://scorecard.dev/viewer/?uri=github.com/your-org/regional-economic-analysis)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Made with ❤️](https://img.shields.io/badge/Made%20with-❤️-ff69b4.svg)]()
 [![Version](https://img.shields.io/badge/Version-4.0.0-orange.svg)](VERSION)
 
 ### 🌐 Internationalisation / 国际化

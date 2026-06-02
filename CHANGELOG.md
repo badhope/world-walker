@@ -61,6 +61,14 @@
 - 修复 Hypothesis `weight_value` 策略 API 误用（`allow_nan` 与 `min/max_value` 不能同时使用）
 - 修复模糊测试中极端长字符串触发 URL 长度限制的崩溃（增加防御性 try/except 并把生成范围限制为 64 字符）
 
+### 重构 / Refactored (2026-06)
+- **CITY_DATA 重构**：569 行硬编码字典从 `backend/data/city_data.py` 抽离到 `data/cities/cities.yaml`，新增城市/修改指标不再需要改 Python 代码；提供 `scripts/regen_cities_yaml.py` 重新生成；`CITY_DATA_YAML` 环境变量支持运行时切换
+- **模型加载安全**：新增 `backend/utils/safe_model_loader.py` 与 `models/SHA256SUMS` 强制 SHA-256 校验；拒绝未列入 manifest 的 .pkl、拒绝篡改文件、100MB 体积上限；9 个安全测试覆盖 4 个攻击向量
+- **根目录清理**（响应代码审查）：
+  - 21 个根目录 `.md`（`PROJECT_*` / `FINAL_*` / `RESTRUCTURE_PLAN` / `UNIVERSAL_FRAMEWORK` / `项目*.md` 等）已归档到 `docs/archive/`，附 README 说明
+  - 22 个根目录 `test_*.py` / `demo_*.py` / `diagnose_*.py` / `verify_*.py` 已归档到 `scripts/legacy/`，附 README 映射到正式入口（`main.py` / `pytest tests/backend/` / `full_diagnose.py`）
+  - 根目录现仅保留 13 个 `.md` + 3 个 `.py`，符合"一个 main.py 入口"原则
+
 ### 变更 / Changed
 - README / QUICK_START / Dockerfile / docker-compose / Makefile / start_api.sh
   端口从 8001 → **8000**，前端端口 5173 → **8080**

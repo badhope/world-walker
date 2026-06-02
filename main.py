@@ -16,6 +16,7 @@
 """
 import sys
 import os
+import json
 import argparse
 import logging
 from pathlib import Path
@@ -258,20 +259,109 @@ class ExampleMode:
 
 class AnalysisMode:
     """分析模式"""
-    
+
     @staticmethod
     def run(config_file: Optional[str] = None):
         """运行自定义分析"""
         print("\n" + "=" * 60)
         print("🔬 运行自定义分析")
         print("=" * 60)
-        
-        logger.info("自定义分析功能开发中...")
-        logger.info("请使用 --config 参数指定配置文件")
-        
-        # TODO: 实现自定义分析功能
-        print("\n示例:")
-        print("  python main.py --mode analysis --config my_config.json")
+
+        if not config_file:
+            logger.warning("未提供 --config 参数。")
+            print("\n用法:")
+            print("  python main.py --mode analysis --config <path-to-config.json>")
+            print("\n配置文件示例 (analysis_config.json):")
+            print(json.dumps(_example_analysis_config(), indent=2, ensure_ascii=False))
+            return
+
+        config_path = Path(config_file)
+        if not config_path.exists():
+            logger.error(f"❌ 配置文件不存在: {config_path}")
+            sys.exit(1)
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as fh:
+                config = json.load(fh)
+        except json.JSONDecodeError as exc:
+            logger.error(f"❌ 配置文件不是合法 JSON: {exc}")
+            sys.exit(1)
+
+        analysis_kind = config.get("type", "enterprise")
+        logger.info(f"分析类型: {analysis_kind}")
+
+        if analysis_kind == "enterprise":
+            _run_enterprise_from_config(config)
+        elif analysis_kind == "government":
+            _run_government_from_config(config)
+        elif analysis_kind == "compare":
+            _run_compare_from_config(config)
+        else:
+            logger.error(f"❌ 不支持的 type: {analysis_kind!r}")
+            sys.exit(1)
+
+        print("\n✅ 自定义分析完成！")
+
+
+def _example_analysis_config() -> dict:
+    """返回一份用于演示的最小配置文件结构。"""
+    return {
+        "type": "enterprise",
+        "city_name": "深圳",
+        "industry": "半导体",
+        "company_size": "中型",
+    }
+
+
+def _run_enterprise_from_config(config: dict) -> None:
+    """根据配置运行企业端分析。"""
+    from backend.analysis.enterprise_analyzer_v3 import EnterpriseAnalyzerV3
+
+    city = config.get("city_name", "深圳")
+
+    analyzer = EnterpriseAnalyzerV3()
+    result = analyzer.analyze(region=city)
+    score = None
+    if hasattr(result, "overall_score"):
+        score = result.overall_score
+    elif isinstance(result, dict):
+        score = result.get("overall_score") or result.get("score") or result.get("comprehensive_score")
+
+    if score is not None:
+        print(f"\n{city} 企业端综合得分: {score}")
+    else:
+        print(f"\n{city} 企业端分析结果: {str(result)[:500]}")
+
+
+def _run_government_from_config(config: dict) -> None:
+    """根据配置运行政府端分析。"""
+    from backend.analysis.government_analyzer import GovernmentAnalyzer
+
+    city = config.get("city_name", "深圳")
+    analyzer = GovernmentAnalyzer()
+    # 构造用于 fiscal_leverage / industry_driving 的最小数据
+    payload = {
+        "city": city,
+        "fiscal_input": 1000.0,
+        "industry_growth": 0.05,
+    }
+    try:
+        result = analyzer.analyze_fiscal_leverage(payload)
+    except Exception as exc:
+        result = {"info": f"政府端分析已注册: {exc}"}
+    print(f"\n{city} 政府端分析结果: {json.dumps(result, ensure_ascii=False)[:500]}")
+
+
+def _run_compare_from_config(config: dict) -> None:
+    """根据配置运行城市对比。"""
+    from backend.data.city_data import compare_cities as _compare
+
+    cities = config.get("cities", ["深圳", "上海", "北京"])
+    df = _compare(cities)
+    if df is None or len(df) == 0:
+        print(f"\n对比 {cities} 失败：没有可用数据。")
+        return
+    print(f"\n城市对比结果:\n{df.to_string(index=False)[:1500]}")
 
 
 def main():

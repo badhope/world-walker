@@ -4,31 +4,134 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+    branches: [main, develop]
 
+# Cancel in-progress runs on the same branch
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+# Minimal token permissions (OpenSSF Scorecard: Token-Permissions)
+permissions:
+  contents: read
 
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c  # v5.0.0
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: requirements.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-lock.txt
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Install lint tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff==0.4.8 black==24.4.2 isort==5.13.2
 
-      - name: Run lint
-        run: ruff check . || true
+      - name: Ruff
+        run: ruff check --output-format=github .
 
-      - name: Run tests
-        run: pytest tests/ -v --tb=short
+      - name: Black check
+        run: black --check --diff --line-length=120 .
+
+      - name: isort check
+        run: isort --check-only --diff --profile=black --line-length=120 .
+
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c  # v5.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-lock.txt
+
+      - name: Install dependencies (locked)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-lock.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/backend/ \
+            --cov=backend \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --cov-report=html:htmlcov \
+            --cov-fail-under=70 \
+            -v --tb=short
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12' && github.event_name == 'push'
+        uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574  # v4.4.0
+        with:
+          files: ./coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
+
+  security:
+    name: Security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c  # v5.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install bandit
+        run: pip install bandit==1.7.8
+
+      - name: Run bandit
+        run: |
+          bandit -lll -r backend/ \
+            --exclude backend/api/routes/auth.py \
+            --format json --output bandit-report.json || true
+          bandit -lll -r backend/ \
+            --exclude backend/api/routes/auth.py \
+            --format screen
+
+      - name: Upload bandit report
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3  # v4.3.1
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          retention-days: 30

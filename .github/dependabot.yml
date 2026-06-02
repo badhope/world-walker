@@ -1,11 +1,13 @@
-# Dependabot 配置 / Dependabot Configuration
-# 自动检测依赖更新并创建 PR
-# 参考：https://docs.github.com/cn/code-security/dependabot/dependabot-version-updates
+# Dependabot configuration — extended with auto-merge, security updates,
+# grouped version bumps and GitHub Actions SHA pinning.
+#
+# Reference: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
 
 version: 2
+enable-beta-ecosystems: true
 
 # ============================================
-# Python 依赖更新
+# Python: pip
 # ============================================
 updates:
   - package-ecosystem: "pip"
@@ -19,11 +21,11 @@ updates:
     labels:
       - "dependencies"
       - "python"
+      - "auto-merge"
     commit-message:
       prefix: "deps"
       prefix-development: "deps(dev)"
       include: "scope"
-    # 分组更新：把同类更新合并到一个 PR
     groups:
       fastapi:
         patterns:
@@ -31,30 +33,42 @@ updates:
           - "uvicorn"
           - "starlette"
           - "pydantic"
-      data:
+          - "pydantic-settings"
+      data-science:
         patterns:
           - "pandas"
           - "numpy"
           - "scipy"
           - "scikit-learn"
+          - "statsmodels"
+          - "joblib"
       dev-tools:
         patterns:
           - "pytest"
           - "black"
           - "ruff"
+          - "isort"
           - "mypy"
           - "coverage"
-    # 忽略大版本更新
+          - "hypothesis"
+      security:
+        patterns:
+          - "cryptography"
+          - "pyjwt"
+          - "jinja2"
+        applies-to: version-updates
+    # Skip major version bumps
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-    # 允许的更新类型
-    allowed-updates:
-      - patch-type: "security"
-      - update-type: "security"
+    # Reviewer assignment
+    reviewers:
+      - "your-org/maintainers"
+    assignees:
+      - "your-org/maintainers"
 
 # ============================================
-# GitHub Actions 依赖更新
+# GitHub Actions
 # ============================================
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -67,15 +81,18 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+      - "auto-merge"
     commit-message:
       prefix: "ci"
     groups:
       actions:
         patterns:
           - "*"
+    reviewers:
+      - "your-org/maintainers"
 
 # ============================================
-# Docker 依赖更新（如未来引入）
+# Docker
 # ============================================
   - package-ecosystem: "docker"
     directory: "/"
@@ -90,3 +107,17 @@ updates:
     ignore:
       - dependency-name: "python"
         update-types: ["version-update:semver-major"]
+
+# ============================================
+# Pre-commit (git-hooks ecosystem)
+# ============================================
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "submodules"
+    commit-message:
+      prefix: "submodules"

@@ -1003,8 +1003,12 @@ var state = { cities: [], healthy: false };
 // ==================== Tab Switching ====================
 document.querySelectorAll('.tab-btn').forEach(function(btn){
   btn.addEventListener('click', function(){
-    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function(b){
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
     btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
     document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.add('hidden'); });
     var panel = document.getElementById('tab-' + btn.dataset.tab);
     panel.classList.remove('hidden');

@@ -108,11 +108,16 @@ api_key*
 data/exports/
 data/*.db
 data/*.sqlite
-backend/data/
 
 # City data YAML is source-controlled
 !data/cities/cities.yaml
 !data/cities/
+
+# Backend data: city_data.py is source-controlled; exports/ is ignored
+backend/data/exports/
+backend/data/*.db
+backend/data/*.sqlite
+backend/data/__pycache__/
 
 # ============================================
 # Node.js

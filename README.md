@@ -1,10 +1,21 @@
-# National Stats — 国家经济数据分析平台
+# Regional Economic Analysis — 区域产业经济分析平台
 
-多场景产业经济智能分析与预测系统。覆盖 **8个中国主要城市**，支持 **4个分析场景**，提供 **REST API + 单页 Web 前端（零构建依赖）**。
+> A production-grade, multi-scenario analytics platform for **city comparison, retail site selection, sales forecasting and government industry-policy evaluation**.
+>
+> 生产级多场景产业经济分析平台：覆盖 **10 个中国主要城市**，支持 **4 个分析场景**，提供 **REST API + 单页 Web 前端（零构建依赖）**。
+>
+> **Tagline**: _"Where should the next factory be built? Which city will grow fastest next year? Is this retail location worth the rent?"_
 
 ---
 
-## 🔥 快速了解：这个项目能干什么？
+## 🔥 What can this platform do? / 这个项目能干什么？
+
+| Scenario | Business Question | Audience |
+|----------|------------------|----------|
+| 🏪 **Retail Site Selection** | Where should the next store open? Predict revenue from foot-traffic, competitors and rent. | Retail chains, expansion teams |
+| 📈 **Sales Forecasting** | How much will we sell next quarter? Multi-model forecasting from historical data. | Operations, sales planning |
+| 🏢 **Enterprise Business Environment** | Which city has the lowest operating cost and best supply-chain support? | Corporate strategy, site-selection |
+| 🏛️ **Government Industry Policy** | How complete is the local industrial chain? How effective is fiscal leverage? | Government planning & development |
 
 | 场景 | 解决什么问题 | 适合谁用 |
 |------|-------------|---------|
@@ -135,37 +146,63 @@ docker-compose up --build
 
 ---
 
-## 📚 更多文档
+## 📚 More Documentation / 更多文档
+
+| File | Content |
+|------|---------|
+| [QUICK_START.md](QUICK_START.md) | 5-minute quick start (English & 中文) |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, data flow, key decisions |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment (Systemd / Docker / K8s / Nginx) |
+| [API.md](API.md) | Complete REST API reference (auto-generated from OpenAPI) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines & development setup |
+| [CHANGELOG.md](CHANGELOG.md) | Release notes & version history |
+| [SECURITY.md](SECURITY.md) | Security policy & vulnerability reporting |
+| Backend `/docs` | Interactive Swagger API documentation |
 
 | 文件 | 内容 |
 |------|------|
 | [QUICK_START.md](QUICK_START.md) | 5分钟极速入门指南 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 系统架构、数据流、关键决策 |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | 生产环境部署（Systemd/Docker/K8s/Nginx） |
 | [pyproject.toml](pyproject.toml) | 项目元数据、测试配置 |
 | 后端 `/docs` | Swagger API 交互式文档 |
 
 ---
 
-## 🧪 测试
+## 🏷️ Topics / 主题
+
+`regional-economy` · `economic-analysis` · `city-comparison` · `industry-analysis` · `retail-location` · `sales-forecast` · `site-selection` · `policy-evaluation` · `time-series-forecasting` · `data-visualization` · `fastapi` · `echarts` · `data-science` · `machine-learning` · `python`
+
+---
+
+## 🧪 Testing / 测试
 
 ```bash
-# API 端到端测试
+# Backend unit & integration tests
+python -m pytest tests/backend/ -v
+
+# Full-stack E2E diagnostics
 python full_diagnose.py
 
-# 浏览器自动化测试（生成截图）
+# Browser-automation tests (produces screenshots)
 python screenshots/browser_test.py
-# 截图输出: screenshots/browser_test/*.png
 ```
 
 ---
 
-## 🔒 安全配置
+## 🔒 Security / 安全
 
 ```bash
-# 复制并修改环境变量配置
+# Copy and customise environment configuration
 cp .env.example .env
-# 编辑 .env 文件，修改 SECRET_KEY 和 CORS_ORIGINS
+# Edit .env: change SECRET_KEY and CORS_ORIGINS for production
 ```
 
 ---
 
-MIT License
+## 📄 License
+
+This project is licensed under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**.
+See [LICENSE](LICENSE) for the full text.
+
+本项目基于 **GNU 通用公共许可证 v3.0 或更高版本** 发布，详见 [LICENSE](LICENSE)。

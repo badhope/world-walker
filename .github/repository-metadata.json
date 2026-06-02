@@ -1,0 +1,23 @@
+{
+  "_comment": "Reference for the GitHub repository 'About' panel. GitHub topics cannot be set from a file — copy these values into Settings → General → About on github.com. See docs/REPOSITORY_METADATA.md for details.",
+  "name": "regional-economic-analysis",
+  "description": "Production-grade analytics platform for regional economic comparison, retail site selection, sales forecasting and government industry-policy evaluation \u2014 10 cities, 70+ APIs, zero-build UI.",
+  "homepage": "https://github.com/your-org/regional-economic-analysis",
+  "topics": [
+    "regional-economy",
+    "economic-analysis",
+    "city-comparison",
+    "industry-analysis",
+    "retail-location",
+    "sales-forecast",
+    "site-selection",
+    "policy-evaluation",
+    "time-series-forecasting",
+    "data-visualization",
+    "fastapi",
+    "echarts",
+    "data-science",
+    "machine-learning",
+    "python"
+  ]
+}

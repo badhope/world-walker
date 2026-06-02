@@ -1,5 +1,5 @@
 _meta:
-  version: '2024.12'
+  version: 2024.12.1
   last_updated: '2024-12-31'
   city_count: 10
   sources:
@@ -12,6 +12,8 @@ _meta:
     coverage: 金融与市场
   update_frequency: 年度
   license: 内部使用 / Internal use only
+  changelog: Added supplier_count, fiscal_revenue, rd_intensity, industry_high_tech_ratio
+    to match frontend fields
 score_weights:
   business_cost: 0.3
   supply_chain: 0.25
@@ -46,6 +48,10 @@ cities:
     tax_coverage: 65.0
     rd_subsidy: 220.0
     avg_approval_time: 5.0
+    supplier_count: 3200
+    fiscal_revenue: 4012.0
+    rd_intensity: 5.49
+    industry_high_tech_ratio: 62.5
   上海:
     name: 上海
     province: 上海
@@ -72,6 +78,10 @@ cities:
     tax_coverage: 60.0
     rd_subsidy: 240.0
     avg_approval_time: 6.0
+    supplier_count: 4500
+    fiscal_revenue: 7800.0
+    rd_intensity: 4.4
+    industry_high_tech_ratio: 55.0
   北京:
     name: 北京
     province: 北京
@@ -98,6 +108,10 @@ cities:
     tax_coverage: 70.0
     rd_subsidy: 280.0
     avg_approval_time: 7.0
+    supplier_count: 3800
+    fiscal_revenue: 5800.0
+    rd_intensity: 6.49
+    industry_high_tech_ratio: 58.0
   广州:
     name: 广州
     province: 广东
@@ -124,6 +138,10 @@ cities:
     tax_coverage: 55.0
     rd_subsidy: 160.0
     avg_approval_time: 6.0
+    supplier_count: 2900
+    fiscal_revenue: 1920.0
+    rd_intensity: 3.5
+    industry_high_tech_ratio: 48.0
   杭州:
     name: 杭州
     province: 浙江
@@ -150,6 +168,10 @@ cities:
     tax_coverage: 62.0
     rd_subsidy: 180.0
     avg_approval_time: 5.5
+    supplier_count: 2200
+    fiscal_revenue: 2400.0
+    rd_intensity: 4.0
+    industry_high_tech_ratio: 55.0
   成都:
     name: 成都
     province: 四川
@@ -176,6 +198,10 @@ cities:
     tax_coverage: 50.0
     rd_subsidy: 120.0
     avg_approval_time: 7.0
+    supplier_count: 1800
+    fiscal_revenue: 1600.0
+    rd_intensity: 3.2
+    industry_high_tech_ratio: 42.0
   苏州:
     name: 苏州
     province: 江苏
@@ -202,6 +228,10 @@ cities:
     tax_coverage: 60.0
     rd_subsidy: 200.0
     avg_approval_time: 5.0
+    supplier_count: 2500
+    fiscal_revenue: 2400.0
+    rd_intensity: 3.8
+    industry_high_tech_ratio: 52.0
   武汉:
     name: 武汉
     province: 湖北
@@ -228,6 +258,10 @@ cities:
     tax_coverage: 55.0
     rd_subsidy: 140.0
     avg_approval_time: 6.5
+    supplier_count: 1600
+    fiscal_revenue: 1500.0
+    rd_intensity: 3.5
+    industry_high_tech_ratio: 42.0
   南京:
     name: 南京
     province: 江苏
@@ -254,6 +288,10 @@ cities:
     tax_coverage: 58.0
     rd_subsidy: 150.0
     avg_approval_time: 6.0
+    supplier_count: 1800
+    fiscal_revenue: 1600.0
+    rd_intensity: 3.8
+    industry_high_tech_ratio: 48.0
   西安:
     name: 西安
     province: 陕西
@@ -280,3 +318,7 @@ cities:
     tax_coverage: 48.0
     rd_subsidy: 100.0
     avg_approval_time: 8.0
+    supplier_count: 1200
+    fiscal_revenue: 850.0
+    rd_intensity: 3.5
+    industry_high_tech_ratio: 40.0

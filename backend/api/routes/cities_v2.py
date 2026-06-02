@@ -60,17 +60,14 @@ async def get_city_historical(city_name: str) -> Dict[str, Any]:
     - **city_name**: 城市名称
     """
     data = get_historical_data(city_name)
-    if not data:
+    if data is None or (hasattr(data, 'empty') and data.empty) or len(data) == 0:
         raise HTTPException(status_code=404, detail=f"城市 {city_name} 历史数据未找到")
-    
-    if hasattr(data, 'empty') and data.empty:
-        raise HTTPException(status_code=404, detail=f"城市 {city_name} 历史数据未找到")
-    
+
     if hasattr(data, 'to_dict'):
         records = data.to_dict(orient="records")
     else:
         records = data
-    
+
     return {
         "city": city_name,
         "years": [2020, 2021, 2022, 2023, 2024, 2025],

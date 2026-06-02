@@ -180,14 +180,14 @@ class EnterpriseAnalyzerV3:
         support_score = self._calculate_score(data["local_support_rate"], "local_support_rate", higher_is_better=True)
         delivery_score = self._calculate_score(data["avg_delivery_time"], "avg_delivery_time", higher_is_better=False)
         location_score = self._calculate_score(data["location_quotient"], "location_quotient", higher_is_better=True)
-        
+
         total = support_score * 0.45 + delivery_score * 0.25 + location_score * 0.30
-        
+
         details = {
             "本地配套率": data["local_support_rate"],
             "平均交付周期": data["avg_delivery_time"],
             "区位熵": data["location_quotient"],
-            "供应商数量": data["supplier_count"],
+            "供应商数量": data.get("supplier_count", 0),
             "本地配套率得分": support_score,
             "交付周期得分": delivery_score,
             "产业集聚度得分": location_score,

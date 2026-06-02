@@ -1,0 +1,92 @@
+# Dependabot 配置 / Dependabot Configuration
+# 自动检测依赖更新并创建 PR
+# 参考：https://docs.github.com/cn/code-security/dependabot/dependabot-version-updates
+
+version: 2
+
+# ============================================
+# Python 依赖更新
+# ============================================
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps(dev)"
+      include: "scope"
+    # 分组更新：把同类更新合并到一个 PR
+    groups:
+      fastapi:
+        patterns:
+          - "fastapi"
+          - "uvicorn"
+          - "starlette"
+          - "pydantic"
+      data:
+        patterns:
+          - "pandas"
+          - "numpy"
+          - "scipy"
+          - "scikit-learn"
+      dev-tools:
+        patterns:
+          - "pytest"
+          - "black"
+          - "ruff"
+          - "mypy"
+          - "coverage"
+    # 忽略大版本更新
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # 允许的更新类型
+    allowed-updates:
+      - patch-type: "security"
+      - update-type: "security"
+
+# ============================================
+# GitHub Actions 依赖更新
+# ============================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "10:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+# ============================================
+# Docker 依赖更新（如未来引入）
+# ============================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "docker"
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major"]

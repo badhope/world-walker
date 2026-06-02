@@ -3,38 +3,57 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "national-stats"
-version = "2.0.0"
-description = "国家经济数据分析平台 - 多场景产业经济智能分析与预测系统"
+name = "regional-economic-analysis"
+version = "4.0.0"
+description = "Regional Industrial Economic Analysis Platform: a production-grade multi-scenario analytics system for city comparison, retail site selection, sales forecasting and government industry policy evaluation."
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.11"
 authors = [
-    {name = "National Stats Team"}
+    {name = "Regional Economic Analysis Team"}
 ]
 keywords = [
-    "data-analysis",
-    "machine-learning",
+    "regional-economy",
     "economic-analysis",
+    "city-comparison",
+    "industry-analysis",
     "retail-location",
     "sales-forecast",
-    "industry-analysis",
-    "city-comparison",
+    "site-selection",
+    "policy-evaluation",
+    "time-series-forecasting",
+    "data-visualization",
+    "fastapi",
+    "echarts",
+    "data-science",
+    "machine-learning",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Government",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Sociology",
+    "Operating System :: OS Independent",
+    "Natural Language :: English",
+    "Natural Language :: Chinese (Simplified)",
 ]
 
 [project.urls]
-Homepage = "https://github.com/badhope/national_stats"
-Repository = "https://github.com/badhope/national_stats"
+Homepage = "https://github.com/your-org/regional-economic-analysis"
+Repository = "https://github.com/your-org/regional-economic-analysis"
+Issues = "https://github.com/your-org/regional-economic-analysis/issues"
+Documentation = "https://github.com/your-org/regional-economic-analysis/blob/main/README.md"
+Changelog = "https://github.com/your-org/regional-economic-analysis/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

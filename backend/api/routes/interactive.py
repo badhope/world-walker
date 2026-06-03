@@ -6,7 +6,10 @@ import ast
 import logging
 import math
 import operator as op
+import re
+import secrets
 from datetime import datetime
+from pathlib import PurePosixPath
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -19,6 +22,29 @@ from backend.core.multi_city import city_manager
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/interactive", tags=["交互操作"])
+
+# 合法导入文件名:仅允许字母数字 + . _ -
+_SAFE_IMPORT_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
+def safe_import_filename(user_filename: str) -> str:
+    """把用户传入的 file_name 转为带随机前缀的安全文件名(仅 basename)。
+
+    - 拒绝路径分隔符 / 反斜杠 / 隐藏文件 / 绝对路径
+    - 返回 `<8字节hex>_<basename>` 形式,无法被猜测
+    """
+    if not user_filename or not isinstance(user_filename, str):
+        raise ValueError("file_name must be a non-empty string")
+    if "\\" in user_filename or "/" in user_filename:
+        raise ValueError("path separators are not allowed in file_name")
+    if not _SAFE_IMPORT_NAME.match(user_filename):
+        raise ValueError("file_name contains disallowed characters")
+    if user_filename.startswith("."):
+        raise ValueError("hidden file names are not allowed")
+    # 用 PurePosixPath 二次防御,确保 .name 没有路径成分
+    if PurePosixPath(user_filename).name != user_filename:
+        raise ValueError("file_name must not contain directory components")
+    return f"{secrets.token_hex(8)}_{user_filename}"
 
 _SAFE_OPS = {
     ast.Add: op.add,
@@ -145,10 +171,14 @@ async def import_data(request: DataImportRequest):
         except Exception:
             raise HTTPException(status_code=400, detail="Base64 decoding failed")
 
-        # 保存临时文件
+        # 保存临时文件(文件名必须经 safe_import_filename 沙箱化)
         temp_dir = Path("temp_uploads")
         temp_dir.mkdir(exist_ok=True)
-        temp_file = temp_dir / request.file_name
+        try:
+            safe_name = safe_import_filename(request.file_name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid file_name: {e}")
+        temp_file = temp_dir / safe_name
 
         with open(temp_file, "wb") as f:
             f.write(content)

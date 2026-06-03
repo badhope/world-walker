@@ -8,25 +8,47 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+import jwt
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from backend.core.websocket_manager import MessageType, WebSocketMessage, connection_manager, realtime_publisher
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["WebSocket"])
 
 
+def resolve_websocket_user(token: str | None, client_user_id: str | None) -> str | None:
+    """从合法 token 中解析出 user_id,绝不相信客户端自报的 user_id。
+
+    - 有 token: 用 jwt 解析,提取 'sub'。客户端的 client_user_id 一律忽略。
+    - 无 token 或 token 非法: 返回 None,调用方应拒绝握手或降权(只读频道)。
+    """
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+    sub = payload.get("sub")
+    return str(sub) if sub else None
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(
-    websocket: WebSocket, connection_id: str | None = Query(None), user_id: str | None = Query(None)
+    websocket: WebSocket,
+    connection_id: str | None = Query(None),
+    user_id: str | None = Query(None),
+    token: str | None = Query(None),
 ):
     """
     WebSocket 连接端点
 
     连接参数:
-    - connection_id: 连接ID（可选，如果不提供则自动生成）
-    - user_id: 用户ID（可选，用于用户标识）
+    - connection_id: 连接ID（可选,如果不提供则自动生成）
+    - user_id: 用户ID(可选,**会被忽略**,仅作向后兼容;真实身份以 token 中的 sub 为准)
+    - token: 访问令牌(可选)。不提供则视为匿名(只允许订阅 public 频道)
 
     消息格式:
     {
@@ -40,13 +62,18 @@ async def websocket_endpoint(
     if not connection_id:
         connection_id = str(uuid.uuid4())
 
+    # 从 token 解析出权威 user_id,绝不信任客户端自报的 user_id
+    authenticated_user = resolve_websocket_user(token, user_id)
+    is_authenticated = authenticated_user is not None
+
     # 建立连接
     await connection_manager.connect(
         websocket,
         connection_id=connection_id,
-        user_id=user_id,
+        user_id=authenticated_user,  # 传解析后的值
         metadata={
-            "user_id": user_id,
+            "user_id": authenticated_user,
+            "is_authenticated": is_authenticated,
             "connected_at": datetime.now().isoformat(),
             "remote_addr": websocket.client.host if websocket.client else None,
         },
@@ -71,7 +98,18 @@ async def websocket_endpoint(
                     await connection_manager.pong(connection_id)
 
                 elif message_type == "subscribe":
-                    # 订阅频道
+                    # 订阅频道(匿名用户只能订阅 public 频道)
+                    if not is_authenticated and not channel.startswith("public/"):
+                        await connection_manager.send_personal_message(
+                            WebSocketMessage(
+                                type=MessageType.ERROR,
+                                channel="system",
+                                data={"error": "Authentication required for this channel"},
+                                sender="system",
+                            ),
+                            connection_id,
+                        )
+                        continue
                     filters = payload.get("filters", {})
                     await connection_manager.subscribe(connection_id, channel, filters)
 
@@ -80,16 +118,56 @@ async def websocket_endpoint(
                     await connection_manager.unsubscribe(connection_id, channel)
 
                 elif message_type == "broadcast":
-                    # 广播消息
+                    # 广播消息: 必须已认证
+                    if not is_authenticated:
+                        await connection_manager.send_personal_message(
+                            WebSocketMessage(
+                                type=MessageType.ERROR,
+                                channel="system",
+                                data={"error": "Authentication required to broadcast"},
+                                sender="system",
+                            ),
+                            connection_id,
+                        )
+                        continue
                     message = WebSocketMessage(
-                        type=MessageType.REALTIME_DATA, channel=channel, data=payload, sender=user_id or connection_id
+                        type=MessageType.REALTIME_DATA,
+                        channel=channel,
+                        data=payload,
+                        sender=authenticated_user,
                     )
                     await connection_manager.broadcast(message, channel)
 
                 elif message_type == "send_to_user":
-                    # 发送给指定用户
+                    # 发送给指定用户: 必须已认证,且 target 必须是 token 中的 sub 自己或被授权目标
+                    if not is_authenticated:
+                        await connection_manager.send_personal_message(
+                            WebSocketMessage(
+                                type=MessageType.ERROR,
+                                channel="system",
+                                data={"error": "Authentication required to send messages"},
+                                sender="system",
+                            ),
+                            connection_id,
+                        )
+                        continue
+                    # 防止用 send_to_user 冒充他人,target 必须等于自己的 user_id
+                    if target != authenticated_user:
+                        await connection_manager.send_personal_message(
+                            WebSocketMessage(
+                                type=MessageType.ERROR,
+                                channel="system",
+                                data={"error": "Cannot send to other users"},
+                                sender="system",
+                            ),
+                            connection_id,
+                        )
+                        continue
                     message = WebSocketMessage(
-                        type=MessageType.REALTIME_DATA, channel=channel, data=payload, sender=user_id or connection_id
+                        type=MessageType.REALTIME_DATA,
+                        channel=channel,
+                        data=payload,
+                        sender=authenticated_user,
                     )
                     await connection_manager.send_to_user(message, target)
 

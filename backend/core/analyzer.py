@@ -1,6 +1,5 @@
 """
-通用分析器 - 整合配置、数据、机器学习的完整工作流
-支持任意行业、任意地区的数据驱动分析
+Generic analyzer — ties config, data loading, and ML into one workflow.
 """
 
 import logging

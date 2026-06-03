@@ -23,8 +23,6 @@ class FeatureEngineer:
         self.feature_names = []
         self.bins = None
 
-    # ==================== 衍生特征生成 ====================
-
     def generate_derived_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         生成衍生特征
@@ -72,8 +70,6 @@ class FeatureEngineer:
 
         logger.info(f"Generated derived features, new shape: {df_out.shape}")
         return df_out
-
-    # ==================== 分类特征编码 ====================
 
     def encode_categorical_features(
         self,
@@ -136,8 +132,6 @@ class FeatureEngineer:
 
         return df_out, self.categorical_encoders
 
-    # ==================== 数值特征标准化 ====================
-
     def standardize_numeric_features(
         self, df: pd.DataFrame, numeric_columns: list[str] | None = None, method: str = "standard", fit: bool = True
     ) -> tuple[pd.DataFrame, dict[str, Any]]:
@@ -197,8 +191,6 @@ class FeatureEngineer:
 
         return df_out, self.scalers
 
-    # ==================== 特征选择 ====================
-
     def select_features(
         self, df: pd.DataFrame, target_col: str, method: str = "mutual_info", top_k: int = 20
     ) -> list[str]:
@@ -245,8 +237,6 @@ class FeatureEngineer:
             return selected_features
 
         return numeric_features[:top_k]
-
-    # ==================== 完整处理流程 ====================
 
     def process_features(
         self,

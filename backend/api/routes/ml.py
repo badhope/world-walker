@@ -32,9 +32,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/ml", tags=["ml"])
 
 
-# ============================================
-# Request / Response schemas
-# ============================================
 class TrainRequest(BaseModel):
     """Training data and config."""
 
@@ -67,9 +64,6 @@ class AutoMLRequest(BaseModel):
     metric: str = Field(default="r2", description="r2 | neg_mae | neg_rmse")
 
 
-# ============================================
-# Endpoints
-# ============================================
 @router.get("/models", summary="List available ML models")
 async def list_models() -> dict[str, Any]:
     """Return the catalogue of training algorithms."""

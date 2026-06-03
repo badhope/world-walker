@@ -23,8 +23,6 @@ class DataCleaner:
             return df.select_dtypes(include=[np.number]).columns.tolist()
         return [col for col in columns if col in df.columns]
 
-    # ==================== 缺失值处理 ====================
-
     def detect_missing(self, df: pd.DataFrame) -> dict[str, any]:
         """检测缺失值"""
         missing_info = {
@@ -87,8 +85,6 @@ class DataCleaner:
                 )
 
         return df_clean
-
-    # ==================== 异常值处理 ====================
 
     def detect_outliers_zscore(
         self, df: pd.DataFrame, threshold: float = 3.0, columns: list[str] | None = None
@@ -186,8 +182,6 @@ class DataCleaner:
 
         return df_clean
 
-    # ==================== 数据标准化 ====================
-
     def normalize_minmax(
         self, df: pd.DataFrame, columns: list[str] | None = None
     ) -> tuple[pd.DataFrame, dict[str, tuple[float, float]]]:
@@ -223,8 +217,6 @@ class DataCleaner:
                 params[col] = (mean_val, std_val)
 
         return df_std, params
-
-    # ==================== 数据质量报告 ====================
 
     def generate_quality_report(self, df: pd.DataFrame) -> dict[str, any]:
         """生成数据质量报告"""

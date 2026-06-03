@@ -224,29 +224,29 @@ class EnterpriseAnalyzerV3:
         suggestions = []
 
         if cost_score < 60:
-            suggestions.append("⚠️ 营商成本偏高：建议考虑成本对冲策略，如与当地政府协商土地优惠政策")
+            suggestions.append("[!] 营商成本偏高：建议考虑成本对冲策略，如与当地政府协商土地优惠政策")
         elif cost_score < 75:
-            suggestions.append("📊 营商成本中等：可探索供应链本地化降低综合成本")
+            suggestions.append("[i] 营商成本中等：可探索供应链本地化降低综合成本")
         else:
-            suggestions.append("✅ 营商成本具有竞争力")
+            suggestions.append("[+] 营商成本具有竞争力")
 
         if supply_score < 60:
-            suggestions.append("⚠️ 供应链配套不足：建议先建立区域供应商网络，评估分阶段投资策略")
+            suggestions.append("[!] 供应链配套不足：建议先建立区域供应商网络，评估分阶段投资策略")
         elif supply_score < 75:
-            suggestions.append("📊 供应链配套中等：可利用区位优势逐步完善产业生态")
+            suggestions.append("[i] 供应链配套中等：可利用区位优势逐步完善产业生态")
         else:
-            suggestions.append("✅ 供应链配套完善，产业集聚效应明显")
+            suggestions.append("[+] 供应链配套完善，产业集聚效应明显")
 
         if policy_score < 60:
-            suggestions.append("⚠️ 政策支持力度一般：建议详细研究具体产业政策，主动申请专项补贴")
+            suggestions.append("[!] 政策支持力度一般：建议详细研究具体产业政策，主动申请专项补贴")
         elif policy_score < 75:
-            suggestions.append("📊 政策支持中等：可重点关注研发补贴和税收优惠政策")
+            suggestions.append("[i] 政策支持中等：可重点关注研发补贴和税收优惠政策")
         else:
-            suggestions.append("✅ 政策红利显著，政府服务效率高")
+            suggestions.append("[+] 政策红利显著，政府服务效率高")
 
         # 基于城市特点的建议
         if data.get("industry_high_tech_ratio", 0) > 40:
-            suggestions.append("💡 该城市高新技术产业占比高，适合科技型企业布局")
+            suggestions.append("[i] 该城市高新技术产业占比高，适合科技型企业布局")
 
         return suggestions
 

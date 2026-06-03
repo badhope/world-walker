@@ -30,9 +30,7 @@ class IndicatorCategoryEnum(str, Enum):
     INDUSTRY = "industry"  # 产业
 
 
-# ==================== 指标模型 ====================
-
-
+# Indicator models
 class IndicatorBase(BaseModel):
     code: str = Field(..., description="指标代码")
     name: str = Field(..., description="指标名称")
@@ -70,9 +68,7 @@ class IndicatorResponse(BaseModel):
     page_size: int
 
 
-# ==================== 推演模型 ====================
-
-
+# Inference models
 class InferenceMethod(str, Enum):
     LINEAR = "linear"  # 线性推演
     REGRESSION = "regression"  # 回归分析
@@ -108,7 +104,7 @@ class BatchInferenceRequest(BaseModel):
     items: list[BatchInferenceItem]
 
 
-# ==================== 数据采集模型 ====================
+# Data collection models
 
 
 class ScrapeRequest(BaseModel):
@@ -127,9 +123,7 @@ class ScrapeResponse(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
-# ==================== 用户模型 ====================
-
-
+# User models
 class UserBase(BaseModel):
     username: str
     email: str
@@ -149,7 +143,7 @@ class User(UserBase):
         from_attributes = True
 
 
-# ==================== 通用响应 ====================
+# Generic responses
 
 
 class HealthResponse(BaseModel):

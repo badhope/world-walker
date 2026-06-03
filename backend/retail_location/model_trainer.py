@@ -1,5 +1,5 @@
 """
-零售门店模型训练器 - 增强版
+零售门店模型训练器
 """
 
 import json
@@ -29,12 +29,10 @@ class RetailModelTrainer:
         self.best_model_name = None
         self.model_scores = {}
         self.feature_importances = {}
-        self.feature_names = []  # 新增：保存特征列表
-        self.target_col = None  # 新增：保存目标列
+        self.feature_names = []
+        self.target_col = None
         self.training_history = []
-        self.is_trained = False  # 新增：训练状态标记
-
-    # ==================== 模型定义 ====================
+        self.is_trained = False
 
     def _get_model(self, model_name: str, params: dict | None = None) -> Any:
         """获取模型实例"""
@@ -70,8 +68,6 @@ class RetailModelTrainer:
         merged_params = {**default_params.get(model_name, {}), **params}
         return model_map[model_name](**merged_params)
 
-    # ==================== 数据验证 ====================
-
     def validate_data(self, df: pd.DataFrame, target_col: str) -> tuple[bool, list[str]]:
         """
         验证数据是否合法
@@ -102,8 +98,6 @@ class RetailModelTrainer:
 
         return len(issues) == 0, issues
 
-    # ==================== 数据准备 ====================
-
     def prepare_data(
         self, df: pd.DataFrame, target_col: str, test_size: float = 0.2, random_state: int = 42
     ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
@@ -131,8 +125,6 @@ class RetailModelTrainer:
 
         logger.info(f"Data split: train={len(X_train)}, test={len(X_test)}")
         return X_train, X_test, y_train, y_test
-
-    # ==================== 单模型训练 ====================
 
     def train_single_model(
         self, X_train: pd.DataFrame, y_train: pd.Series, model_name: str, params: dict | None = None
@@ -190,8 +182,6 @@ class RetailModelTrainer:
         except Exception as e:
             logger.error(f"Error training {model_name}: {str(e)}")
             raise RuntimeError(f"Model training failed for {model_name}: {e}") from e
-
-    # ==================== 多模型对比与自动选择 ====================
 
     def train_multiple_models(
         self,
@@ -266,8 +256,6 @@ class RetailModelTrainer:
         self.training_history.append(results)
         return results
 
-    # ==================== 超参数调优 ====================
-
     def hyperparameter_tuning(
         self, X_train: pd.DataFrame, y_train: pd.Series, model_name: str, param_grid: dict, cv: int = 5
     ) -> tuple[Any, dict]:
@@ -300,8 +288,6 @@ class RetailModelTrainer:
             # 返回简单模型
             return self.train_single_model(X_train, y_train, "linear")
 
-    # ==================== 模型增量更新 ====================
-
     def update_model(self, model: Any, X_new: pd.DataFrame, y_new: pd.Series, method: str = "retrain") -> Any:
         """
         模型增量更新
@@ -323,8 +309,6 @@ class RetailModelTrainer:
             logger.error(f"Error updating model: {str(e)}")
             return model
 
-    # ==================== 模型评估 ====================
-
     def evaluate_model(self, model: Any, X_test: pd.DataFrame, y_test: pd.Series) -> dict[str, float]:
         """
         评估模型性能
@@ -339,8 +323,6 @@ class RetailModelTrainer:
         }
 
         return metrics
-
-    # ==================== 模型持久化（增强版）====================
 
     def save_model(self, model: Any, file_path: str, metadata: dict | None = None):
         """保存模型（包含元数据）"""
@@ -403,8 +385,6 @@ class RetailModelTrainer:
         else:
             logger.warning("No best model to save")
 
-    # ==================== 预测功能（增强版）====================
-
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         """
         预测 - 确保特征一致性
@@ -430,8 +410,6 @@ class RetailModelTrainer:
 
         # 预测
         return self.best_model.predict(X)
-
-    # ==================== 完整训练流程 ====================
 
     def train_full_pipeline(
         self, df: pd.DataFrame, target_col: str, model_names: list[str] | None = None, do_tuning: bool = False

@@ -32,7 +32,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
         self.feature_engineer = FeatureEngineer(self.config)
         self.model_trainer = RetailModelTrainer(self.config)
 
-        # 新增模块
         self.visualizer = None
         self.report_generator = None
         self.version_manager = None
@@ -46,8 +45,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
         self.X_test = None
         self.y_test = None
         self.y_pred = None
-
-    # ==================== 完整分析流程 ====================
 
     def run_full_analysis(
         self,
@@ -135,16 +132,12 @@ class RetailLocationAnalyzer(BaseAnalyzer):
 
         return self.analysis_result
 
-    # ==================== 数据清洗 ====================
-
     def _clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
         df_clean = df.copy()
         missing_report = self.data_cleaner.detect_missing(df_clean)
         logger.info(f"Missing values: {missing_report['total_missing']} cells")
         df_clean = self.data_cleaner.fill_missing(df_clean, method="median")
         return df_clean
-
-    # ==================== 特征工程 ====================
 
     def _process_features(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         df_processed = df.copy()
@@ -163,8 +156,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
 
         return df_processed, meta
 
-    # ==================== 模型训练 ====================
-
     def _train_models(self, df: pd.DataFrame, do_tuning: bool = False) -> dict[str, Any]:
         target_col = self.config.target_column
         X_train, X_test, y_train, y_test = self.model_trainer.prepare_data(df, target_col)
@@ -175,8 +166,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
         results = self.model_trainer.train_full_pipeline(df, target_col, do_tuning=do_tuning)
 
         return results
-
-    # ==================== 数据质量检查 ====================
 
     def _data_quality_check(self, df: pd.DataFrame) -> dict[str, Any]:
         report = {}
@@ -261,8 +250,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
         logger.info(f"数据质量评分: {quality_score:.1f}/100")
         return report
 
-    # ==================== 洞察生成 ====================
-
     def _generate_insights(self, training_result: dict[str, Any]) -> dict[str, Any]:
         insights = {}
 
@@ -318,8 +305,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
 
         return recommendations
 
-    # ==================== 可视化生成 ====================
-
     def _generate_visualizations(self) -> dict[str, str]:
         if self.visualizer is None:
             return {}
@@ -357,8 +342,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
         logger.info(f"生成了 {len(visualizations)} 个可视化图表")
         return visualizations
 
-    # ==================== 保存结果 ====================
-
     def _save_results(
         self, output_dir: str, training_result: dict, insights: dict, data_quality_report: dict, visualizations: dict
     ):
@@ -377,8 +360,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
             )
 
         logger.info(f"结果已保存到: {output_path}")
-
-    # ==================== 模型版本管理 ====================
 
     def _save_model_version(self, output_dir: str, insights: dict, data_quality_report: dict):
         if self.version_manager is None:
@@ -400,8 +381,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
 
         logger.info(f"模型版本 {version_id} 已保存")
         return version_id
-
-    # ==================== 分析器持久化 ====================
 
     def save_analyzer(self, output_dir: str):
         output_path = Path(output_dir)
@@ -440,8 +419,6 @@ class RetailLocationAnalyzer(BaseAnalyzer):
 
         logger.info(f"分析器已从 {input_path} 加载")
         return analyzer
-
-    # ==================== 新店预测 ====================
 
     def predict(self, data: pd.DataFrame) -> pd.DataFrame:
         return self.predict_new_location(data)

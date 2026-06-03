@@ -29,10 +29,10 @@ class AnalysisRequest(BaseModel):
 @router.post("/enterprise/v2", summary="企业端分析 (v2)")
 def enterprise_analysis_v2(request: AnalysisRequest):
     """
-    企业端产业分析 v2 版本：
-    - 真正使用数据计算评分
-    - 基于真实经济基准
-    - 提供智能建议
+    Enterprise-side industry analysis v2:
+    - Computes scores from real data
+    - Anchored to published economic baselines
+    - Returns actionable recommendations
     """
     try:
         logger.info(f"企业端分析 v2 请求: {request.region} - {request.industry} - {request.year}")

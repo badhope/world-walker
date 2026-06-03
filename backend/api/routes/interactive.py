@@ -73,7 +73,7 @@ def _eval_node(node, variables):
     raise ValueError(f"Unsafe expression: {type(node)}")
 
 
-# ==================== 请求和响应模型 ====================
+# Request / response models
 
 
 class DataImportRequest(BaseModel):
@@ -126,9 +126,6 @@ class ScenarioCreateRequest(BaseModel):
     description: str | None = Field(None, description="场景描述")
     config: dict[str, Any] = Field(..., description="场景配置")
     tags: list[str] | None = Field(None, description="标签")
-
-
-# ==================== 数据导入导出接口 ====================
 
 
 @router.post("/import", summary="导入数据")
@@ -246,7 +243,7 @@ async def get_supported_formats():
     return {"success": True, "formats": formats}
 
 
-# ==================== 城市数据接口 ====================
+# City data endpoints
 
 
 @router.get("/cities", summary="获取城市列表")
@@ -348,9 +345,6 @@ async def compare_cities(request: CityQueryRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-# ==================== 指标分析接口 ====================
-
-
 @router.post("/indicators/analyze", summary="指标分析")
 async def analyze_indicators(request: IndicatorAnalysisRequest):
     """
@@ -443,9 +437,6 @@ async def calculate_custom_indicator(request: CustomCalculationRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-# ==================== 场景管理接口 ====================
-
-
 @router.post("/scenarios", summary="创建场景")
 async def create_scenario(request: ScenarioCreateRequest):
     """
@@ -504,7 +495,7 @@ async def get_scenario_detail(scenario_id: str):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-# ==================== 缓存管理接口 ====================
+# Cache management
 
 
 @router.post("/cache/clear", summary="清除缓存")

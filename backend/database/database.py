@@ -91,7 +91,7 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-        logger.info(f"✅ 数据库初始化完成: {self.db_path}")
+        logger.info(f"数据库初始化完成: {self.db_path}")
 
     def save_economic_data(
         self, year: int, indicator: str, value: float, source: str = "akshare", region: str = "全国"
@@ -145,7 +145,7 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-        logger.info(f"✅ 批量保存了 {len(df)} 条经济数据")
+        logger.info(f"批量保存了 {len(df)} 条经济数据")
 
     def get_economic_data(
         self, indicator: str = None, start_year: int = None, end_year: int = None, region: str = "全国"
@@ -211,7 +211,7 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-        logger.info(f"✅ 企业分析结果已保存 (ID: {analysis_id})")
+        logger.info(f"企业分析结果已保存 (ID: {analysis_id})")
         return analysis_id
 
     def get_enterprise_analysis_history(

@@ -43,7 +43,7 @@ async def perform_eda():
 
 @router.get("/insights", summary="生成数据洞察")
 async def generate_insights():
-    """基于数据生成智能洞察"""
+    """Build data-driven insights from macro series and EDA."""
     try:
         df = real_data_analyzer.fetch_macro_data()
         eda_results = real_data_analyzer.perform_eda(df)

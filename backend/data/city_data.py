@@ -10,7 +10,6 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# ─── 城市基础数据 (8个核心城市) ───
 CITY_DATA: dict[str, dict[str, Any]] = {
     "深圳": {
         "name": "深圳",
@@ -238,7 +237,6 @@ CITY_DATA: dict[str, dict[str, Any]] = {
     },
 }
 
-# ─── 历史数据 (2020-2025) ───
 HISTORICAL_DATA: dict[str, list[dict[str, Any]]] = {
     "深圳": [
         {

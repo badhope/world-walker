@@ -1,23 +1,22 @@
 """
-Regional Industrial Economic Analysis Platform - FastAPI backend.
+FastAPI backend for the regional economic analysis platform.
 
-A production-grade analytics service for:
-  - Multi-city economic comparison
-  - Enterprise site selection scoring
-  - Government industry policy evaluation
-  - Time-series forecasting
-  - Interactive dashboards
+Routes are split across `backend.api.routes.*` and mounted under
+`settings.API_V1_STR`. The single-page UI is served from
+`/dashboard` and `/app` so the API and the UI can share one origin
+in production.
 """
 
 import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from backend.api.routes import (
     analysis_router,
@@ -37,76 +36,42 @@ from backend.api.routes import (
 from backend.api.routes.auth import router as auth_router
 from config import settings
 
-# Logging configuration
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan management."""
-    logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION}...")
+    logger.info("starting %s v%s", settings.PROJECT_NAME, settings.VERSION)
     yield
-    logger.info("Shutting down...")
+    logger.info("shutting down")
 
 
-# Build the FastAPI application
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="""
-## Regional Industrial Economic Analysis Platform API
-
-### Core Capabilities
-
-- **Real data collection** from official statistical sources with multi-source cross-validation
-- **Exploratory data analysis** with full EDA pipeline (descriptive stats, correlation analysis)
-- **Time-series forecasting** using scikit-learn / statsmodels with MAE/MAPE evaluation
-- **Enterprise site selection** scoring based on statistical quantile benchmarks
-- **Interactive visualisations** powered by ECharts (radar, heatmap, time-series, gauge)
-- **Data quality management** with validation, completeness reports and source attribution
-
-### Quick Start
-
-1. `GET /api/v1/cities/list` — list all supported cities
-2. `POST /api/v1/analysis/enterprise` — run enterprise site-selection analysis
-3. `POST /api/v1/cities/compare` — compare multiple cities side-by-side
-4. `GET /api/v1/forecast/time-series` — produce multi-year time-series forecasts
-5. `GET /dashboard` — interactive analysis dashboard
-6. `GET /docs` — this interactive Swagger documentation
-
-### Tech Highlights
-
-- **Backend**: FastAPI + Pydantic v2 + Uvicorn
-- **Data**: pandas / numpy / scikit-learn / statsmodels
-- **Cache**: in-memory with Redis-ready interface
-- **Deployment**: Docker / Docker Compose / Systemd / K8s
-- **Frontend**: zero-build static HTML + Tailwind CDN + ECharts CDN
-""",
-    contact={
-        "name": "Regional Economic Analysis Team",
-        "email": "contact@example.com",
-    },
-    license_info={
-        "name": "GPL-3.0-or-later",
-        "url": "https://www.gnu.org/licenses/gpl-3.0.html",
-    },
+    description="REST API for multi-city economic comparison, enterprise "
+    "site selection, sales forecasting, and government policy evaluation.",
+    contact={"name": "Regional Economic Analysis", "email": "contact@example.com"},
+    license_info={"name": "GPL-3.0-or-later", "url": "https://www.gnu.org/licenses/gpl-3.0.html"},
     openapi_tags=[
-        {"name": "城市数据", "description": "Multi-city economic data endpoints."},
-        {"name": "产业分析", "description": "Industry / enterprise analysis endpoints."},
-        {"name": "城市对比", "description": "Side-by-side city comparison endpoints."},
-        {"name": "时间序列", "description": "Time-series forecasting endpoints."},
-        {"name": "数据采集", "description": "Real-data collection / ingestion endpoints."},
-        {"name": "认证", "description": "Authentication and authorisation endpoints."},
-        {"name": "WebSocket", "description": "Real-time push channel for live analyses."},
-        {"name": "系统", "description": "Health, metadata and static asset endpoints."},
+        {"name": "城市数据", "description": "Multi-city economic data."},
+        {"name": "产业分析", "description": "Industry / enterprise analysis."},
+        {"name": "城市对比", "description": "Side-by-side city comparison."},
+        {"name": "时间序列", "description": "Time-series forecasting."},
+        {"name": "数据采集", "description": "Real-data ingestion."},
+        {"name": "认证", "description": "Authentication and authorisation."},
+        {"name": "WebSocket", "description": "Real-time push channel."},
+        {"name": "系统", "description": "Health, metadata and static assets."},
     ],
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
 )
 
-# CORS configuration
 allow_credentials = "*" not in settings.CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
@@ -116,47 +81,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers
-app.include_router(auth_router)
-app.include_router(data_router, prefix=settings.API_V1_STR)
-app.include_router(analysis_router, prefix=settings.API_V1_STR)
-app.include_router(inference_router, prefix=settings.API_V1_STR)
-app.include_router(interactive_router, prefix=settings.API_V1_STR)
-app.include_router(websocket_router, prefix=settings.API_V1_STR)
-app.include_router(cities_router, prefix=settings.API_V1_STR)
-app.include_router(cities_v2_router, prefix=settings.API_V1_STR)
-app.include_router(forecast_router, prefix=settings.API_V1_STR)
-app.include_router(analysis_v3_router, prefix=settings.API_V1_STR)
+for router in (
+    auth_router,
+    (data_router, settings.API_V1_STR),
+    (analysis_router, settings.API_V1_STR),
+    (inference_router, settings.API_V1_STR),
+    (interactive_router, settings.API_V1_STR),
+    (websocket_router, settings.API_V1_STR),
+    (cities_router, settings.API_V1_STR),
+    (cities_v2_router, settings.API_V1_STR),
+    (forecast_router, settings.API_V1_STR),
+    (analysis_v3_router, settings.API_V1_STR),
+    (ml_router, settings.API_V1_STR),
+):
+    if isinstance(router, tuple):
+        app.include_router(router[0], prefix=router[1])
+    else:
+        app.include_router(router)
+
 app.include_router(real_data_router)
 app.include_router(database_router)
 app.include_router(static_router)
-app.include_router(ml_router, prefix=settings.API_V1_STR)
-
-# 添加静态页面路由
-from pathlib import Path
 
 frontend_index = Path(__file__).parent.parent.parent / "frontend" / "index.html"
 
 
 @app.get("/dashboard", tags=["页面"])
 async def get_dashboard():
-    """交互式分析仪表盘"""
     if frontend_index.exists():
         return FileResponse(frontend_index, media_type="text/html")
-    return {"error": "页面未找到", "hint": "请确保 frontend/index.html 存在"}
+    return {"error": "frontend not built", "hint": "frontend/index.html missing"}
 
 
 @app.get("/app", tags=["页面"])
 async def get_app():
-    """前端应用主入口"""
     if frontend_index.exists():
         return FileResponse(frontend_index, media_type="text/html")
-    return {"error": "页面未找到", "hint": "请确保 frontend/index.html 存在"}
+    return {"error": "frontend not built", "hint": "frontend/index.html missing"}
 
 
 @app.get("/", tags=["根路径"])
 def root():
-    """API 根路径"""
     return {
         "name": settings.PROJECT_NAME,
         "version": settings.VERSION,
@@ -168,7 +133,6 @@ def root():
 
 @app.get("/health", tags=["健康检查"])
 def health_check():
-    """健康检查端点"""
     return {"status": "healthy", "version": settings.VERSION, "timestamp": datetime.now().isoformat()}
 
 
@@ -183,14 +147,11 @@ FAVICON_SVG = (
 
 @app.get("/favicon.ico", tags=["静态资源"], include_in_schema=False)
 def favicon():
-    """Return the SVG favicon."""
-    from fastapi.responses import Response
-
     return Response(content=FAVICON_SVG, media_type="image/svg+xml")
 
 
 def run() -> None:
-    """Entry point used by ``rea-api`` / ``regional-stats-api`` console scripts."""
+    """Console-script entry point (`rea-api` / `regional-stats-api`)."""
     host = os.getenv("APP_HOST", "0.0.0.0")
     port = int(os.getenv("APP_PORT", "8000"))
     workers = int(os.getenv("WORKERS", "1"))

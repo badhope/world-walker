@@ -353,25 +353,25 @@ class GovernmentAnalyzer(BaseAnalyzer):
         )
 
         if fiscal_score < 60:
-            report["policy_recommendations"].append("⚠️ 财政杠杆风险较高：建议优化财政资金配置，提高资金使用效率")
+            report["policy_recommendations"].append("[!] 财政杠杆风险较高：建议优化财政资金配置，提高资金使用效率")
         elif fiscal_score < 75:
-            report["policy_recommendations"].append("📊 财政杠杆中等：建议加强专项资金管理，提升投入产出比")
+            report["policy_recommendations"].append("[i] 财政杠杆中等：建议加强专项资金管理，提升投入产出比")
         else:
-            report["policy_recommendations"].append("✅ 财政杠杆健康，资金使用效率良好")
+            report["policy_recommendations"].append("[+] 财政杠杆健康，资金使用效率良好")
 
         if driving_score < 60:
-            report["policy_recommendations"].append("⚠️ 产业带动效应不足：建议加大产业扶持力度，培育产业集群")
+            report["policy_recommendations"].append("[!] 产业带动效应不足：建议加大产业扶持力度，培育产业集群")
         elif driving_score < 75:
-            report["policy_recommendations"].append("📊 产业带动效应中等：建议完善产业链配套，增强辐射效应")
+            report["policy_recommendations"].append("[i] 产业带动效应中等：建议完善产业链配套，增强辐射效应")
         else:
-            report["policy_recommendations"].append("✅ 产业带动效应显著，对区域经济贡献大")
+            report["policy_recommendations"].append("[+] 产业带动效应显著，对区域经济贡献大")
 
         if chain_score < 60:
-            report["policy_recommendations"].append("⚠️ 产业链完整性不足：针对瓶颈环节，制定专项招商政策")
+            report["policy_recommendations"].append("[!] 产业链完整性不足：针对瓶颈环节，制定专项招商政策")
         elif chain_score < 75:
-            report["policy_recommendations"].append("📊 产业链基本完整：建议补强薄弱环节，提升产业链现代化水平")
+            report["policy_recommendations"].append("[i] 产业链基本完整：建议补强薄弱环节，提升产业链现代化水平")
         else:
-            report["policy_recommendations"].append("✅ 产业链完整度高，产业生态成熟")
+            report["policy_recommendations"].append("[+] 产业链完整度高，产业生态成熟")
 
         return report
 

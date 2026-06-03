@@ -20,8 +20,6 @@ class RetailDataAdapter:
         self.loaded_data = {}
         self.loading_report = {}
 
-    # ==================== 多源数据加载 ====================
-
     def load_csv(self, file_path: str, encoding: str = "utf-8", **kwargs) -> pd.DataFrame:
         """加载 CSV 文件"""
         logger.info(f"Loading CSV file: {file_path}")
@@ -69,8 +67,6 @@ class RetailDataAdapter:
         }
         return df
 
-    # ==================== 数据合并与整合 ====================
-
     def merge_data_sources(self, source_key: str = "main") -> pd.DataFrame:
         """
         合并多个数据源
@@ -86,8 +82,6 @@ class RetailDataAdapter:
             return self.loaded_data[first_key]
 
         raise ValueError("No data loaded yet")
-
-    # ==================== 数据标准化与重命名 ====================
 
     def standardize_columns(self, df: pd.DataFrame, column_mapping: dict[str, str] | None = None) -> pd.DataFrame:
         """
@@ -110,8 +104,6 @@ class RetailDataAdapter:
 
         return df_std
 
-    # ==================== 数据验证 ====================
-
     def validate_required_fields(self, df: pd.DataFrame, required_fields: list[str]) -> tuple[bool, list[str]]:
         """
         验证必填字段
@@ -132,8 +124,6 @@ class RetailDataAdapter:
             logger.info("All required fields are present")
 
         return is_valid, missing_fields
-
-    # ==================== 生成样本数据（用于演示） ====================
 
     @staticmethod
     def generate_sample_data(num_stores: int = 50, random_seed: int = 42) -> pd.DataFrame:

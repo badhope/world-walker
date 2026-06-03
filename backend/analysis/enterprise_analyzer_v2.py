@@ -254,7 +254,7 @@ class EnterpriseAnalyzerV2(BaseAnalyzer):
         ]
         report["overall_score"] = sum(scores) / len(scores)
 
-        # 生成智能建议
+        # generate recommendations
         bc_score = report["business_costs"]["total_cost_score"]
         sc_score = report["supply_chain"]["supply_chain_score"]
         pb_score = report["policy_benefits"]["policy_benefit_score"]

@@ -219,7 +219,7 @@ async def websocket_notifications(websocket: WebSocket, user_id: str = Query(...
         await connection_manager.disconnect(connection_id)
 
 
-# ==================== REST API 用于管理 WebSocket ====================
+# WebSocket admin REST API
 
 
 @router.post("/ws/publish/data")

@@ -90,7 +90,7 @@ def batch_calculate(request: BatchInferenceRequest):
     }
 
 
-# ==================== 经济学模型 ====================
+# Economic models
 
 
 @router.get("/models/phillips", summary="菲利普斯曲线")

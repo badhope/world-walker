@@ -101,11 +101,6 @@ def list_codes(category: str | None = Query(None)):
     return {"codes": [{"code": c[0], "name": c[1]} for c in codes]}
 
 
-# ==========================================
-# 新增：深圳半导体产业分析示例数据接口
-# ==========================================
-
-
 def get_example_data_path(filename: str):
     """获取示例数据文件路径"""
     base_dir = Path(__file__).parent.parent.parent.parent

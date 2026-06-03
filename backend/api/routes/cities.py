@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/cities", tags=["城市数据"])
 
 
-# ==================== 请求和响应模型 ====================
+# requests / responses below
 
 
 class AggregationRequest(BaseModel):
@@ -65,9 +65,6 @@ class CorrelationRequest(BaseModel):
     indicators: list[str] = Field(..., description="指标列表")
     year_start: int = Field(..., description="开始年份")
     year_end: int = Field(..., description="结束年份")
-
-
-# ==================== 聚合分析接口 ====================
 
 
 @router.post("/aggregate", summary="数据聚合分析")

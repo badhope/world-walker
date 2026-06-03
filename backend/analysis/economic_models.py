@@ -26,9 +26,7 @@ class InferenceResult:
     description: str | None = None
 
 
-# ==================== 指标关系定义 ====================
-# 基于经济学理论的指标推演关系
-
+# Indicator relations — derived from economic theory below
 INDICATOR_RELATIONS = {
     # 财政类
     "fiscal_deficit": {
@@ -306,7 +304,7 @@ class InferenceEngine:
         }
 
 
-# ==================== 经济学模型 ====================
+# Economic model classes
 
 
 class EconomicModels:

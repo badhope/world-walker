@@ -33,7 +33,7 @@
   - connect-src 收紧: 默认同源 + 同主机 WebSocket
   - style-src 'unsafe-inline': ECharts 等组件可能注入 style 属性
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws://localhost:8000 wss://localhost:8000 http://localhost:8000 http://127.0.0.1:8000; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws://localhost:8000 wss://localhost:8000 http://localhost:8000 http://127.0.0.1:8000; base-uri 'self'; form-action 'self'; object-src 'none'">
 <title>区域产业经济分析平台 · Regional Economic Analysis</title>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js" integrity="sha384-pPi0zxBAoDu6+JXW/C68UZLvBUUtU+7zonhif43rqj7pxsGyqyqzcian2Rj37Rss" crossorigin="anonymous"></script>
 <style>
@@ -1664,7 +1664,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
     RETRY_MAX: 2,
     RETRY_BACKOFF_MS: 600,
     RETRY_STATUSES: [502, 503, 504, 408, 429],
-    DEFAULT_CITIES: ["上海", "深圳", "北京", "广州", "杭州", "苏州"],
+    DEFAULT_CITIES: ["上海", "深圳", "北京", "广州", "杭州", "南京"],
     CITY_CARD_FIELDS: Object.freeze([
       { key: "gdp",            label: "GDP",          unit: "亿元", source: "summary", accessor: (d) => d.gdp },
       { key: "gdp_per_capita", label: "人均GDP",     unit: "元",   source: "summary", accessor: (d) => d.population ? Math.round(d.gdp * 1e8 / (d.population * 1e4)) : null },
@@ -1860,7 +1860,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
         }
         if (res.status === 204) return null;
         const data = await res.json();
-        if (isRead && cacheTTL !== 0) this.cache.set(key, { v: data }, CONFIG.CACHE_TTL_MS);
+        if (isRead && cacheTTL !== 0) this.cache.set(key, data, CONFIG.CACHE_TTL_MS);
         return data;
       } catch (err) {
         clearTimeout(timer);
@@ -2723,12 +2723,23 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
         charts.instances.forEach((inst) => { if (!inst.isDisposed()) inst.resize(); });
       });
 
-      // 健康检查
-      api.get("/health", { cacheTTL: 10_000 }).then((h) => {
+      // 健康检查 (后端 /health 不在 /api/v1 前缀下;直接走根路径)
+      const healthURL = (() => {
+        try {
+          const { protocol, hostname, port } = window.location;
+          const isDev = hostname === "localhost" || hostname === "127.0.0.1";
+          return isDev
+            ? `${protocol}//${hostname}:8000/health`
+            : `${protocol}//${hostname}${port ? ":" + port : ""}/health`;
+        } catch { return "/health"; }
+      })();
+      fetch(healthURL, { cache: "no-store" })
+        .then((r) => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
+        .then((h) => {
         const badge = $("#healthBadge");
         const txt = $("#healthText");
-        const ok = h?.status === "ok";
-        if (badge) badge.dataset.status = ok ? "ok" : "warn";
+        const ok = h?.status === "healthy" || h?.status === "ok";
+        if (badge) badge.dataset.status = ok ? "online" : "warn";
         if (txt) txt.textContent = ok ? "运行正常" : "部分降级";
         const stat = $("#statStatus");
         if (stat) stat.textContent = ok ? "ONLINE" : "DEGRADED";

@@ -13,11 +13,13 @@
 
 | 严重程度 | 数量 | 状态 |
 | --- | --- | --- |
-| Critical | 1 | 必须修复 |
-| High | 2 | 强烈建议修复 |
-| Medium | 4 | 建议修复 |
-| Low | 4 | 可选修复 |
+| Critical | 1 | 已修复 (commit 96f0013) |
+| High | 2 | 已修复 (commit 96f0013) |
+| Medium | 4 | 已修复 (M-01/M-02/M-04 in 1da6c95,M-03 in de6bf01) |
+| Low | 4 | 已修复 (L-03 in 1da6c95,L-01/L-02/L-04 in de6bf01) |
 | Info | 2 | 已记录 |
+
+> **2026-06-03 复测**: `247 passed, 1 skipped` · `ruff check` clean · 全部 11 项发现已落地修复或保留为文档化设计选择。
 
 ---
 
@@ -164,6 +166,7 @@
 ### M-03 前端缺失 CSP 与 SRI
 - **规则 ID**: JS-CSP-001 / JS-SRI-001
 - **位置**: [frontend/index.html:24-25](file:///workspace/frontend/index.html#L24-L25)
+- **状态**: ✅ **已修复 (de6bf01)** — 添加 `Content-Security-Policy` meta 标签,并为 Tailwind / ECharts 两个 CDN 脚本挂上 SRI 哈希 + `crossorigin="anonymous"`。7 项新测试见 [tests/backend/test_security_frontend_csp.py](file:///workspace/tests/backend/test_security_frontend_csp.py)。
 - **证据**:
   ```html
   <script src="https://cdn.tailwindcss.com"></script>
@@ -209,6 +212,7 @@
 ### L-01 `data_manager.load_database` 表名拼接 (未对外暴露)
 - **规则 ID**: FASTAPI-INJECT-001
 - **位置**: [backend/core/data_manager.py:122-126](file:///workspace/backend/core/data_manager.py#L122-L126)
+- **状态**: ✅ **已修复 (de6bf01)** — 新增 `validate_sql_identifier()`,正则 `^[A-Za-z_][A-Za-z0-9_]{0,127}$` 白名单,`load_database` 在拼接前强校验。9 项新测试见 [tests/backend/test_security_sql_identifier.py](file:///workspace/tests/backend/test_security_sql_identifier.py)。
 - **证据**:
   ```python
   def load_database(self, db_path: str, table_name: str, name: str | None = None) -> Dataset:
@@ -221,16 +225,7 @@
 ### L-02 `/cities/compare` 用 `request.json()` 接收任意 dict
 - **规则 ID**: FASTAPI-VALID-001
 - **位置**: [backend/api/routes/cities.py:117-142](file:///workspace/backend/api/routes/cities.py#L117-L142)
-- **证据**:
-  ```python
-  async def compare_cities(request: Request):
-      try:
-          body = await request.json()
-      except Exception:
-          body = {}
-      ...
-      request_indicators = body.get("indicators", ["gdp"])
-  ```
+- **状态**: ✅ **已修复 (de6bf01)** — 引入 `CitiesCompareRequest` BaseModel (`city_codes` 1-20 个,`indicators` 0-10 个,`year_start/year_end` 1900-2200 且 start<=end,自动 422 校验)。10 项新测试见 [tests/backend/test_security_compare_cities.py](file:///workspace/tests/backend/test_security_compare_cities.py)。
 - **影响**: 不强制类型,任何 JSON 结构都能进。`request_indicators[0]` 在 line 165 还会取第一个,可能 IndexError。
 - **修复**: 改为已有 `ComparisonRequest` BaseModel,自动校验。
 
@@ -248,6 +243,7 @@
 
 ### L-04 `load_database` 等公开 import 接口无大小/字段上限
 - **位置**: [backend/api/routes/interactive.py:131-187](file:///workspace/backend/api/routes/interactive.py#L131-L187)
+- **状态**: ✅ **已修复 (de6bf01)** — `DataImportRequest` / `DataExportRequest` 改用 Pydantic v2:`file_name` ≤255,`file_content` ≤50MB (Base64),`format_type` 用 `Literal["json","csv","xlsx"]`,`rows` ≤50_000。7 项新测试见 [tests/backend/test_security_import_limits.py](file:///workspace/tests/backend/test_security_import_limits.py)。
 - **证据**: `file_content: str` 没有 `max_length`,`data: list[dict]` 没有 `max_items`。
 - **修复**: Pydantic v2 用 `StringConstraints(max_length=...)`、`Field(max_length=...)` 限大小。
 
@@ -335,6 +331,21 @@ def test_path_traversal_import_filename(client):
 - `pytest tests/` → **185 passed, 1 skipped**
 - `ruff check .` → **6 个 UP042 错误** (`class XXX(str, Enum)` 应改为 `StrEnum`),非安全相关,可在下一个清理 PR 一并处理
 - `pip check` → 无依赖冲突
+
+---
+
+## 10. 修复实施记录 (2026-06-03 复测)
+
+| Commit | 范围 | 修复项 | 新增测试 |
+| --- | --- | --- | --- |
+| `96f0013` | 静态/WS/上传路径 | C-01, H-01, H-02 | 21 |
+| `1da6c95` | 配置/CORS/错误 | M-01, M-02, M-04, L-03 | 8 |
+| `de6bf01` | SQL/校验/导入/CSP | L-01, L-02, L-04, M-03 | 33 |
+
+**复测结果**:
+- `pytest tests/` → **247 passed, 1 skipped** (净增 62)
+- `ruff check .` → clean (0 错误,9 项 import-sort 已在提交前 `--fix`)
+- 所有 11 项发现已落地修复或保留为文档化设计选择 (I-* 系列)。
 
 ---
 

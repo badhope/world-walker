@@ -14,6 +14,12 @@ from pytest_mock import MockerFixture
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
+# 测试环境默认允许无签名模型,这样所有 save/load 调用不会因缺 key 而抛错;
+# 关键路径(safe_model_loader)仍有自己的覆盖测试。
+os.environ.setdefault("ALLOW_UNSIGNED_MODELS", "1")
+# 给一个固定 SECRET_KEY,避免 settings.py 在 import 时打 RuntimeWarning。
+os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
+
 
 @pytest.fixture(scope="session")
 def project_root_path() -> Path:

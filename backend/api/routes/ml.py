@@ -17,9 +17,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from backend.api.auth import require_user
 from backend.ml import (
     AutoML,
     ModelTrainer,
@@ -74,7 +75,7 @@ async def list_models() -> dict[str, Any]:
 
 
 @router.post("/train", summary="Train a single model")
-async def train(req: TrainRequest) -> dict[str, Any]:
+async def train(req: TrainRequest, _user: dict = Depends(require_user)) -> dict[str, Any]:
     """Train the requested algorithm and return metrics."""
     if not req.data:
         raise HTTPException(status_code=400, detail="`data` must be non-empty")

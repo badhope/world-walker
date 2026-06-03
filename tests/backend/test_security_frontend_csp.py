@@ -55,11 +55,12 @@ class TestFrontendCSP:
         m = re.search(r'http-equiv="Content-Security-Policy"\s+content="([^"]+)"', html_text)
         assert m
         csp = m.group(1)
-        # 必须是白名单,不能是 *
-        # style-src 需包含 tailwind CDN
-        assert "cdn.tailwindcss.com" in csp or "tailwindcss" in csp, (
-            f"Tailwind CDN must be explicitly whitelisted in CSP: {csp}"
-        )
+        # Tailwind CDN 在当前 build 中已被移除(见 index.html 注释),但若
+        # 重新引入,Tailwind CDN 必须出现在 CSP 白名单中(不能是 *)
+        if "cdn.tailwindcss.com" in html_text:
+            assert "cdn.tailwindcss.com" in csp, (
+                f"Tailwind CDN must be explicitly whitelisted in CSP: {csp}"
+            )
         # 不应有通配的 * 作为 script-src
         script_src = re.search(r"script-src\s+([^;]+)", csp)
         if script_src:
@@ -98,8 +99,9 @@ class TestFrontendSRI:
         assert m2, f"integrity must be sha384 hash, got: {tag}"
 
     def test_tailwind_has_sri(self, html_text):
-        """Tailwind CDN 脚本必须有 SRI。"""
+        """Tailwind CDN 脚本必须有 SRI(若仍存在)。"""
         m = re.search(r'<script\s+[^>]*src="https?://cdn\.tailwindcss\.com[^"]*"[^>]*>', html_text)
-        assert m, "Tailwind script not found"
+        if not m:
+            pytest.skip("Tailwind CDN is intentionally not loaded in this build")
         tag = m.group(0)
         assert "integrity=" in tag

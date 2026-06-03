@@ -14,11 +14,12 @@ from datetime import datetime
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, Response
 
+from backend.api.limiter import limiter
 from backend.api.routes import (
     analysis_router,
     analysis_v3_router,
@@ -35,6 +36,7 @@ from backend.api.routes import (
     websocket_router,
 )
 from backend.api.routes.auth import router as auth_router
+from backend.api.security_headers import SecurityHeadersMiddleware
 from config import settings
 
 logging.basicConfig(
@@ -49,6 +51,10 @@ async def lifespan(app: FastAPI):
     logger.info("starting %s v%s", settings.PROJECT_NAME, settings.VERSION)
     yield
     logger.info("shutting down")
+
+
+# 是否启用 HSTS(仅在 HTTPS 站点打开,避免 HTTP 环境被卡死)
+ENABLE_HSTS = os.getenv("ENABLE_HSTS", "false").lower() in {"1", "true", "yes"}
 
 
 app = FastAPI(
@@ -73,8 +79,12 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# ----- 中间件顺序:外层先执行 -----
+# 1) 安全响应头(放最外,影响所有响应包括 4xx/5xx)
+app.add_middleware(SecurityHeadersMiddleware, hsts=ENABLE_HSTS)
+
+# 2) CORS(显式白名单,移除占位 0.0.0.0)
 allow_credentials = "*" not in settings.CORS_ORIGINS
-# 显式白名单 CORS,避免攻击者利用 allow_methods=["*"] / allow_headers=["*"] 滥用
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -83,23 +93,47 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
 )
 
-# 拒绝未在白名单内的 Host 头,防 Host 头注入/缓存投毒
+# 3) TrustedHost:从环境收紧,默认不含 0.0.0.0
 _trusted_hosts_env = os.getenv("TRUSTED_HOSTS")
 if _trusted_hosts_env:
     _allowed_hosts = [h.strip() for h in _trusted_hosts_env.split(",") if h.strip()]
 else:
-    # 默认允许 localhost 与常见内网/反代 host;生产请通过 TRUSTED_HOSTS 收紧
-    # testclient / testserver 仅用于 Starlette/pytest TestClient,无生产风险
+    # 默认只信 localhost + 测试;生产必须显式设 TRUSTED_HOSTS
+    # 0.0.0.0 不在白名单 — 它是绑定地址,不是 Host 头合法值
     _allowed_hosts = [
         "localhost",
         "127.0.0.1",
-        "0.0.0.0",
         "*.local",
-        "testserver",
-        "testclient",
+        "testserver",   # Starlette TestClient
+        "testclient",   # pytest
     ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 
+
+# 4) 全局限流:每个 IP 每分钟 120 次(可经 RATE_LIMIT_PER_MIN 调)
+_rate = int(os.getenv("RATE_LIMIT_PER_MIN", "120"))
+
+
+@app.middleware("http")
+async def _global_rate_limit(request: Request, call_next):
+    """全局 IP+路径 限流中间件"""
+    try:
+        limiter._apply(request, _rate, 60)
+    except Exception as exc:  # HTTPException from limiter
+        from fastapi.responses import JSONResponse
+        status_code = getattr(exc, "status_code", 429)
+        return JSONResponse(
+            status_code=status_code,
+            content={"detail": getattr(exc, "detail", "Rate limited")},
+            headers=getattr(exc, "headers", None) or {"Retry-After": "60"},
+        )
+    return await call_next(request)
+
+
+# ----- 路由挂载 -----
+# 注意:analysis_router 与 analysis_v3_router 都用 prefix="/analysis",
+# cities_router 与 cities_v2_router 都用 prefix="/cities"。只要 method+path
+# 不重复就能共存。重复项已在代码里拆开(/compare 改为 POST 唯一)。
 for router in (
     auth_router,
     (data_router, settings.API_V1_STR),
@@ -152,9 +186,15 @@ def root():
 
 @app.get("/health", tags=["健康检查"])
 def health_check():
-    return {"status": "healthy", "version": settings.VERSION, "timestamp": datetime.now().isoformat()}
+    return {
+        "status": "healthy",
+        "version": settings.VERSION,
+        "timestamp": datetime.now().isoformat(),
+    }
 
 
+# favicon:用真实的 .ico 文件优先,否则返回占位 SVG
+FAVICON_ICO_PATH = Path(__file__).parent.parent.parent / "frontend" / "favicon.ico"
 FAVICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
     '<rect width="100" height="100" rx="20" fill="#2563eb"/>'
@@ -166,12 +206,14 @@ FAVICON_SVG = (
 
 @app.get("/favicon.ico", tags=["静态资源"], include_in_schema=False)
 def favicon():
+    if FAVICON_ICO_PATH.exists():
+        return FileResponse(FAVICON_ICO_PATH, media_type="image/x-icon")
     return Response(content=FAVICON_SVG, media_type="image/svg+xml")
 
 
 def run() -> None:
     """Console-script entry point (`rea-api` / `regional-stats-api`)."""
-    host = os.getenv("APP_HOST", "0.0.0.0")
+    host = os.getenv("APP_HOST", "127.0.0.1")
     port = int(os.getenv("APP_PORT", "8000"))
     workers = int(os.getenv("WORKERS", "1"))
     reload = os.getenv("APP_RELOAD", "false").lower() in {"1", "true", "yes"}

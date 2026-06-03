@@ -4,16 +4,20 @@
 
 from functools import lru_cache
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from backend.analysis.economic_models import economic_models, inference_engine
+from backend.api.auth import require_user
 from backend.models.schemas import BatchInferenceRequest, InferenceRequest, InferenceResponse
 
 router = APIRouter(prefix="/inference", tags=["指标推演"])
 
 
 @router.post("/calculate", response_model=InferenceResponse, summary="单指标推演")
-def calculate_indicator(request: InferenceRequest):
+def calculate_indicator(
+    request: InferenceRequest,
+    _user: dict = Depends(require_user),
+):
     """
     推演单个经济指标
 
@@ -62,7 +66,10 @@ def infer_all_indicators(request: dict[str, float]):
 
 
 @router.post("/batch", summary="批量推演")
-def batch_calculate(request: BatchInferenceRequest):
+def batch_calculate(
+    request: BatchInferenceRequest,
+    _user: dict = Depends(require_user),
+):
     """批量推演多个指标"""
     results = []
 

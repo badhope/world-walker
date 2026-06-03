@@ -6,8 +6,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+
+from backend.api.auth import require_user
 
 router = APIRouter(prefix="/data", tags=["数据管理"])
 
@@ -39,8 +41,11 @@ class Indicator(IndicatorCreate):
 
 
 @router.post("/", response_model=Indicator, summary="创建指标记录")
-def create_indicator(indicator: IndicatorCreate):
-    """创建单条经济指标记录"""
+def create_indicator(
+    indicator: IndicatorCreate,
+    _user: dict = Depends(require_user),
+):
+    """创建单条经济指标记录(需要管理员鉴权)"""
     new_id = len(sample_data) + 1
     new_indicator = Indicator(id=new_id, timestamp=datetime.now().isoformat(), **indicator.model_dump())
     sample_data.append(new_indicator)

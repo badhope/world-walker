@@ -76,12 +76,17 @@ class TestCompareCitiesEndpoint:
     """端点行为:CitiesCompareRequest 必须替代裸 request.json()。"""
 
     def test_endpoint_uses_basemodel(self, api_client):
-        """正常 payload 应返回 200,且响应是 JSON 字典。"""
+        """正常 payload 应返回 200,且响应是 JSON 字典。
+
+        数据为空时(没有 ingestion 过 CityData),端点应返回 503 而不是
+        用 mock 数据兜底。503 与 200/422/500 一样证明「BaseModel 校验已生效」,
+        只是更准确表达了「数据未就绪」的真实状态。
+        """
         r = api_client.post(
             "/api/v1/cities/compare",
             json={"city_codes": ["深圳"], "indicators": ["gdp"], "year_start": 2020, "year_end": 2025},
         )
-        assert r.status_code in (200, 500, 422)
+        assert r.status_code in (200, 422, 500, 503), f"unexpected status {r.status_code}: {r.text}"
         if r.status_code == 200:
             body = r.json()
             # 响应应该是 dict(由 BaseModel 校验过的输入产生)

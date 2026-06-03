@@ -49,11 +49,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/regional-economic-analysis"
-Repository = "https://github.com/your-org/regional-economic-analysis"
-Issues = "https://github.com/your-org/regional-economic-analysis/issues"
-Documentation = "https://github.com/your-org/regional-economic-analysis/blob/main/README.md"
-Changelog = "https://github.com/your-org/regional-economic-analysis/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/badhope/national_stats"
+Repository = "https://github.com/badhope/national_stats"
+Issues = "https://github.com/badhope/national_stats/issues"
+Documentation = "https://github.com/badhope/national_stats/blob/main/README.md"
+Changelog = "https://github.com/badhope/national_stats/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

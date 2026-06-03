@@ -56,7 +56,7 @@
 
 ## Website URL / 网站
 
-设置为：<https://github.com/your-org/regional-economic-analysis>
+设置为：<https://github.com/badhope/national_stats>
 
 （如果没有自定义域名，可以指向仓库主页本身，或留空。）
 
@@ -149,7 +149,7 @@ GitHub 仓库 → **Settings → General → Social preview**：
 - [ ] 仓库名: `regional-economic-analysis`
 - [ ] 描述: `Production-grade analytics platform for regional economic comparison, retail site selection, sales forecasting and government industry-policy evaluation — 10 cities, 70+ APIs, zero-build UI.`
 - [ ] 主题: `regional-economy` `economic-analysis` `city-comparison` `industry-analysis` `retail-location` `sales-forecast` `site-selection` `policy-evaluation` `time-series-forecasting` `data-visualization` `fastapi` `echarts` `data-science` `machine-learning` `python`
-- [ ] Website: `https://github.com/your-org/regional-economic-analysis`
+- [ ] Website: `https://github.com/badhope/national_stats`
 - [ ] Releases: v4.0.0
 - [ ] Social preview 图: 1280×640 PNG
 - [ ] PyPI 发布 (可选)

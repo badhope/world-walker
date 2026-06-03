@@ -196,8 +196,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/your-org/regional-economic-analysis:${{ steps.version.outputs.version }}
-            ghcr.io/your-org/regional-economic-analysis:latest
+            ghcr.io/badhope/national_stats:${{ steps.version.outputs.version }}
+            ghcr.io/badhope/national_stats:latest
           provenance: true
           sbom: true
 
@@ -206,15 +206,15 @@ jobs:
           COSIGN_EXPERIMENTAL: "1"
         run: |
           cosign sign --yes \
-            ghcr.io/your-org/regional-economic-analysis:${{ steps.version.outputs.version }}
+            ghcr.io/badhope/national_stats:${{ steps.version.outputs.version }}
 
       - name: Verify signature
         env:
           COSIGN_EXPERIMENTAL: "1"
         run: |
           cosign verify \
-            ghcr.io/your-org/regional-economic-analysis:${{ steps.version.outputs.version }} \
-            --certificate-identity-regexp 'https://github.com/your-org' \
+            ghcr.io/badhope/national_stats:${{ steps.version.outputs.version }} \
+            --certificate-identity-regexp 'https://github.com/badhope' \
             --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
 
   slsa-provenance:

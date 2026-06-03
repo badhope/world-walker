@@ -10,7 +10,7 @@
 
 ### 报告 Bug
 
-1. 在 [Issues](https://github.com/your-org/regional-economic-analysis/issues) 中搜索，确认问题未被报告
+1. 在 [Issues](https://github.com/badhope/national_stats/issues) 中搜索，确认问题未被报告
 2. 使用 [Bug Report 模板](.github/ISSUE_TEMPLATE/bug_report.md) 创建新 Issue
 3. 附上：
    - 操作系统与 Python 版本
@@ -54,7 +54,7 @@
 
 ```bash
 # 1. 克隆
-git clone https://github.com/your-org/regional-economic-analysis.git
+git clone https://github.com/badhope/national_stats.git
 cd regional-economic-analysis
 
 # 2. 创建虚拟环境

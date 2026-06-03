@@ -286,4 +286,4 @@ will auto-generate a "Cite this repository" button from this file.
 ---
 
 **Last updated**: 2026-06-02
-**Have a question not answered here?** Open a [Discussion](https://github.com/your-org/regional-economic-analysis/discussions/new) or email <contact@example.com>.
+**Have a question not answered here?** Open a [Discussion](https://github.com/badhope/national_stats/discussions/new) or email <contact@example.com>.

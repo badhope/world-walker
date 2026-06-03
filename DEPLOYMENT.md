@@ -481,7 +481,7 @@ journalctl -u rea-api --since "1 hour ago"
 
 ### 联系支持
 
-- GitHub Issues: <https://github.com/your-org/regional-economic-analysis/issues>
+- GitHub Issues: <https://github.com/badhope/national_stats/issues>
 - 邮箱: <security@rea.example.com>
 - 文档: <https://rea.example.com/docs>
 

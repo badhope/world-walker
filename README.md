@@ -100,9 +100,10 @@ scripts/        dev utilities + legacy demos
 ## Tests
 
 ```bash
-pytest tests/backend/ -v        # 185 tests
-python full_diagnose.py         # end-to-end smoke test
-python scripts/diagnostics/browser_test.py   # browser screenshots
+pytest tests/backend/ -v        # backend unit + security regression
+pytest tests/fuzz/ -v            # hypothesis property-based fuzz
+python scripts/diagnostics/full_diagnose.py   # end-to-end smoke test
+python scripts/diagnostics/browser_test.py    # browser screenshots
 ```
 
 ---

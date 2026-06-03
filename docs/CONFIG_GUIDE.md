@@ -272,7 +272,8 @@ print(settings.DEFAULT_REGION)
 
 ```bash
 export DATABASE_URL="postgresql://user:pass@localhost/db"
-export SECRET_KEY="production-secret-key"
+# 强烈建议:用 `python -c "import secrets;print(secrets.token_urlsafe(48))"` 生成
+export SECRET_KEY="REPLACE_WITH_RANDOM_48B_SECRET"
 ```
 
 ### 2. 配置分层
@@ -340,4 +341,4 @@ config_loader.__init__()
 
 - 📖 查看 [USAGE_GUIDE.md](./USAGE_GUIDE.md) - 使用指南
 - 📊 查看 [EXAMPLE_ANALYSIS.md](./EXAMPLE_ANALYSIS.md) - 示例分析
-- 🐛 问题反馈：https://github.com/your-org/regional-economic-analysis/issues
+- 🐛 问题反馈：https://github.com/badhope/national_stats/issues

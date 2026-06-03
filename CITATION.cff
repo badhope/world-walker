@@ -5,9 +5,9 @@ type: software
 version: 4.0.0
 date-released: 2026-06-02
 license: GPL-3.0-or-later
-repository-code: "https://github.com/your-org/regional-economic-analysis"
-repository: "https://github.com/your-org/regional-economic-analysis"
-homepage: "https://github.com/your-org/regional-economic-analysis"
+repository-code: "https://github.com/badhope/national_stats"
+repository: "https://github.com/badhope/national_stats"
+homepage: "https://github.com/badhope/national_stats"
 doi: "10.5281/zenodo.0000000"
 keywords:
   - regional-economy
@@ -34,7 +34,7 @@ abstract: >
 authors:
   - family-names: "Maintainers"
     given-names: "Regional Economic Analysis Team"
-    affiliation: "your-org"
+    affiliation: "badhope"
     orcid: "https://orcid.org/0000-0000-0000-0000"
 contact:
   - family-names: "Maintainers"
@@ -49,7 +49,7 @@ preferred-citation:
       given-names: "Regional Economic Analysis Team"
   journal: "GitHub"
   year: 2026
-  url: "https://github.com/your-org/regional-economic-analysis"
+  url: "https://github.com/badhope/national_stats"
 references:
   - type: software
     title: "FastAPI"

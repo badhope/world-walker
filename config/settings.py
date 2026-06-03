@@ -74,7 +74,7 @@ class Settings(BaseSettings):
     DEFAULT_INDUSTRY: str = "半导体"
 
     # GitHub / repository metadata
-    REPO_URL: str = "https://github.com/your-org/regional-economic-analysis"
+    REPO_URL: str = "https://github.com/badhope/national_stats"
     LICENSE: str = "GPL-3.0-or-later"
 
     model_config = {"case_sensitive": True, "env_file": ".env", "extra": "ignore"}

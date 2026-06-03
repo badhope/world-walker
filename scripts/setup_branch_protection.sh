@@ -17,7 +17,7 @@
 
 set -euo pipefail
 
-REPO="${GITHUB_REPOSITORY:-your-org/regional-economic-analysis}"
+REPO="${GITHUB_REPOSITORY:-badhope/national_stats}"
 BRANCHES=("main" "develop")
 
 echo "[sec] Configuring branch protection for ${REPO}"

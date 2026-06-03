@@ -25,14 +25,14 @@ Start by reading the relevant documentation:
 ## 💬 Community / 社区渠道
 
 ### 🐛 Bug reports and feature requests
-👉 **GitHub Issues**: <https://github.com/your-org/regional-economic-analysis/issues>
+👉 **GitHub Issues**: <https://github.com/badhope/national_stats/issues>
 
 - For bugs: use the **🐛 Bug Report** template
 - For features: use the **✨ Feature Request** template
 - For questions: use the **❓ Question** template
 
 ### 💭 Discussions and Q&A
-👉 **GitHub Discussions**: <https://github.com/your-org/regional-economic-analysis/discussions>
+👉 **GitHub Discussions**: <https://github.com/badhope/national_stats/discussions>
 
 Use Discussions for:
 - Open-ended questions

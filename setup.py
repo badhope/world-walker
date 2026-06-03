@@ -34,7 +34,7 @@ setup(
     ),
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/your-org/regional-economic-analysis",
+    url="https://github.com/badhope/national_stats",
     packages=find_packages(exclude=["tests", "tests.*", "examples", "docs", "notebooks"]),
     classifiers=[
         "Development Status :: 5 - Production/Stable",
@@ -112,10 +112,10 @@ setup(
         "machine-learning",
     ],
     project_urls={
-        "Bug Reports": "https://github.com/your-org/regional-economic-analysis/issues",
-        "Source": "https://github.com/your-org/regional-economic-analysis",
-        "Documentation": "https://github.com/your-org/regional-economic-analysis/blob/main/README.md",
-        "Changelog": "https://github.com/your-org/regional-economic-analysis/blob/main/CHANGELOG.md",
-        "Examples": "https://github.com/your-org/regional-economic-analysis/tree/main/examples",
+        "Bug Reports": "https://github.com/badhope/national_stats/issues",
+        "Source": "https://github.com/badhope/national_stats",
+        "Documentation": "https://github.com/badhope/national_stats/blob/main/README.md",
+        "Changelog": "https://github.com/badhope/national_stats/blob/main/CHANGELOG.md",
+        "Examples": "https://github.com/badhope/national_stats/tree/main/examples",
     },
 )

@@ -94,8 +94,12 @@ settings.local.py
 # ============================================
 # Secrets and credentials
 # ============================================
-*secret*
-*credential*
+# 只忽略实际包含密钥的常见文件名/路径(避免误伤 test_security_*.py 等)
+secrets/
+*.secret
+*.secret.json
+*credentials*
+*credential*.json
 *.pem
 *.key
 ghp_*

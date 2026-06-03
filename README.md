@@ -77,7 +77,7 @@ backend/
   api/          FastAPI routes + main app
   analysis/     analyzers (enterprise / government / dimension / custom)
   core/         config, data manager, multi-city, caching, tasks
-  data/         static city dataset (8 cities, 20+ indicators)
+  data/         static city dataset (10 cities, 20+ indicators)
   data_collection/  akshare / NBS / finance / industry collectors
   data_processing/  cleaner / transformer / validator
   ml/           model registry, trainer

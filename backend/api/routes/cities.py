@@ -7,8 +7,8 @@ import random
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field, model_validator
 
 from backend.core.city_aggregation import AggregationConfig, city_aggregator
 from backend.core.multi_city import city_manager
@@ -67,6 +67,29 @@ class CorrelationRequest(BaseModel):
     year_end: int = Field(..., description="结束年份")
 
 
+class CitiesCompareRequest(BaseModel):
+    """城市对比请求 (L-02 替换裸 request.json())"""
+
+    city_codes: list[str] = Field(..., min_length=1, max_length=20, description="城市代码列表,1-20 个")
+    indicators: list[str] = Field(
+        default_factory=lambda: ["gdp"],
+        max_length=10,
+        description="对比指标列表,最多 10 个",
+    )
+    year_start: int = Field(2020, ge=1900, le=2200, description="开始年份")
+    year_end: int = Field(2025, ge=1900, le=2200, description="结束年份")
+
+    @property
+    def validated_year_range(self) -> tuple[int, int]:
+        return self.year_start, self.year_end
+
+    @model_validator(mode="after")
+    def _year_start_le_year_end(self):
+        if self.year_start > self.year_end:
+            raise ValueError("year_start must be <= year_end")
+        return self
+
+
 @router.post("/aggregate", summary="数据聚合分析")
 async def aggregate_data(request: AggregationRequest):
     """
@@ -115,34 +138,16 @@ async def aggregate_data(request: AggregationRequest):
 
 
 @router.post("/compare", summary="城市对比分析")
-async def compare_cities(request: Request):
+async def compare_cities(request: CitiesCompareRequest):
     """
     城市对比分析
 
     对比多个城市在指定指标上的表现
-
-    兼容两种请求体格式：
-    1. 完整格式: {"city_codes":[...], "indicators":[...], "year_start":2020, "year_end":2025}
-    2. 简单数组: ["深圳", "北京", "广州"]  → 自动使用gdp指标和2020-2025年
     """
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-
-    if isinstance(body, list):
-        request_city_codes = [str(x) for x in body]
-        request_indicators = ["gdp"]
-        request_year_start = 2020
-        request_year_end = 2025
-    else:
-        request_city_codes = body.get("city_codes", [])
-        request_indicators = body.get("indicators", ["gdp"])
-        request_year_start = int(body.get("year_start", 2020))
-        request_year_end = int(body.get("year_end", 2025))
-
-    if not request_city_codes:
-        raise HTTPException(status_code=400, detail="city_codes 不能为空")
+    request_city_codes = request.city_codes
+    request_indicators = request.indicators
+    request_year_start = request.year_start
+    request_year_end = request.year_end
 
     try:
         data = []

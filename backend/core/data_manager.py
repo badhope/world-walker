@@ -5,6 +5,7 @@
 
 import json
 import logging
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -12,6 +13,27 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
+# SQL 标识符白名单:字母数字 + 下划线,首字符不能是数字,长度上限 128
+_SQL_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,127}$")
+_SQL_IDENTIFIER_MAX_LEN = 128
+
+
+def validate_sql_identifier(name: str) -> str:
+    """校验 SQL 表名/列名,确保不会被注入。
+
+    拒绝:空值、含特殊字符(`;` `' " --` 等)、含空白、点路径、过长。
+    """
+    if not name or not isinstance(name, str):
+        raise ValueError("SQL identifier must be a non-empty string")
+    if len(name) > _SQL_IDENTIFIER_MAX_LEN:
+        raise ValueError(f"SQL identifier too long (>{_SQL_IDENTIFIER_MAX_LEN})")
+    if not _SQL_IDENTIFIER.match(name):
+        raise ValueError(
+            f"Invalid SQL identifier: {name!r}. "
+            "Must match [A-Za-z_][A-Za-z0-9_]* and contain no whitespace, dots, quotes, or SQL keywords."
+        )
+    return name
 
 logger = logging.getLogger(__name__)
 
@@ -121,11 +143,13 @@ class DataManager:
 
     def load_database(self, db_path: str, table_name: str, name: str | None = None) -> Dataset:
         """从SQLite数据库加载数据"""
+        # L-01:防止 SQL 注入
+        safe_table = validate_sql_identifier(table_name)
         conn = sqlite3.connect(db_path)
-        df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
+        df = pd.read_sql(f"SELECT * FROM {safe_table}", conn)
         conn.close()
 
-        name = name or table_name
+        name = name or safe_table
         return Dataset.from_dataframe(df, name=name, description=f"Loaded from {db_path}")
 
     def save_dataset(self, dataset: Dataset, format: str = "csv"):

@@ -10,10 +10,10 @@ import re
 import secrets
 from datetime import datetime
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 from backend.core.cache import cache_manager
 from backend.core.data_import_export import data_manager
@@ -22,6 +22,11 @@ from backend.core.multi_city import city_manager
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/interactive", tags=["交互操作"])
+
+# 上传文件大小上限 50MB(Base64 字符),file_name 上限 255 字符
+_MAX_IMPORT_FILE_CONTENT = 50 * 1024 * 1024
+_MAX_FILE_NAME_LEN = 255
+_MAX_EXPORT_ROWS = 50_000
 
 # 合法导入文件名:仅允许字母数字 + . _ -
 _SAFE_IMPORT_NAME = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -105,18 +110,22 @@ def _eval_node(node, variables):
 class DataImportRequest(BaseModel):
     """数据导入请求"""
 
-    file_name: str = Field(..., description="文件名")
-    file_content: str = Field(..., description="文件内容（Base64编码）")
-    format_type: str = Field(..., description="格式类型: json, csv, xlsx")
+    file_name: Annotated[str, StringConstraints(max_length=_MAX_FILE_NAME_LEN)] = Field(
+        ..., description="文件名(<= 255 字符)"
+    )
+    file_content: Annotated[str, StringConstraints(max_length=_MAX_IMPORT_FILE_CONTENT)] = Field(
+        ..., description="文件内容(Base64编码,<= 50MB)"
+    )
+    format_type: Literal["json", "csv", "xlsx"] = Field(..., description="格式类型")
     do_validate: bool = Field(True, description="是否验证数据", alias="validate")
 
 
 class DataExportRequest(BaseModel):
     """数据导出请求"""
 
-    data: list[dict[str, Any]] = Field(..., description="要导出的数据")
-    format_type: str = Field(..., description="格式类型: json, csv, xlsx")
-    file_name: str | None = Field(None, description="文件名")
+    data: list[dict[str, Any]] = Field(..., max_length=_MAX_EXPORT_ROWS, description=f"要导出的数据(<= {_MAX_EXPORT_ROWS} 行)")
+    format_type: Literal["json", "csv", "xlsx"] = Field(..., description="格式类型: json, csv, xlsx")
+    file_name: str | None = Field(None, max_length=_MAX_FILE_NAME_LEN, description="文件名")
 
 
 class CityQueryRequest(BaseModel):

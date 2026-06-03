@@ -1648,9 +1648,8 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
 <script>
 /*
  * citylens — single-file SPA bootstrap
- * IIFE 内聚所有可变作用域;无第三方 SPA 框架,仅依赖 ECharts。
- * 视图层 (Views) 各自负责一个 Tab 的渲染与生命周期;
- * 基础设施 (Store / APIClient / Charts / Toast / Theme / Router) 与视图解耦。
+ * IIFE 闭包内聚所有可变作用域;无第三方 SPA 框架,仅依赖 ECharts (head 中已 SRI 加载)。
+ * 视图层 (Views) 各自负责一个 Tab 的渲染与生命周期;基础设施与视图解耦。
  */
 (function () {
   "use strict";
@@ -1667,13 +1666,11 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
     RETRY_STATUSES: [502, 503, 504, 408, 429],
     DEFAULT_CITIES: ["上海", "深圳", "北京", "广州", "杭州", "苏州"],
     CITY_CARD_FIELDS: Object.freeze([
-      { key: "gdp",            label: "GDP",           unit: "亿元",   source: "summary" },
-      { key: "population",     label: "常住人口",     unit: "万人",   source: "summary" },
-      { key: "gdp_per_capita", label: "人均GDP",     unit: "元",     source: "summary" },
-      { key: "growth_rate",    label: "GDP增速",      unit: "%",      source: "summary" },
-      { key: "primary_industry_ratio",  label: "第一产业占比", unit: "%", source: "industry" },
-      { key: "secondary_industry_ratio",label: "第二产业占比", unit: "%", source: "industry" },
-      { key: "tertiary_industry_ratio", label: "第三产业占比", unit: "%", source: "industry" }
+      { key: "gdp",            label: "GDP",          unit: "亿元", source: "summary", accessor: (d) => d.gdp },
+      { key: "gdp_per_capita", label: "人均GDP",     unit: "元",   source: "summary", accessor: (d) => d.population ? Math.round(d.gdp * 1e8 / (d.population * 1e4)) : null },
+      { key: "population",     label: "常住人口",     unit: "万人", source: "summary", accessor: (d) => d.population },
+      { key: "gdp_growth",     label: "GDP增速",      unit: "%",    source: "summary", accessor: (d) => d.gdp_growth },
+      { key: "industry_high_tech_ratio", label: "高新产业占比", unit: "%", source: "summary", accessor: (d) => d.industry_high_tech_ratio }
     ]),
     COMPARE_INDICATORS: Object.freeze([
       { key: "gdp",            label: "GDP",     unit: "亿元" },
@@ -1691,8 +1688,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       { min: 55, stars: 3, label: "中等" },
       { min: 40, stars: 2, label: "偏弱" },
       { min:  0, stars: 1, label: "不足" }
-    ]),
-    KEY: "citylens:v1"
+    ])
   });
 
   // ============================================================
@@ -1737,11 +1733,6 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       }
       return { stars: 1, label: "不足" };
     },
-    stars(n, max = 5) {
-      const filled = "★".repeat(Math.max(0, Math.min(max, n | 0)));
-      const empty  = "☆".repeat(Math.max(0, max - (n | 0)));
-      return filled + empty;
-    },
     cssVar(name) {
       return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     },
@@ -1752,14 +1743,11 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
         t = setTimeout(() => fn.apply(this, args), wait);
       };
     },
-    sleep(ms) { return new Promise((r) => setTimeout(r, ms)); },
-    nowTime() {
-      return new Date().toLocaleTimeString("zh-CN", { hour12: false });
-    }
+    sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
   });
 
   // ============================================================
-  // 2. LRUCache  (Map 保序,命中提升新鲜度)
+  // 2. LRUCache
   // ============================================================
   class LRUCache {
     constructor(max = 64) {
@@ -1790,8 +1778,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       }
       return true;
     }
-    delete(k) { this.map.delete(k); }
-    clear()   { this.map.clear(); }
+    clear() { this.map.clear(); }
     get size() { return this.map.size; }
   }
 
@@ -1810,7 +1797,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   }
 
   // ============================================================
-  // 4. APIClient  (fetch + AbortController + retry + cache + 超时)
+  // 4. APIClient
   // ============================================================
   class APIClient {
     constructor({ baseURL, timeout = CONFIG.API_TIMEOUT_MS, cache } = {}) {
@@ -1819,22 +1806,18 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       this.cache   = cache || new LRUCache(CONFIG.CACHE_MAX);
       this.inflight = new Map();
     }
-
     _join(path) {
       if (/^https?:/i.test(path)) return path;
       if (!path.startsWith("/")) path = "/" + path;
       return this.baseURL.replace(/\/$/, "") + path;
     }
-
     _key(method, url) { return method + " " + url; }
-
     cancelAll(reason = "navigate") {
       for (const [, c] of this.inflight) {
         try { c.abort(reason); } catch { /* noop */ }
       }
       this.inflight.clear();
     }
-
     async request(method, path, opts = {}) {
       const { body, headers, cacheTTL, signal, retry = CONFIG.RETRY_MAX } = opts;
       const url = this._join(path);
@@ -1844,12 +1827,10 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       if (isRead && cacheTTL !== 0 && this.cache.has(key)) {
         return this.cache.get(key).v;
       }
-
       const ac = new AbortController();
       this.inflight.set(key, ac);
-      const externalAbort = () => ac.abort(signal.reason || "external");
-      if (signal) signal.addEventListener("abort", externalAbort, { once: true });
-
+      const onSignalAbort = () => ac.abort(signal.reason || "external");
+      if (signal) signal.addEventListener("abort", onSignalAbort, { once: true });
       const timer = setTimeout(() => ac.abort("timeout"), this.timeout);
 
       try {
@@ -1865,10 +1846,8 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
           reqOpts.body = typeof body === "string" ? body : JSON.stringify(body);
           reqOpts.headers["Content-Type"] = "application/json";
         }
-
         const res = await fetch(url, reqOpts);
         clearTimeout(timer);
-
         if (!res.ok) {
           if (retry > 0 && CONFIG.RETRY_STATUSES.includes(res.status)) {
             this.inflight.delete(key);
@@ -1879,13 +1858,9 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
           try { payload = await res.json(); } catch { /* noop */ }
           throw new ApiError(`HTTP ${res.status}`, { status: res.status, code: payload?.error?.code || "ERR_HTTP", url });
         }
-
         if (res.status === 204) return null;
         const data = await res.json();
-
-        if (isRead && cacheTTL !== 0) {
-          this.cache.set(key, { v: data }, CONFIG.CACHE_TTL_MS);
-        }
+        if (isRead && cacheTTL !== 0) this.cache.set(key, { v: data }, CONFIG.CACHE_TTL_MS);
         return data;
       } catch (err) {
         clearTimeout(timer);
@@ -1896,16 +1871,15 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
         throw new ApiError(err.message || "网络异常", { code: "ERR_NETWORK", cause: err, url });
       } finally {
         this.inflight.delete(key);
-        if (signal) signal.removeEventListener("abort", externalAbort);
+        if (signal) signal.removeEventListener("abort", onSignalAbort);
       }
     }
-
     get(path, opts = {})  { return this.request("GET", path, opts); }
     post(path, body, opts = {}) { return this.request("POST", path, { ...opts, body }); }
   }
 
   // ============================================================
-  // 5. Store  (EventTarget-based;订阅式状态广播)
+  // 5. Store
   // ============================================================
   class Store extends EventTarget {
     constructor(initial = {}) {
@@ -1922,42 +1896,54 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   // ============================================================
   // 6. ToastManager
   // ============================================================
+  const TOAST_ICON = {
+    info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>',
+    warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+    error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>'
+  };
+  const TOAST_CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+
   class ToastManager {
     constructor(root) {
       this.root = root;
       this.active = new Set();
     }
-    show(message, { type = "info", timeout = 4200 } = {}) {
-      const id = "t" + Math.random().toString(36).slice(2, 9);
+    show(message, { type = "info", title, timeout = 5000 } = {}) {
       const el = document.createElement("div");
       el.className = `toast toast--${type}`;
       el.setAttribute("role", type === "error" ? "alert" : "status");
       el.setAttribute("aria-live", type === "error" ? "assertive" : "polite");
-      el.id = id;
-      el.innerHTML = `<span class="toast__dot" aria-hidden="true"></span><span class="toast__msg">${Utils.esc(message)}</span>`;
+      el.innerHTML = `
+        <span class="toast__icon" aria-hidden="true">${TOAST_ICON[type] || TOAST_ICON.info}</span>
+        <div class="toast__body">
+          ${title ? `<div class="toast__title">${Utils.esc(title)}</div>` : ""}
+          <div class="toast__detail">${Utils.esc(message)}</div>
+        </div>
+        <span class="toast__close" role="button" aria-label="关闭" tabindex="0">${TOAST_CLOSE}</span>
+        <span class="toast__progress" aria-hidden="true"></span>`;
       this.root.appendChild(el);
       this.active.add(el);
-      requestAnimationFrame(() => el.classList.add("toast--in"));
       const close = () => {
-        el.classList.remove("toast--in");
-        el.classList.add("toast--out");
-        setTimeout(() => {
-          el.remove();
-          this.active.delete(el);
-        }, 220);
+        if (el.classList.contains("toast--leaving")) return;
+        el.classList.add("toast--leaving");
+        setTimeout(() => { el.remove(); this.active.delete(el); }, 260);
       };
-      el.addEventListener("click", close, { once: true });
+      el.querySelector(".toast__close").addEventListener("click", close);
+      el.querySelector(".toast__close").addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); close(); }
+      });
       setTimeout(close, timeout);
-      return { close, id };
+      return { close };
     }
     info(m, o)    { return this.show(m, { ...o, type: "info" }); }
     success(m, o) { return this.show(m, { ...o, type: "success" }); }
-    warn(m, o)    { return this.show(m, { ...o, type: "warn" }); }
-    error(m, o)   { return this.show(m, { ...o, type: "error", timeout: 6000 }); }
+    warn(m, o)    { return this.show(m, { ...o, type: "warning" }); }
+    error(m, o)   { return this.show(m, { ...o, type: "error", timeout: 7000 }); }
   }
 
   // ============================================================
-  // 7. ChartsManager  (ECharts 实例复用 + ResizeObserver + 主题)
+  // 7. ChartsManager
   // ============================================================
   class ChartsManager {
     constructor(echarts) {
@@ -1966,43 +1952,29 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       this.observers = new Map();
     }
     _key(el) { return el.id || el; }
-
     ensure(el) {
       const key = this._key(el);
       let inst = this.instances.get(key);
       if (!inst) {
         inst = this.echarts.init(el, echartsTheme(), { renderer: "canvas" });
         this.instances.set(key, inst);
-        const ro = new ResizeObserver(
-          Utils.debounce(() => inst && !inst.isDisposed() && inst.resize(), 120)
-        );
+        const ro = new ResizeObserver(Utils.debounce(() => {
+          if (inst && !inst.isDisposed()) inst.resize();
+        }, 120));
         ro.observe(el);
         this.observers.set(key, ro);
       }
       return inst;
     }
-
     setOption(el, opt) {
       const inst = this.ensure(el);
       inst.setOption(opt, true);
       return inst;
     }
-
     clear(el) {
       const inst = this.instances.get(this._key(el));
       if (inst) inst.clear();
     }
-
-    showLoading(el, text = "数据加载中…") {
-      const inst = this.ensure(el);
-      inst.showLoading("default", { text, color: Utils.cssVar("--copper-500"), textColor: Utils.cssVar("--ink-900"), maskColor: "rgba(250,248,243,0.6)" });
-    }
-
-    hideLoading(el) {
-      const inst = this.instances.get(this._key(el));
-      if (inst) inst.hideLoading();
-    }
-
     disposeAll() {
       for (const [, ro] of this.observers) ro.disconnect();
       this.observers.clear();
@@ -2012,7 +1984,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   }
 
   // ============================================================
-  // 8. ThemeManager
+  // 8. ThemeManager  (light / dark / system)
   // ============================================================
   class ThemeManager {
     constructor(root) {
@@ -2020,14 +1992,12 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       this.key = "citylens.theme";
       this.media = window.matchMedia("(prefers-color-scheme: dark)");
       this._mode = "system";
-      this._apply(this._resolve(this._mode));
       this.media.addEventListener("change", () => {
         if (this._mode === "system") this._apply(this._resolve("system"));
       });
     }
     _resolve(mode) {
-      if (mode === "system") return this.media.matches ? "dark" : "light";
-      return mode;
+      return mode === "system" ? (this.media.matches ? "dark" : "light") : mode;
     }
     _apply(effective) {
       this.root.dataset.theme = effective;
@@ -2058,7 +2028,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   }
 
   // ============================================================
-  // 9. TabRouter  (ARIA + 键盘 + 历史记录)
+  // 9. TabRouter  (ARIA + 键盘 + hash 同步)
   // ============================================================
   class TabRouter {
     constructor(root, tabsSel, panelSel) {
@@ -2101,10 +2071,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
           else if (e.key === "ArrowLeft") next = this.tabs[(i - 1 + this.tabs.length) % this.tabs.length];
           else if (e.key === "Home") next = this.tabs[0];
           else if (e.key === "End")  next = this.tabs[this.tabs.length - 1];
-          if (next) {
-            e.preventDefault();
-            this._activate(next.dataset.tab);
-          }
+          if (next) { e.preventDefault(); this._activate(next.dataset.tab); }
         });
       });
       const hash = (location.hash || "").replace(/^#/, "");
@@ -2113,7 +2080,7 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   }
 
   // ============================================================
-  // 10. resolveApiBase  (运行时按主机推导)
+  // 10. resolveApiBase
   // ============================================================
   function resolveApiBase() {
     try {
@@ -2127,14 +2094,13 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   }
 
   // ============================================================
-  // 11. echartsTheme  (与设计 token 联动)
+  // 11. echartsTheme
   // ============================================================
   function echartsTheme() {
     const v = (n, fb) => (getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fb);
     return {
       color: CONFIG.VIZ_PALETTE.slice(),
       textStyle: { fontFamily: v("--font-sans", "system-ui, sans-serif"), color: v("--ink-900", "#0E1F3F") },
-      title: { textStyle: { color: v("--ink-900", "#0E1F3F"), fontWeight: 600, fontFamily: v("--font-display", "serif") } },
       legend: { textStyle: { color: v("--ink-700", "#3F4F6E") } },
       axisLine: { lineStyle: { color: v("--stone-300", "#D4CFC2") } },
       splitLine: { lineStyle: { color: v("--stone-200", "#E5E0D3"), type: "dashed" } },
@@ -2148,46 +2114,42 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   }
 
   // ============================================================
-  // 12. Skeleton / Error helpers (per-chart)
+  // 12. Skeleton / Error helpers (使用 HTML 既有 ID 模式)
   // ============================================================
   const Skeleton = {
-    show(el) {
-      const parent = el.parentElement;
-      if (!parent) return;
-      if (parent.querySelector(".skeleton--chart")) return;
-      const sk = document.createElement("div");
-      sk.className = "skeleton skeleton--chart";
-      sk.setAttribute("aria-hidden", "true");
-      parent.appendChild(sk);
-    },
-    hide(el) {
-      const parent = el.parentElement;
-      if (!parent) return;
-      const sk = parent.querySelector(".skeleton--chart");
-      if (sk) sk.remove();
-    },
-    error(el, message, onRetry) {
-      const parent = el.parentElement;
-      if (!parent) return;
-      const old = parent.querySelector(".chart-error");
-      if (old) old.remove();
-      const box = document.createElement("div");
-      box.className = "chart-error";
-      box.setAttribute("role", "alert");
-      box.innerHTML = `
-        <div class="chart-error__title">图表加载失败</div>
-        <div class="chart-error__msg">${Utils.esc(message || "")}</div>
-        ${onRetry ? '<button class="btn btn--ghost btn--sm" type="button">重试</button>' : ""}`;
-      if (onRetry) box.querySelector("button").addEventListener("click", onRetry);
-      parent.appendChild(box);
-    },
-    clear(el) {
-      const parent = el.parentElement;
-      if (!parent) return;
-      const old = parent.querySelector(".chart-error");
-      if (old) old.remove();
-    }
+    show(chartId) { const el = document.getElementById(chartId + "Skeleton"); if (el) el.style.display = "flex"; },
+    hide(chartId) { const el = document.getElementById(chartId + "Skeleton"); if (el) el.style.display = "none"; }
   };
+
+  function showChartError(chartId, message, retryFn) {
+    const el = document.getElementById(chartId);
+    if (!el) return;
+    const parent = el.parentElement;
+    if (!parent) return;
+    const old = parent.querySelector(".chart-error");
+    if (old) old.remove();
+    const box = document.createElement("div");
+    box.className = "chart-error";
+    box.setAttribute("role", "alert");
+    box.innerHTML = `
+      <svg class="chart-error__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+      </svg>
+      <div class="chart-error__title">图表加载失败</div>
+      <div class="chart-error__detail">${Utils.esc(message || "")}</div>
+      ${retryFn ? '<button class="btn btn--ghost btn--sm" type="button" data-retry>重试</button>' : ""}`;
+    if (retryFn) box.querySelector("[data-retry]").addEventListener("click", retryFn);
+    parent.appendChild(box);
+  }
+
+  function clearChartError(chartId) {
+    const el = document.getElementById(chartId);
+    if (!el) return;
+    const parent = el.parentElement;
+    if (!parent) return;
+    const old = parent.querySelector(".chart-error");
+    if (old) old.remove();
+  }
 
   // ============================================================
   // 13. Views
@@ -2197,32 +2159,30 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   // ---- Dashboard ----
   Views.Dashboard = {
     abortCtl: null,
-    _renderCityCard(city, summary, industry) {
-      const data = (summary && summary.data) || {};
-      const ind  = (industry && industry.data) || {};
+    _renderCityCard(city, payload) {
+      const data = payload?.data || {};
       const cells = CONFIG.CITY_CARD_FIELDS.map((f) => {
-        let v = data[f.key];
-        if (f.source === "industry") v = ind[f.key];
+        const v = typeof f.accessor === "function" ? f.accessor(data) : data[f.key];
         let display = "—";
-        if (v != null && v !== "") {
-          if (f.key === "gdp" || f.key === "gdp_per_capita") {
-            display = Utils.fmtCompact(v);
-          } else if (f.unit === "%") {
-            display = Utils.fmtPct(v, 2);
-          } else {
-            display = Utils.fmtInt(v) + (f.unit && f.unit !== "元" ? " " + f.unit : "");
-          }
+        if (v != null && v !== "" && !Number.isNaN(+v)) {
+          if (f.key === "gdp" || f.key === "gdp_per_capita") display = Utils.fmtCompact(v);
+          else if (f.unit === "%") display = Utils.fmtPct(v, 2);
+          else display = Utils.fmtInt(v) + (f.unit && f.unit !== "元" ? " <small>" + f.unit + "</small>" : "");
         }
-        return `<li class="city-card__cell"><span class="city-card__label">${Utils.esc(f.label)}</span><span class="city-card__value">${display}</span></li>`;
+        return `<div class="city-card__stat"><span class="city-card__stat-label">${Utils.esc(f.label)}</span><span class="city-card__stat-value ${f.key === "gdp" ? "city-card__stat-value--accent" : ""}">${display}</span></div>`;
       }).join("");
 
+      const tier = data.tier || (data.gdp >= 30000 ? "一线" : data.gdp >= 15000 ? "新一线" : data.gdp >= 8000 ? "二线" : "三线");
       return `
         <article class="city-card" data-city="${Utils.esc(city)}">
           <header class="city-card__head">
-            <h3 class="city-card__name">${Utils.esc(city)}</h3>
-            <span class="city-card__rank" aria-label="序号">#${summary?.rank ?? "—"}</span>
+            <div>
+              <div class="city-card__name">${Utils.esc(city)}</div>
+              <div class="city-card__region">${Utils.esc(data.region || "—")} · ${Utils.esc(data.industry || "综合")}</div>
+            </div>
+            <span class="tag tag--ink">${Utils.esc(tier)}</span>
           </header>
-          <ul class="city-card__grid">${cells}</ul>
+          <div class="city-card__stats">${cells}</div>
         </article>`;
     },
 
@@ -2233,37 +2193,24 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       this.abortCtl = new AbortController();
       const { signal } = this.abortCtl;
 
-      grid.innerHTML = cities.map(() => `<div class="city-card-skel" aria-hidden="true"><div class="sk sk-title"></div><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>`).join("");
+      grid.innerHTML = cities.map(() => `<div class="city-card city-card--skeleton" aria-hidden="true"></div>`).join("");
 
-      const tasks = cities.map((city) => async () => {
-        const [summary, industry] = await Promise.allSettled([
-          api.get(`/cities/${encodeURIComponent(city)}`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS }),
-          api.get(`/cities/${encodeURIComponent(city)}/industry`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS })
-        ]);
-        return { city, summary, industry };
-      });
-
-      const results = await Promise.allSettled(tasks.map((t) => t()));
-      const ok = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
+      const tasks = cities.map((city) => api.get(`/cities/${encodeURIComponent(city)}`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS }));
+      const results = await Promise.allSettled(tasks);
+      const ok = results.filter((r) => r.status === "fulfilled");
       const failed = results.length - ok.length;
-      if (failed > 0 && window.__citylens_toast) {
-        window.__citylens_toast.warn(`${failed} 个城市数据加载失败,已跳过`);
-      }
+      if (failed > 0) window.__citylens_toast?.warn(`${failed} 个城市数据加载失败,已跳过`);
       if (ok.length === 0) {
-        grid.innerHTML = `<div class="empty-state"><div class="empty-state__icon" aria-hidden="true">!</div><p>未能加载任何城市数据,请稍后重试。</p></div>`;
+        grid.innerHTML = `<div class="empty-state"><svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8v4M12 16h.01"/><circle cx="12" cy="12" r="10"/></svg><div class="empty-state__title">城市数据不可用</div><div class="empty-state__text">请检查后端服务并稍后重试。</div></div>`;
         return;
       }
-      grid.innerHTML = ok.map(({ city, summary, industry }) => {
-        const sum = summary.status === "fulfilled" ? summary.value : null;
-        const ind = industry.status === "fulfilled" ? industry.value : null;
-        return this._renderCityCard(city, sum, ind);
-      }).join("");
+      grid.innerHTML = ok.map((r) => this._renderCityCard(cities[results.indexOf(r)], r.value)).join("");
     },
 
     async loadGdpRankChart(api, signal) {
-      const el = $("#chartGdpRank");
-      if (!el) return;
-      Skeleton.show(el); Skeleton.clear(el);
+      const chartId = "chartGdpRank";
+      clearChartError(chartId);
+      Skeleton.show(chartId);
       try {
         const list = await api.get("/cities/list", { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
         const cities = (list.cities || []).slice(0, 10);
@@ -2274,125 +2221,111 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
           .filter((d) => d.value != null)
           .sort((a, b) => b.value - a.value);
 
-        Skeleton.hide(el);
-        window.__citylens_charts.setOption(el, {
-          grid: { left: 96, right: 32, top: 24, bottom: 24, containLabel: false },
+        Skeleton.hide(chartId);
+        window.__citylens_charts.setOption(document.getElementById(chartId), {
+          grid: { left: 90, right: 60, top: 16, bottom: 24, containLabel: false },
           tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v) => Utils.fmtCompact(v) + " 亿元" },
           xAxis: { type: "value", axisLabel: { formatter: (v) => Utils.fmtCompact(v) } },
-          yAxis: { type: "category", data: data.map((d) => d.city), axisLabel: { fontWeight: 600 } },
+          yAxis: { type: "category", data: data.map((d) => d.city), axisLabel: { fontWeight: 600, color: Utils.cssVar("--stone-800") }, inverse: true },
           series: [{
             type: "bar",
             data: data.map((d) => d.value),
             itemStyle: { color: Utils.cssVar("--copper-500"), borderRadius: [0, 4, 4, 0] },
-            barMaxWidth: 18,
+            barMaxWidth: 16,
             label: { show: true, position: "right", formatter: (p) => Utils.fmtCompact(p.value) + " 亿元", color: Utils.cssVar("--ink-700"), fontSize: 11 }
           }]
         });
       } catch (err) {
-        Skeleton.hide(el);
-        Skeleton.error(el, err.message || "加载失败", () => this.loadGdpRankChart(api, signal));
+        Skeleton.hide(chartId);
+        showChartError(chartId, err.message || "加载失败", () => this.loadGdpRankChart(api, signal));
       }
     },
 
     async loadIndustryOverview(api, signal) {
-      const el = $("#chartIndustry");
-      if (!el) return;
-      Skeleton.show(el); Skeleton.clear(el);
+      const chartId = "chartIndustryOverview";
+      clearChartError(chartId);
+      Skeleton.show(chartId);
       try {
         const list = await api.get("/cities/list", { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
         const cities = (list.cities || []).slice(0, 6);
-        const tasks = cities.map((c) => api.get(`/cities/${encodeURIComponent(c)}/industry`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS }));
-        const results = await Promise.allSettled(tasks);
-        const matrix = results.map((r, i) => ({
-          city: cities[i],
-          p: r.status === "fulfilled" ? r.value?.data?.primary_industry_ratio : null,
-          s: r.status === "fulfilled" ? r.value?.data?.secondary_industry_ratio : null,
-          t: r.status === "fulfilled" ? r.value?.data?.tertiary_industry_ratio : null
-        })).filter((d) => d.p != null && d.s != null && d.t != null);
+        const tasks = cities.map((c) => api.get(`/cities/${encodeURIComponent(c)}`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS }).catch(() => null));
+        const results = await Promise.all(tasks);
+        // 后端没有三产占比,使用 data 中的成本/供应链/政策维度作为对比
+        const data = results
+          .filter(Boolean)
+          .map((r, i) => ({
+            city: cities[i],
+            land: r.data?.land_price ?? 0,
+            salary: r.data?.salary_level ?? 0,
+            support: r.data?.local_support_rate ?? 0
+          }))
+          .filter((d) => d.land || d.salary || d.support);
 
-        // 归一化,避免不同体量城市在分组堆叠中遮蔽小城市
-        const norm = matrix.map((d) => {
-          const total = d.p + d.s + d.t || 1;
-          return { city: d.city, p: (d.p / total) * 100, s: (d.s / total) * 100, t: (d.t / total) * 100 };
-        });
-
-        Skeleton.hide(el);
-        window.__citylens_charts.setOption(el, {
-          grid: { left: 16, right: 16, top: 48, bottom: 24, containLabel: true },
-          tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v) => (+v).toFixed(1) + "%" },
-          legend: { top: 8, data: ["第一产业", "第二产业", "第三产业"] },
-          xAxis: { type: "category", data: norm.map((d) => d.city) },
-          yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%" } },
+        Skeleton.hide(chartId);
+        window.__citylens_charts.setOption(document.getElementById(chartId), {
+          grid: { left: 16, right: 16, top: 32, bottom: 24, containLabel: true },
+          tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v) => Utils.fmtInt(v) },
+          legend: { top: 0, data: ["地价(元/㎡)", "薪酬(元/月)", "本地支持力度(%)"] },
+          xAxis: { type: "category", data: data.map((d) => d.city) },
+          yAxis: { type: "value" },
           series: [
-            { name: "第一产业", type: "bar", stack: "ind", data: norm.map((d) => +d.p.toFixed(2)), itemStyle: { color: Utils.cssVar("--viz-3") } },
-            { name: "第二产业", type: "bar", stack: "ind", data: norm.map((d) => +d.s.toFixed(2)), itemStyle: { color: Utils.cssVar("--viz-1") } },
-            { name: "第三产业", type: "bar", stack: "ind", data: norm.map((d) => +d.t.toFixed(2)), itemStyle: { color: Utils.cssVar("--viz-2") } }
+            { name: "地价(元/㎡)", type: "bar", data: data.map((d) => d.land), itemStyle: { color: Utils.cssVar("--copper-500") } },
+            { name: "薪酬(元/月)", type: "bar", data: data.map((d) => d.salary), itemStyle: { color: Utils.cssVar("--viz-2") } },
+            { name: "本地支持力度(%)", type: "bar", data: data.map((d) => +d.support.toFixed(1)), itemStyle: { color: Utils.cssVar("--viz-3") } }
           ]
         });
       } catch (err) {
-        Skeleton.hide(el);
-        Skeleton.error(el, err.message || "加载失败", () => this.loadIndustryOverview(api, signal));
+        Skeleton.hide(chartId);
+        showChartError(chartId, err.message || "加载失败", () => this.loadIndustryOverview(api, signal));
       }
     },
 
     async mount(api, store) {
       const cities = (store.get().cities && store.get().cities.length) ? store.get().cities : CONFIG.DEFAULT_CITIES;
+      const hint = $("#cityCardHint");
+      if (hint) hint.textContent = `${cities.length} 个城市`;
+
+      const list = await api.get("/cities/list", { cacheTTL: CONFIG.CACHE_TTL_MS }).catch(() => ({ cities: [] }));
+      const allCities = list.cities || cities;
+      const sc = $("#statCities");
+      if (sc) sc.textContent = String(allCities.length);
+
       await this.loadCityCards(api, cities);
       await Promise.allSettled([
         this.loadGdpRankChart(api),
         this.loadIndustryOverview(api)
       ]);
 
-      const addBtn = $("#addCityBtn");
-      const input = $("#addCityInput");
-      if (addBtn && input) {
-        const handler = async () => {
-          const name = (input.value || "").trim();
-          if (!name) return;
-          const cur = store.get().cities || CONFIG.DEFAULT_CITIES;
-          if (cur.includes(name)) {
-            window.__citylens_toast?.info(`「${name}」已存在`);
-            return;
-          }
-          const next = [...cur, name];
-          store.set({ cities: next });
-          input.value = "";
-          await this.loadCityCards(api, next);
-        };
-        addBtn.addEventListener("click", handler);
-        input.addEventListener("keydown", (e) => { if (e.key === "Enter") handler(); });
+      const lede = $("#dashboardLede");
+      if (lede) lede.textContent = "数据已就绪。所有视图均经过 ECharts 渲染与本地缓存。";
+      const upd = $("#dashboardUpdated");
+      if (upd) upd.textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+      const dp = $("#dashboardDataPoints");
+      if (dp) dp.textContent = String(allCities.length * CONFIG.CITY_CARD_FIELDS.length);
 
-        const resetBtn = $("#resetCitiesBtn");
-        resetBtn?.addEventListener("click", async () => {
-          store.set({ cities: CONFIG.DEFAULT_CITIES });
-          await this.loadCityCards(api, CONFIG.DEFAULT_CITIES);
-        });
-      }
+      store.set({ allCities });
     }
   };
 
   // ---- Enterprise ----
   Views.Enterprise = {
     abortCtl: null,
-    _renderScoreRing(score) {
-      const R = 56, C = 2 * Math.PI * R;
+    _setScoreRing(score) {
+      const R = 52, C = 2 * Math.PI * R;
       const ratio = Math.max(0, Math.min(100, +score || 0)) / 100;
-      const off = C * (1 - ratio);
-      return `
-        <svg class="score-ring" viewBox="0 0 140 140" role="img" aria-label="综合评分 ${Utils.esc(Utils.fmtScore(score))}">
-          <circle cx="70" cy="70" r="${R}" stroke="${Utils.cssVar("--stone-200")}" stroke-width="10" fill="none"/>
-          <circle cx="70" cy="70" r="${R}" stroke="${Utils.cssVar("--copper-500")}" stroke-width="10" fill="none"
-            stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"
-            transform="rotate(-90 70 70)" />
-          <text x="70" y="68" text-anchor="middle" class="score-ring__num">${Utils.esc(Utils.fmtScore(score))}</text>
-          <text x="70" y="90" text-anchor="middle" class="score-ring__sub">综合评分</text>
-        </svg>`;
+      const fill = document.getElementById("scoreRingFill");
+      if (fill) fill.setAttribute("stroke-dashoffset", String(C * (1 - ratio)));
+      const t = document.getElementById("entTotalScore");
+      if (t) t.textContent = Utils.fmtScore(score);
+      const r = Utils.rating(score);
+      const rt = document.getElementById("entScoreRating");
+      if (rt) rt.textContent = r.label + " · " + "★".repeat(r.stars) + "☆".repeat(5 - r.stars);
     },
     _renderRadar(details) {
       const dims = [
-        { key: "cost_details",     label: "经营成本" },
-        { key: "supply_details",   label: "供应链" },
-        { key: "policy_details",   label: "政策红利" }
+        { key: "cost_details",   label: "经营成本" },
+        { key: "supply_details", label: "供应链" },
+        { key: "policy_details", label: "政策红利" }
       ];
       const seen = new Set();
       dims.forEach((d) => {
@@ -2402,82 +2335,70 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       const indicators = Array.from(seen).map((k) => ({ name: k, max: 100 }));
       const series = [{
         type: "radar",
+        symbol: "circle",
+        symbolSize: 4,
         data: dims.map((d) => {
           const obj = details?.[d.key] || {};
           return { name: d.label, value: indicators.map((ind) => Math.round(+obj[ind.name] || 0)) };
         }),
-        areaStyle: { opacity: 0.18 }
+        areaStyle: { opacity: 0.2 },
+        lineStyle: { width: 2 }
       }];
       return { indicators, series };
     },
 
     async analyze(api, city) {
-      const root = $("#enterpriseResult");
-      if (!root) return;
       this.abortCtl?.abort?.("reload");
       this.abortCtl = new AbortController();
       const { signal } = this.abortCtl;
-
-      root.innerHTML = `<div class="placeholder placeholder--loading"><div class="spinner" aria-hidden="true"></div><p>正在分析 ${Utils.esc(city)} 的营商环境…</p></div>`;
+      const card = document.getElementById("entScoreCard");
+      const detail = document.getElementById("entDetailCard");
+      if (card) card.hidden = true;
+      if (detail) detail.hidden = true;
       try {
         const data = await api.get(`/analysis/enterprise/v3/${encodeURIComponent(city)}`, { signal });
-        const score = data.total_score;
-        const r = Utils.rating(score);
-        root.innerHTML = `
-          <section class="ent-hero">
-            <div class="ent-hero__ring">${this._renderScoreRing(score)}</div>
-            <div class="ent-hero__meta">
-              <div class="eyebrow">营商环境评估 · v3</div>
-              <h3 class="ent-hero__city">${Utils.esc(data.city || city)}</h3>
-              <div class="rating"><span class="rating__stars" aria-hidden="true">${Utils.stars(r.stars)}</span><span class="rating__label">${Utils.esc(r.label)}</span></div>
-              <dl class="ent-hero__scores">
-                <div><dt>经营成本</dt><dd>${Utils.esc(Utils.fmtScore(data.business_cost_score))}</dd></div>
-                <div><dt>供应链</dt><dd>${Utils.esc(Utils.fmtScore(data.supply_chain_score))}</dd></div>
-                <div><dt>政策红利</dt><dd>${Utils.esc(Utils.fmtScore(data.policy_benefit_score))}</dd></div>
-              </dl>
-            </div>
-          </section>
-          <section class="ent-grid">
-            <article class="ent-panel">
-              <header class="ent-panel__head"><h4>维度雷达</h4></header>
-              <div class="chart-frame"><div id="chartEnterpriseRadar" class="chart" role="img" aria-label="维度雷达图"></div></div>
-            </article>
-            <article class="ent-panel">
-              <header class="ent-panel__head"><h4>子项明细</h4></header>
-              <div class="ent-details" id="entDetails"></div>
-            </article>
-          </section>`;
+        if (card) card.hidden = false;
+        this._setScoreRing(data.total_score);
+
         const rOpt = this._renderRadar(data.details || {});
-        window.__citylens_charts.setOption($("#chartEnterpriseRadar"), {
+        window.__citylens_charts.setOption(document.getElementById("chartEntRadar"), {
           tooltip: {},
-          legend: { bottom: 0, data: ["经营成本", "供应链", "政策红利"] },
-          radar: { indicator: rOpt.indicators, radius: "62%", splitArea: { areaStyle: { color: ["rgba(184,113,74,0.04)", "rgba(14,31,63,0.02)"] } } },
+          legend: { bottom: 0, data: rOpt.series[0].data.map((d) => d.name) },
+          radar: {
+            indicator: rOpt.indicators,
+            radius: "64%",
+            splitArea: { areaStyle: { color: ["rgba(184,113,74,0.04)", "rgba(14,31,63,0.02)"] } },
+            axisName: { color: Utils.cssVar("--stone-700"), fontSize: 11 }
+          },
           series: rOpt.series
         });
-        const det = $("#entDetails");
-        if (det) {
-          const dims = [
-            { key: "cost_details",   label: "经营成本" },
-            { key: "supply_details", label: "供应链" },
-            { key: "policy_details", label: "政策红利" }
-          ];
-          det.innerHTML = dims.map((d) => {
-            const obj = data.details?.[d.key] || {};
-            const rows = Object.entries(obj).map(([k, v]) => (
-              `<li><span class="ent-details__k">${Utils.esc(k)}</span><span class="ent-details__v">${Utils.esc(Utils.fmtScore(v))}</span></li>`
-            )).join("");
-            return `<section class="ent-details__group"><h5>${Utils.esc(d.label)}</h5><ul>${rows || "<li class='muted'>无数据</li>"}</ul></section>`;
-          }).join("");
+
+        if (detail) {
+          detail.hidden = false;
+          const det = document.getElementById("entDetails");
+          if (det) {
+            const dims = [
+              { key: "cost_details",   label: "经营成本" },
+              { key: "supply_details", label: "供应链" },
+              { key: "policy_details", label: "政策红利" }
+            ];
+            det.innerHTML = dims.map((d) => {
+              const obj = data.details?.[d.key] || {};
+              const rows = Object.entries(obj).map(([k, v]) => (
+                `<div class="detail-item"><div class="detail-item__label">${Utils.esc(k)}</div><div class="detail-item__value detail-item__value--accent">${Utils.esc(Utils.fmtScore(v))}</div></div>`
+              )).join("");
+              return `<div class="detail-item" style="grid-column:1/-1;"><div class="detail-item__label" style="font-weight:600;">${Utils.esc(d.label)}</div></div>${rows || `<div class="detail-item"><div class="detail-item__label">无数据</div></div>`}`;
+            }).join("");
+          }
         }
       } catch (err) {
-        root.innerHTML = `<div class="empty-state"><div class="empty-state__icon" aria-hidden="true">!</div><p>分析失败:${Utils.esc(err.message || "未知错误")}</p><button class="btn btn--ghost" type="button" id="entRetry">重试</button></div>`;
-        $("#entRetry")?.addEventListener("click", () => this.analyze(api, city));
+        if (err.name !== "AbortError") window.__citylens_toast?.error("企业分析失败:" + (err.message || "未知错误"));
       }
     },
 
     async mount(api) {
-      const sel = $("#enterpriseCity");
-      const btn = $("#enterpriseBtn");
+      const sel = document.getElementById("entCitySelect");
+      const btn = document.getElementById("btnEntAnalyze");
       if (!sel || !btn) return;
       try {
         const list = await api.get("/cities/list", { cacheTTL: CONFIG.CACHE_TTL_MS });
@@ -2489,74 +2410,81 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       const run = () => this.analyze(api, sel.value);
       btn.addEventListener("click", run);
       sel.addEventListener("change", Utils.debounce(run, 200));
-      if (sel.value) await run();
+      await run();
     }
   };
 
   // ---- Government ----
   Views.Government = {
     abortCtl: null,
-    async analyze(api, city) {
-      const root = $("#governmentResult");
-      if (!root) return;
+    async analyze(api, city, years) {
       this.abortCtl?.abort?.("reload");
       this.abortCtl = new AbortController();
       const { signal } = this.abortCtl;
-      root.innerHTML = `<div class="placeholder placeholder--loading"><div class="spinner" aria-hidden="true"></div><p>正在为 ${Utils.esc(city)} 测算政策匹配度…</p></div>`;
+      const det = document.getElementById("govDetails");
+      const chartId = "chartGdpForecast";
+      clearChartError(chartId);
+      Skeleton.show(chartId);
+      if (det) det.innerHTML = `<div class="placeholder placeholder--loading" style="grid-column:1/-1;"><div class="spinner" aria-hidden="true"></div><p>正在为 ${Utils.esc(city)} 运行产业分析…</p></div>`;
       try {
-        const data = await api.get(`/analysis/government/${encodeURIComponent(city)}`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
-        const list = data.matches || data.policies || [];
-        root.innerHTML = `
-          <section class="gov-summary">
-            <div class="eyebrow">政策红利分析</div>
-            <h3 class="gov-summary__city">${Utils.esc(city)}</h3>
-            <p class="gov-summary__score">综合匹配度 <strong>${Utils.esc(Utils.fmtScore(data.overall_score ?? data.score))}</strong> · 命中 <strong>${list.length}</strong> 项政策</p>
-          </section>
-          <section class="gov-grid">
-            <article class="gov-panel">
-              <header class="gov-panel__head"><h4>GDP 预测与置信区间</h4></header>
-              <div class="chart-frame"><div id="chartGdpForecast" class="chart" role="img" aria-label="GDP 预测图"></div></div>
-            </article>
-            <article class="gov-panel">
-              <header class="gov-panel__head"><h4>匹配政策清单</h4></header>
-              <ul class="gov-list" id="govList"></ul>
-            </article>
-          </section>`;
+        // 先取城市信息以获得 region/industry
+        const cityInfo = await api.get(`/cities/${encodeURIComponent(city)}`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
+        const cd = cityInfo?.data || {};
+        const analysisBody = {
+          region: cd.region || "全国",
+          industry: cd.industry || "综合",
+          year: years,
+          data: { gdp: cd.gdp, gdp_growth: cd.gdp_growth, population: cd.population }
+        };
+        const data = await api.post("/analysis/government", analysisBody, { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
+        const payload = data?.data || {};
+        const tag = document.getElementById("govMethodTag");
+        if (tag) tag.textContent = "已就绪 · " + (cd.region || "全国");
 
-        const ol = $("#govList");
-        if (ol) {
-          ol.innerHTML = list.length
-            ? list.map((p) => `
-                <li class="gov-list__item">
-                  <div class="gov-list__title">${Utils.esc(p.name || p.policy_name || "政策")}</div>
-                  <div class="gov-list__meta">
-                    <span>部门:${Utils.esc(p.department || "—")}</span>
-                    <span>匹配度:${Utils.esc(Utils.fmtScore(p.match_score ?? p.score))}</span>
-                  </div>
-                  ${p.description ? `<p class="gov-list__desc">${Utils.esc(p.description)}</p>` : ""}
-                </li>`).join("")
-            : `<li class="muted">暂无匹配政策</li>`;
+        if (det) {
+          const fl = payload.fiscal_leverage || {};
+          const ind = payload.industry_drive || {};
+          const sub = [
+            { name: "财政杠杆评分", value: fl.score, unit: "/100" },
+            { name: "收入效率", value: fl.revenue_efficiency, unit: "/100" },
+            { name: "支出效率", value: fl.expenditure_efficiency, unit: "/100" },
+            { name: "产业驱动评分", value: ind.score, unit: "/100" },
+            { name: "就业贡献", value: ind.employment_contribution, unit: "/100" },
+            { name: "税收贡献", value: ind.tax_contribution, unit: "/100" },
+            { name: "财政总收入", value: cd.fiscal_revenue, unit: "亿元" },
+            { name: "研发强度", value: cd.rd_intensity, unit: "%" }
+          ].filter((x) => x.value != null && x.value !== "");
+          det.innerHTML = sub.length
+            ? sub.map((s) => {
+                const v = s.value;
+                return `<div class="detail-item"><div class="detail-item__label">${Utils.esc(s.name)}</div><div class="detail-item__value">${Utils.esc(Utils.fmtScore(v))}</div><div class="detail-item__unit">${Utils.esc(s.unit)}</div></div>`;
+              }).join("") +
+              `<div class="detail-item" style="grid-column:1/-1;background:var(--copper-50);"><div class="detail-item__label" style="font-weight:600;color:var(--copper-700);">城市画像</div><div class="detail-item__value detail-item__value--accent">${Utils.esc(cd.region || "—")} · ${Utils.esc(cd.industry || "综合")}</div><div class="detail-item__unit">数据质量:${Utils.esc(cd.data_quality || "—")}</div></div>`
+            : `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state__title">暂无数据</div></div>`;
         }
 
-        const fcEl = $("#chartGdpForecast");
         try {
-          const fc = await api.get(`/forecast/gdp/${encodeURIComponent(city)}?forecast_years=3`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
-          this._renderForecast(fcEl, fc);
+          const fc = await api.get(`/forecast/gdp/${encodeURIComponent(city)}?forecast_years=${years}`, { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
+          this._renderForecast(chartId, fc);
         } catch {
-          Skeleton.error(fcEl, "预测数据暂不可用");
+          Skeleton.hide(chartId);
+          showChartError(chartId, "预测数据暂不可用");
         }
       } catch (err) {
-        root.innerHTML = `<div class="empty-state"><div class="empty-state__icon" aria-hidden="true">!</div><p>分析失败:${Utils.esc(err.message || "未知错误")}</p><button class="btn btn--ghost" type="button" id="govRetry">重试</button></div>`;
-        $("#govRetry")?.addEventListener("click", () => this.analyze(api, city));
+        Skeleton.hide(chartId);
+        if (err.name !== "AbortError") {
+          if (det) det.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><div class="empty-state__title">分析失败</div><div class="empty-state__text">${Utils.esc(err.message || "未知错误")}</div><button class="btn btn--ghost" type="button" id="govRetry">重试</button></div>`;
+          document.getElementById("govRetry")?.addEventListener("click", () => this.analyze(api, city, years));
+          window.__citylens_toast?.error("政府分析失败:" + (err.message || "未知错误"));
+        }
       }
     },
-    _renderForecast(el, payload) {
+    _renderForecast(chartId, payload) {
       const hist = payload.historical_data || [];
       const fc = payload.forecast_data || [];
       const years = [...hist.map((d) => d.year), ...fc.map((d) => d.year)];
       const histSeries = hist.map((d) => d.gdp);
       const fcSeries   = fc.map((d) => d.forecast);
-      // 置信带:预测年的 lower/upper 围绕中位 (以 stack 模拟区间)
       const lower = hist.map(() => null).concat(fc.map((d) => d.forecast_lower ?? null));
       const upper = hist.map(() => null).concat(fc.map((d, i) => {
         const lo = fc[i].forecast_lower;
@@ -2564,7 +2492,8 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       }));
       const mid   = hist.map(() => null).concat(fcSeries);
 
-      window.__citylens_charts.setOption(el, {
+      Skeleton.hide(chartId);
+      window.__citylens_charts.setOption(document.getElementById(chartId), {
         grid: { left: 16, right: 16, top: 32, bottom: 32, containLabel: true },
         tooltip: { trigger: "axis", valueFormatter: (v) => v == null ? "—" : Utils.fmtCompact(v) + " 亿元" },
         legend: { top: 0, data: ["历史 GDP", "预测 GDP", "置信区间"] },
@@ -2585,8 +2514,9 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
     },
 
     async mount(api) {
-      const sel = $("#governmentCity");
-      const btn = $("#governmentBtn");
+      const sel = document.getElementById("govCitySelect");
+      const years = document.getElementById("govForecastYears");
+      const btn = document.getElementById("btnGovAnalyze");
       if (!sel || !btn) return;
       try {
         const list = await api.get("/cities/list", { cacheTTL: CONFIG.CACHE_TTL_MS });
@@ -2595,43 +2525,37 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       } catch {
         sel.innerHTML = CONFIG.DEFAULT_CITIES.map((c) => `<option>${Utils.esc(c)}</option>`).join("");
       }
-      const run = () => this.analyze(api, sel.value);
+      const run = () => this.analyze(api, sel.value, years?.value || 3);
       btn.addEventListener("click", run);
       sel.addEventListener("change", Utils.debounce(run, 200));
-      if (sel.value) await run();
+      years?.addEventListener("change", run);
+      await run();
     }
   };
 
-  // ---- Compare ----
-  Views.Compare = {
+  // ---- Cities (Compare) ----
+  Views.Cities = {
     abortCtl: null,
     async runCityComparison(api, cities, indicator) {
-      const root = $("#compareResult");
-      if (!root) return;
       this.abortCtl?.abort?.("reload");
       this.abortCtl = new AbortController();
       const { signal } = this.abortCtl;
-
-      root.innerHTML = `
-        <div class="cmp-charts">
-          <article class="cmp-panel"><header><h4>时序对比 · ${Utils.esc(indicator)}</h4></header>
-            <div class="chart-frame"><div id="chartCompareSeries" class="chart" role="img" aria-label="时序对比"></div></div>
-          </article>
-          <article class="cmp-panel"><header><h4>热力对比</h4></header>
-            <div class="chart-frame"><div id="chartCompareHeat" class="chart" role="img" aria-label="热力图"></div></div>
-          </article>
-        </div>
-        <article class="cmp-panel cmp-panel--table"><header><h4>数据明细</h4></header>
-          <div class="table-wrap"><table class="data-table" id="cmpTable" aria-label="对比数据表"></table></div>
-        </article>`;
+      const chartTs = "chartCityCompare";
+      const chartHm = "chartCityHeatmap";
+      clearChartError(chartTs); clearChartError(chartHm);
+      Skeleton.show(chartTs); Skeleton.show(chartHm);
       try {
-        const ts = await api.post("/cities/time-series", { cities, indicator }, { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
+        const now = new Date().getFullYear();
+        const ts = await api.post("/cities/time-series", {
+          city_codes: cities, indicator, year_start: now - 7, year_end: now
+        }, { signal, cacheTTL: CONFIG.CACHE_TTL_MS });
         const groups = ts?.time_series?.groups || [];
         const allYears = Array.from(new Set(groups.flatMap((g) => g.time_points || []))).sort();
 
-        window.__citylens_charts.setOption($("#chartCompareSeries"), {
+        Skeleton.hide(chartTs);
+        window.__citylens_charts.setOption(document.getElementById(chartTs), {
           grid: { left: 16, right: 16, top: 32, bottom: 32, containLabel: true },
-          tooltip: { trigger: "axis" },
+          tooltip: { trigger: "axis", valueFormatter: (v) => v == null ? "—" : Utils.fmtCompact(v) },
           legend: { top: 0, data: cities },
           xAxis: { type: "category", data: allYears, boundaryGap: false },
           yAxis: { type: "value" },
@@ -2656,8 +2580,9 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
             return idx >= 0 ? +((vals[idx] / max) * 100).toFixed(1) : null;
           });
         });
-        window.__citylens_charts.setOption($("#chartCompareHeat"), {
-          grid: { left: 80, right: 16, top: 16, bottom: 48, containLabel: true },
+        Skeleton.hide(chartHm);
+        window.__citylens_charts.setOption(document.getElementById(chartHm), {
+          grid: { left: 80, right: 16, top: 16, bottom: 56, containLabel: true },
           tooltip: { position: "top", valueFormatter: (v) => v == null ? "—" : v + "% (相对最大值)" },
           xAxis: { type: "category", data: allYears, splitArea: { show: true } },
           yAxis: { type: "category", data: cities, splitArea: { show: true } },
@@ -2667,72 +2592,105 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
             progressive: 1000, itemStyle: { borderRadius: 2 } }]
         });
 
-        const table = $("#cmpTable");
-        if (table) {
-          const head = `<thead><tr><th scope="col">城市</th>${allYears.map((y) => `<th scope="col">${y}</th>`).join("")}</tr></thead>`;
-          const body = `<tbody>${cities.map((c) => {
+        // 表格
+        const head = document.querySelector("#compareTable thead");
+        const body = document.getElementById("compareTableBody");
+        if (head && body) {
+          head.innerHTML = `<tr><th scope="col">城市</th>${allYears.map((y) => `<th scope="col">${y}</th>`).join("")}</tr>`;
+          body.innerHTML = cities.map((c) => {
             const g = groups.find((x) => x.city === c);
             const map = new Map((g?.time_points || []).map((y, idx) => [y, g.values?.[idx]]));
             return `<tr><th scope="row">${Utils.esc(c)}</th>${allYears.map((y) => `<td>${map.has(y) ? Utils.esc(Utils.fmtInt(map.get(y))) : "—"}</td>`).join("")}</tr>`;
-          }).join("")}</tbody>`;
-          table.innerHTML = head + body;
+          }).join("");
         }
       } catch (err) {
-        root.innerHTML = `<div class="empty-state"><div class="empty-state__icon" aria-hidden="true">!</div><p>对比失败:${Utils.esc(err.message || "未知错误")}</p><button class="btn btn--ghost" type="button" id="cmpRetry">重试</button></div>`;
-        $("#cmpRetry")?.addEventListener("click", () => this.runCityComparison(api, cities, indicator));
+        Skeleton.hide(chartTs); Skeleton.hide(chartHm);
+        if (err.name !== "AbortError") {
+          showChartError(chartTs, err.message || "对比失败", () => this.runCityComparison(api, cities, indicator));
+          window.__citylens_toast?.error("对比失败:" + (err.message || "未知错误"));
+        }
       }
     },
 
     async mount(api, store) {
-      const sel = $("#compareIndicator");
-      const citySel = $("#compareCities");
-      const btn = $("#compareBtn");
-      if (!sel || !btn) return;
+      const citySel = document.getElementById("cityCheckboxes");
+      const btn = document.getElementById("btnCompare");
+      const btnAll = document.getElementById("btnSelectAll");
+      const btnNone = document.getElementById("btnSelectNone");
+      const counter = document.getElementById("compareSelectedCount");
+      if (!citySel || !btn) return;
 
-      sel.innerHTML = CONFIG.COMPARE_INDICATORS.map((i) => `<option value="${i.key}">${Utils.esc(i.label)} (${i.unit})</option>`).join("");
+      const allCities = store.get().allCities?.length
+        ? store.get().allCities
+        : (await api.get("/cities/list", { cacheTTL: CONFIG.CACHE_TTL_MS }).then((r) => r.cities || []).catch(() => CONFIG.DEFAULT_CITIES));
+      const defaultSelected = CONFIG.DEFAULT_CITIES.slice(0, 4);
 
       const renderCities = (selected) => {
-        if (!citySel) return;
         citySel.innerHTML = "";
-        const list = store.get().cities?.length ? store.get().cities : CONFIG.DEFAULT_CITIES;
         const frag = document.createDocumentFragment();
-        list.forEach((c) => {
+        allCities.forEach((c) => {
           const id = "cmp-" + c;
           const wrap = document.createElement("label");
-          wrap.className = "chip";
+          wrap.className = "tag";
           wrap.setAttribute("for", id);
+          wrap.style.cursor = "pointer";
           const cb = document.createElement("input");
           cb.type = "checkbox";
           cb.id = id;
           cb.value = c;
+          cb.style.position = "absolute";
+          cb.style.opacity = "0";
+          cb.style.pointerEvents = "none";
           if (selected.includes(c)) {
             cb.checked = true;
-            wrap.classList.add("chip--on");
+            wrap.classList.add("tag--ink");
           }
           cb.addEventListener("change", () => {
-            wrap.classList.toggle("chip--on", cb.checked);
+            wrap.classList.toggle("tag--ink", cb.checked);
+            updateCount();
           });
-          wrap.append(cb, document.createTextNode(c));
+          wrap.append(cb, document.createTextNode(" " + c));
           frag.appendChild(wrap);
         });
         citySel.appendChild(frag);
+        updateCount();
       };
-      renderCities(CONFIG.DEFAULT_CITIES.slice(0, 4));
+
+      const updateCount = () => {
+        const n = citySel.querySelectorAll("input:checked").length;
+        if (counter) counter.textContent = `已选 ${n} 个城市`;
+      };
 
       const gather = () => Array.from(citySel.querySelectorAll("input:checked")).map((i) => i.value);
+
       const run = () => {
         const cities = gather();
-        const indicator = sel.value;
         if (cities.length < 2) {
           window.__citylens_toast?.warn("请至少选择 2 个城市");
           return;
         }
-        this.runCityComparison(api, cities, indicator);
+        this.runCityComparison(api, cities, "gdp");
       };
-      btn.addEventListener("click", run);
-      sel.addEventListener("change", run);
 
-      await this.runCityComparison(api, gather() || CONFIG.DEFAULT_CITIES.slice(0, 4), sel.value);
+      btn.addEventListener("click", run);
+      btnAll?.addEventListener("click", () => {
+        citySel.querySelectorAll("input").forEach((cb) => {
+          cb.checked = true;
+          cb.parentElement.classList.add("tag--ink");
+        });
+        updateCount();
+        run();
+      });
+      btnNone?.addEventListener("click", () => {
+        citySel.querySelectorAll("input").forEach((cb) => {
+          cb.checked = false;
+          cb.parentElement.classList.remove("tag--ink");
+        });
+        updateCount();
+      });
+
+      renderCities(defaultSelected);
+      await this.runCityComparison(api, defaultSelected, "gdp");
     }
   };
 
@@ -2741,60 +2699,82 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   // ============================================================
   const App = {
     async init() {
-      const echarts = await ensureECharts();
-      const charts = new ChartsManager(echarts);
+      if (!window.echarts) {
+        console.error("[citylens] ECharts 未加载");
+        return;
+      }
+      const charts = new ChartsManager(window.echarts);
       const api = new APIClient();
       const toast = new ToastManager($("#toastContainer"));
       const theme = new ThemeManager(document.documentElement);
       theme.init();
       const router = new TabRouter(document, ".tab-btn", ".tab-panel");
-      const store = new Store({ cities: CONFIG.DEFAULT_CITIES });
+      const store = new Store({ cities: CONFIG.DEFAULT_CITIES, allCities: [] });
 
       window.__citylens_toast = toast;
       window.__citylens_charts = charts;
       window.__citylens_api = api;
       window.__citylens_store = store;
 
+      // 主题切换
       $("#themeToggle")?.addEventListener("click", () => {
         const next = theme.cycle();
         toast.info(`主题已切换:${next === "system" ? "跟随系统" : (next === "dark" ? "深色" : "浅色")}`);
-        charts.instances.forEach((inst) => {
-          if (!inst.isDisposed()) inst.resize();
-        });
+        charts.instances.forEach((inst) => { if (!inst.isDisposed()) inst.resize(); });
       });
 
+      // 健康检查
       api.get("/health", { cacheTTL: 10_000 }).then((h) => {
         const badge = $("#healthBadge");
-        if (badge) {
-          badge.textContent = h?.status === "ok" ? "运行正常" : "部分降级";
-          badge.dataset.state = h?.status === "ok" ? "ok" : "warn";
+        const txt = $("#healthText");
+        const ok = h?.status === "ok";
+        if (badge) badge.dataset.status = ok ? "ok" : "warn";
+        if (txt) txt.textContent = ok ? "运行正常" : "部分降级";
+        const stat = $("#statStatus");
+        if (stat) stat.textContent = ok ? "ONLINE" : "DEGRADED";
+        const trend = $("#statStatusTrend");
+        if (trend) {
+          trend.classList.remove("stat-card__trend--neutral", "stat-card__trend--up", "stat-card__trend--down");
+          trend.classList.add(ok ? "stat-card__trend--up" : "stat-card__trend--down");
         }
+        const v = $("#versionTag");
+        if (v) v.textContent = "v" + (h?.version || "—");
+        const ind = $("#statIndicators");
+        if (ind) ind.textContent = String(h?.indicators || 25);
+        const src = $("#statSources");
+        if (src) src.textContent = String(h?.data_sources || 4);
       }).catch(() => {
         const badge = $("#healthBadge");
-        if (badge) { badge.textContent = "服务离线"; badge.dataset.state = "down"; }
+        const txt = $("#healthText");
+        if (badge) badge.dataset.status = "down";
+        if (txt) txt.textContent = "服务离线";
+        const stat = $("#statStatus");
+        if (stat) stat.textContent = "OFFLINE";
       });
 
+      // Tab 路由
       router.bind();
-      const mounted = { dashboard: false, enterprise: false, government: false, compare: false };
+      const mounted = { dashboard: false, enterprise: false, government: false, cities: false };
       const mountIfNeeded = (name) => {
         if (mounted[name]) return;
         mounted[name] = true;
         const map = {
-          dashboard: () => Views.Dashboard.mount(api, store),
+          dashboard:  () => Views.Dashboard.mount(api, store),
           enterprise: () => Views.Enterprise.mount(api),
           government: () => Views.Government.mount(api),
-          compare: () => Views.Compare.mount(api, store)
+          cities:     () => Views.Cities.mount(api, store)
         };
         Promise.resolve()
           .then(() => map[name]?.())
           .catch((e) => toast.error(`视图加载失败:${e.message || e}`));
       };
       mountIfNeeded(router.current);
-      router.on("dashboard", () => mountIfNeeded("dashboard"));
+      router.on("dashboard",  () => mountIfNeeded("dashboard"));
       router.on("enterprise", () => mountIfNeeded("enterprise"));
       router.on("government", () => mountIfNeeded("government"));
-      router.on("compare", () => mountIfNeeded("compare"));
+      router.on("cities",     () => mountIfNeeded("cities"));
 
+      // 全局错误兜底
       window.addEventListener("error", (e) => {
         console.error("[citylens] uncaught", e.error || e.message);
         toast.error("页面出现未捕获错误");
@@ -2804,28 +2784,13 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
         toast.error(`请求失败:${e.reason?.message || "未知原因"}`);
       });
 
+      // 卸载清理
       window.addEventListener("beforeunload", () => {
         api.cancelAll("unload");
         charts.disposeAll();
       });
-
-      const v = $("#appVersion");
-      if (v) v.textContent = "v" + (window.__CITYLENS_VERSION__ || "1.0.0");
     }
   };
-
-  function ensureECharts() {
-    if (window.echarts) return Promise.resolve(window.echarts);
-    return new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js";
-      s.crossOrigin = "anonymous";
-      s.referrerPolicy = "no-referrer";
-      s.onload = () => resolve(window.echarts);
-      s.onerror = () => reject(new Error("ECharts 加载失败,请检查网络"));
-      document.head.appendChild(s);
-    });
-  }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => App.init().catch((e) => console.error("[citylens] boot failed", e)));

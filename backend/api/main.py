@@ -16,6 +16,7 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, Response
 
 from backend.api.routes import (
@@ -73,13 +74,31 @@ app = FastAPI(
 )
 
 allow_credentials = "*" not in settings.CORS_ORIGINS
+# 显式白名单 CORS,避免攻击者利用 allow_methods=["*"] / allow_headers=["*"] 滥用
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
 )
+
+# 拒绝未在白名单内的 Host 头,防 Host 头注入/缓存投毒
+_trusted_hosts_env = os.getenv("TRUSTED_HOSTS")
+if _trusted_hosts_env:
+    _allowed_hosts = [h.strip() for h in _trusted_hosts_env.split(",") if h.strip()]
+else:
+    # 默认允许 localhost 与常见内网/反代 host;生产请通过 TRUSTED_HOSTS 收紧
+    # testclient / testserver 仅用于 Starlette/pytest TestClient,无生产风险
+    _allowed_hosts = [
+        "localhost",
+        "127.0.0.1",
+        "0.0.0.0",
+        "*.local",
+        "testserver",
+        "testclient",
+    ]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 
 for router in (
     auth_router,

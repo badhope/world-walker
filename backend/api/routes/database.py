@@ -21,8 +21,9 @@ def get_statistics():
 
         return {"status": "success", "data": stats}
     except Exception as e:
-        logger.error(f"获取数据库统计失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # 不把内部异常 detail 暴露给客户端,只记日志
+        logger.exception("获取数据库统计失败")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get("/economic-data", summary="获取经济数据")
@@ -34,8 +35,8 @@ def get_economic_data(indicator: str = None, start_year: int = None, end_year: i
 
         return {"status": "success", "data": data.to_dict("records") if not data.empty else [], "count": len(data)}
     except Exception as e:
-        logger.error(f"获取经济数据失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("获取经济数据失败")
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 @router.get("/enterprise-analysis/history", summary="获取企业分析历史")
@@ -47,5 +48,5 @@ def get_enterprise_analysis_history(region: str = None, industry: str = None, li
 
         return {"status": "success", "data": history, "count": len(history)}
     except Exception as e:
-        logger.error(f"获取企业分析历史失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("获取企业分析历史失败")
+        raise HTTPException(status_code=500, detail="Internal server error") from e

@@ -8,7 +8,9 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -20,6 +22,9 @@ class Settings(BaseSettings):
     PROJECT_NAME_ZH: str = "区域产业经济分析平台"
     VERSION: str = "4.0.0"
     API_V1_STR: str = "/api/v1"
+
+    # Environment (dev / staging / production / test)
+    APP_ENV: Literal["dev", "staging", "production", "test"] = "dev"
 
     # API service
     API_HOST: str = "0.0.0.0"
@@ -58,9 +63,9 @@ class Settings(BaseSettings):
     LOG_FILE: str | None = None
 
     # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
+    SECRET_KEY: str = "dev-secret-key-change-in-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    ALGORITHM: str = "HS256"
 
     # Analysis parameters
     DEFAULT_YEAR: int = 2025
@@ -72,6 +77,16 @@ class Settings(BaseSettings):
     LICENSE: str = "GPL-3.0-or-later"
 
     model_config = {"case_sensitive": True, "env_file": ".env", "extra": "ignore"}
+
+    @model_validator(mode="after")
+    def _enforce_secret_key_in_production(self):
+        """在 production 环境下强制要求显式 SECRET_KEY,避免使用开发默认值。"""
+        if self.APP_ENV == "production" and self.SECRET_KEY == "dev-secret-key-change-in-production":
+            raise ValueError(
+                "SECRET_KEY must be explicitly set in production. "
+                "Export the SECRET_KEY environment variable to a strong random value."
+            )
+        return self
 
 
 def setup_logging(settings: Settings):

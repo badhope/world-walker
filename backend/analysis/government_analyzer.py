@@ -2,17 +2,15 @@
 政府端分析器 - 面向政府的区域产业经济分析
 基于真实城市数据和统计分位数基准计算评分
 """
+
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Any
 
 from backend.analysis.base_analyzer import BaseAnalyzer
 from backend.data.city_data import (
-    get_city_data,
-    get_score_benchmarks,
-    get_score_weights,
     get_all_cities,
+    get_city_data,
     get_data_source_info,
-    CITY_DATA,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,7 +36,6 @@ GOV_WEIGHTS = {
 
 
 class GovernmentAnalyzer(BaseAnalyzer):
-
     def __init__(self):
         super().__init__()
         self.name = "GovernmentAnalyzer"
@@ -75,10 +72,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
             else:
                 return max(10.0, 30.0 - ((value - bench["high"]) / bench["high"]) * 30)
 
-    def analyze_fiscal_leverage(
-        self,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def analyze_fiscal_leverage(self, data: dict[str, Any]) -> dict[str, Any]:
         results = {
             "fiscal_leverage_score": 0.0,
             "deficit_rate": 0.0,
@@ -86,7 +80,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
             "funding_efficiency": 0.0,
             "sustainability": {},
             "components": {},
-            "benchmarks": {}
+            "benchmarks": {},
         }
 
         if "expenditure" in data and "revenue" in data and "gdp" in data:
@@ -98,21 +92,19 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": round(deficit_rate, 2),
                 "unit": "%",
                 "weight": 0.30,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["deficit_rate"] = self.benchmarks.get("deficit_rate", {})
 
         if "revenue" in data and "expenditure" in data:
-            self_sufficiency = (
-                data["revenue"] / data["expenditure"] * 100
-            ) if data["expenditure"] != 0 else 0
+            self_sufficiency = (data["revenue"] / data["expenditure"] * 100) if data["expenditure"] != 0 else 0
             results["fiscal_self_sufficiency"] = round(self_sufficiency, 2)
             score = self._calculate_score(self_sufficiency, "fiscal_self_sufficiency", higher_is_better=True)
             results["components"]["fiscal_self_sufficiency"] = {
                 "value": round(self_sufficiency, 2),
                 "unit": "%",
                 "weight": 0.35,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["fiscal_self_sufficiency"] = self.benchmarks.get("fiscal_self_sufficiency", {})
 
@@ -124,7 +116,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": funding_eff,
                 "unit": "",
                 "weight": 0.35,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["funding_efficiency"] = self.benchmarks.get("funding_efficiency", {})
 
@@ -140,17 +132,14 @@ class GovernmentAnalyzer(BaseAnalyzer):
 
         return results
 
-    def analyze_industry_driving(
-        self,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def analyze_industry_driving(self, data: dict[str, Any]) -> dict[str, Any]:
         results = {
             "driving_score": 0.0,
             "direct_effects": {},
             "indirect_effects": {},
             "input_output_analysis": {},
             "components": {},
-            "benchmarks": {}
+            "benchmarks": {},
         }
 
         if "employment_driven" in data:
@@ -160,7 +149,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": data["employment_driven"],
                 "unit": "人",
                 "weight": 0.35,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["employment_driven"] = self.benchmarks.get("employment_driven", {})
 
@@ -171,7 +160,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": data["tax_contribution"],
                 "unit": "亿元",
                 "weight": 0.30,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["tax_contribution_growth"] = self.benchmarks.get("tax_contribution_growth", {})
 
@@ -182,7 +171,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": data["influence_coefficient"],
                 "unit": "",
                 "weight": 0.35,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["influence_coefficient"] = self.benchmarks.get("influence_coefficient", {})
 
@@ -204,10 +193,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
 
         return results
 
-    def analyze_industry_chain(
-        self,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def analyze_industry_chain(self, data: dict[str, Any]) -> dict[str, Any]:
         results = {
             "chain_completeness_score": 0.0,
             "upstream_coverage": 0.0,
@@ -217,7 +203,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
             "strengths": [],
             "modernization_level": {},
             "components": {},
-            "benchmarks": {}
+            "benchmarks": {},
         }
 
         if "upstream_coverage" in data:
@@ -227,7 +213,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": data["upstream_coverage"],
                 "unit": "%",
                 "weight": 0.30,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["upstream_coverage"] = self.benchmarks.get("upstream_coverage", {})
 
@@ -238,7 +224,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": data["midstream_coverage"],
                 "unit": "%",
                 "weight": 0.40,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["midstream_coverage"] = self.benchmarks.get("midstream_coverage", {})
 
@@ -249,7 +235,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": data["downstream_coverage"],
                 "unit": "%",
                 "weight": 0.30,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["downstream_coverage"] = self.benchmarks.get("downstream_coverage", {})
 
@@ -263,7 +249,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
                 "value": data["digitalization_level"],
                 "unit": "%",
                 "weight": 0.0,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
 
         weighted_sum = 0.0
@@ -280,7 +266,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
 
         return results
 
-    def analyze_city(self, city_name: str) -> Dict[str, Any]:
+    def analyze_city(self, city_name: str) -> dict[str, Any]:
         city_data = get_city_data(city_name)
         if not city_data:
             raise ValueError(f"No data available for city: {city_name}")
@@ -288,7 +274,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
         gov_data = self._enrich_government_data(city_data)
         return self.generate_comprehensive_report(gov_data)
 
-    def _enrich_government_data(self, city_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _enrich_government_data(self, city_data: dict[str, Any]) -> dict[str, Any]:
         enriched = dict(city_data)
 
         if "gdp" not in enriched and "gdp" in enriched.get("indicators", {}):
@@ -320,7 +306,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
 
         return enriched
 
-    def compare_cities(self, city_names: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def compare_cities(self, city_names: list[str] | None = None) -> list[dict[str, Any]]:
         if city_names is None:
             city_names = get_all_cities()
 
@@ -328,22 +314,21 @@ class GovernmentAnalyzer(BaseAnalyzer):
         for city_name in city_names:
             try:
                 report = self.analyze_city(city_name)
-                results.append({
-                    "city": city_name,
-                    "fiscal_leverage_score": report["fiscal_leverage"]["fiscal_leverage_score"],
-                    "industry_driving_score": report["industry_driving"]["driving_score"],
-                    "industry_chain_score": report["industry_chain"]["chain_completeness_score"],
-                    "overall_score": report["overall_score"],
-                })
+                results.append(
+                    {
+                        "city": city_name,
+                        "fiscal_leverage_score": report["fiscal_leverage"]["fiscal_leverage_score"],
+                        "industry_driving_score": report["industry_driving"]["driving_score"],
+                        "industry_chain_score": report["industry_chain"]["chain_completeness_score"],
+                        "overall_score": report["overall_score"],
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Failed to analyze {city_name}: {e}")
 
         return sorted(results, key=lambda x: x["overall_score"], reverse=True)
 
-    def generate_comprehensive_report(
-        self,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def generate_comprehensive_report(self, data: dict[str, Any]) -> dict[str, Any]:
         report = {
             "region": data.get("region", data.get("name", "未知地区")),
             "industry": data.get("industry", "未知产业"),
@@ -353,7 +338,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
             "industry_driving": self.analyze_industry_driving(data),
             "industry_chain": self.analyze_industry_chain(data),
             "policy_recommendations": [],
-            "data_source": self.data_source_info.get(data.get("name", ""), {})
+            "data_source": self.data_source_info.get(data.get("name", ""), {}),
         }
 
         fiscal_score = report["fiscal_leverage"]["fiscal_leverage_score"]
@@ -361,10 +346,10 @@ class GovernmentAnalyzer(BaseAnalyzer):
         chain_score = report["industry_chain"]["chain_completeness_score"]
 
         report["overall_score"] = round(
-            fiscal_score * self.weights["fiscal_leverage"] +
-            driving_score * self.weights["industry_driving"] +
-            chain_score * self.weights["industry_chain"],
-            2
+            fiscal_score * self.weights["fiscal_leverage"]
+            + driving_score * self.weights["industry_driving"]
+            + chain_score * self.weights["industry_chain"],
+            2,
         )
 
         if fiscal_score < 60:
@@ -391,12 +376,8 @@ class GovernmentAnalyzer(BaseAnalyzer):
         return report
 
     def run_full_analysis(
-        self,
-        data,
-        save_results: bool = True,
-        output_dir: str = "data/government_analysis",
-        **kwargs
-    ) -> Dict[str, Any]:
+        self, data, save_results: bool = True, output_dir: str = "data/government_analysis", **kwargs
+    ) -> dict[str, Any]:
         if isinstance(data, str):
             return self.analyze_city(data)
         elif isinstance(data, dict):
@@ -404,7 +385,7 @@ class GovernmentAnalyzer(BaseAnalyzer):
         else:
             raise ValueError("data must be city name (str) or city data (dict)")
 
-    def predict(self, data) -> Dict[str, Any]:
+    def predict(self, data) -> dict[str, Any]:
         if isinstance(data, str):
             return self.analyze_city(data)
         elif isinstance(data, dict):

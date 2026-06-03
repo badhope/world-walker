@@ -3,12 +3,13 @@ Regional Industrial Economic Analysis Platform - unified configuration.
 
 All defaults can be overridden via environment variables or a `.env` file.
 """
-from pydantic_settings import BaseSettings
-from typing import List, Optional
-from pathlib import Path
+
 import json
-import os
 import logging
+import os
+from pathlib import Path
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -29,10 +30,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./data/regional_economic.db"
 
     # CORS
-    CORS_ORIGINS: List[str] = json.loads(os.getenv(
-        "CORS_ORIGINS",
-        '["http://localhost:5173","http://localhost:8000","http://localhost:8080","http://127.0.0.1:8000","http://127.0.0.1:8080","http://0.0.0.0:8000"]'
-    ))
+    CORS_ORIGINS: list[str] = json.loads(
+        os.getenv(
+            "CORS_ORIGINS",
+            '["http://localhost:5173","http://localhost:8000","http://localhost:8080","http://127.0.0.1:8000","http://127.0.0.1:8080","http://0.0.0.0:8000"]',
+        )
+    )
 
     # Scraper configuration
     SCRAPER_TIMEOUT: int = 30
@@ -52,7 +55,7 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    LOG_FILE: Optional[str] = None
+    LOG_FILE: str | None = None
 
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
@@ -68,11 +71,7 @@ class Settings(BaseSettings):
     REPO_URL: str = "https://github.com/your-org/regional-economic-analysis"
     LICENSE: str = "GPL-3.0-or-later"
 
-    model_config = {
-        "case_sensitive": True,
-        "env_file": ".env",
-        "extra": "ignore"
-    }
+    model_config = {"case_sensitive": True, "env_file": ".env", "extra": "ignore"}
 
 
 def setup_logging(settings: Settings):
@@ -83,11 +82,7 @@ def setup_logging(settings: Settings):
     if settings.LOG_FILE:
         handlers.append(logging.FileHandler(settings.LOG_FILE, encoding="utf-8"))
 
-    logging.basicConfig(
-        level=log_level,
-        format=settings.LOG_FORMAT,
-        handlers=handlers
-    )
+    logging.basicConfig(level=log_level, format=settings.LOG_FORMAT, handlers=handlers)
 
 
 settings = Settings()
@@ -95,18 +90,18 @@ setup_logging(settings)
 
 if settings.SECRET_KEY == "dev-secret-key-change-in-production":
     import warnings
+
     warnings.warn(
-        "SECRET_KEY is using the default development value. "
-        "Set the SECRET_KEY environment variable for production.",
-        RuntimeWarning
+        "SECRET_KEY is using the default development value. " "Set the SECRET_KEY environment variable for production.",
+        RuntimeWarning,
     )
 
 if settings.ALGORITHM == "RS256" and not settings.SECRET_KEY.startswith("-----BEGIN"):
     import warnings
+
     warnings.warn(
-        "SECRET_KEY does not appear to be an RSA private key. "
-        "For RS256, a valid RSA key pair is required.",
-        RuntimeWarning
+        "SECRET_KEY does not appear to be an RSA private key. " "For RS256, a valid RSA key pair is required.",
+        RuntimeWarning,
     )
 
 Path("data").mkdir(parents=True, exist_ok=True)

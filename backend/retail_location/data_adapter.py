@@ -1,97 +1,63 @@
 """
 零售门店数据适配器 - 支持多种数据源导入
 """
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional, Any, Union
-from pathlib import Path
+
 import logging
-import json
+from typing import Any
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
 
 class RetailDataAdapter:
     """零售门店数据适配器"""
-    
-    def __init__(self, config: Optional[Any] = None):
+
+    def __init__(self, config: Any | None = None):
         self.config = config
         self.data_sources = {}
         self.loaded_data = {}
         self.loading_report = {}
-    
+
     # ==================== 多源数据加载 ====================
-    
-    def load_csv(
-        self,
-        file_path: str,
-        encoding: str = "utf-8",
-        **kwargs
-    ) -> pd.DataFrame:
+
+    def load_csv(self, file_path: str, encoding: str = "utf-8", **kwargs) -> pd.DataFrame:
         """加载 CSV 文件"""
         logger.info(f"Loading CSV file: {file_path}")
         df = pd.read_csv(file_path, encoding=encoding, **kwargs)
         self.loaded_data["csv"] = df
-        self.loading_report["csv"] = {
-            "rows": len(df),
-            "columns": len(df.columns),
-            "columns_list": list(df.columns)
-        }
+        self.loading_report["csv"] = {"rows": len(df), "columns": len(df.columns), "columns_list": list(df.columns)}
         return df
-    
-    def load_excel(
-        self,
-        file_path: str,
-        sheet_name: Union[str, int] = 0,
-        **kwargs
-    ) -> pd.DataFrame:
+
+    def load_excel(self, file_path: str, sheet_name: str | int = 0, **kwargs) -> pd.DataFrame:
         """加载 Excel 文件"""
         logger.info(f"Loading Excel file: {file_path}, sheet: {sheet_name}")
         df = pd.read_excel(file_path, sheet_name=sheet_name, **kwargs)
         self.loaded_data["excel"] = df
-        self.loading_report["excel"] = {
-            "rows": len(df),
-            "columns": len(df.columns),
-            "columns_list": list(df.columns)
-        }
+        self.loading_report["excel"] = {"rows": len(df), "columns": len(df.columns), "columns_list": list(df.columns)}
         return df
-    
-    def load_json(
-        self,
-        file_path: str,
-        **kwargs
-    ) -> pd.DataFrame:
+
+    def load_json(self, file_path: str, **kwargs) -> pd.DataFrame:
         """加载 JSON 文件"""
         logger.info(f"Loading JSON file: {file_path}")
         df = pd.read_json(file_path, **kwargs)
         self.loaded_data["json"] = df
-        self.loading_report["json"] = {
-            "rows": len(df),
-            "columns": len(df.columns),
-            "columns_list": list(df.columns)
-        }
+        self.loading_report["json"] = {"rows": len(df), "columns": len(df.columns), "columns_list": list(df.columns)}
         return df
-    
-    def load_dataframe(
-        self,
-        df: pd.DataFrame,
-        source_name: str = "dataframe"
-    ) -> pd.DataFrame:
+
+    def load_dataframe(self, df: pd.DataFrame, source_name: str = "dataframe") -> pd.DataFrame:
         """加载已有的 DataFrame"""
         logger.info(f"Loading DataFrame from: {source_name}")
         self.loaded_data[source_name] = df.copy()
         self.loading_report[source_name] = {
             "rows": len(df),
             "columns": len(df.columns),
-            "columns_list": list(df.columns)
+            "columns_list": list(df.columns),
         }
         return df
-    
-    def load_from_dict(
-        self,
-        data_dict: Dict[str, List],
-        source_name: str = "dict"
-    ) -> pd.DataFrame:
+
+    def load_from_dict(self, data_dict: dict[str, list], source_name: str = "dict") -> pd.DataFrame:
         """从字典加载数据"""
         logger.info(f"Loading data from dictionary: {source_name}")
         df = pd.DataFrame(data_dict)
@@ -99,71 +65,57 @@ class RetailDataAdapter:
         self.loading_report[source_name] = {
             "rows": len(df),
             "columns": len(df.columns),
-            "columns_list": list(df.columns)
+            "columns_list": list(df.columns),
         }
         return df
-    
+
     # ==================== 数据合并与整合 ====================
-    
-    def merge_data_sources(
-        self,
-        source_key: str = "main"
-    ) -> pd.DataFrame:
+
+    def merge_data_sources(self, source_key: str = "main") -> pd.DataFrame:
         """
         合并多个数据源
-        
+
         简单实现：返回第一个加载的数据源
         实际项目中需要根据业务逻辑做更复杂的合并
         """
         if source_key in self.loaded_data:
             return self.loaded_data[source_key]
-        
+
         if self.loaded_data:
             first_key = list(self.loaded_data.keys())[0]
             return self.loaded_data[first_key]
-        
+
         raise ValueError("No data loaded yet")
-    
+
     # ==================== 数据标准化与重命名 ====================
-    
-    def standardize_columns(
-        self,
-        df: pd.DataFrame,
-        column_mapping: Optional[Dict[str, str]] = None
-    ) -> pd.DataFrame:
+
+    def standardize_columns(self, df: pd.DataFrame, column_mapping: dict[str, str] | None = None) -> pd.DataFrame:
         """
         标准化列名
-        
+
         Args:
             df: 输入 DataFrame
             column_mapping: 列名映射 {原始列名: 标准列名}
-        
+
         Returns:
             标准化后的 DataFrame
         """
         df_std = df.copy()
-        
+
         if column_mapping:
             df_std = df_std.rename(columns=column_mapping)
-        
+
         # 列名统一处理：转小写，空格转下划线
-        df_std.columns = [
-            col.strip().lower().replace(" ", "_").replace("-", "_")
-            for col in df_std.columns
-        ]
-        
+        df_std.columns = [col.strip().lower().replace(" ", "_").replace("-", "_") for col in df_std.columns]
+
         return df_std
-    
+
     # ==================== 数据验证 ====================
-    
-    def validate_required_fields(
-        self,
-        df: pd.DataFrame,
-        required_fields: List[str]
-    ) -> tuple[bool, List[str]]:
+
+    def validate_required_fields(self, df: pd.DataFrame, required_fields: list[str]) -> tuple[bool, list[str]]:
         """
         验证必填字段
-        
+
         Returns:
             (是否通过, 缺失的字段列表)
         """
@@ -171,30 +123,27 @@ class RetailDataAdapter:
         for field in required_fields:
             if field not in df.columns:
                 missing_fields.append(field)
-        
+
         is_valid = len(missing_fields) == 0
-        
+
         if missing_fields:
             logger.warning(f"Missing required fields: {missing_fields}")
         else:
             logger.info("All required fields are present")
-        
+
         return is_valid, missing_fields
-    
+
     # ==================== 生成样本数据（用于演示） ====================
-    
+
     @staticmethod
-    def generate_sample_data(
-        num_stores: int = 50,
-        random_seed: int = 42
-    ) -> pd.DataFrame:
+    def generate_sample_data(num_stores: int = 50, random_seed: int = 42) -> pd.DataFrame:
         """
         生成零售门店样本数据
-        
+
         Args:
             num_stores: 门店数量
             random_seed: 随机种子
-        
+
         Returns:
             样本 DataFrame
         """
@@ -215,11 +164,7 @@ class RetailDataAdapter:
         bus_stop_count = rng.poisson(4, num_stores)
         parking_count = rng.poisson(30, num_stores)
         is_main_street = rng.choice([0, 1], num_stores, p=[0.4, 0.6])
-        business_types = rng.choice(
-            ["business_district", "residential", "mixed"],
-            num_stores,
-            p=[0.3, 0.4, 0.3]
-        )
+        business_types = rng.choice(["business_district", "residential", "mixed"], num_stores, p=[0.3, 0.4, 0.3])
 
         population_1km = rng.integers(5000, 50000, num_stores)
         population_2km = population_1km * rng.uniform(2.5, 3.5, num_stores)
@@ -266,19 +211,19 @@ class RetailDataAdapter:
             "distance_to_nearest_competitor": distance_to_competitor,
             "rent_per_sqm": rent_per_sqm,
             "regional_avg_rent": regional_avg_rent,
-            "monthly_sales": monthly_sales
+            "monthly_sales": monthly_sales,
         }
-        
+
         df = pd.DataFrame(data)
-        
+
         # 随机引入一些缺失值，测试清洗能力
         for col in df.columns:
             if col not in ["store_id", "store_name", "monthly_sales"]:
                 mask = rng.random(len(df)) < 0.05
                 df.loc[mask, col] = np.nan
-        
+
         return df
-    
-    def get_loading_report(self) -> Dict[str, Any]:
+
+    def get_loading_report(self) -> dict[str, Any]:
         """获取数据加载报告"""
         return self.loading_report

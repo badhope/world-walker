@@ -4,6 +4,7 @@ Pytest configuration for the Regional Economic Analysis Platform.
 Ensures the project root is on sys.path so ``import backend.api`` works
 regardless of where pytest is invoked from.
 """
+
 import os
 import sys
 from pathlib import Path

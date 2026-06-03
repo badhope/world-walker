@@ -11,13 +11,13 @@ Usage:
     python scripts/regen_cities_yaml.py --version 2025.06
     python scripts/regen_cities_yaml.py --out data/cities/cities_test.yaml
 """
+
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
 
@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 from backend.data import city_data as cd  # noqa: E402
 
 
-def _build_doc(version: str) -> Dict[str, Any]:
+def _build_doc(version: str) -> dict[str, Any]:
     """Build the YAML document from the in-memory city_data module."""
     return {
         "_meta": {

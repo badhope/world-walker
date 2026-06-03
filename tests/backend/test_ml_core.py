@@ -1,31 +1,29 @@
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import pytest
-import pandas as pd
 import numpy as np
+import pandas as pd
+import pytest
 
 from backend.data_processing.cleaner import DataCleaner
-from backend.retail_location.feature_engineer import FeatureEngineer
-from backend.retail_location.config import RetailLocationConfig
-from backend.retail_location.model_trainer import RetailModelTrainer
-from backend.retail_location.data_adapter import RetailDataAdapter
 from backend.ml.models import (
     BaseModel,
     LinearRegressionModel,
-    RandomForestModel,
-    GBDTModel,
-    RidgeModel,
     ModelMetrics,
-    get_model_instance,
+    RandomForestModel,
     get_available_models,
+    get_model_instance,
 )
-from backend.ml.trainer import ModelTrainer, TrainingConfig, AutoML
+from backend.retail_location.config import RetailLocationConfig
+from backend.retail_location.data_adapter import RetailDataAdapter
+from backend.retail_location.feature_engineer import FeatureEngineer
+from backend.retail_location.model_trainer import RetailModelTrainer
 
 
 def _make_sample_df(n=80, seed=42):
@@ -39,18 +37,19 @@ def _make_sample_df(n=80, seed=42):
 
 def _make_dirty_df(n=100, seed=42):
     np.random.seed(seed)
-    df = pd.DataFrame({
-        "a": np.random.randn(n),
-        "b": np.random.randn(n),
-        "c": np.random.choice(["X", "Y", "Z"], n),
-    })
+    df = pd.DataFrame(
+        {
+            "a": np.random.randn(n),
+            "b": np.random.randn(n),
+            "c": np.random.choice(["X", "Y", "Z"], n),
+        }
+    )
     df.loc[np.random.choice(n, 10), "a"] = np.nan
     df.loc[np.random.choice(n, 5), "b"] = np.nan
     return df
 
 
 class TestDataCleaner:
-
     def setup_method(self):
         self.cleaner = DataCleaner()
 
@@ -129,7 +128,6 @@ class TestDataCleaner:
 
 
 class TestFeatureEngineer:
-
     def setup_method(self):
         self.config = RetailLocationConfig()
         self.engineer = FeatureEngineer(self.config)
@@ -148,11 +146,7 @@ class TestFeatureEngineer:
         data = RetailDataAdapter.generate_sample_data(num_stores=30, random_seed=42)
         cleaned = DataCleaner().fill_missing(data, method="median")
         result, meta = self.engineer.process_features(
-            cleaned,
-            target_col="monthly_sales",
-            generate_derived=True,
-            encode_categorical=True,
-            standardize=False
+            cleaned, target_col="monthly_sales", generate_derived=True, encode_categorical=True, standardize=False
         )
         assert "monthly_sales" in result.columns
         assert len(result.columns) > 0
@@ -161,17 +155,12 @@ class TestFeatureEngineer:
         data = RetailDataAdapter.generate_sample_data(num_stores=30, random_seed=42)
         cleaned = DataCleaner().fill_missing(data, method="median")
         self.engineer.process_features(
-            cleaned,
-            target_col="monthly_sales",
-            generate_derived=True,
-            encode_categorical=True,
-            standardize=False
+            cleaned, target_col="monthly_sales", generate_derived=True, encode_categorical=True, standardize=False
         )
         assert len(self.engineer.feature_names) > 0
 
 
 class TestModelTrainer:
-
     def setup_method(self):
         self.trainer = RetailModelTrainer()
 
@@ -185,10 +174,7 @@ class TestModelTrainer:
     def test_train_multiple_models(self):
         df = _make_sample_df(n=60)
         X_train, X_test, y_train, y_test = self.trainer.prepare_data(df, "target")
-        results = self.trainer.train_multiple_models(
-            X_train, y_train, X_test, y_test,
-            model_names=["linear", "ridge"]
-        )
+        results = self.trainer.train_multiple_models(X_train, y_train, X_test, y_test, model_names=["linear", "ridge"])
         assert "best_model" in results
         assert results["best_score"] > -10
 
@@ -235,15 +221,12 @@ class TestModelTrainer:
 
 
 class TestHyperparameterTuning:
-
     def test_hyperparameter_tuning(self):
         df = _make_sample_df(n=80)
         trainer = RetailModelTrainer()
         X_train, X_test, y_train, y_test = trainer.prepare_data(df, "target")
         param_grid = {"n_estimators": [10, 20], "max_depth": [3, 5]}
-        tuned_model, tuning_results = trainer.hyperparameter_tuning(
-            X_train, y_train, "random_forest", param_grid, cv=2
-        )
+        tuned_model, tuning_results = trainer.hyperparameter_tuning(X_train, y_train, "random_forest", param_grid, cv=2)
         assert tuned_model is not None
         assert "best_params" in tuning_results
         assert "best_score" in tuning_results
@@ -256,7 +239,6 @@ class TestHyperparameterTuning:
 
 
 class TestModelEvaluationMetrics:
-
     def test_model_metrics_dataclass(self):
         metrics = ModelMetrics(mae=1.0, rmse=2.0, mape=0.1, r2=0.9)
         assert metrics.mae == 1.0

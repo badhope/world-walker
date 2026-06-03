@@ -5,11 +5,11 @@
 使用方法：
     python generate_report.py
 """
+
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Any
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -19,36 +19,36 @@ from examples.shenzhen_semiconductor_2025.government_analysis import GovernmentA
 
 class ComprehensiveReportGenerator:
     """综合报告生成器"""
-    
+
     def __init__(self):
         self.data_dir = Path(__file__).parent / "data"
         self.output_dir = Path(__file__).parent / "outputs"
         self.output_dir.mkdir(exist_ok=True)
-        
+
         self.enterprise_runner = EnterpriseAnalysisRunner()
         self.government_runner = GovernmentAnalysisRunner()
-        
+
         self.enterprise_report = None
         self.government_report = None
-    
+
     def generate_all_reports(self):
         """生成所有报告"""
         print("\n" + "=" * 80)
         print("步骤 1: 生成企业端分析报告")
         print("=" * 80)
         self.enterprise_report = self.enterprise_runner.generate_report()
-        
+
         print("\n" + "=" * 80)
         print("步骤 2: 生成政府端分析报告")
         print("=" * 80)
         self.government_report = self.government_runner.generate_report()
-    
+
     def create_html_report(self) -> str:
         """生成HTML报告"""
         print("\n" + "=" * 80)
         print("步骤 3: 生成HTML综合报告")
         print("=" * 80)
-        
+
         html_content = f"""
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -414,9 +414,15 @@ class ComprehensiveReportGenerator:
                     </thead>
                     <tbody>
 """
-        
-        for bottleneck in self.enterprise_report['supply_chain_analysis']['key_bottlenecks'][:4]:
-            risk_color = "#e53935" if bottleneck['risk_level'] == 'critical' else "#ff9800" if bottleneck['risk_level'] == 'high' else "#ffeb3b"
+
+        for bottleneck in self.enterprise_report["supply_chain_analysis"]["key_bottlenecks"][:4]:
+            risk_color = (
+                "#e53935"
+                if bottleneck["risk_level"] == "critical"
+                else "#ff9800"
+                if bottleneck["risk_level"] == "high"
+                else "#ffeb3b"
+            )
             html_content += f"""
                         <tr>
                             <td>{bottleneck['segment']}</td>
@@ -424,8 +430,8 @@ class ComprehensiveReportGenerator:
                             <td style="color: {risk_color}; font-weight: bold;">{bottleneck['risk_level']}</td>
                         </tr>
 """
-        
-        html_content += f"""
+
+        html_content += """
                     </tbody>
                 </table>
             </div>
@@ -436,28 +442,28 @@ class ComprehensiveReportGenerator:
                 
                 <h3 class="subsection-title">🏢 企业投资建议</h3>
 """
-        
-        for i, rec in enumerate(self.enterprise_report['overall_recommendations'][:3], 1):
+
+        for i, rec in enumerate(self.enterprise_report["overall_recommendations"][:3], 1):
             html_content += f"""
                 <div class="recommendation">
                     <div class="recommendation-title">建议 {i}: {rec['type']}</div>
                     <p>{rec['suggestion']}</p>
                 </div>
 """
-        
-        html_content += f"""
+
+        html_content += """
                 
                 <h3 class="subsection-title">🏛️ 政府政策建议</h3>
 """
-        
-        for i, rec in enumerate(self.government_report['overall_recommendations'][:3], 1):
+
+        for i, rec in enumerate(self.government_report["overall_recommendations"][:3], 1):
             html_content += f"""
                 <div class="recommendation">
                     <div class="recommendation-title">建议 {i}: {rec['type']}</div>
                     <p>{rec['suggestion']}</p>
                 </div>
 """
-        
+
         html_content += f"""
             </div>
             
@@ -486,22 +492,22 @@ class ComprehensiveReportGenerator:
 </body>
 </html>
 """
-        
+
         return html_content
-    
+
     def save_comprehensive_report(self) -> str:
         """保存综合报告"""
         html_content = self.create_html_report()
-        
+
         output_file = self.output_dir / f"comprehensive_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
+
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(html_content)
-        
+
         print(f"✅ 综合HTML报告已保存: {output_file}")
-        
+
         return str(output_file)
-    
+
     def save_summary_json(self) -> str:
         """保存摘要JSON"""
         summary = {
@@ -513,36 +519,40 @@ class ComprehensiveReportGenerator:
             "enterprise_analysis": self.enterprise_report,
             "government_analysis": self.government_report,
             "key_findings": {
-                "comprehensive_cost_index": self.enterprise_report['comprehensive_cost_index']['shenzhen_index'],
-                "policy_support": self.enterprise_report['policy_benefits_analysis']['total_support'],
-                "location_quotient": self.enterprise_report['supply_chain_analysis']['location_quotient'],
-                "employment_driven": self.government_report['industry_driving_analysis']['indirect_effects']['employment_driven'],
-                "leverage_ratio": self.government_report['fiscal_leverage_analysis']['leverage_effect']['leverage_ratio'],
-                "overall_localization": self.enterprise_report['supply_chain_analysis']['localization_rate']
-            }
+                "comprehensive_cost_index": self.enterprise_report["comprehensive_cost_index"]["shenzhen_index"],
+                "policy_support": self.enterprise_report["policy_benefits_analysis"]["total_support"],
+                "location_quotient": self.enterprise_report["supply_chain_analysis"]["location_quotient"],
+                "employment_driven": self.government_report["industry_driving_analysis"]["indirect_effects"][
+                    "employment_driven"
+                ],
+                "leverage_ratio": self.government_report["fiscal_leverage_analysis"]["leverage_effect"][
+                    "leverage_ratio"
+                ],
+                "overall_localization": self.enterprise_report["supply_chain_analysis"]["localization_rate"],
+            },
         }
-        
+
         output_file = self.output_dir / f"summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
+
+        with open(output_file, "w", encoding="utf-8") as f:
             json.dump(summary, f, ensure_ascii=False, indent=2)
-        
+
         print(f"✅ 摘要JSON已保存: {output_file}")
-        
+
         return str(output_file)
-    
+
     def run(self):
         """运行完整流程"""
         print("\n" + "=" * 80)
         print("深圳半导体产业综合分析报告生成")
         print("=" * 80)
-        
+
         self.generate_all_reports()
-        
+
         html_file = self.save_comprehensive_report()
-        
+
         json_file = self.save_summary_json()
-        
+
         print("\n" + "=" * 80)
         print("报告生成完成！")
         print("=" * 80)

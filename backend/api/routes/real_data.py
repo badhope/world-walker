@@ -1,10 +1,10 @@
 """
 真实数据分析 API 路由
 """
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from typing import Dict, Any, List
+
 import logging
+
+from fastapi import APIRouter, HTTPException
 
 from backend.analysis.real_data_analysis import real_data_analyzer
 
@@ -18,15 +18,11 @@ async def fetch_macro_data():
     """获取真实宏观经济数据"""
     try:
         df = real_data_analyzer.fetch_macro_data()
-        
+
         # 转换为字典列表
-        data_list = df.to_dict('records')
-        
-        return {
-            "status": "success",
-            "data": data_list,
-            "count": len(data_list)
-        }
+        data_list = df.to_dict("records")
+
+        return {"status": "success", "data": data_list, "count": len(data_list)}
     except Exception as e:
         logger.error(f"获取数据失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -38,11 +34,8 @@ async def perform_eda():
     try:
         df = real_data_analyzer.fetch_macro_data()
         eda_results = real_data_analyzer.perform_eda(df)
-        
-        return {
-            "status": "success",
-            "data": eda_results
-        }
+
+        return {"status": "success", "data": eda_results}
     except Exception as e:
         logger.error(f"EDA分析失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -55,11 +48,8 @@ async def generate_insights():
         df = real_data_analyzer.fetch_macro_data()
         eda_results = real_data_analyzer.perform_eda(df)
         insights = real_data_analyzer.generate_insights(eda_results)
-        
-        return {
-            "status": "success",
-            "data": insights
-        }
+
+        return {"status": "success", "data": insights}
     except Exception as e:
         logger.error(f"生成洞察失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -71,11 +61,8 @@ async def get_visualization_data():
     try:
         df = real_data_analyzer.fetch_macro_data()
         viz_data = real_data_analyzer.get_visualization_data(df)
-        
-        return {
-            "status": "success",
-            "data": viz_data
-        }
+
+        return {"status": "success", "data": viz_data}
     except Exception as e:
         logger.error(f"获取可视化数据失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -89,15 +76,15 @@ async def get_complete_analysis():
         eda_results = real_data_analyzer.perform_eda(df)
         insights = real_data_analyzer.generate_insights(eda_results)
         viz_data = real_data_analyzer.get_visualization_data(df)
-        
+
         return {
             "status": "success",
             "data": {
-                "raw_data": df.to_dict('records'),
+                "raw_data": df.to_dict("records"),
                 "eda": eda_results,
                 "insights": insights,
-                "visualization": viz_data
-            }
+                "visualization": viz_data,
+            },
         }
     except Exception as e:
         logger.error(f"获取完整分析失败: {e}")

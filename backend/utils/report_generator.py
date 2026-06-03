@@ -2,20 +2,21 @@
 灵活的报告生成系统
 支持多种输出格式和自定义模板
 """
-from typing import Dict, List, Any, Optional, Callable
-from dataclasses import dataclass, field
-from enum import Enum
-import logging
+
 import json
-from pathlib import Path
-from datetime import datetime
+import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class OutputFormat(Enum):
     """输出格式"""
+
     JSON = "json"
     CSV = "csv"
     EXCEL = "excel"
@@ -28,38 +29,40 @@ class OutputFormat(Enum):
 @dataclass
 class ReportSection:
     """报告章节"""
+
     title: str
     content: Any
-    visualization: Optional[str] = None
+    visualization: str | None = None
     order: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class ReportConfig:
     """报告配置"""
+
     title: str
-    subtitle: Optional[str] = None
+    subtitle: str | None = None
     author: str = "System"
     format: OutputFormat = OutputFormat.JSON
-    template: Optional[str] = None
+    template: str | None = None
     include_toc: bool = True
     include_summary: bool = True
     include_metadata: bool = True
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class BaseReportGenerator(ABC):
     """报告生成器基类"""
-    
+
     def __init__(self, config: ReportConfig):
         self.config = config
-    
+
     @abstractmethod
-    def generate(self, sections: List[ReportSection]) -> str:
+    def generate(self, sections: list[ReportSection]) -> str:
         """生成报告"""
         pass
-    
+
     @abstractmethod
     def save(self, content: str, filepath: str) -> bool:
         """保存报告"""
@@ -68,29 +71,31 @@ class BaseReportGenerator(ABC):
 
 class JSONReportGenerator(BaseReportGenerator):
     """JSON报告生成器"""
-    
-    def generate(self, sections: List[ReportSection]) -> str:
+
+    def generate(self, sections: list[ReportSection]) -> str:
         report_data = {
             "title": self.config.title,
             "subtitle": self.config.subtitle,
             "author": self.config.author,
             "generated_at": datetime.now().isoformat(),
-            "sections": []
+            "sections": [],
         }
-        
+
         for section in sorted(sections, key=lambda s: s.order):
-            report_data["sections"].append({
-                "title": section.title,
-                "content": section.content,
-                "visualization": section.visualization,
-                "metadata": section.metadata
-            })
-        
+            report_data["sections"].append(
+                {
+                    "title": section.title,
+                    "content": section.content,
+                    "visualization": section.visualization,
+                    "metadata": section.metadata,
+                }
+            )
+
         return json.dumps(report_data, ensure_ascii=False, indent=2)
-    
+
     def save(self, content: str, filepath: str) -> bool:
         try:
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write(content)
             return True
         except Exception as e:
@@ -100,45 +105,39 @@ class JSONReportGenerator(BaseReportGenerator):
 
 class MarkdownReportGenerator(BaseReportGenerator):
     """Markdown报告生成器"""
-    
-    def generate(self, sections: List[ReportSection]) -> str:
-        lines = [
-            f"# {self.config.title}",
-            ""
-        ]
-        
+
+    def generate(self, sections: list[ReportSection]) -> str:
+        lines = [f"# {self.config.title}", ""]
+
         if self.config.subtitle:
             lines.append(f"**{self.config.subtitle}**")
             lines.append("")
-        
+
         if self.config.include_metadata:
-            lines.extend([
-                f"- **作者**: {self.config.author}",
-                f"- **生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                ""
-            ])
-        
+            lines.extend(
+                [
+                    f"- **作者**: {self.config.author}",
+                    f"- **生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                    "",
+                ]
+            )
+
         if self.config.include_toc and len(sections) > 1:
             lines.append("## 目录")
             lines.append("")
             for i, section in enumerate(sorted(sections, key=lambda s: s.order), 1):
                 lines.append(f"{i}. [{section.title}](#{section.title.lower().replace(' ', '-')})")
             lines.append("")
-        
+
         for section in sorted(sections, key=lambda s: s.order):
-            lines.extend([
-                f"## {section.title}",
-                "",
-                self._format_content(section.content),
-                ""
-            ])
-            
+            lines.extend([f"## {section.title}", "", self._format_content(section.content), ""])
+
             if section.visualization:
                 lines.append(f"*图表类型: {section.visualization}*")
                 lines.append("")
-        
+
         return "\n".join(lines)
-    
+
     def _format_content(self, content: Any) -> str:
         """格式化内容"""
         if isinstance(content, dict):
@@ -149,28 +148,28 @@ class MarkdownReportGenerator(BaseReportGenerator):
             return content
         else:
             return str(content)
-    
-    def _format_dict(self, data: Dict) -> str:
+
+    def _format_dict(self, data: dict) -> str:
         """格式化字典"""
         lines = []
         for key, value in data.items():
-            if isinstance(value, (dict, list)):
+            if isinstance(value, dict | list):
                 lines.append(f"**{key}**: ")
                 lines.append(self._format_content(value))
             else:
                 lines.append(f"**{key}**: {value}")
         return "\n".join(lines)
-    
-    def _format_list(self, data: List) -> str:
+
+    def _format_list(self, data: list) -> str:
         """格式化列表"""
         lines = []
         for item in data:
             lines.append(f"- {self._format_content(item)}")
         return "\n".join(lines)
-    
+
     def save(self, content: str, filepath: str) -> bool:
         try:
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write(content)
             return True
         except Exception as e:
@@ -180,7 +179,7 @@ class MarkdownReportGenerator(BaseReportGenerator):
 
 class HTMLReportGenerator(BaseReportGenerator):
     """HTML报告生成器"""
-    
+
     def __init__(self, config: ReportConfig):
         super().__init__(config)
         self._css = """
@@ -203,8 +202,8 @@ class HTMLReportGenerator(BaseReportGenerator):
             .warning { background: #fff3e0; border-left: 4px solid #ff9800; padding: 10px; margin: 10px 0; }
         </style>
         """
-    
-    def generate(self, sections: List[ReportSection]) -> str:
+
+    def generate(self, sections: list[ReportSection]) -> str:
         html_parts = [
             "<!DOCTYPE html>",
             "<html lang='zh-CN'>",
@@ -215,29 +214,28 @@ class HTMLReportGenerator(BaseReportGenerator):
             self._css,
             "</head>",
             "<body>",
-            f"<h1>{self.config.title}</h1>"
+            f"<h1>{self.config.title}</h1>",
         ]
-        
+
         if self.config.subtitle:
             html_parts.append(f"<p class='subtitle'><em>{self.config.subtitle}</em></p>")
-        
+
         if self.config.include_metadata:
-            html_parts.extend([
-                "<div class='metadata'>",
-                f"<p><strong>作者</strong>: {self.config.author} | "
-                f"<strong>生成时间</strong>: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>",
-                "</div>"
-            ])
-        
+            html_parts.extend(
+                [
+                    "<div class='metadata'>",
+                    f"<p><strong>作者</strong>: {self.config.author} | "
+                    f"<strong>生成时间</strong>: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>",
+                    "</div>",
+                ]
+            )
+
         for section in sorted(sections, key=lambda s: s.order):
-            html_parts.extend([
-                f"<h2>{section.title}</h2>",
-                self._format_content(section.content)
-            ])
-        
+            html_parts.extend([f"<h2>{section.title}</h2>", self._format_content(section.content)])
+
         html_parts.extend(["</body>", "</html>"])
         return "\n".join(html_parts)
-    
+
     def _format_content(self, content: Any) -> str:
         """格式化内容"""
         if isinstance(content, dict):
@@ -248,30 +246,30 @@ class HTMLReportGenerator(BaseReportGenerator):
             return f"<p>{content}</p>"
         else:
             return f"<p>{content}</p>"
-    
-    def _format_dict(self, data: Dict) -> str:
+
+    def _format_dict(self, data: dict) -> str:
         """格式化字典为表格"""
         if not data:
             return "<p>暂无数据</p>"
-        
+
         rows = []
         for key, value in data.items():
-            if isinstance(value, (dict, list)):
+            if isinstance(value, dict | list):
                 value_str = self._format_content(value)
             else:
                 value_str = str(value)
             rows.append(f"<tr><td><strong>{key}</strong></td><td>{value_str}</td></tr>")
-        
+
         return f"<table><thead><tr><th>指标</th><th>值</th></tr></thead><tbody>{''.join(rows)}</tbody></table>"
-    
-    def _format_list(self, data: List) -> str:
+
+    def _format_list(self, data: list) -> str:
         """格式化列表"""
         items = [f"<li>{self._format_content(item)}</li>" for item in data]
         return f"<ul>{''.join(items)}</ul>"
-    
+
     def save(self, content: str, filepath: str) -> bool:
         try:
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write(content)
             return True
         except Exception as e:
@@ -281,18 +279,18 @@ class HTMLReportGenerator(BaseReportGenerator):
 
 class ReportGeneratorFactory:
     """报告生成器工厂"""
-    
+
     _generators = {
         OutputFormat.JSON: JSONReportGenerator,
         OutputFormat.MARKDOWN: MarkdownReportGenerator,
         OutputFormat.HTML: HTMLReportGenerator,
     }
-    
+
     @classmethod
     def register(cls, output_format: OutputFormat, generator_class: type):
         """注册自定义生成器"""
         cls._generators[output_format] = generator_class
-    
+
     @classmethod
     def create(cls, config: ReportConfig) -> BaseReportGenerator:
         """创建生成器"""
@@ -302,78 +300,50 @@ class ReportGeneratorFactory:
 
 class FlexibleReportGenerator:
     """灵活的报告生成器"""
-    
+
     def __init__(self):
-        self._default_config = ReportConfig(
-            title="分析报告",
-            author="Regional Economic Analysis Team"
-        )
-    
+        self._default_config = ReportConfig(title="分析报告", author="Regional Economic Analysis Team")
+
     def generate_report(
-        self,
-        sections: List[ReportSection],
-        config: Optional[ReportConfig] = None,
-        output_path: Optional[str] = None
+        self, sections: list[ReportSection], config: ReportConfig | None = None, output_path: str | None = None
     ) -> str:
         """
         生成报告
-        
+
         Args:
             sections: 报告章节列表
             config: 报告配置
             output_path: 输出路径
-            
+
         Returns:
             生成的报告内容
         """
         if config is None:
             config = self._default_config
-        
+
         generator = ReportGeneratorFactory.create(config)
         content = generator.generate(sections)
-        
+
         if output_path:
             generator.save(content, output_path)
             logger.info(f"报告已保存到 {output_path}")
-        
+
         return content
-    
+
     def create_section(
-        self,
-        title: str,
-        content: Any,
-        visualization: Optional[str] = None,
-        order: int = 0,
-        **metadata
+        self, title: str, content: Any, visualization: str | None = None, order: int = 0, **metadata
     ) -> ReportSection:
         """创建报告章节"""
-        return ReportSection(
-            title=title,
-            content=content,
-            visualization=visualization,
-            order=order,
-            metadata=metadata
-        )
-    
+        return ReportSection(title=title, content=content, visualization=visualization, order=order, metadata=metadata)
+
     def quick_report(
-        self,
-        title: str,
-        data: Dict[str, Any],
-        format: str = "markdown",
-        output_path: Optional[str] = None
+        self, title: str, data: dict[str, Any], format: str = "markdown", output_path: str | None = None
     ) -> str:
         """快速生成简单报告"""
-        config = ReportConfig(
-            title=title,
-            format=OutputFormat(format)
-        )
-        
-        section = self.create_section(
-            title="数据概览",
-            content=data,
-            order=0
-        )
-        
+        config = ReportConfig(title=title, format=OutputFormat(format))
+
+        section = self.create_section(title="数据概览", content=data, order=0)
+
         return self.generate_report([section], config, output_path)
 
 
@@ -383,28 +353,17 @@ report_generator = FlexibleReportGenerator()
 
 # 便捷函数
 def generate_report(
-    sections: List[ReportSection],
-    config: Optional[ReportConfig] = None,
-    output_path: Optional[str] = None
+    sections: list[ReportSection], config: ReportConfig | None = None, output_path: str | None = None
 ) -> str:
     """生成报告"""
     return report_generator.generate_report(sections, config, output_path)
 
 
-def create_report_section(
-    title: str,
-    content: Any,
-    **kwargs
-) -> ReportSection:
+def create_report_section(title: str, content: Any, **kwargs) -> ReportSection:
     """创建报告章节"""
     return report_generator.create_section(title, content, **kwargs)
 
 
-def quick_report(
-    title: str,
-    data: Dict[str, Any],
-    format: str = "markdown",
-    output_path: Optional[str] = None
-) -> str:
+def quick_report(title: str, data: dict[str, Any], format: str = "markdown", output_path: str | None = None) -> str:
     """快速生成报告"""
     return report_generator.quick_report(title, data, format, output_path)

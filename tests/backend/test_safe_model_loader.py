@@ -7,11 +7,10 @@ Covers the four security properties we promise in the module docstring:
   T3: tampered model (hash mismatch) is rejected.
   T4: model file larger than MAX_MODEL_SIZE_MB is rejected.
 """
+
 from __future__ import annotations
 
-import os
 import shutil
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -20,7 +19,6 @@ from backend.utils.safe_model_loader import (
     DEFAULT_SHA256SUMS_PATH,
     MAX_MODEL_SIZE_MB,
     load_model,
-    verify_model_integrity,
 )
 
 REPO_MODELS = Path(__file__).resolve().parents[2] / "models"
@@ -33,6 +31,7 @@ def temp_manifest(tmp_path: Path) -> Path:
     dst = tmp_path / "linear_regression.pkl"
     shutil.copy(src, dst)
     import hashlib
+
     digest = hashlib.sha256(dst.read_bytes()).hexdigest()
     manifest = tmp_path / "SHA256SUMS"
     manifest.write_text(f"{digest}  linear_regression.pkl\n", encoding="utf-8")
@@ -80,9 +79,7 @@ def test_oversized_model_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     shutil.copy(src, target)
     manifest = tmp_path / "SHA256SUMS"
     manifest.write_text(f"{'a'*64}  tiny.pkl\n", encoding="utf-8")
-    monkeypatch.setattr(
-        "backend.utils.safe_model_loader.MAX_MODEL_SIZE_BYTES", 0
-    )
+    monkeypatch.setattr("backend.utils.safe_model_loader.MAX_MODEL_SIZE_BYTES", 0)
     with pytest.raises(ValueError, match="exceeds"):
         load_model(target, manifest=manifest)
 
@@ -90,8 +87,7 @@ def test_oversized_model_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_default_manifest_exists() -> None:
     """The committed SHA256SUMS file must exist at DEFAULT_SHA256SUMS_PATH."""
     assert DEFAULT_SHA256SUMS_PATH.exists(), (
-        f"models/SHA256SUMS not found at {DEFAULT_SHA256SUMS_PATH}. "
-        f"Run: cd models && sha256sum *.pkl > SHA256SUMS"
+        f"models/SHA256SUMS not found at {DEFAULT_SHA256SUMS_PATH}. " f"Run: cd models && sha256sum *.pkl > SHA256SUMS"
     )
 
 
@@ -109,6 +105,7 @@ def test_default_manifest_covers_all_pkl() -> None:
 def test_constant_time_comparison() -> None:
     """_consteq must reject mismatches of any length without leaking via short-circuit."""
     from backend.utils.safe_model_loader import _consteq
+
     assert _consteq("abc", "abc") is True
     assert _consteq("abc", "abd") is False
     assert _consteq("abc", "abcd") is False  # length differs → False

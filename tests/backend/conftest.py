@@ -1,10 +1,10 @@
 """
 测试配置和共享夹具
 """
+
 import os
 import sys
 from pathlib import Path
-from typing import AsyncGenerator, Generator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -36,14 +36,9 @@ def sample_basic_data_path(test_data_path: Path) -> dict:
 
     basic_data_file = test_data_path / "basic_data.json"
     if basic_data_file.exists():
-        with open(basic_data_file, "r", encoding="utf-8") as f:
+        with open(basic_data_file, encoding="utf-8") as f:
             return json.load(f)
-    return {
-        "region": "深圳",
-        "year": 2025,
-        "gdp": 35000.0,
-        "population": 1750.0
-    }
+    return {"region": "深圳", "year": 2025, "gdp": 35000.0, "population": 1750.0}
 
 
 @pytest.fixture(scope="function")
@@ -67,32 +62,19 @@ def api_client():
 @pytest.fixture
 def sample_indicator_data():
     """示例指标数据"""
-    return {
-        "name": "GDP增长率",
-        "value": 5.8,
-        "unit": "%",
-        "year": 2025
-    }
+    return {"name": "GDP增长率", "value": 5.8, "unit": "%", "year": 2025}
 
 
 @pytest.fixture
 def sample_enterprise_analysis_config():
     """企业分析示例配置"""
-    return {
-        "region": "深圳",
-        "industry": "半导体",
-        "year": 2025
-    }
+    return {"region": "深圳", "industry": "半导体", "year": 2025}
 
 
 @pytest.fixture
 def sample_government_analysis_config():
     """政府分析示例配置"""
-    return {
-        "region": "深圳",
-        "industry": "半导体",
-        "year": 2025
-    }
+    return {"region": "深圳", "industry": "半导体", "year": 2025}
 
 
 @pytest.fixture
@@ -107,26 +89,17 @@ def mock_data_collector_mock(mocker: MockerFixture):
     from backend.data_collection.base_collector import BaseCollector
 
     mock_instance = mocker.MagicMock(spec=BaseCollector)
-    mock_instance.collect.return_value = {
-        "success": True,
-        "data": {"test": "data"}
-    }
+    mock_instance.collect.return_value = {"success": True, "data": {"test": "data"}}
     return mock_instance
 
 
 @pytest.fixture
 def sample_industry_config():
     """产业配置示例"""
-    return {
-        "industry": "半导体",
-        "description": "测试产业"
-    }
+    return {"industry": "半导体", "description": "测试产业"}
 
 
 @pytest.fixture
 def sample_region_config():
     """区域配置示例"""
-    return {
-        "region": "深圳",
-        "description": "测试区域"
-    }
+    return {"region": "深圳", "description": "测试区域"}

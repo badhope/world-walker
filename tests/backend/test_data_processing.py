@@ -1,6 +1,7 @@
 """
 数据处理模块测试
 """
+
 import pandas as pd
 import pytest
 
@@ -21,9 +22,7 @@ class TestDataCleaner:
         from backend.data_processing.cleaner import DataCleaner
 
         cleaner = DataCleaner()
-        data = pd.DataFrame({
-            "value": [1, None, 3, None, 5]
-        })
+        data = pd.DataFrame({"value": [1, None, 3, None, 5]})
 
         filled = cleaner.fill_missing(data, method="zero")
         assert filled["value"].isna().sum() == 0
@@ -33,9 +32,7 @@ class TestDataCleaner:
         from backend.data_processing.cleaner import DataCleaner
 
         cleaner = DataCleaner()
-        data = pd.DataFrame({
-            "value": [1, None, 3, None, 5]
-        })
+        data = pd.DataFrame({"value": [1, None, 3, None, 5]})
 
         missing_info = cleaner.detect_missing(data)
         assert "total_missing" in missing_info
@@ -58,11 +55,7 @@ class TestDataTransformer:
         from backend.data_processing.transformer import DataTransformer
 
         transformer = DataTransformer()
-        data = pd.DataFrame({
-            "year": [2020, 2020, 2021, 2021],
-            "type": ["a", "b", "a", "b"],
-            "value": [10, 20, 30, 40]
-        })
+        data = pd.DataFrame({"year": [2020, 2020, 2021, 2021], "type": ["a", "b", "a", "b"], "value": [10, 20, 30, 40]})
 
         pivoted = transformer.pivot_data(data, index="year", columns="type", values="value")
         assert "a" in pivoted.columns
@@ -73,10 +66,7 @@ class TestDataTransformer:
         from backend.data_processing.transformer import DataTransformer
 
         transformer = DataTransformer()
-        data = pd.DataFrame({
-            "id": [1, 2, 3, 4, 5],
-            "value": [10, 20, 30, 40, 50]
-        })
+        data = pd.DataFrame({"id": [1, 2, 3, 4, 5], "value": [10, 20, 30, 40, 50]})
 
         filtered = transformer.filter_data(data, {"id": [1, 3, 5]})
         assert len(filtered) == 3
@@ -86,16 +76,9 @@ class TestDataTransformer:
         from backend.data_processing.transformer import DataTransformer
 
         transformer = DataTransformer()
-        data = pd.DataFrame({
-            "category": ["a", "a", "b", "b"],
-            "value": [10, 20, 30, 40]
-        })
+        data = pd.DataFrame({"category": ["a", "a", "b", "b"], "value": [10, 20, 30, 40]})
 
-        aggregated = transformer.aggregate_data(
-            data,
-            group_by=["category"],
-            aggregations={"value": "sum"}
-        )
+        aggregated = transformer.aggregate_data(data, group_by=["category"], aggregations={"value": "sum"})
         assert len(aggregated) == 2
 
 
@@ -115,11 +98,7 @@ class TestDataValidator:
         from backend.data_processing.validator import DataValidator
 
         validator = DataValidator()
-        data = pd.DataFrame({
-            "region": ["深圳"],
-            "year": [2025],
-            "gdp": [35000]
-        })
+        data = pd.DataFrame({"region": ["深圳"], "year": [2025], "gdp": [35000]})
 
         result = validator.validate_required_columns(data, ["region", "year"])
         assert result["valid"] is True
@@ -130,9 +109,7 @@ class TestDataValidator:
         from backend.data_processing.validator import DataValidator
 
         validator = DataValidator()
-        data = pd.DataFrame({
-            "region": ["深圳"]
-        })
+        data = pd.DataFrame({"region": ["深圳"]})
 
         result = validator.validate_required_columns(data, ["region", "year"])
         assert result["valid"] is False
@@ -144,9 +121,7 @@ class TestDataValidator:
         from backend.data_processing.validator import DataValidator
 
         validator = DataValidator()
-        data = pd.DataFrame({
-            "value": [-10, 0, 50, 100, 150]
-        })
+        data = pd.DataFrame({"value": [-10, 0, 50, 100, 150]})
 
         result = validator.validate_value_ranges(data, {"value": (0, 100)})
         assert result["valid"] is False
@@ -157,9 +132,7 @@ class TestDataValidator:
         from backend.data_processing.validator import DataValidator
 
         validator = DataValidator()
-        data = pd.DataFrame({
-            "value": [1, None, 3, None, 5]
-        })
+        data = pd.DataFrame({"value": [1, None, 3, None, 5]})
 
         result = validator.validate_not_null(data, ["value"])
         assert result["valid"] is False
@@ -177,24 +150,19 @@ class TestDataProcessingWorkflow:
         from backend.data_processing.validator import DataValidator
 
         # 原始数据
-        raw_data = pd.DataFrame({
-            "id": [1, 2, 3, 4, 5],
-            "value": [10, 20, 30, 40, 50]
-        })
+        raw_data = pd.DataFrame({"id": [1, 2, 3, 4, 5], "value": [10, 20, 30, 40, 50]})
 
         # 1. 清洗（检测缺失，填充）
         cleaner = DataCleaner()
         missing_info = cleaner.detect_missing(raw_data)
-        
+
         # 2. 验证
         validator = DataValidator()
-        validation_result = validator.validate_required_columns(
-            raw_data, ["id", "value"]
-        )
-        
+        validation_result = validator.validate_required_columns(raw_data, ["id", "value"])
+
         # 3. 转换
         transformer = DataTransformer()
         filtered = transformer.filter_data(raw_data, {"id": [1, 2, 3]})
-        
+
         assert len(filtered) == 3
         assert validation_result.get("valid", True)  # 流程完成

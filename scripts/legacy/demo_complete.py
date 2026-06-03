@@ -1,14 +1,15 @@
 import logging
-from pathlib import Path
-from datetime import datetime
 import warnings
-warnings.filterwarnings('ignore')
+from datetime import datetime
+from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+warnings.filterwarnings("ignore")
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+from backend.retail_location.analyzer import RetailLocationAnalyzer
 from backend.retail_location.config import RetailLocationConfig
 from backend.retail_location.data_adapter import RetailDataAdapter
-from backend.retail_location.analyzer import RetailLocationAnalyzer
 
 
 def main():
@@ -39,7 +40,7 @@ def main():
         save_results=True,
         output_dir="data/retail_complete",
         do_hyperparameter_tuning=True,
-        save_model_version=True
+        save_model_version=True,
     )
 
     print("\n" + "=" * 80)
@@ -53,19 +54,19 @@ def main():
     print(f"评级: {results['data_quality']['overall_quality']['level']}")
 
     print("\n模型对比:")
-    for comp in results['insights']['model_comparison']:
+    for comp in results["insights"]["model_comparison"]:
         print(f"  - {comp['model']}: R²={comp['r2']:.4f}, MAE={comp['mae']:.0f}")
 
     print("\nTop 5 重要特征:")
-    for i, (feature, importance) in enumerate(results['insights']['feature_importance']['top_features'][:5], 1):
+    for i, (feature, importance) in enumerate(results["insights"]["feature_importance"]["top_features"][:5], 1):
         print(f"  {i}. {feature}: {importance:.4f}")
 
     print("\n业务建议:")
-    for i, rec in enumerate(results['insights']['recommendations'][:3], 1):
+    for i, rec in enumerate(results["insights"]["recommendations"][:3], 1):
         print(f"  {i}. {rec}")
 
     print("\n可视化图表:")
-    for name, path in results.get('visualizations', {}).items():
+    for name, path in results.get("visualizations", {}).items():
         print(f"  - {name}: {path}")
 
     print("\n" + "=" * 80)
@@ -76,7 +77,7 @@ def main():
     predictions = analyzer.predict(new_store_data)
 
     print("\n预测结果:")
-    print(predictions[['store_id', 'store_area', 'predicted_sales']])
+    print(predictions[["store_id", "store_area", "predicted_sales"]])
 
     print("\n" + "=" * 80)
     print("5. 保存分析器")
@@ -95,7 +96,7 @@ def main():
     another_new_store = adapter.generate_sample_data(num_stores=3)
     new_predictions = loaded_analyzer.predict(another_new_store)
     print("\n再次预测成功:")
-    print(new_predictions[['store_id', 'store_area', 'predicted_sales']])
+    print(new_predictions[["store_id", "store_area", "predicted_sales"]])
 
     print("\n" + "=" * 80)
     print("7. 生成文件")

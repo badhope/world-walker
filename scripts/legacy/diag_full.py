@@ -11,8 +11,13 @@ with sync_playwright() as p:
     errors = []
     successes = []
 
-    def ok(msg): successes.append(msg); print(f"✅ {msg}")
-    def err(msg): errors.append(msg); print(f"🔴 {msg}")
+    def ok(msg):
+        successes.append(msg)
+        print(f"✅ {msg}")
+
+    def err(msg):
+        errors.append(msg)
+        print(f"🔴 {msg}")
 
     page.on("console", lambda msg: errors.append(f"[{msg.type}] {msg.text[:150]}") if msg.type == "error" else None)
     page.on("requestfailed", lambda req: errors.append(f"NET {req.method} {req.url}"))
@@ -46,10 +51,10 @@ with sync_playwright() as p:
     try:
         page.locator('.tab-btn[data-tab="enterprise"]').first.click()
         page.wait_for_timeout(500)
-        page.locator('#btnEntAnalyze').first.click()
+        page.locator("#btnEntAnalyze").first.click()
         page.wait_for_timeout(6000)
-        score = page.locator('#entTotalScore').inner_text()
-        dets = page.locator('#entDetails > div').count()
+        score = page.locator("#entTotalScore").inner_text()
+        dets = page.locator("#entDetails > div").count()
         ok(f"评分: {score} | 指标: {dets}")
     except Exception as e:
         err(f"企业分析失败: {e}")
@@ -61,7 +66,7 @@ with sync_playwright() as p:
         page.wait_for_timeout(500)
         page.locator('button:has-text("运行产业分析")').first.click()
         page.wait_for_timeout(8000)
-        gov = page.locator('#govDetails > div').count()
+        gov = page.locator("#govDetails > div").count()
         ok(f"政府指标: {gov}")
     except Exception as e:
         err(f"政府分析失败: {e}")
@@ -71,7 +76,7 @@ with sync_playwright() as p:
         page.wait_for_timeout(500)
         page.locator('button:has-text("对比分析")').first.click()
         page.wait_for_timeout(10000)
-        rows = page.locator('#compareTable tbody tr').count()
+        rows = page.locator("#compareTable tbody tr").count()
         ok(f"对比表格: {rows} 行")
     except Exception as e:
         err(f"城市对比失败: {e}")
@@ -84,7 +89,9 @@ with sync_playwright() as p:
     real_errs = [e for e in errors if "cdn.tailwindcss" not in e and "deprecated" not in e.lower()]
     print(f"✅ 成功: {len(successes)}/{len(successes)+len(real_errs)}")
     print(f"🔴 错误: {len(real_errs)}")
-    for e in real_errs[:8]: print(f"   {e}")
-    if not real_errs: print("   🎉 零错误!")
+    for e in real_errs[:8]:
+        print(f"   {e}")
+    if not real_errs:
+        print("   🎉 零错误!")
 
 print("\n✅ 诊断完成")

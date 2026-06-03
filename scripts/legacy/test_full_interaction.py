@@ -2,7 +2,9 @@
 全面前端交互自动化测试 - 模拟人工操作全流程
 测试所有4个标签页 + 前后端连接 + 边界情况
 """
-import os, json, time
+
+import os
+
 from playwright.sync_api import sync_playwright
 
 SCREENSHOT_DIR = "/workspace/screenshots/interaction_test"
@@ -10,22 +12,27 @@ os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 RESULTS = {"passed": [], "failed": [], "warnings": [], "network_errors": [], "console_errors": []}
 
+
 def ok(msg):
     RESULTS["passed"].append(msg)
     print(f"  ✅ {msg}")
+
 
 def fail(msg):
     RESULTS["failed"].append(msg)
     print(f"  🔴 {msg}")
 
+
 def warn(msg):
     RESULTS["warnings"].append(msg)
     print(f"  ⚠️ {msg}")
+
 
 def shot(page, name):
     path = os.path.join(SCREENSHOT_DIR, name)
     page.screenshot(path=path, full_page=True)
     print(f"  📸 截图: {name}")
+
 
 # ─── 启动浏览器 ───
 print("=" * 70)
@@ -34,16 +41,17 @@ print("=" * 70)
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
-    ctx = browser.new_context(
-        viewport={"width": 1920, "height": 1080},
-        locale="zh-CN"
-    )
+    ctx = browser.new_context(viewport={"width": 1920, "height": 1080}, locale="zh-CN")
     page = ctx.new_page()
 
     # 捕获所有错误
-    page.on("console", lambda m: RESULTS["console_errors"].append(f"[{m.type}] {m.text}") if m.type == "error" else None)
+    page.on(
+        "console", lambda m: RESULTS["console_errors"].append(f"[{m.type}] {m.text}") if m.type == "error" else None
+    )
     page.on("requestfailed", lambda r: RESULTS["network_errors"].append(f"FAIL {r.method} {r.url}"))
-    page.on("response", lambda r: RESULTS["network_errors"].append(f"HTTP{r.status} {r.url}") if r.status >= 500 else None)
+    page.on(
+        "response", lambda r: RESULTS["network_errors"].append(f"HTTP{r.status} {r.url}") if r.status >= 500 else None
+    )
 
     # ═══════════════════════════════════════
     #  第1步: 加载首页 + 后端健康检查
@@ -219,10 +227,7 @@ with sync_playwright() as p:
 
     # 等待分析完成（按钮变为可点击状态）
     try:
-        page.wait_for_function(
-            "document.getElementById('btnEntAnalyze').disabled === false",
-            timeout=12000
-        )
+        page.wait_for_function("document.getElementById('btnEntAnalyze').disabled === false", timeout=12000)
         ok("分析按钮恢复可用（分析完成）")
     except:
         fail("分析超时或按钮未恢复")
@@ -521,10 +526,11 @@ print("📋 测试汇总报告")
 print("=" * 70)
 
 # 过滤误报（CDN 相关、deprecated 等）
-real_console_errs = [e for e in RESULTS["console_errors"]
-                     if "cdn" not in e.lower()
-                     and "deprecated" not in e.lower()
-                     and "favicon" not in e.lower()]
+real_console_errs = [
+    e
+    for e in RESULTS["console_errors"]
+    if "cdn" not in e.lower() and "deprecated" not in e.lower() and "favicon" not in e.lower()
+]
 
 passed = len(RESULTS["passed"])
 failed = len(RESULTS["failed"])
@@ -539,22 +545,22 @@ print(f"  📟 前端 Console 错误: {len(real_console_errs)}")
 print(f"  📊 通过率: {pass_rate:.1f}%")
 
 if failed > 0:
-    print(f"\n  🔴 失败详情:")
+    print("\n  🔴 失败详情:")
     for f in RESULTS["failed"]:
         print(f"     {f}")
 
 if RESULTS["warnings"]:
-    print(f"\n  ⚠️ 警告详情:")
+    print("\n  ⚠️ 警告详情:")
     for w in RESULTS["warnings"]:
         print(f"     {w}")
 
 if real_console_errs:
-    print(f"\n  📟 前端错误详情:")
+    print("\n  📟 前端错误详情:")
     for e in real_console_errs[:5]:
         print(f"     {e}")
 
 if RESULTS["network_errors"]:
-    print(f"\n  🌐 网络错误详情:")
+    print("\n  🌐 网络错误详情:")
     for e in RESULTS["network_errors"][:5]:
         print(f"     {e}")
 
@@ -562,7 +568,7 @@ print(f"\n  📸 截图已保存到: {SCREENSHOT_DIR}")
 print(f"     共 {len(os.listdir(SCREENSHOT_DIR))} 张截图")
 
 if failed == 0:
-    print(f"\n🎉 全部测试通过! 前端交互完全正常!")
+    print("\n🎉 全部测试通过! 前端交互完全正常!")
 else:
     print(f"\n⚠️ 有 {failed} 项测试失败，请检查详情")
 

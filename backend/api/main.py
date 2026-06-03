@@ -8,30 +8,37 @@ A production-grade analytics service for:
   - Time-series forecasting
   - Interactive dashboards
 """
+
+import logging
+import os
+from contextlib import asynccontextmanager
+from datetime import datetime
+
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from contextlib import asynccontextmanager
-import logging
-import os
-import uvicorn
-from datetime import datetime
 
-from config import settings
 from backend.api.routes import (
-    data_router, analysis_router, inference_router,
-    interactive_router, websocket_router, cities_router,
-    cities_v2_router, forecast_router, analysis_v3_router,
-    real_data_router, database_router, static_router,
+    analysis_router,
+    analysis_v3_router,
+    cities_router,
+    cities_v2_router,
+    data_router,
+    database_router,
+    forecast_router,
+    inference_router,
+    interactive_router,
     ml_router,
+    real_data_router,
+    static_router,
+    websocket_router,
 )
 from backend.api.routes.auth import router as auth_router
+from config import settings
 
 # Logging configuration
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -130,6 +137,7 @@ from pathlib import Path
 
 frontend_index = Path(__file__).parent.parent.parent / "frontend" / "index.html"
 
+
 @app.get("/dashboard", tags=["页面"])
 async def get_dashboard():
     """交互式分析仪表盘"""
@@ -154,18 +162,14 @@ def root():
         "version": settings.VERSION,
         "docs": "/docs",
         "redoc": "/redoc",
-        "status": "running"
+        "status": "running",
     }
 
 
 @app.get("/health", tags=["健康检查"])
 def health_check():
     """健康检查端点"""
-    return {
-        "status": "healthy",
-        "version": settings.VERSION,
-        "timestamp": datetime.now().isoformat()
-    }
+    return {"status": "healthy", "version": settings.VERSION, "timestamp": datetime.now().isoformat()}
 
 
 FAVICON_SVG = (
@@ -173,7 +177,7 @@ FAVICON_SVG = (
     '<rect width="100" height="100" rx="20" fill="#2563eb"/>'
     '<text x="50" y="65" font-size="52" text-anchor="middle" fill="white" '
     'font-family="Arial" font-weight="bold">N</text>'
-    '</svg>'
+    "</svg>"
 )
 
 
@@ -181,6 +185,7 @@ FAVICON_SVG = (
 def favicon():
     """Return the SVG favicon."""
     from fastapi.responses import Response
+
     return Response(content=FAVICON_SVG, media_type="image/svg+xml")
 
 

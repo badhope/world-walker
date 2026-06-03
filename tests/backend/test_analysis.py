@@ -1,6 +1,7 @@
 """
 分析模块测试
 """
+
 import pytest
 
 
@@ -20,16 +21,11 @@ class TestIndicatorRegistry:
 
     def test_indicator_registry_register_indicator(self):
         """测试注册指标"""
-        from backend.analysis.indicator_registry import IndicatorRegistry
-        from backend.analysis.indicator_registry import IndicatorDefinition, IndicatorCategory
+        from backend.analysis.indicator_registry import IndicatorCategory, IndicatorDefinition, IndicatorRegistry
 
         registry = IndicatorRegistry()
         indicator = IndicatorDefinition(
-            code="test_gdp",
-            name="测试GDP",
-            category=IndicatorCategory.MACRO,
-            unit="亿元",
-            description="测试指标描述"
+            code="test_gdp", name="测试GDP", category=IndicatorCategory.MACRO, unit="亿元", description="测试指标描述"
         )
         registry.register(indicator)
 

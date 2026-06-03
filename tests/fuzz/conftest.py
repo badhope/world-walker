@@ -3,6 +3,7 @@ Local conftest.py for fuzz tests.
 Adds the project root to sys.path BEFORE the test module is imported,
 ensuring `from backend.api.main import app` works.
 """
+
 import sys
 from pathlib import Path
 

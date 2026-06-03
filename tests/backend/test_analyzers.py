@@ -1,30 +1,27 @@
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import pytest
 import pandas as pd
-import numpy as np
 
 from backend.analysis.base_analyzer import BaseAnalyzer
 from backend.analysis.enterprise_analyzer import EnterpriseAnalyzer
 from backend.analysis.government_analyzer import GovernmentAnalyzer
+from backend.data.city_data import get_all_cities, get_city_data
 from backend.retail_location.analyzer import RetailLocationAnalyzer
 from backend.retail_location.data_adapter import RetailDataAdapter
 from backend.sales_forecast.analyzer import SalesForecastAnalyzer
 from backend.sales_forecast.data_adapter import SalesDataAdapter
-from backend.data.city_data import get_city_data, get_all_cities
-
 
 ALL_ANALYZER_CLASSES = [EnterpriseAnalyzer, GovernmentAnalyzer, RetailLocationAnalyzer, SalesForecastAnalyzer]
 
 
 class TestAnalyzerInheritance:
-
     def test_all_analyzers_inherit_base(self):
         for cls in ALL_ANALYZER_CLASSES:
             assert issubclass(cls, BaseAnalyzer), f"{cls.__name__} does not inherit BaseAnalyzer"
@@ -43,28 +40,26 @@ class TestAnalyzerInheritance:
 
 
 class TestAnalyzerInterface:
-
     def test_all_analyzers_have_run_full_analysis(self):
         for cls in ALL_ANALYZER_CLASSES:
-            assert hasattr(cls, 'run_full_analysis'), f"{cls.__name__} missing run_full_analysis"
+            assert hasattr(cls, "run_full_analysis"), f"{cls.__name__} missing run_full_analysis"
 
     def test_all_analyzers_have_predict(self):
         for cls in ALL_ANALYZER_CLASSES:
-            assert hasattr(cls, 'predict'), f"{cls.__name__} missing predict"
+            assert hasattr(cls, "predict"), f"{cls.__name__} missing predict"
 
     def test_run_full_analysis_is_callable(self):
         for cls in ALL_ANALYZER_CLASSES:
             instance = cls()
-            assert callable(getattr(instance, 'run_full_analysis'))
+            assert callable(getattr(instance, "run_full_analysis"))
 
     def test_predict_is_callable(self):
         for cls in ALL_ANALYZER_CLASSES:
             instance = cls()
-            assert callable(getattr(instance, 'predict'))
+            assert callable(getattr(instance, "predict"))
 
 
 class TestEnterpriseAnalyzerRealData:
-
     def setup_method(self):
         self.analyzer = EnterpriseAnalyzer()
 
@@ -116,7 +111,6 @@ class TestEnterpriseAnalyzerRealData:
 
 
 class TestGovernmentAnalyzerRealData:
-
     def setup_method(self):
         self.analyzer = GovernmentAnalyzer()
 
@@ -160,28 +154,19 @@ class TestGovernmentAnalyzerRealData:
 
 
 class TestRetailLocationAnalyzerFullFlow:
-
     def setup_method(self):
         self.analyzer = RetailLocationAnalyzer()
 
     def test_full_flow_generate_train_predict(self, tmp_path):
         data = RetailDataAdapter.generate_sample_data(num_stores=60, random_seed=42)
-        result = self.analyzer.run_full_analysis(
-            data,
-            save_results=True,
-            output_dir=str(tmp_path / "retail_output")
-        )
+        result = self.analyzer.run_full_analysis(data, save_results=True, output_dir=str(tmp_path / "retail_output"))
         assert isinstance(result, dict)
         assert "training_result" in result
         assert result["training_result"]["best_score"] > 0
 
     def test_predict_after_training(self, tmp_path):
         data = RetailDataAdapter.generate_sample_data(num_stores=60, random_seed=42)
-        self.analyzer.run_full_analysis(
-            data,
-            save_results=False,
-            output_dir=str(tmp_path / "retail_output")
-        )
+        self.analyzer.run_full_analysis(data, save_results=False, output_dir=str(tmp_path / "retail_output"))
         new_data = RetailDataAdapter.generate_sample_data(num_stores=5, random_seed=99)
         predictions = self.analyzer.predict(new_data)
         assert isinstance(predictions, pd.DataFrame)
@@ -190,18 +175,13 @@ class TestRetailLocationAnalyzerFullFlow:
 
 
 class TestSalesForecastAnalyzerFullFlow:
-
     def setup_method(self):
         self.analyzer = SalesForecastAnalyzer()
 
     def test_full_flow_generate_train_predict(self, tmp_path):
         adapter = SalesDataAdapter()
         data = adapter.generate_sample_data(num_records=200, num_products=5)
-        result = self.analyzer.run_full_analysis(
-            data,
-            save_results=True,
-            output_dir=str(tmp_path / "sales_output")
-        )
+        result = self.analyzer.run_full_analysis(data, save_results=True, output_dir=str(tmp_path / "sales_output"))
         assert isinstance(result, dict)
         assert "training_result" in result
         assert result["training_result"]["best_score"] is not None
@@ -209,11 +189,7 @@ class TestSalesForecastAnalyzerFullFlow:
     def test_predict_after_training(self, tmp_path):
         adapter = SalesDataAdapter()
         data = adapter.generate_sample_data(num_records=200, num_products=5)
-        self.analyzer.run_full_analysis(
-            data,
-            save_results=False,
-            output_dir=str(tmp_path / "sales_output")
-        )
+        self.analyzer.run_full_analysis(data, save_results=False, output_dir=str(tmp_path / "sales_output"))
         new_data = adapter.generate_sample_data(num_records=10, num_products=3)
         predictions = self.analyzer.predict(new_data)
         assert isinstance(predictions, pd.DataFrame)
@@ -221,7 +197,6 @@ class TestSalesForecastAnalyzerFullFlow:
 
 
 class TestDifferentCitiesDifferentScores:
-
     def test_enterprise_different_cities(self):
         analyzer = EnterpriseAnalyzer()
         cities = get_all_cities()

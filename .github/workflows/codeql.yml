@@ -29,6 +29,11 @@ jobs:
         language: ["python", "javascript"]
 
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76  # v2.14.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
         with:
@@ -50,6 +55,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76  # v2.14.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
         with:
@@ -57,6 +67,6 @@ jobs:
           persist-credentials: false
 
       - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@4cc8b2e84c8ce8469f6c2d5f3b5b3f1e2f7e1d6b  # v1.6.1
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e  # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -7,7 +7,9 @@
 - 可访问性
 - 性能（加载时间、卡顿）
 """
-import os, json, time
+
+import os
+
 from playwright.sync_api import sync_playwright
 
 OUT = "/workspace/screenshots/diagnose"
@@ -15,11 +17,30 @@ os.makedirs(OUT, exist_ok=True)
 
 ISSUES = {"critical": [], "major": [], "minor": [], "suggestions": []}
 
-def critical(msg): ISSUES["critical"].append(msg); print(f"  🔴 严重: {msg}")
-def major(msg): ISSUES["major"].append(msg); print(f"  🟠 重要: {msg}")
-def minor(msg): ISSUES["minor"].append(msg); print(f"  🟡 轻微: {msg}")
-def suggest(msg): ISSUES["suggestions"].append(msg); print(f"  💡 建议: {msg}")
-def ok(msg): print(f"  ✅ {msg}")
+
+def critical(msg):
+    ISSUES["critical"].append(msg)
+    print(f"  🔴 严重: {msg}")
+
+
+def major(msg):
+    ISSUES["major"].append(msg)
+    print(f"  🟠 重要: {msg}")
+
+
+def minor(msg):
+    ISSUES["minor"].append(msg)
+    print(f"  🟡 轻微: {msg}")
+
+
+def suggest(msg):
+    ISSUES["suggestions"].append(msg)
+    print(f"  💡 建议: {msg}")
+
+
+def ok(msg):
+    print(f"  ✅ {msg}")
+
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
@@ -54,7 +75,9 @@ with sync_playwright() as p:
             const s = getComputedStyle(h);
             return { position: s.position, top: s.top, zIndex: s.zIndex, height: h.offsetHeight };
         }""")
-        ok(f"Header 样式: position={header_pos['position']}, z-index={header_pos['zIndex']}, 高度={header_pos['height']}px")
+        ok(
+            f"Header 样式: position={header_pos['position']}, z-index={header_pos['zIndex']}, 高度={header_pos['height']}px"
+        )
     else:
         major("Header 不可见")
 
@@ -182,7 +205,7 @@ with sync_playwright() as p:
         return document.documentElement.scrollWidth > window.innerWidth;
     }""")
     if has_overflow:
-        major(f"移动端横向溢出: scrollWidth > viewport")
+        major("移动端横向溢出: scrollWidth > viewport")
     else:
         ok("移动端无横向溢出")
 
@@ -209,11 +232,14 @@ with sync_playwright() as p:
     print("━" * 70)
     ctx4 = browser.new_context(viewport={"width": 1920, "height": 1080})
     page4 = ctx4.new_page()
+
     # 延迟企业分析 API 20 秒（超过前端 15s 超时）
     def slow_response(route):
         import time
+
         time.sleep(20)
         route.continue_()
+
     page4.route("**/api/v1/analysis/enterprise/**", slow_response)
     page4.goto("http://localhost:8001/app")
     page4.wait_for_load_state("networkidle")
@@ -290,7 +316,9 @@ with sync_playwright() as p:
     print("📟 [测试 6] 控制台错误统计")
     print("━" * 70)
     if errs:
-        real_errs = [e for e in errs if "cdn" not in e.lower() and "favicon" not in e.lower() and "deprecated" not in e.lower()]
+        real_errs = [
+            e for e in errs if "cdn" not in e.lower() and "favicon" not in e.lower() and "deprecated" not in e.lower()
+        ]
         if real_errs:
             major(f"控制台错误: {len(real_errs)} 个")
             for e in real_errs[:5]:
@@ -311,18 +339,22 @@ print(f"  🟠 重要问题: {len(ISSUES['major'])}")
 print(f"  🟡 轻微问题: {len(ISSUES['minor'])}")
 print(f"  💡 优化建议: {len(ISSUES['suggestions'])}")
 
-if ISSUES['critical']:
+if ISSUES["critical"]:
     print("\n  🔴 严重问题:")
-    for i in ISSUES['critical']: print(f"     {i}")
-if ISSUES['major']:
+    for i in ISSUES["critical"]:
+        print(f"     {i}")
+if ISSUES["major"]:
     print("\n  🟠 重要问题:")
-    for i in ISSUES['major']: print(f"     {i}")
-if ISSUES['minor']:
+    for i in ISSUES["major"]:
+        print(f"     {i}")
+if ISSUES["minor"]:
     print("\n  🟡 轻微问题:")
-    for i in ISSUES['minor']: print(f"     {i}")
-if ISSUES['suggestions']:
+    for i in ISSUES["minor"]:
+        print(f"     {i}")
+if ISSUES["suggestions"]:
     print("\n  💡 优化建议:")
-    for i in ISSUES['suggestions']: print(f"     {i}")
+    for i in ISSUES["suggestions"]:
+        print(f"     {i}")
 
 print(f"\n  📸 截图: {OUT}/")
 print("=" * 70)

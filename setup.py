@@ -3,26 +3,24 @@ Regional Industrial Economic Analysis Platform - packaging configuration.
 
 Installable via ``pip install .`` from the project root.
 """
-from setuptools import setup, find_packages
+
 from pathlib import Path
+
+from setuptools import find_packages, setup
 
 # Load long description from README
 readme_file = Path(__file__).parent / "README.md"
 long_description = ""
 if readme_file.exists():
-    with open(readme_file, "r", encoding="utf-8") as fh:
+    with open(readme_file, encoding="utf-8") as fh:
         long_description = fh.read()
 
 # Load pinned runtime requirements
 requirements_file = Path(__file__).parent / "requirements.txt"
 requirements = []
 if requirements_file.exists():
-    with open(requirements_file, "r", encoding="utf-8") as f:
-        requirements = [
-            line.strip()
-            for line in f
-            if line.strip() and not line.startswith("#")
-        ]
+    with open(requirements_file, encoding="utf-8") as f:
+        requirements = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
 setup(
     name="regional-economic-analysis",

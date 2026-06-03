@@ -25,13 +25,18 @@ jobs:
       security-events: write  # for SARIF upload
       id-token: write  # for OIDC
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76  # v2.14.0
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
         with:
           persist-credentials: false
 
       - name: Run Scorecard
-        uses: ossf/scorecard-action@1ecbf3a8d5e7c5e5c5c5c5c5c5c5c5c5c5c5c5c5  # v2.3.3
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a  # v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif

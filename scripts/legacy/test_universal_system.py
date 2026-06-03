@@ -3,15 +3,12 @@
 测试通用数据分析系统
 验证所有功能是否正常工作
 """
-import sys
+
 import logging
-from pathlib import Path
+import sys
 
 # 设置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 print("=" * 80)
 print("通用数据分析系统 - 完整测试")
@@ -24,15 +21,16 @@ print("=" * 80)
 try:
     from backend import (
         UniversalAnalyzer,
-        quick_start_demo,
-        get_available_models,
-        AutoML,
         create_sample_data,
+        get_available_models,
+        quick_start_demo,
     )
+
     print("✓ 核心模块导入成功")
 except Exception as e:
     print(f"✗ 模块导入失败: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
@@ -54,11 +52,12 @@ try:
     sample_df = create_sample_data(n_regions=5, n_years=3)
     print(f"✓ 示例数据创建成功: {sample_df.shape}")
     print(f"✓ 数据列: {sample_df.columns.tolist()}")
-    print(f"\n✓ 数据预览:")
+    print("\n✓ 数据预览:")
     print(sample_df.head())
 except Exception as e:
     print(f"✗ 创建示例数据失败: {e}")
     import traceback
+
     traceback.print_exc()
 
 # 4. 测试快速开始演示
@@ -71,6 +70,7 @@ try:
 except Exception as e:
     print(f"✗ 快速演示失败: {e}")
     import traceback
+
     traceback.print_exc()
 
 # 5. 测试单独功能
@@ -79,22 +79,23 @@ print("5. 测试单独功能")
 print("=" * 80)
 try:
     from backend import UniversalAnalyzer
-    
+
     analyzer = UniversalAnalyzer()
     print(f"✓ 分析器创建成功: {analyzer.config.project_name}")
-    
+
     # 加载数据
     df = create_sample_data()
-    dataset = analyzer.load_data_from_dataframe(df, name='test_data')
+    dataset = analyzer.load_data_from_dataframe(df, name="test_data")
     print(f"✓ 数据加载成功: {len(dataset.data)} 条记录")
-    
+
     # 简单分析（不运行ML）
     analysis_result = analyzer.analyze(run_ml=False)
     print(f"✓ 基础分析完成: {len(analysis_result.insights)} 条洞察")
-    
+
 except Exception as e:
     print(f"✗ 单独功能测试失败: {e}")
     import traceback
+
     traceback.print_exc()
 
 print("\n" + "=" * 80)

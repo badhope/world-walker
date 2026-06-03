@@ -1,6 +1,7 @@
-import hmac
 import hashlib
+import hmac
 import os
+
 import joblib
 
 
@@ -13,7 +14,7 @@ def _get_signing_key():
 
 def _compute_hmac(filepath: str, key: bytes) -> str:
     h = hmac.new(key, digestmod=hashlib.sha256)
-    with open(filepath, 'rb') as f:
+    with open(filepath, "rb") as f:
         while True:
             chunk = f.read(8192)
             if not chunk:
@@ -28,7 +29,7 @@ def save_with_signature(obj, filepath: str, key: bytes | None = None):
     joblib.dump(obj, filepath)
     if key:
         sig = _compute_hmac(filepath, key)
-        with open(filepath + '.sig', 'w') as f:
+        with open(filepath + ".sig", "w") as f:
             f.write(sig)
 
 
@@ -36,7 +37,7 @@ def load_with_signature(filepath: str, key: bytes | None = None):
     if key is None:
         key = _get_signing_key()
     if key:
-        sig_path = filepath + '.sig'
+        sig_path = filepath + ".sig"
         if not os.path.exists(sig_path):
             raise ValueError(f"Missing signature file for: {filepath}")
         with open(sig_path) as f:

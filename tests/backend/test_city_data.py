@@ -1,28 +1,25 @@
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import pytest
 import pandas as pd
-import numpy as np
 
 from backend.data.city_data import (
-    get_city_data,
-    get_all_cities,
-    get_historical_data,
     compare_cities,
+    get_all_cities,
+    get_city_data,
+    get_historical_data,
     get_score_benchmarks,
     get_score_weights,
-    CITY_DATA,
 )
 
 
 class TestGetCityData:
-
     def test_returns_dict_for_valid_city(self):
         result = get_city_data("深圳")
         assert isinstance(result, dict)
@@ -61,7 +58,6 @@ class TestGetCityData:
 
 
 class TestGetAllCities:
-
     def test_returns_list(self):
         result = get_all_cities()
         assert isinstance(result, list)
@@ -82,7 +78,6 @@ class TestGetAllCities:
 
 
 class TestGetHistoricalData:
-
     def test_returns_dataframe(self):
         result = get_historical_data("深圳")
         assert isinstance(result, pd.DataFrame)
@@ -115,7 +110,6 @@ class TestGetHistoricalData:
 
 
 class TestCompareCities:
-
     def test_returns_dataframe(self):
         result = compare_cities(["深圳", "上海"])
         assert isinstance(result, pd.DataFrame)
@@ -148,7 +142,6 @@ class TestCompareCities:
 
 
 class TestGetScoreBenchmarks:
-
     def test_returns_dict(self):
         result = get_score_benchmarks()
         assert isinstance(result, dict)
@@ -180,7 +173,6 @@ class TestGetScoreBenchmarks:
 
 
 class TestGetScoreWeights:
-
     def test_returns_dict(self):
         result = get_score_weights()
         assert isinstance(result, dict)

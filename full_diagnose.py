@@ -2,19 +2,34 @@
 全面API验证 + 静态代码审查
 不依赖浏览器，直接验证后端 + 分析前端代码潜在问题
 """
+
 import json
-import urllib.request
-import urllib.parse
-import urllib.error
 import re
-import os
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 API = "http://localhost:8000"
-results = {"api_pass": [], "api_fail": [], "code_issues": [], "perf_issues": [], "a11y_issues": [], "security_issues": []}
+results = {
+    "api_pass": [],
+    "api_fail": [],
+    "code_issues": [],
+    "perf_issues": [],
+    "a11y_issues": [],
+    "security_issues": [],
+}
 
-def ok(msg): results["api_pass"].append(msg); print(f"  ✅ {msg}")
-def fail(msg): results["api_fail"].append(msg); print(f"  🔴 {msg}")
+
+def ok(msg):
+    results["api_pass"].append(msg)
+    print(f"  ✅ {msg}")
+
+
+def fail(msg):
+    results["api_fail"].append(msg)
+    print(f"  🔴 {msg}")
+
 
 def http_get(path, timeout=15):
     """GET 请求"""
@@ -28,18 +43,21 @@ def http_get(path, timeout=15):
     except Exception as e:
         return 0, str(e)
 
+
 def http_post(path, data, timeout=15):
     """POST 请求"""
     url = f"{API}{path}"
     try:
-        req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"),
-                                     headers={"Content-Type": "application/json"})
+        req = urllib.request.Request(
+            url, data=json.dumps(data).encode("utf-8"), headers={"Content-Type": "application/json"}
+        )
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.status, r.read().decode("utf-8")
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8")
     except Exception as e:
         return 0, str(e)
+
 
 # ═══════════════════════════════════════
 #  第1部分: API 端点全面验证
@@ -74,8 +92,17 @@ for method, path, body in endpoints:
 
 # POST endpoints
 post_endpoints = [
-    ("/api/v1/cities/time-series", {"city_codes": ["深圳","上海"], "indicator": "gdp", "year_start": 2020, "year_end": 2025, "group_by": ["city"]}),
-    ("/api/v1/cities/compare", ["深圳","北京","广州"]),
+    (
+        "/api/v1/cities/time-series",
+        {
+            "city_codes": ["深圳", "上海"],
+            "indicator": "gdp",
+            "year_start": 2020,
+            "year_end": 2025,
+            "group_by": ["city"],
+        },
+    ),
+    ("/api/v1/cities/compare", ["深圳", "北京", "广州"]),
 ]
 for path, body in post_endpoints:
     status, text = http_post(path, body)
@@ -94,7 +121,7 @@ if status == 200:
     for city in cities:
         print(f"      - {city}")
     if len(cities) >= 8:
-        ok(f"8个城市数据完整")
+        ok("8个城市数据完整")
     else:
         fail(f"城市数量不足: {len(cities)}")
 
@@ -107,7 +134,7 @@ if status == 200:
     sup_d = data.get("details", {}).get("supply_details", {})
     pol_d = data.get("details", {}).get("policy_details", {})
 
-    print(f"\n  企业分析字段 (深圳):")
+    print("\n  企业分析字段 (深圳):")
     print(f"    总分: {score}")
     print(f"    成本字段: {list(cost_d.keys())}")
     print(f"    供应字段: {list(sup_d.keys())}")
@@ -121,7 +148,7 @@ if status == 200:
     if "减税降费" in pol_d:
         ok(f"政策字段 '减税降费' 存在: {pol_d['减税降费']}")
     else:
-        fail(f"政策字段 '减税降费' 缺失")
+        fail("政策字段 '减税降费' 缺失")
 
 # 检查热力图数据 - 重要！前端使用 tax_reduction 字段
 status, text = http_get("/api/v1/cities/%E6%B7%B1%E5%9C%B3")
@@ -147,11 +174,11 @@ print(f"  文件大小: {len(html):,} 字节")
 checks = [
     (r"loc\.origin|window\.location\.origin|resolveApiBase|api-base", "动态 API 基础 URL (无硬编码)"),
     (r"AbortController", "API 超时控制 (AbortController)"),
-    (r'\.toast-error|toast\.error|toast-success', "Toast 通知系统"),
-    (r'\.skeleton|skeleton-', "骨架屏加载状态"),
-    (r'echarts\.getInstanceByDom.*dispose', "ECharts 实例正确清理"),
-    (r'btnEntAnalyze.*disabled|loading', "按钮 loading 状态"),
-    (r'addEventListener.*error', "错误事件监听"),
+    (r"\.toast-error|toast\.error|toast-success", "Toast 通知系统"),
+    (r"\.skeleton|skeleton-", "骨架屏加载状态"),
+    (r"echarts\.getInstanceByDom.*dispose", "ECharts 实例正确清理"),
+    (r"btnEntAnalyze.*disabled|loading", "按钮 loading 状态"),
+    (r"addEventListener.*error", "错误事件监听"),
     (r"@media.*max-width.*768", "响应式断点"),
     (r"@media.*max-width.*480", "移动端断点"),
     (r"viewport.*device-width", "viewport meta"),
@@ -201,7 +228,7 @@ for p, d in chart_check:
 # 2.4 检查无障碍（a11y）
 a11y = [
     (r"<html[^>]*lang=", "html lang 属性"),
-    (r'<button[^>]*type=.button.', "按钮 type 属性"),
+    (r"<button[^>]*type=.button.", "按钮 type 属性"),
     (r":focus-visible|:focus", "焦点可见状态"),
     (r"tabindex", "tabindex 键盘导航"),
 ]
@@ -227,8 +254,8 @@ else:
 # 2.5 检查 SEO/元数据
 seo = [
     (r"<title>.*</title>", "页面标题"),
-    (r'<meta\s+name=.description.', "meta description"),
-    (r'<meta\s+property=.og:', "Open Graph 元数据"),
+    (r"<meta\s+name=.description.", "meta description"),
+    (r"<meta\s+property=.og:", "Open Graph 元数据"),
     (r"<link\s+rel=.icon.", "favicon"),
 ]
 for p, d in seo:
@@ -343,9 +370,16 @@ for city in ["%E6%B7%B1%E5%9C%B3", "%E4%B8%8A%E6%B5%B7", "%E5%8C%97%E4%BA%AC"]:
 
 # 4.3 时间序列对比 - 中文名验证
 print("\n  时间序列对比:")
-status, text = http_post("/api/v1/cities/time-series",
-    {"city_codes": ["深圳","上海","北京"], "indicator": "gdp",
-     "year_start": 2020, "year_end": 2025, "group_by": ["city"]})
+status, text = http_post(
+    "/api/v1/cities/time-series",
+    {
+        "city_codes": ["深圳", "上海", "北京"],
+        "indicator": "gdp",
+        "year_start": 2020,
+        "year_end": 2025,
+        "group_by": ["city"],
+    },
+)
 if status == 200:
     d = json.loads(text)
     ts = d.get("time_series", {})
@@ -360,7 +394,7 @@ if status == 200:
                 group_name = "未知"
             points = g.get("time_points", [])
             print(f"    {group_name}: {len(points)} 数据点")
-            if group_name in ["深圳","上海","北京","广州"]:
+            if group_name in ["深圳", "上海", "北京", "广州"]:
                 ok(f"分组名是中文: '{group_name}'")
             else:
                 print(f"  🔴 分组名是代码: '{group_name}'")
@@ -400,20 +434,25 @@ print(f"  ⚡ 性能问题: {len(results['perf_issues'])}")
 print(f"  ♿ 无障碍问题: {len(results['a11y_issues'])}")
 print(f"  🔒 安全问题: {len(results['security_issues'])}")
 
-if results['api_fail']:
+if results["api_fail"]:
     print("\n  🔴 API 失败:")
-    for x in results['api_fail']: print(f"     {x}")
-if results['code_issues']:
+    for x in results["api_fail"]:
+        print(f"     {x}")
+if results["code_issues"]:
     print("\n  🔍 代码问题:")
-    for x in results['code_issues']: print(f"     {x}")
-if results['perf_issues']:
+    for x in results["code_issues"]:
+        print(f"     {x}")
+if results["perf_issues"]:
     print("\n  ⚡ 性能问题:")
-    for x in results['perf_issues']: print(f"     {x}")
-if results['a11y_issues']:
+    for x in results["perf_issues"]:
+        print(f"     {x}")
+if results["a11y_issues"]:
     print("\n  ♿ 无障碍问题:")
-    for x in results['a11y_issues']: print(f"     {x}")
-if results['security_issues']:
+    for x in results["a11y_issues"]:
+        print(f"     {x}")
+if results["security_issues"]:
     print("\n  🔒 安全问题:")
-    for x in results['security_issues']: print(f"     {x}")
+    for x in results["security_issues"]:
+        print(f"     {x}")
 
 print("=" * 70)

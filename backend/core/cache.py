@@ -1,14 +1,16 @@
 """
 内存缓存管理模块 - 线程安全 + TTL + 容量限制
 """
+
+import inspect
 import json
+import logging
 import threading
 import time
 from collections import OrderedDict
-from typing import Any, Optional, Callable
+from collections.abc import Callable
 from functools import wraps
-import inspect
-import logging
+from typing import Any
 
 try:
     import redis
@@ -54,7 +56,7 @@ class MemoryCache:
     def clear_pattern(self, pattern: str) -> int:
         count = 0
         with self._lock:
-            prefix = pattern.replace('*', '')
+            prefix = pattern.replace("*", "")
             keys_to_delete = [k for k in self._cache.keys() if k.startswith(prefix)]
             for k in keys_to_delete:
                 del self._cache[k]
@@ -75,20 +77,14 @@ class MemoryCache:
 class CacheManager:
     """缓存管理器"""
 
-    def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0, password: Optional[str] = None):
+    def __init__(self, host: str = "localhost", port: int = 6379, db: int = 0, password: str | None = None):
         self.redis_client = None
         self.memory_cache = MemoryCache()
         if redis is None:
             logger.warning("redis 模块未安装，使用内存缓存")
             return
         try:
-            self.redis_client = redis.Redis(
-                host=host,
-                port=port,
-                db=db,
-                password=password,
-                decode_responses=True
-            )
+            self.redis_client = redis.Redis(host=host, port=port, db=db, password=password, decode_responses=True)
             self.redis_client.ping()
             logger.info(f"Redis 连接成功: {host}:{port}/{db}")
         except Exception as e:
@@ -96,7 +92,7 @@ class CacheManager:
             self.redis_client = None
             self.memory_cache = MemoryCache()
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         if self.redis_client:
             try:
                 value = self.redis_client.get(key)
@@ -109,8 +105,8 @@ class CacheManager:
                 logger.warning(f"Redis 读取失败: {e}")
         return self.memory_cache.get(key)
 
-    def set(self, key: str, value: Any, expire: Optional[int] = None) -> bool:
-        if isinstance(value, (dict, list, tuple)):
+    def set(self, key: str, value: Any, expire: int | None = None) -> bool:
+        if isinstance(value, dict | list | tuple):
             serialized_value = json.dumps(value, ensure_ascii=False)
         else:
             serialized_value = str(value)
@@ -168,7 +164,7 @@ class CacheManager:
         return ":".join(key_parts)
 
 
-def cached(expire: int = 3600, key_prefix: Optional[str] = None):
+def cached(expire: int = 3600, key_prefix: str | None = None):
     def decorator(func: Callable):
         @wraps(func)
         async def async_wrapper(*args, **kwargs):

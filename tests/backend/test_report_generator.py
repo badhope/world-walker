@@ -1,25 +1,23 @@
 import warnings
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import pytest
 import json
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 
 from backend.report_generator import ReportGenerator
 from backend.utils.report_generator import (
+    FlexibleReportGenerator,
+    OutputFormat,
     ReportConfig,
     ReportSection,
-    OutputFormat,
-    JSONReportGenerator,
-    MarkdownReportGenerator,
-    HTMLReportGenerator,
-    FlexibleReportGenerator,
 )
 
 
@@ -49,15 +47,16 @@ def _make_sample_data_quality():
 
 def _make_sample_processed_data():
     np.random.seed(42)
-    return pd.DataFrame({
-        "feature_a": np.random.randn(20),
-        "feature_b": np.random.randn(20),
-        "target": np.random.randn(20),
-    })
+    return pd.DataFrame(
+        {
+            "feature_a": np.random.randn(20),
+            "feature_b": np.random.randn(20),
+            "target": np.random.randn(20),
+        }
+    )
 
 
 class TestJSONReport:
-
     def test_generate_json_report(self, tmp_path):
         rg = ReportGenerator(output_dir=str(tmp_path))
         full_results = {
@@ -66,7 +65,7 @@ class TestJSONReport:
         }
         path = rg.generate_json_report(full_results)
         assert Path(path).exists()
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             loaded = json.load(f)
         assert "data_quality" in loaded
         assert "insights" in loaded
@@ -75,7 +74,7 @@ class TestJSONReport:
         rg = ReportGenerator(output_dir=str(tmp_path))
         full_results = {"data_quality": _make_sample_data_quality(), "insights": _make_sample_insights()}
         path = rg.generate_json_report(full_results)
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             loaded = json.load(f)
         assert loaded["data_quality"]["overall_quality"]["quality_score"] == 95.0
 
@@ -87,7 +86,6 @@ class TestJSONReport:
 
 
 class TestTextReport:
-
     def test_generate_text_report(self, tmp_path):
         rg = ReportGenerator(output_dir=str(tmp_path))
         path = rg.generate_text_report(_make_sample_data_quality(), _make_sample_insights())
@@ -96,57 +94,45 @@ class TestTextReport:
     def test_text_report_contains_key_info(self, tmp_path):
         rg = ReportGenerator(output_dir=str(tmp_path))
         path = rg.generate_text_report(_make_sample_data_quality(), _make_sample_insights())
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, encoding="utf-8") as f:
             content = f.read()
         assert "数据质量" in content
         assert "最佳模型" in content
 
     def test_text_report_custom_filename(self, tmp_path):
         rg = ReportGenerator(output_dir=str(tmp_path))
-        path = rg.generate_text_report(
-            _make_sample_data_quality(), _make_sample_insights(), filename="summary.txt"
-        )
+        path = rg.generate_text_report(_make_sample_data_quality(), _make_sample_insights(), filename="summary.txt")
         assert Path(path).exists()
         assert "summary.txt" in path
 
 
 class TestExcelReport:
-
     def test_generate_excel_report(self, tmp_path):
         rg = ReportGenerator(output_dir=str(tmp_path))
         data = _make_sample_processed_data()
-        path = rg.generate_excel_report(
-            _make_sample_data_quality(), _make_sample_insights(), data
-        )
+        path = rg.generate_excel_report(_make_sample_data_quality(), _make_sample_insights(), data)
         assert Path(path).exists()
 
     def test_excel_report_readable(self, tmp_path):
         rg = ReportGenerator(output_dir=str(tmp_path))
         data = _make_sample_processed_data()
-        path = rg.generate_excel_report(
-            _make_sample_data_quality(), _make_sample_insights(), data
-        )
+        path = rg.generate_excel_report(_make_sample_data_quality(), _make_sample_insights(), data)
         df = pd.read_excel(path, sheet_name="数据质量")
         assert len(df) > 0
 
     def test_excel_report_has_model_comparison_sheet(self, tmp_path):
         rg = ReportGenerator(output_dir=str(tmp_path))
         data = _make_sample_processed_data()
-        path = rg.generate_excel_report(
-            _make_sample_data_quality(), _make_sample_insights(), data
-        )
+        path = rg.generate_excel_report(_make_sample_data_quality(), _make_sample_insights(), data)
         xl = pd.ExcelFile(path)
         assert "模型对比" in xl.sheet_names
 
 
 class TestGenerateAllReports:
-
     def test_generate_all_reports(self, tmp_path):
         rg = ReportGenerator(output_dir=str(tmp_path))
         data = _make_sample_processed_data()
-        reports = rg.generate_all_reports(
-            _make_sample_data_quality(), _make_sample_insights(), data
-        )
+        reports = rg.generate_all_reports(_make_sample_data_quality(), _make_sample_insights(), data)
         assert "json" in reports
         assert "text" in reports
         assert "excel" in reports
@@ -164,7 +150,6 @@ class TestGenerateAllReports:
 
 
 class TestFlexibleReportGenerator:
-
     def test_json_report_generation(self, tmp_path):
         gen = FlexibleReportGenerator()
         section = ReportSection(title="Test", content={"key": "value"}, order=0)

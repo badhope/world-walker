@@ -68,9 +68,50 @@ filterwarnings = [
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+extend-exclude = [
+    "models/*.pkl",
+    "models/SHA256SUMS",
+    "frontend",
+    "docs",
+    "data/cities",
+    "screenshots",
+    ".github",
+    "*.log",
+    "build",
+    "dist",
+    ".venv",
+    "venv",
+    "node_modules",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP"]
+# Rules intentionally disabled across the project:
+# - N803/N806: ML/DL convention uses uppercase variable names for tensors
+#   (X, X_train, X_test, Q1, Q3, IQR, etc.). Renaming would break domain idiom
+#   without security or correctness benefit.
+# - E501: Long lines are stylistic; covered by formatter for the common case.
+# - E402: Module-level imports placed after sys.path manipulation are
+#   required by many test/example entry-points.
+# - W291/W293: Trailing/blank-line whitespace is cosmetic; ruff format handles
+#   the bulk of whitespace issues, and the remaining occurrences are
+#   non-functional.
+ignore = [
+    "N803",
+    "N806",
+    "E501",
+    "E402",
+    "W291",
+    "W293",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Examples and legacy scripts keep their original style; they're not part of
+# the supported test surface.
+"examples/**" = ["F401", "F841", "E722", "E741", "UP038"]
+"scripts/legacy/**" = ["F401", "F841", "E722", "E741", "UP038"]
+"notebooks/**" = ["F401", "F841", "E402", "E501", "E722", "E741", "N803", "N806", "UP038"]
+"tests/**" = ["F401", "F841", "E402", "N803", "N806", "UP038"]
 
 [tool.mypy]
 python_version = "3.11"

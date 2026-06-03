@@ -11,10 +11,11 @@ Endpoints:
   POST /api/v1/ml/train          — train a single model on user data
   POST /api/v1/ml/automl         — auto-select and tune the best model
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -36,26 +37,32 @@ router = APIRouter(prefix="/ml", tags=["ml"])
 # ============================================
 class TrainRequest(BaseModel):
     """Training data and config."""
-    data: List[Dict[str, Any]] = Field(
-        ..., description="Training rows as list of dicts (records)",
+
+    data: list[dict[str, Any]] = Field(
+        ...,
+        description="Training rows as list of dicts (records)",
     )
     target_column: str = Field(..., description="Name of the target column")
-    feature_columns: Optional[List[str]] = Field(
-        default=None, description="Optional list of feature columns; defaults to all non-target",
+    feature_columns: list[str] | None = Field(
+        default=None,
+        description="Optional list of feature columns; defaults to all non-target",
     )
     model_name: str = Field(
-        default="random_forest", description="One of get_available_models()",
+        default="random_forest",
+        description="One of get_available_models()",
     )
     test_size: float = Field(default=0.2, ge=0.05, le=0.5)
 
 
 class AutoMLRequest(BaseModel):
     """AutoML request."""
-    data: List[Dict[str, Any]] = Field(..., description="Training rows as records")
+
+    data: list[dict[str, Any]] = Field(..., description="Training rows as records")
     target_column: str = Field(..., description="Name of the target column")
-    feature_columns: Optional[List[str]] = Field(default=None)
-    candidate_models: Optional[List[str]] = Field(
-        default=None, description="Subset of models to consider; defaults to all",
+    feature_columns: list[str] | None = Field(default=None)
+    candidate_models: list[str] | None = Field(
+        default=None,
+        description="Subset of models to consider; defaults to all",
     )
     metric: str = Field(default="r2", description="r2 | neg_mae | neg_rmse")
 
@@ -64,7 +71,7 @@ class AutoMLRequest(BaseModel):
 # Endpoints
 # ============================================
 @router.get("/models", summary="List available ML models")
-async def list_models() -> Dict[str, Any]:
+async def list_models() -> dict[str, Any]:
     """Return the catalogue of training algorithms."""
     return {
         "models": get_available_models(),
@@ -73,7 +80,7 @@ async def list_models() -> Dict[str, Any]:
 
 
 @router.post("/train", summary="Train a single model")
-async def train(req: TrainRequest) -> Dict[str, Any]:
+async def train(req: TrainRequest) -> dict[str, Any]:
     """Train the requested algorithm and return metrics."""
     if not req.data:
         raise HTTPException(status_code=400, detail="`data` must be non-empty")
@@ -83,13 +90,12 @@ async def train(req: TrainRequest) -> Dict[str, Any]:
             detail=f"`target_column` {req.target_column!r} not present in data",
         )
 
-    feature_columns = req.feature_columns or [
-        k for k in req.data[0].keys() if k != req.target_column
-    ]
+    feature_columns = req.feature_columns or [k for k in req.data[0].keys() if k != req.target_column]
 
     try:
         # Write to a temp dir so the canonical models/ directory is not polluted
         import tempfile
+
         with tempfile.TemporaryDirectory(prefix="ml_train_") as tmpdir:
             cfg = TrainingConfig(
                 model_names=[req.model_name],
@@ -100,6 +106,7 @@ async def train(req: TrainRequest) -> Dict[str, Any]:
                 model_output_dir=tmpdir,
             )
             import pandas as pd
+
             df = pd.DataFrame(req.data)
             trainer = ModelTrainer(cfg)
             trainer.prepare_data(df)
@@ -128,14 +135,12 @@ async def train(req: TrainRequest) -> Dict[str, Any]:
 
 
 @router.post("/automl", summary="Auto-select and tune the best model")
-async def automl(req: AutoMLRequest) -> Dict[str, Any]:
+async def automl(req: AutoMLRequest) -> dict[str, Any]:
     """Run AutoML on the dataset and return the leaderboard."""
     if not req.data:
         raise HTTPException(status_code=400, detail="`data` must be non-empty")
 
-    feature_columns = req.feature_columns or [
-        k for k in req.data[0].keys() if k != req.target_column
-    ]
+    feature_columns = req.feature_columns or [k for k in req.data[0].keys() if k != req.target_column]
 
     try:
         aml = AutoML(
@@ -145,11 +150,12 @@ async def automl(req: AutoMLRequest) -> Dict[str, Any]:
             scoring=req.metric,
         )
         import pandas as pd
+
         df = pd.DataFrame(req.data)
         result = aml.fit(df)
         # Build a leaderboard from all_results
         leaderboard = []
-        for r in (result.all_results or []):
+        for r in result.all_results or []:
             entry = {"model": getattr(r, "model_name", "?")}
             metrics = getattr(r, "metrics", None)
             if metrics is not None:

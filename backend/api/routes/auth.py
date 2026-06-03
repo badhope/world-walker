@@ -1,3 +1,4 @@
+import hmac
 import os
 
 from fastapi import APIRouter, HTTPException
@@ -13,7 +14,10 @@ def login(username: str, password: str):
     admin_pass = os.getenv("ADMIN_PASSWORD", "")
     if not admin_pass:
         raise HTTPException(status_code=500, detail="Admin password not configured")
-    if username != admin_user or password != admin_pass:
+    # Use constant-time comparison to avoid timing attacks on credentials
+    user_ok = hmac.compare_digest(username, admin_user)
+    pass_ok = hmac.compare_digest(password, admin_pass)
+    if not (user_ok and pass_ok):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": username})
     return {"access_token": token, "token_type": "bearer"}

@@ -2,23 +2,23 @@
 企业端分析器 - 面向企业的区域产业经济分析
 基于真实城市数据和统计分位数基准计算评分
 """
+
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Any
 
 from backend.analysis.base_analyzer import BaseAnalyzer
 from backend.data.city_data import (
+    get_all_cities,
     get_city_data,
+    get_data_source_info,
     get_score_benchmarks,
     get_score_weights,
-    get_all_cities,
-    get_data_source_info,
 )
 
 logger = logging.getLogger(__name__)
 
 
 class EnterpriseAnalyzer(BaseAnalyzer):
-
     def __init__(self):
         super().__init__()
         self.name = "EnterpriseAnalyzer"
@@ -55,15 +55,8 @@ class EnterpriseAnalyzer(BaseAnalyzer):
             else:
                 return max(10.0, 30.0 - ((value - bench["high"]) / bench["high"]) * 30)
 
-    def analyze_business_costs(
-        self,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        results = {
-            "total_cost_score": 0.0,
-            "components": {},
-            "benchmarks": {}
-        }
+    def analyze_business_costs(self, data: dict[str, Any]) -> dict[str, Any]:
+        results = {"total_cost_score": 0.0, "components": {}, "benchmarks": {}}
 
         if "land_price" in data:
             score = self._calculate_score(data["land_price"], "land_price", higher_is_better=False)
@@ -71,7 +64,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["land_price"],
                 "unit": "元/平方米·年",
                 "weight": 0.30,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["land_price"] = self.benchmarks.get("land_price", {})
 
@@ -81,7 +74,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["salary_level"],
                 "unit": "元/月",
                 "weight": 0.40,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["salary_level"] = self.benchmarks.get("salary_level", {})
 
@@ -91,7 +84,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["energy_cost"],
                 "unit": "元/千瓦时",
                 "weight": 0.20,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["energy_cost"] = self.benchmarks.get("energy_cost", {})
 
@@ -101,7 +94,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["financing_cost"],
                 "unit": "%",
                 "weight": 0.10,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["financing_cost"] = self.benchmarks.get("financing_cost", {})
 
@@ -117,17 +110,14 @@ class EnterpriseAnalyzer(BaseAnalyzer):
 
         return results
 
-    def analyze_supply_chain(
-        self,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def analyze_supply_chain(self, data: dict[str, Any]) -> dict[str, Any]:
         results = {
             "supply_chain_score": 0.0,
             "localization_rate": 0.0,
             "response_efficiency": {},
             "agglomeration_index": 0.0,
             "components": {},
-            "benchmarks": {}
+            "benchmarks": {},
         }
 
         if "local_support_rate" in data:
@@ -137,7 +127,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["local_support_rate"],
                 "unit": "%",
                 "weight": 0.45,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["local_support_rate"] = self.benchmarks.get("local_support_rate", {})
 
@@ -148,7 +138,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["avg_delivery_time"],
                 "unit": "天",
                 "weight": 0.25,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["avg_delivery_time"] = self.benchmarks.get("avg_delivery_time", {})
 
@@ -159,7 +149,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["location_quotient"],
                 "unit": "",
                 "weight": 0.30,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["location_quotient"] = self.benchmarks.get("location_quotient", {})
 
@@ -175,17 +165,14 @@ class EnterpriseAnalyzer(BaseAnalyzer):
 
         return results
 
-    def analyze_policy_benefits(
-        self,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def analyze_policy_benefits(self, data: dict[str, Any]) -> dict[str, Any]:
         results = {
             "policy_benefit_score": 0.0,
             "tax_incentives": {},
             "subsidies": {},
             "government_efficiency": {},
             "components": {},
-            "benchmarks": {}
+            "benchmarks": {},
         }
 
         if "tax_reduction" in data:
@@ -195,7 +182,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["tax_reduction"],
                 "unit": "亿元",
                 "weight": 0.30,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["tax_reduction"] = self.benchmarks.get("tax_reduction", {})
 
@@ -206,7 +193,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["tax_coverage"],
                 "unit": "%",
                 "weight": 0.20,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["tax_coverage"] = self.benchmarks.get("tax_coverage", {})
 
@@ -217,7 +204,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["rd_subsidy"],
                 "unit": "亿元",
                 "weight": 0.35,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["rd_subsidy"] = self.benchmarks.get("rd_subsidy", {})
 
@@ -228,7 +215,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
                 "value": data["avg_approval_time"],
                 "unit": "工作日",
                 "weight": 0.15,
-                "score": round(score, 2)
+                "score": round(score, 2),
             }
             results["benchmarks"]["avg_approval_time"] = self.benchmarks.get("avg_approval_time", {})
 
@@ -244,14 +231,14 @@ class EnterpriseAnalyzer(BaseAnalyzer):
 
         return results
 
-    def analyze_city(self, city_name: str) -> Dict[str, Any]:
+    def analyze_city(self, city_name: str) -> dict[str, Any]:
         city_data = get_city_data(city_name)
         if not city_data:
             raise ValueError(f"No data available for city: {city_name}")
 
         return self.generate_comprehensive_report(city_data)
 
-    def compare_cities(self, city_names: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def compare_cities(self, city_names: list[str] | None = None) -> list[dict[str, Any]]:
         if city_names is None:
             city_names = get_all_cities()
 
@@ -259,22 +246,21 @@ class EnterpriseAnalyzer(BaseAnalyzer):
         for city_name in city_names:
             try:
                 report = self.analyze_city(city_name)
-                results.append({
-                    "city": city_name,
-                    "business_cost_score": report["business_costs"]["total_cost_score"],
-                    "supply_chain_score": report["supply_chain"]["supply_chain_score"],
-                    "policy_benefit_score": report["policy_benefits"]["policy_benefit_score"],
-                    "overall_score": report["overall_score"],
-                })
+                results.append(
+                    {
+                        "city": city_name,
+                        "business_cost_score": report["business_costs"]["total_cost_score"],
+                        "supply_chain_score": report["supply_chain"]["supply_chain_score"],
+                        "policy_benefit_score": report["policy_benefits"]["policy_benefit_score"],
+                        "overall_score": report["overall_score"],
+                    }
+                )
             except Exception as e:
                 logger.warning(f"Failed to analyze {city_name}: {e}")
 
         return sorted(results, key=lambda x: x["overall_score"], reverse=True)
 
-    def generate_comprehensive_report(
-        self,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def generate_comprehensive_report(self, data: dict[str, Any]) -> dict[str, Any]:
         report = {
             "region": data.get("region", data.get("name", "未知地区")),
             "industry": data.get("industry", "未知产业"),
@@ -284,7 +270,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
             "supply_chain": self.analyze_supply_chain(data),
             "policy_benefits": self.analyze_policy_benefits(data),
             "recommendations": [],
-            "data_source": self.data_source_info.get(data.get("name", ""), {})
+            "data_source": self.data_source_info.get(data.get("name", ""), {}),
         }
 
         cost_score = report["business_costs"]["total_cost_score"]
@@ -293,10 +279,10 @@ class EnterpriseAnalyzer(BaseAnalyzer):
 
         w = self.weights
         report["overall_score"] = round(
-            cost_score * w.get("business_cost", 0.35) +
-            supply_score * w.get("supply_chain", 0.40) +
-            policy_score * w.get("policy_benefit", 0.25),
-            2
+            cost_score * w.get("business_cost", 0.35)
+            + supply_score * w.get("supply_chain", 0.40)
+            + policy_score * w.get("policy_benefit", 0.25),
+            2,
         )
 
         if cost_score < 60:
@@ -323,12 +309,8 @@ class EnterpriseAnalyzer(BaseAnalyzer):
         return report
 
     def run_full_analysis(
-        self,
-        data,
-        save_results: bool = True,
-        output_dir: str = "data/enterprise_analysis",
-        **kwargs
-    ) -> Dict[str, Any]:
+        self, data, save_results: bool = True, output_dir: str = "data/enterprise_analysis", **kwargs
+    ) -> dict[str, Any]:
         if isinstance(data, str):
             return self.analyze_city(data)
         elif isinstance(data, dict):
@@ -336,7 +318,7 @@ class EnterpriseAnalyzer(BaseAnalyzer):
         else:
             raise ValueError("data must be city name (str) or city data (dict)")
 
-    def predict(self, data) -> Dict[str, Any]:
+    def predict(self, data) -> dict[str, Any]:
         if isinstance(data, str):
             return self.analyze_city(data)
         elif isinstance(data, dict):

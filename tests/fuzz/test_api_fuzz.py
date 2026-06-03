@@ -6,14 +6,16 @@ the API never crashes / 500s on edge cases.
 
 OpenSSF Scorecard: Fuzzing check (>= 5/10).
 """
+
 from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
-from hypothesis import HealthCheck, given, settings, strategies as st
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
 
 # Add project root to path
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,6 +28,7 @@ if os.getcwd() not in sys.path:
 
 try:
     from fastapi.testclient import TestClient
+
     from backend.api.main import app
 
     client = TestClient(app)
@@ -39,11 +42,25 @@ except Exception as exc:  # pragma: no cover
 # ============================================
 # Strategies (input generators)
 # ============================================
-chinese_city = st.sampled_from([
-    "深圳", "上海", "北京", "广州", "杭州",
-    "成都", "苏州", "武汉", "南京", "西安",
-    "火星", "不存在的城市", "", " ", "  "
-])
+chinese_city = st.sampled_from(
+    [
+        "深圳",
+        "上海",
+        "北京",
+        "广州",
+        "杭州",
+        "成都",
+        "苏州",
+        "武汉",
+        "南京",
+        "西安",
+        "火星",
+        "不存在的城市",
+        "",
+        " ",
+        "  ",
+    ]
+)
 
 # We allow long but not absurd city names (URL length limit safe)
 city_name = st.text(
@@ -72,26 +89,50 @@ weight_value = st.floats(
     allow_infinity=False,
 )
 years_count = st.integers(min_value=-100, max_value=10000)
-metric_name = st.sampled_from([
-    "gdp", "population", "land_price", "salary_level",
-    "energy_cost", "talent_pool", "supply_chain_maturity", "policy_benefit",
-    "innovation_index", "infra_score", "living_quality",
-    "gdp_growth", "financing_cost", "tax_burden",
-    "nonexistent", "", "DROP TABLE cities", "<script>alert(1)</script>",
-])
+metric_name = st.sampled_from(
+    [
+        "gdp",
+        "population",
+        "land_price",
+        "salary_level",
+        "energy_cost",
+        "talent_pool",
+        "supply_chain_maturity",
+        "policy_benefit",
+        "innovation_index",
+        "infra_score",
+        "living_quality",
+        "gdp_growth",
+        "financing_cost",
+        "tax_burden",
+        "nonexistent",
+        "",
+        "DROP TABLE cities",
+        "<script>alert(1)</script>",
+    ]
+)
 
-industry = st.sampled_from([
-    "半导体", "新能源", "生物医药", "智能制造", "金融科技",
-    "人工智能", "电子商务", "汽车制造",
-    "", "<script>", "' OR 1=1--",
-])
+industry = st.sampled_from(
+    [
+        "半导体",
+        "新能源",
+        "生物医药",
+        "智能制造",
+        "金融科技",
+        "人工智能",
+        "电子商务",
+        "汽车制造",
+        "",
+        "<script>",
+        "' OR 1=1--",
+    ]
+)
 
 # ============================================
 # Skip if app not importable
 # ============================================
 pytestmark = pytest.mark.skipif(
-    not HAS_APP,
-    reason=f"FastAPI app not importable: {_IMPORT_ERROR if not HAS_APP else ''}"
+    not HAS_APP, reason=f"FastAPI app not importable: {_IMPORT_ERROR if not HAS_APP else ''}"
 )
 
 
@@ -111,24 +152,24 @@ def test_get_city_never_500(city: str) -> None:
         if "URL too long" in str(exc) or "InvalidURL" in repr(exc):
             return
         raise
-    assert resp.status_code in (200, 404, 422), (
-        f"Unexpected status {resp.status_code} for city={city!r}: {resp.text[:200]}"
-    )
+    assert resp.status_code in (
+        200,
+        404,
+        422,
+    ), f"Unexpected status {resp.status_code} for city={city!r}: {resp.text[:200]}"
     # 4xx is fine, 5xx is not
     assert resp.status_code < 500, f"Server error for city={city!r}"
 
 
 @given(cities=city_list)
 @settings(max_examples=30, deadline=3000, suppress_health_check=[HealthCheck.too_slow])
-def test_compare_cities_never_500(cities: List[str]) -> None:
+def test_compare_cities_never_500(cities: list[str]) -> None:
     """POST /api/v1/cities/compare must not crash on arbitrary input."""
     resp = client.post(
         "/api/v1/cities/compare",
         json={"cities": cities},
     )
-    assert resp.status_code in (200, 400, 404, 422), (
-        f"Unexpected status {resp.status_code} for cities={cities!r}"
-    )
+    assert resp.status_code in (200, 400, 404, 422), f"Unexpected status {resp.status_code} for cities={cities!r}"
     assert resp.status_code < 500
 
 
@@ -143,7 +184,10 @@ def test_compare_cities_never_500(cities: List[str]) -> None:
 )
 @settings(max_examples=40, deadline=3000, suppress_health_check=[HealthCheck.too_slow])
 def test_enterprise_analysis_never_500(
-    city: str, industry_name: str, years: int, bw: float,
+    city: str,
+    industry_name: str,
+    years: int,
+    bw: float,
 ) -> None:
     """POST /api/v1/analysis/enterprise must not crash on edge cases."""
     payload = {
@@ -153,9 +197,7 @@ def test_enterprise_analysis_never_500(
         "weight_business_cost": bw,
     }
     resp = client.post("/api/v1/analysis/enterprise", json=payload)
-    assert resp.status_code in (200, 400, 404, 422), (
-        f"Unexpected {resp.status_code} for payload={payload!r}"
-    )
+    assert resp.status_code in (200, 400, 404, 422), f"Unexpected {resp.status_code} for payload={payload!r}"
     assert resp.status_code < 500
 
 
@@ -172,9 +214,9 @@ def test_time_series_never_500(city: str, years: int, metric: str) -> None:
         "metrics": [metric],
     }
     resp = client.post("/api/v1/forecast/time-series", json=payload)
-    assert resp.status_code < 500, (
-        f"Server error for city={city!r}, years={years}, metric={metric!r}: {resp.text[:200]}"
-    )
+    assert (
+        resp.status_code < 500
+    ), f"Server error for city={city!r}, years={years}, metric={metric!r}: {resp.text[:200]}"
 
 
 # ============================================
@@ -220,14 +262,10 @@ def test_injection_inputs_handled_safely(malicious: str) -> None:
             resp = client.post(endpoint, json={"city_name": malicious})
 
         # Must not return 5xx
-        assert resp.status_code < 500, (
-            f"5xx for malicious input on {endpoint}: {resp.status_code}"
-        )
+        assert resp.status_code < 500, f"5xx for malicious input on {endpoint}: {resp.status_code}"
         # If response is 200, must not echo back the raw malicious payload unsanitised
         if resp.status_code == 200 and "html" in resp.headers.get("content-type", ""):
-            assert malicious not in resp.text, (
-                f"Possible reflected XSS on {endpoint}"
-            )
+            assert malicious not in resp.text, f"Possible reflected XSS on {endpoint}"
 
 
 # ============================================
@@ -241,7 +279,7 @@ def test_injection_inputs_handled_safely(malicious: str) -> None:
     )
 )
 @settings(max_examples=20, deadline=3000, suppress_health_check=[HealthCheck.too_slow])
-def test_large_payload_never_500(payload: Dict[str, Any]) -> None:
+def test_large_payload_never_500(payload: dict[str, Any]) -> None:
     """Large but valid JSON payloads must not crash the server."""
     resp = client.post("/api/v1/analysis/enterprise", json=payload)
     assert resp.status_code < 500

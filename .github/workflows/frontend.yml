@@ -122,7 +122,7 @@ jobs:
           sleep 2
 
       - name: Run Lighthouse
-        uses: treosh/lighthouse-ci-action@1a6b54e32f63e6a4b9c1d7e0a8a9b6e1d5f9c8e1  # v11
+        uses: treosh/lighthouse-ci-action@72f881228236981b625ed765b928efb1786a1f55  # v11
         with:
           configPath: .lighthouserc.json
           uploadArtifacts: true

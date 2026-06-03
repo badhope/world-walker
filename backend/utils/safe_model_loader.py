@@ -24,13 +24,14 @@ For HMAC-style signing (release artefacts), see
 
 Reference: https://docs.python.org/3/library/pickle.html#restricting-globals
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ def _load_sha256sums(manifest: Path) -> dict[str, str]:
             f"Either commit it (recommended) or set ALLOW_UNVERIFIED_MODELS=1."
         )
     out: dict[str, str] = {}
-    with open(manifest, "r", encoding="utf-8") as fh:
+    with open(manifest, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line or line.startswith("#"):
@@ -77,7 +78,7 @@ def _load_sha256sums(manifest: Path) -> dict[str, str]:
 
 def verify_model_integrity(
     filepath: str | Path,
-    manifest: Optional[Path] = None,
+    manifest: Path | None = None,
 ) -> bool:
     """
     Check the file against the SHA-256 manifest. Returns True on success,
@@ -106,17 +107,12 @@ def verify_model_integrity(
     sums = _load_sha256sums(manifest)
     name = path.name
     if name not in sums:
-        raise ValueError(
-            f"Model {name!r} is not listed in {manifest}. "
-            f"Refusing to load an unverified model."
-        )
+        raise ValueError(f"Model {name!r} is not listed in {manifest}. " f"Refusing to load an unverified model.")
 
     actual = _compute_sha256(path)
     expected = sums[name].lower()
     if not _consteq(actual, expected):
-        raise ValueError(
-            f"SHA-256 mismatch for {name}: expected {expected}, got {actual}."
-        )
+        raise ValueError(f"SHA-256 mismatch for {name}: expected {expected}, got {actual}.")
     return True
 
 
@@ -134,7 +130,7 @@ def load_model(
     filepath: str | Path,
     *,
     verify: bool = True,
-    manifest: Optional[Path] = None,
+    manifest: Path | None = None,
 ) -> Any:
     """
     Load a scikit-learn / joblib model with SHA-256 integrity verification.

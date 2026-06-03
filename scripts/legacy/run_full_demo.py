@@ -18,7 +18,6 @@
 """
 
 import sys
-import os
 from pathlib import Path
 
 # 添加项目路径
@@ -36,13 +35,13 @@ print()
 print("[1/7] 导入必要模块...")
 
 try:
-    import pandas as pd
     import numpy as np
-    
-    from backend.analysis.real_data_analysis import real_data_analyzer
+    import pandas as pd
+
     from backend.analysis.enterprise_analyzer_v2 import enterprise_analyzer_v2
+    from backend.analysis.real_data_analysis import real_data_analyzer
     from backend.database import get_db
-    
+
     print("   ✅ 模块导入成功")
 except ImportError as e:
     print(f"   ❌ 导入失败: {e}")
@@ -74,12 +73,12 @@ print("[3/7] 执行探索性数据分析（EDA）...")
 
 try:
     eda_results = real_data_analyzer.perform_eda(df)
-    print(f"   ✅ EDA完成")
-    print(f"   📊 描述性统计已生成")
-    
-    stats = eda_results['summary_stats']
-    if 'gdp' in stats:
-        gdp_stats = stats['gdp']
+    print("   ✅ EDA完成")
+    print("   📊 描述性统计已生成")
+
+    stats = eda_results["summary_stats"]
+    if "gdp" in stats:
+        gdp_stats = stats["gdp"]
         print(f"   💰 GDP均值: {gdp_stats.get('mean', 'N/A'):.2f} 亿元")
         print(f"   📈 GDP标准差: {gdp_stats.get('std', 'N/A'):.2f}")
 except Exception as e:
@@ -127,25 +126,26 @@ sample_data = {
     "tax_reduction": 600.0,
     "tax_coverage": 88.0,
     "rd_subsidy": 280.0,
-    "avg_approval_time": 4.2
+    "avg_approval_time": 4.2,
 }
 
 try:
     enterprise_report = enterprise_analyzer_v2.generate_comprehensive_report(sample_data)
-    print(f"   ✅ 企业分析完成")
+    print("   ✅ 企业分析完成")
     print()
-    print(f"   📊 分析结果:")
+    print("   📊 分析结果:")
     print(f"   ├─ 综合评分: {enterprise_report['overall_score']:.1f}/100")
     print(f"   ├─ 营商成本评分: {enterprise_report['business_costs']['total_cost_score']:.1f}")
     print(f"   ├─ 供应链配套评分: {enterprise_report['supply_chain']['supply_chain_score']:.1f}")
     print(f"   └─ 政策红利评分: {enterprise_report['policy_benefits']['policy_benefit_score']:.1f}")
     print()
-    print(f"   💡 智能建议:")
-    for i, rec in enumerate(enterprise_report['recommendations'][:3], 1):
+    print("   💡 智能建议:")
+    for i, rec in enumerate(enterprise_report["recommendations"][:3], 1):
         print(f"   {i}. [{rec['priority']}] {rec['content']}")
 except Exception as e:
     print(f"   ❌ 企业分析失败: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
@@ -158,28 +158,26 @@ print("[6/7] 数据库存储演示...")
 
 try:
     db = get_db()
-    
+
     # 保存经济数据
     db.save_economic_dataframe(df)
-    
+
     # 保存企业分析结果
     analysis_id = db.save_enterprise_analysis(
-        sample_data['region'],
-        sample_data['industry'],
-        sample_data['year'],
-        enterprise_report
+        sample_data["region"], sample_data["industry"], sample_data["year"], enterprise_report
     )
-    
+
     # 获取统计信息
     stats = db.get_statistics()
-    
-    print(f"   ✅ 数据库存储成功")
+
+    print("   ✅ 数据库存储成功")
     print(f"   📊 经济数据: {stats['economic_data_count']} 条")
     print(f"   🏢 企业分析: {stats['enterprise_analysis_count']} 条")
     print(f"   📆 数据年份: {stats['data_year_range']}")
 except Exception as e:
     print(f"   ❌ 数据库操作失败: {e}")
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
@@ -192,11 +190,11 @@ print("[7/7] 生成分析图表...")
 
 try:
     viz_data = real_data_analyzer.get_visualization_data(df)
-    
+
     charts_dir = project_root / "data" / "charts"
     charts_dir.mkdir(exist_ok=True, parents=True)
-    
-    print(f"   ✅ 可视化数据准备完成")
+
+    print("   ✅ 可视化数据准备完成")
     print(f"   📁 图表目录: {charts_dir}")
 except Exception as e:
     print(f"   ❌ 可视化生成失败: {e}")

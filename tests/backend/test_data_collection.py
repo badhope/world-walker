@@ -1,11 +1,11 @@
 """
 数据采集模块测试
 """
+
 import json
 from pathlib import Path
 
 import pytest
-from pytest_mock import MockerFixture
 
 
 @pytest.mark.unit
@@ -89,7 +89,7 @@ class TestDataCollectionFromFile:
 
         basic_data_file = test_data_path / "basic_data.json"
         if basic_data_file.exists():
-            with open(basic_data_file, "r", encoding="utf-8") as f:
+            with open(basic_data_file, encoding="utf-8") as f:
                 data = json.load(f)
             assert isinstance(data, dict)
             assert "region" in data or "year" in data
@@ -101,7 +101,7 @@ class TestDataCollectionFromFile:
         json_files = list(test_data_path.glob("*.json"))
         for json_file in json_files:
             try:
-                with open(json_file, "r", encoding="utf-8") as f:
+                with open(json_file, encoding="utf-8") as f:
                     data = json.load(f)
                 assert isinstance(data, (dict, list))
             except json.JSONDecodeError:

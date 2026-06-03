@@ -1,25 +1,25 @@
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Optional, Any, Tuple
+import json
 import logging
 from pathlib import Path
-import json
+from typing import Any
 
+import numpy as np
+import pandas as pd
+
+from backend.analysis.base_analyzer import BaseAnalyzer
+from backend.data_processing.cleaner import DataCleaner
+from backend.report_generator import ReportGenerator
 from backend.sales_forecast.config import SalesForecastConfig
 from backend.sales_forecast.data_adapter import SalesDataAdapter
 from backend.sales_forecast.feature_engineer import SalesFeatureEngineer
 from backend.sales_forecast.model_trainer import SalesModelTrainer
 from backend.sales_forecast.visualizer import SalesForecastVisualizer
-from backend.data_processing.cleaner import DataCleaner
-from backend.report_generator import ReportGenerator
-from backend.analysis.base_analyzer import BaseAnalyzer
 
 logger = logging.getLogger(__name__)
 
 
 class SalesForecastAnalyzer(BaseAnalyzer):
-
-    def __init__(self, config: Optional[SalesForecastConfig] = None):
+    def __init__(self, config: SalesForecastConfig | None = None):
         super().__init__()
         self.config = config or SalesForecastConfig.get_default_config()
         self.data_adapter = SalesDataAdapter(self.config)
@@ -44,8 +44,8 @@ class SalesForecastAnalyzer(BaseAnalyzer):
         save_results: bool = True,
         output_dir: str = "data/sales_forecast",
         do_hyperparameter_tuning: bool = False,
-        save_model_version: bool = False
-    ) -> Dict[str, Any]:
+        save_model_version: bool = False,
+    ) -> dict[str, Any]:
         logger.info("=" * 60)
         logger.info("Starting Sales Forecast Analysis")
         logger.info("=" * 60)
@@ -85,25 +85,19 @@ class SalesForecastAnalyzer(BaseAnalyzer):
         # 8. 保存结果
         if save_results:
             logger.info("\n[7/8] Saving results...")
-            self._save_results(
-                output_dir,
-                training_result,
-                insights,
-                data_quality_report,
-                visualizations
-            )
+            self._save_results(output_dir, training_result, insights, data_quality_report, visualizations)
 
         self.analysis_result = {
             "data": {
                 "raw_shape": data.shape,
                 "cleaned_shape": self.cleaned_data.shape,
-                "processed_shape": self.processed_data.shape
+                "processed_shape": self.processed_data.shape,
             },
             "data_quality": data_quality_report,
             "training_result": training_result,
             "insights": insights,
             "feature_meta": feature_meta,
-            "visualizations": visualizations
+            "visualizations": visualizations,
         }
 
         logger.info("\n" + "=" * 60)
@@ -118,52 +112,44 @@ class SalesForecastAnalyzer(BaseAnalyzer):
         missing_report = self.data_cleaner.detect_missing(df_clean)
         logger.info(f"Missing values: {missing_report['total_missing']} cells")
 
-        df_clean = self.data_cleaner.fill_missing(df_clean, method='median')
+        df_clean = self.data_cleaner.fill_missing(df_clean, method="median")
 
         return df_clean
 
-    def _process_features(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict]:
+    def _process_features(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         target_col = self.config.target_column
         df_processed = df.copy()
 
         df_processed, meta = self.feature_engineer.process_features(
-            df_processed,
-            target_col=target_col,
-            generate_derived=True,
-            encode_categorical=True,
-            standardize=False
+            df_processed, target_col=target_col, generate_derived=True, encode_categorical=True, standardize=False
         )
 
-        drop_cols = ['date', 'product_id']
+        drop_cols = ["date", "product_id"]
         drop_cols = [col for col in drop_cols if col in df_processed.columns]
-        df_processed = df_processed.drop(columns=drop_cols, errors='ignore')
+        df_processed = df_processed.drop(columns=drop_cols, errors="ignore")
 
         df_processed = df_processed.fillna(0)
 
         return df_processed, meta
 
-    def _train_models(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _train_models(self, df: pd.DataFrame) -> dict[str, Any]:
         target_col = self.config.target_column
-        X_train, X_test, y_train, y_test = self.model_trainer.prepare_data(
-            df, target_col
-        )
+        X_train, X_test, y_train, y_test = self.model_trainer.prepare_data(df, target_col)
 
         self.X_test = X_test
         self.y_test = y_test
 
-        results = self.model_trainer.train_full_pipeline(
-            df, target_col, do_tuning=False
-        )
+        results = self.model_trainer.train_full_pipeline(df, target_col, do_tuning=False)
 
         return results
 
-    def _data_quality_check(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _data_quality_check(self, df: pd.DataFrame) -> dict[str, Any]:
         report = {}
 
         report["basic_info"] = {
             "total_rows": len(df),
             "total_columns": len(df.columns),
-            "memory_usage_mb": df.memory_usage(deep=True).sum() / (1024 * 1024)
+            "memory_usage_mb": df.memory_usage(deep=True).sum() / (1024 * 1024),
         }
 
         missing_stats = df.isnull().sum()
@@ -175,16 +161,17 @@ class SalesForecastAnalyzer(BaseAnalyzer):
                 {
                     "column": col,
                     "missing_count": int(missing_stats[col]),
-                    "missing_percent": float(missing_percent[col])
+                    "missing_percent": float(missing_percent[col]),
                 }
-                for col in df.columns if missing_stats[col] > 0
-            ]
+                for col in df.columns
+                if missing_stats[col] > 0
+            ],
         }
 
         duplicate_count = df.duplicated().sum()
         report["duplicates"] = {
             "total_duplicates": int(duplicate_count),
-            "duplicate_percent": float((duplicate_count / len(df)) * 100)
+            "duplicate_percent": float((duplicate_count / len(df)) * 100),
         }
 
         dtype_summary = {}
@@ -215,105 +202,82 @@ class SalesForecastAnalyzer(BaseAnalyzer):
                 "min_value": float(data.min()),
                 "max_value": float(data.max()),
                 "mean_value": float(data.mean()),
-                "median_value": float(data.median())
+                "median_value": float(data.median()),
             }
         report["outliers"] = outlier_report
 
         total_issues = (
-            missing_stats.sum() +
-            duplicate_count +
-            sum(o.get('outlier_count', 0) for o in outlier_report.values())
+            missing_stats.sum() + duplicate_count + sum(o.get("outlier_count", 0) for o in outlier_report.values())
         )
         max_possible_issues = len(df) * len(df.columns)
         quality_score = max(0, 100 - (total_issues / max_possible_issues) * 100)
 
         report["overall_quality"] = {
             "quality_score": float(quality_score),
-            "rating": "Excellent" if quality_score >= 90 else
-                      "Good" if quality_score >= 70 else
-                      "Fair" if quality_score >= 50 else "Poor"
+            "rating": "Excellent"
+            if quality_score >= 90
+            else "Good"
+            if quality_score >= 70
+            else "Fair"
+            if quality_score >= 50
+            else "Poor",
         }
 
         logger.info(f"数据质量评分: {quality_score:.1f}/100")
         return report
 
-    def _generate_insights(self, training_result: Dict[str, Any]) -> Dict[str, Any]:
+    def _generate_insights(self, training_result: dict[str, Any]) -> dict[str, Any]:
         insights = {}
 
-        best_model_name = training_result.get('best_model')
-        best_score = training_result.get('best_score')
-        insights["best_model"] = {
-            "name": best_model_name,
-            "r2_score": best_score
-        }
+        best_model_name = training_result.get("best_model")
+        best_score = training_result.get("best_score")
+        insights["best_model"] = {"name": best_model_name, "r2_score": best_score}
 
         model_comparison = []
-        for model_name, scores in training_result.get('test_scores', {}).items():
-            model_comparison.append({
-                "model": model_name,
-                "r2": scores.get('r2'),
-                "mae": scores.get('mae'),
-                "rmse": scores.get('rmse')
-            })
+        for model_name, scores in training_result.get("test_scores", {}).items():
+            model_comparison.append(
+                {"model": model_name, "r2": scores.get("r2"), "mae": scores.get("mae"), "rmse": scores.get("rmse")}
+            )
         insights["model_comparison"] = model_comparison
 
         if best_model_name and best_model_name in self.model_trainer.feature_importances:
             importances = self.model_trainer.feature_importances[best_model_name]
             sorted_importance = sorted(importances.items(), key=lambda x: x[1], reverse=True)
-            insights["feature_importance"] = {
-                "top_features": sorted_importance[:10],
-                "all_features": sorted_importance
-            }
+            insights["feature_importance"] = {"top_features": sorted_importance[:10], "all_features": sorted_importance}
 
         insights["recommendations"] = self._generate_recommendations(insights)
 
         return insights
 
-    def _generate_recommendations(self, insights: Dict) -> List[str]:
+    def _generate_recommendations(self, insights: dict) -> list[str]:
         recommendations = []
 
         if "feature_importance" in insights:
             top_features = insights["feature_importance"]["top_features"]
 
             for feature, importance in top_features[:5]:
-                if 'price' in feature.lower() or 'discount' in feature.lower():
-                    recommendations.append(
-                        f"价格和折扣因素对销售影响很大（{feature}），建议优化定价策略"
-                    )
-                elif 'promotion' in feature.lower():
-                    recommendations.append(
-                        f"促销预算（{feature}）是重要影响因素，建议合理分配促销费用"
-                    )
-                elif 'inventory' in feature.lower():
-                    recommendations.append(
-                        f"库存水平（{feature}）与销售量相关，需要优化库存管理"
-                    )
-                elif 'holiday' in feature.lower() or 'weekend' in feature.lower():
-                    recommendations.append(
-                        f"节假日和周末（{feature}）对销售有明显影响，应提前准备"
-                    )
-                elif 'category' in feature.lower():
-                    recommendations.append(
-                        f"产品分类（{feature}）是重要因素，需要针对不同类别优化策略"
-                    )
+                if "price" in feature.lower() or "discount" in feature.lower():
+                    recommendations.append(f"价格和折扣因素对销售影响很大（{feature}），建议优化定价策略")
+                elif "promotion" in feature.lower():
+                    recommendations.append(f"促销预算（{feature}）是重要影响因素，建议合理分配促销费用")
+                elif "inventory" in feature.lower():
+                    recommendations.append(f"库存水平（{feature}）与销售量相关，需要优化库存管理")
+                elif "holiday" in feature.lower() or "weekend" in feature.lower():
+                    recommendations.append(f"节假日和周末（{feature}）对销售有明显影响，应提前准备")
+                elif "category" in feature.lower():
+                    recommendations.append(f"产品分类（{feature}）是重要因素，需要针对不同类别优化策略")
 
         r2_score = insights.get("best_model", {}).get("r2_score", 0)
         if r2_score > 0.8:
-            recommendations.append(
-                "模型预测精度优秀，可以作为决策的重要参考依据"
-            )
+            recommendations.append("模型预测精度优秀，可以作为决策的重要参考依据")
         elif r2_score > 0.6:
-            recommendations.append(
-                "模型有一定预测能力，但建议结合业务经验综合判断"
-            )
+            recommendations.append("模型有一定预测能力，但建议结合业务经验综合判断")
         else:
-            recommendations.append(
-                "建议收集更多历史数据或优化特征，以提升模型预测能力"
-            )
+            recommendations.append("建议收集更多历史数据或优化特征，以提升模型预测能力")
 
         return recommendations
 
-    def _generate_visualizations(self) -> Dict[str, str]:
+    def _generate_visualizations(self) -> dict[str, str]:
         if self.visualizer is None:
             return {}
 
@@ -339,7 +303,7 @@ class SalesForecastAnalyzer(BaseAnalyzer):
             target_data = self.raw_data[self.config.target_column].dropna()
             if len(target_data) > 0:
                 try:
-                    date_col = 'date'
+                    date_col = "date"
                     if date_col in self.raw_data.columns:
                         historical_dates = pd.to_datetime(self.raw_data[date_col])
                         historical_values = self.raw_data[self.config.target_column]
@@ -349,13 +313,10 @@ class SalesForecastAnalyzer(BaseAnalyzer):
 
                         if self.y_pred is not None and self.X_test is not None:
                             forecast_dates = pd.date_range(
-                                start=historical_dates.iloc[-1],
-                                periods=len(self.y_pred) + 1,
-                                freq='D'
+                                start=historical_dates.iloc[-1], periods=len(self.y_pred) + 1, freq="D"
                             )[1:]
                             plot_path = self.visualizer.plot_sales_forecast(
-                                historical_dates, historical_values,
-                                forecast_dates, self.y_pred
+                                historical_dates, historical_values, forecast_dates, self.y_pred
                             )
                             if plot_path:
                                 visualizations["sales_forecast"] = str(plot_path)
@@ -366,22 +327,13 @@ class SalesForecastAnalyzer(BaseAnalyzer):
         return visualizations
 
     def _save_results(
-        self,
-        output_dir: str,
-        training_result: Dict,
-        insights: Dict,
-        data_quality_report: Dict,
-        visualizations: Dict
+        self, output_dir: str, training_result: dict, insights: dict, data_quality_report: dict, visualizations: dict
     ):
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
 
         if self.processed_data is not None:
-            self.processed_data.to_csv(
-                output_path / "processed_data.csv",
-                index=False,
-                encoding='utf-8-sig'
-            )
+            self.processed_data.to_csv(output_path / "processed_data.csv", index=False, encoding="utf-8-sig")
 
         if self.model_trainer.best_model is not None:
             model_path = output_path / "best_model.pkl"
@@ -389,10 +341,7 @@ class SalesForecastAnalyzer(BaseAnalyzer):
 
         if self.report_generator:
             self.report_generator.generate_all_reports(
-                data_quality_report,
-                insights,
-                self.processed_data,
-                visualizations
+                data_quality_report, insights, self.processed_data, visualizations
             )
 
         logger.info(f"Results saved to: {output_path}")
@@ -407,26 +356,22 @@ class SalesForecastAnalyzer(BaseAnalyzer):
         meta = {
             "feature_names": self.model_trainer.feature_names,
             "target_col": self.config.target_column,
-            "config": {
-                "target_column": self.config.target_column
-            }
+            "config": {"target_column": self.config.target_column},
         }
 
-        with open(output_path / "analyzer_meta.json", 'w', encoding='utf-8') as f:
+        with open(output_path / "analyzer_meta.json", "w", encoding="utf-8") as f:
             json.dump(meta, f, ensure_ascii=False, indent=2)
 
         logger.info(f"Analyzer saved to: {output_path}")
 
     @classmethod
-    def load_analyzer(cls, input_dir: str) -> 'SalesForecastAnalyzer':
+    def load_analyzer(cls, input_dir: str) -> "SalesForecastAnalyzer":
         input_path = Path(input_dir)
 
-        with open(input_path / "analyzer_meta.json", 'r', encoding='utf-8') as f:
+        with open(input_path / "analyzer_meta.json", encoding="utf-8") as f:
             meta = json.load(f)
 
-        config = SalesForecastConfig(
-            target_column=meta.get("target_col", "sales")
-        )
+        config = SalesForecastConfig(target_column=meta.get("target_col", "sales"))
 
         analyzer = cls(config)
 
@@ -442,7 +387,7 @@ class SalesForecastAnalyzer(BaseAnalyzer):
         if not self.model_trainer.is_trained or self.model_trainer.best_model is None:
             raise ValueError("No trained model available. Please run analysis first.")
 
-        id_cols = ['date', 'product_id']
+        id_cols = ["date", "product_id"]
         orig_data = new_data[[col for col in id_cols if col in new_data.columns]].copy()
 
         cleaned_data = self._clean_data(new_data)
@@ -455,9 +400,9 @@ class SalesForecastAnalyzer(BaseAnalyzer):
         predictions = self.model_trainer.predict(processed)
 
         result = orig_data.copy()
-        result['predicted_sales'] = predictions
+        result["predicted_sales"] = predictions
 
-        key_features = ['price', 'discount', 'inventory', 'promotion_budget']
+        key_features = ["price", "discount", "inventory", "promotion_budget"]
         for col in key_features:
             if col in new_data.columns:
                 result[col] = new_data[col]

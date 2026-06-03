@@ -76,6 +76,7 @@ extend-exclude = [
     "data/cities",
     "screenshots",
     ".github",
+    ".screens",
     "*.log",
     "build",
     "dist",

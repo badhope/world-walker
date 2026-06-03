@@ -3,12 +3,12 @@ Pydantic 数据模型
 """
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class DataSourceEnum(str, Enum):
+class DataSourceEnum(StrEnum):
     MOF = "mof"  # 财政部
     NBS = "nbs"  # 国家统计局
     CUSTOMS = "customs"  # 海关
@@ -17,7 +17,7 @@ class DataSourceEnum(str, Enum):
     USER = "user"  # 用户输入
 
 
-class IndicatorCategoryEnum(str, Enum):
+class IndicatorCategoryEnum(StrEnum):
     FISCAL = "fiscal"  # 财政
     GDP = "gdp"  # GDP
     PRICE = "price"  # 价格
@@ -69,7 +69,7 @@ class IndicatorResponse(BaseModel):
 
 
 # Inference models
-class InferenceMethod(str, Enum):
+class InferenceMethod(StrEnum):
     LINEAR = "linear"  # 线性推演
     REGRESSION = "regression"  # 回归分析
     TIME_SERIES = "time_series"  # 时间序列

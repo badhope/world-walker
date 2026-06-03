@@ -36,11 +36,11 @@ class DataValidator:
 
     def _check_type_match(self, actual: str, expected: type) -> bool:
         """检查类型是否匹配"""
-        if expected == int:
+        if expected is int:
             return "int" in actual
-        elif expected == float:
+        elif expected is float:
             return "float" in actual or "int" in actual
-        elif expected == str:
+        elif expected is str:
             return "object" in actual or "string" in actual
         return False
 

@@ -1159,6 +1159,119 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
   .tab-panel[hidden] { display: none !important; }
   .card { break-inside: avoid; border: 1px solid #ccc; }
 }
+
+/* ============================================================
+ * 27 · Backend-status banner (API 不可达时的全局提示)
+ * ============================================================ */
+.backend-banner {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: linear-gradient(180deg, rgba(184,113,74,0.18), rgba(184,113,74,0.10));
+  border-bottom: 1px solid rgba(184,113,74,0.35);
+  color: var(--ink-900);
+  font-size: 13.5px;
+  line-height: 1.55;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: banner-slide-down 0.32s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+.backend-banner[hidden] { display: none; }
+.backend-banner__icon {
+  flex: 0 0 auto;
+  width: 20px; height: 20px;
+  margin-top: 1px;
+  color: var(--copper-600, #8A4F2E);
+}
+.backend-banner__body { flex: 1 1 auto; min-width: 0; }
+.backend-banner__title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 2px;
+  color: var(--ink-900);
+}
+.backend-banner__detail {
+  color: var(--ink-700, #3F4F6E);
+}
+.backend-banner__detail code {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 12.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(14,31,63,0.06);
+  color: var(--ink-900);
+  user-select: all;
+}
+.backend-banner__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.backend-banner__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1px solid rgba(14,31,63,0.18);
+  background: var(--paper-50, #FAF8F3);
+  color: var(--ink-900);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.backend-banner__btn:hover { background: rgba(14,31,63,0.06); border-color: rgba(14,31,63,0.32); }
+.backend-banner__btn--primary {
+  background: var(--copper-500, #B8714A);
+  color: var(--paper-50, #FAF8F3);
+  border-color: transparent;
+}
+.backend-banner__btn--primary:hover { background: var(--copper-600, #8A4F2E); }
+.backend-banner__close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  border: 0; padding: 0;
+  background: transparent;
+  color: var(--ink-700, #3F4F6E);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+.backend-banner__close:hover { background: rgba(14,31,63,0.08); }
+.backend-banner__close svg { width: 14px; height: 14px; }
+.backend-banner__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--copper-500, #B8714A);
+  color: var(--paper-50, #FAF8F3);
+  border-radius: 9px;
+  margin-left: 6px;
+}
+@keyframes banner-slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);      opacity: 1; }
+}
+@media (max-width: 640px) {
+  .backend-banner { flex-wrap: wrap; padding: var(--space-3); }
+  .backend-banner__actions { width: 100%; }
+}
 </style>
 </head>
 <body>
@@ -1643,6 +1756,45 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
 <div class="toast-container" id="toastContainer" role="region" aria-label="通知"></div>
 
 <!--
+  后端不可达提示条:由 BackendStatus 动态控制显隐
+  任何 API 调用返回 0(网络)/ 401 / 404 / 5xx 时触发,提供启动后端命令
+-->
+<div class="backend-banner" id="backendBanner" role="alert" aria-live="assertive" hidden>
+  <svg class="backend-banner__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+    <path d="M12 9v4M12 17h.01"/>
+  </svg>
+  <div class="backend-banner__body">
+    <div class="backend-banner__title">
+      <span id="backendBannerTitle">无法连接后端服务</span>
+      <span class="backend-banner__count" id="backendBannerCount" hidden>0</span>
+    </div>
+    <div class="backend-banner__detail" id="backendBannerDetail">
+      请先启动后端 API:<code>uvicorn backend.api.main:app --port 8000</code>
+    </div>
+  </div>
+  <div class="backend-banner__actions">
+    <button class="backend-banner__btn backend-banner__btn--primary" id="backendBannerRetry" type="button" title="重新探测后端">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12">
+        <path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>
+      </svg>
+      重试
+    </button>
+    <button class="backend-banner__btn" id="backendBannerCopy" type="button" title="复制启动命令到剪贴板">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12">
+        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      复制命令
+    </button>
+    <button class="backend-banner__close" id="backendBannerClose" type="button" aria-label="关闭提示">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!--
   Script: 见下 — IIFE 闭包内的完整 SPA 框架
 -->
 <script>
@@ -1865,14 +2017,37 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       } catch (err) {
         clearTimeout(timer);
         if (err.name === "AbortError") {
-          throw new ApiError("请求超时或被取消", { code: ac.signal.reason === "timeout" ? "ERR_TIMEOUT" : "ERR_CANCELED", url });
+          const ae = new ApiError("请求超时或被取消", { code: ac.signal.reason === "timeout" ? "ERR_TIMEOUT" : "ERR_CANCELED", url });
+          this._dispatchError(ae);
+          throw ae;
         }
-        if (err instanceof ApiError) throw err;
-        throw new ApiError(err.message || "网络异常", { code: "ERR_NETWORK", cause: err, url });
+        if (err instanceof ApiError) {
+          this._dispatchError(err);
+          throw err;
+        }
+        const ne = new ApiError(err.message || "网络异常", { code: "ERR_NETWORK", cause: err, url });
+        this._dispatchError(ne);
+        throw ne;
       } finally {
         this.inflight.delete(key);
         if (signal) signal.removeEventListener("abort", onSignalAbort);
       }
+    }
+    _dispatchError(err) {
+      // 全局广播,BackendStatus 监听后展示顶部条幅
+      // 业务层也可以监听 'backend:error' 自定义处理
+      try {
+        const evt = new CustomEvent("backend:error", {
+          detail: {
+            status: err.status || 0,
+            code: err.code || "ERR_UNKNOWN",
+            message: err.message || "",
+            url: err.url || "",
+            cause: err.cause
+          }
+        });
+        if (typeof window !== "undefined") window.dispatchEvent(evt);
+      } catch { /* SSR / 极端环境兜底 */ }
     }
     get(path, opts = {})  { return this.request("GET", path, opts); }
     post(path, body, opts = {}) { return this.request("POST", path, { ...opts, body }); }
@@ -1940,6 +2115,147 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
     success(m, o) { return this.show(m, { ...o, type: "success" }); }
     warn(m, o)    { return this.show(m, { ...o, type: "warning" }); }
     error(m, o)   { return this.show(m, { ...o, type: "error", timeout: 7000 }); }
+  }
+
+  // ============================================================
+  // 6.5 BackendStatus (API 不可达时的全局提示条)
+  // ------------------------------------------------------------
+  // 监听 APIClient 派发的 backend:error 事件,聚合错误数并显示
+  // 顶部条幅。任何 4xx/5xx/网络错误都会触发,提供:
+  //   - 当前错误计数
+  //   - 启动后端命令(可一键复制)
+  //   - 重试按钮
+  //   - 关闭按钮
+  // 健康检查(GET /health)成功后会调用 markOnline() 隐藏条幅
+  // ============================================================
+  class BackendStatus extends EventTarget {
+    constructor(els) {
+      super();
+      this.els = els;
+      this.count = 0;
+      this.dismissed = false;
+      this.lastError = null;
+      this._bind();
+    }
+    _bind() {
+      this.els.close?.addEventListener("click", () => this.hide());
+      this.els.copy?.addEventListener("click", () => this._copyCommand());
+      this.els.retry?.addEventListener("click", () => this._retry());
+    }
+    /**
+     * 由 APIClient 派发: { status, code, url, message, fatal }
+     * fatal=true 视为后端整体不可达(网络/5xx/401);404/业务错误仅计数不强行展开
+     */
+    reportError(err) {
+      if (this.dismissed) {
+        // 用户已关闭,继续累加计数但不展开条幅
+        this.count += 1;
+        this._refreshCount();
+        return;
+      }
+      this.count += 1;
+      this.lastError = err;
+      this._render(err);
+      this._show();
+    }
+    markOnline() {
+      this.dismissed = false;
+      this.count = 0;
+      this._hide();
+    }
+    markOffline(reason) {
+      if (this.dismissed) {
+        this.count += 1;
+        this._refreshCount();
+        return;
+      }
+      this.count = Math.max(this.count, 1);
+      this._render({ status: 0, code: "ERR_HEALTHCHECK", message: reason || "健康检查失败", url: this.els.banner?.dataset.healthUrl || "/health" });
+      this._show();
+    }
+    _show() {
+      if (this.els.banner) this.els.banner.hidden = false;
+      this.dispatchEvent(new CustomEvent("show"));
+    }
+    _hide() {
+      if (this.els.banner) this.els.banner.hidden = true;
+    }
+    hide() {
+      this.dismissed = true;
+      this._hide();
+    }
+    _render(err) {
+      const status = err?.status || 0;
+      const code   = err?.code   || "ERR_UNKNOWN";
+      const titles = {
+        0:    "无法连接后端服务",
+        401:  "后端鉴权失败",
+        403:  "后端拒绝访问",
+        404:  "后端接口不存在或路径错误",
+        500:  "后端服务异常 (HTTP 500)",
+        502:  "后端网关错误 (HTTP 502)",
+        503:  "后端暂不可用 (HTTP 503)",
+        504:  "后端响应超时 (HTTP 504)"
+      };
+      const title = titles[status] || (status >= 500 ? "后端服务异常" : "后端请求失败");
+      if (this.els.title) this.els.title.textContent = title;
+      const detail = this._buildDetail(err);
+      if (this.els.detail) this.els.detail.innerHTML = detail;
+      this._refreshCount();
+    }
+    _buildDetail(err) {
+      const code   = err?.code   || "ERR_UNKNOWN";
+      const status = err?.status || 0;
+      const url    = err?.url    || "—";
+      const msg    = err?.message || "";
+      const cmd    = "uvicorn backend.api.main:app --port 8000 --reload";
+      const note   = status === 0
+        ? `请确认后端已启动:<code>${cmd}</code>`
+        : status === 401 || status === 403
+          ? `请检查 <code>TRUSTED_HOSTS</code> / CORS 白名单与鉴权配置。`
+          : status === 404
+            ? `可能是接口路径或城市代码不存在,请核对 <code>backend/api/routes/</code>。`
+            : status >= 500
+              ? `后端进程可能崩溃或数据库连接失败,查看 <code>/tmp/api.log</code>。`
+              : `请检查 <code>backend/api/routes/</code> 对应模块。`;
+      return `<div>${note}</div>
+        <div style="margin-top:4px;font-size:12px;color:var(--ink-700,#3F4F6E);">
+          <span style="opacity:.7">最近错误:</span> HTTP ${status} · ${code} · ${Utils.esc(msg)}<br>
+          <span style="opacity:.7">URL:</span> <code>${Utils.esc(url)}</code>
+        </div>`;
+    }
+    _refreshCount() {
+      if (!this.els.count) return;
+      if (this.count > 1) {
+        this.els.count.textContent = String(this.count);
+        this.els.count.hidden = false;
+      } else {
+        this.els.count.hidden = true;
+      }
+    }
+    async _copyCommand() {
+      const cmd = "uvicorn backend.api.main:app --port 8000 --reload";
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(cmd);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = cmd; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          document.execCommand("copy"); ta.remove();
+        }
+        const orig = this.els.copy?.innerHTML;
+        if (this.els.copy) {
+          this.els.copy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><path d="M20 6L9 17l-5-5"/></svg> 已复制';
+          setTimeout(() => { if (orig && this.els.copy) this.els.copy.innerHTML = orig; }, 1600);
+        }
+      } catch {
+        /* 剪贴板不可用时静默 */
+      }
+    }
+    _retry() {
+      this.dispatchEvent(new CustomEvent("retry"));
+    }
   }
 
   // ============================================================
@@ -2711,10 +3027,49 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
       const router = new TabRouter(document, ".tab-btn", ".tab-panel");
       const store = new Store({ cities: CONFIG.DEFAULT_CITIES, allCities: [] });
 
+      // 全局后端状态条幅 —— 监听 APIClient 派发的 backend:error,
+      // 任何 4xx / 5xx / 网络错误都会触发;健康检查成功时自动隐藏
+      const backendStatus = new BackendStatus({
+        banner: $("#backendBanner"),
+        title:  $("#backendBannerTitle"),
+        detail: $("#backendBannerDetail"),
+        count:  $("#backendBannerCount"),
+        close:  $("#backendBannerClose"),
+        copy:   $("#backendBannerCopy"),
+        retry:  $("#backendBannerRetry")
+      });
+      window.addEventListener("backend:error", (e) => {
+        backendStatus.reportError(e.detail || {});
+        // 关键错误额外弹一个 toast,确保用户感知
+        const det = e.detail || {};
+        if (det.status === 0 || det.status >= 500) {
+          toast.error(`后端不可达:${det.message || "网络异常"}`, { timeout: 6000 });
+        }
+      });
+      backendStatus.addEventListener("retry", () => {
+        // 用户主动重试:重新探测后端并刷新当前 Tab
+        toast.info("正在重新探测后端…");
+        fetch(healthURL, { cache: "no-store" })
+          .then((r) => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
+          .then((h) => {
+            backendStatus.markOnline();
+            toast.success("后端已恢复");
+            // 刷新当前 Tab 数据
+            const cur = router.current;
+            mounted[cur] = false;
+            mountIfNeeded(cur);
+          })
+          .catch(() => {
+            toast.error("后端仍不可达,请确认服务已启动");
+            backendStatus.markOffline("重试失败");
+          });
+      });
+
       window.__citylens_toast = toast;
       window.__citylens_charts = charts;
       window.__citylens_api = api;
       window.__citylens_store = store;
+      window.__citylens_backend = backendStatus;
 
       // 主题切换
       $("#themeToggle")?.addEventListener("click", () => {
@@ -2733,6 +3088,8 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
             : `${protocol}//${hostname}${port ? ":" + port : ""}/health`;
         } catch { return "/health"; }
       })();
+      // 记录到 banner 节点,BackendStatus 渲染时能拿到 URL
+      $("#backendBanner")?.setAttribute("data-health-url", healthURL);
       fetch(healthURL, { cache: "no-store" })
         .then((r) => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
         .then((h) => {
@@ -2754,13 +3111,17 @@ h4 { font-size: var(--fs-base); font-weight: 600; }
         if (ind) ind.textContent = String(h?.indicators || 25);
         const src = $("#statSources");
         if (src) src.textContent = String(h?.data_sources || 4);
-      }).catch(() => {
+        // 后端健康 → 清除错误状态
+        if (ok) backendStatus.markOnline();
+      }).catch((err) => {
         const badge = $("#healthBadge");
         const txt = $("#healthText");
         if (badge) badge.dataset.status = "down";
         if (txt) txt.textContent = "服务离线";
         const stat = $("#statStatus");
         if (stat) stat.textContent = "OFFLINE";
+        // 健康检查本身失败 → 弹出条幅
+        backendStatus.markOffline(err?.message || "无法连接后端");
       });
 
       // Tab 路由

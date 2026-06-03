@@ -10,7 +10,6 @@ import sys
 # 配置日志
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-
 def test_config_loader():
     """测试配置加载器"""
     print("=" * 60)
@@ -34,9 +33,8 @@ def test_config_loader():
         print(f"\n当前产业: {full_config['current_industry']['name']}")
         print(f"产业链环节数: {len(full_config['current_industry']['chain_links'])}")
 
-    print("\n✅ 配置加载器测试通过！")
+    print("\n[ok] 配置加载器测试通过！")
     return True
-
 
 def test_region_switch():
     """测试地区切换"""
@@ -57,16 +55,15 @@ def test_region_switch():
 
         if success:
             region_config = config_loader.get_region_config()
-            print(f"\n✅ 成功切换到地区: {region_config.name}")
+            print(f"\n[ok] 成功切换到地区: {region_config.name}")
             print(f"   省份: {region_config.province}")
             print(f"   统计口径: {region_config.statistical_caliber}")
         else:
-            print(f"❌ 切换地区失败: {region_name}")
+            print(f"[x] 切换地区失败: {region_name}")
             return False
 
-    print("\n✅ 地区切换测试通过！")
+    print("\n[ok] 地区切换测试通过！")
     return True
-
 
 def test_industry_switch():
     """测试产业切换"""
@@ -87,16 +84,15 @@ def test_industry_switch():
 
         if success:
             industry_config = config_loader.get_industry_config()
-            print(f"\n✅ 成功切换到产业: {industry_config.name}")
+            print(f"\n[ok] 成功切换到产业: {industry_config.name}")
             print(f"   产业分类: {industry_config.category}")
             print(f"   产业链环节: {len(industry_config.chain_links)}个")
         else:
-            print(f"❌ 切换产业失败: {industry_name}")
+            print(f"[x] 切换产业失败: {industry_name}")
             return False
 
-    print("\n✅ 产业切换测试通过！")
+    print("\n[ok] 产业切换测试通过！")
     return True
-
 
 def test_analysis_config():
     """测试分析配置"""
@@ -113,9 +109,8 @@ def test_analysis_config():
     print(f"\n默认评分: {AnalysisConfig.DEFAULT_SCORES}")
     print(f"\n分析指标: {AnalysisConfig.DATA_COLLECTION['default_indicators']}")
 
-    print("\n✅ 分析配置测试通过！")
+    print("\n[ok] 分析配置测试通过！")
     return True
-
 
 def test_settings_config():
     """测试基础配置"""
@@ -133,9 +128,8 @@ def test_settings_config():
     print(f"\n数据目录: {settings.DATA_DIR}")
     print(f"导出目录: {settings.EXPORT_DIR}")
 
-    print("\n✅ 基础配置测试通过！")
+    print("\n[ok] 基础配置测试通过！")
     return True
-
 
 def test_analyzer_with_config():
     """测试分析器使用配置"""
@@ -161,9 +155,8 @@ def test_analyzer_with_config():
     print(f"   分析地区: {government_report['region']}")
     print(f"   分析产业: {government_report['industry']}")
 
-    print("\n✅ 分析器测试通过！")
+    print("\n[ok] 分析器测试通过！")
     return True
-
 
 def test_data_collection():
     """测试数据采集模块"""
@@ -176,19 +169,18 @@ def test_data_collection():
     print("\n测试获取财政收入数据...")
     fiscal_data = nbs_collector.get_fiscal_revenue()
     if fiscal_data:
-        print(f"   ✅ 获取到 {len(fiscal_data)} 条财政收入数据")
+        print(f"   [ok] 获取到 {len(fiscal_data)} 条财政收入数据")
         for item in fiscal_data[:2]:  # 只显示前2条
             print(f"   - {item['year']}: {item['value']} {item['unit']}")
 
     print("\n测试批量获取数据...")
     all_data = nbs_collector.fetch_all(indicators=["gdp", "fiscal_revenue"])
-    print(f"   ✅ 批量获取了 {len(all_data)} 类数据")
+    print(f"   [ok] 批量获取了 {len(all_data)} 类数据")
     for key, data in all_data.items():
         print(f"   - {key}: {len(data)} 条")
 
-    print("\n✅ 数据采集模块测试通过！")
+    print("\n[ok] 数据采集模块测试通过！")
     return True
-
 
 def test_visualizer():
     """测试可视化模块"""
@@ -200,12 +192,11 @@ def test_visualizer():
 
     print("\n初始化可视化器...")
     viz = Visualizer()
-    print(f"   ✅ 主题: {viz.theme}")
-    print(f"   ✅ 配色方案: {len(viz.color_palette)} 种颜色")
+    print(f"   [ok] 主题: {viz.theme}")
+    print(f"   [ok] 配色方案: {len(viz.color_palette)} 种颜色")
 
-    print("\n✅ 可视化模块测试通过！")
+    print("\n[ok] 可视化模块测试通过！")
     return True
-
 
 def main():
     """主测试函数"""
@@ -230,7 +221,7 @@ def main():
             result = test()
             results.append((test.__name__, result))
         except Exception as e:
-            print(f"\n❌ 测试失败: {test.__name__}")
+            print(f"\n[x] 测试失败: {test.__name__}")
             print(f"   错误: {str(e)}")
             import traceback
 
@@ -246,18 +237,17 @@ def main():
     total = len(results)
 
     for name, result in results:
-        status = "✅ 通过" if result else "❌ 失败"
+        status = "[ok] 通过" if result else "[x] 失败"
         print(f"  {status}: {name}")
 
     print(f"\n总计: {passed}/{total} 个测试通过")
 
     if passed == total:
-        print("\n🎉 所有测试通过！配置系统工作正常！")
+        print("\n 所有测试通过！配置系统工作正常！")
         return 0
     else:
-        print(f"\n⚠️ 有 {total - passed} 个测试失败，请检查配置")
+        print(f"\n[!] 有 {total - passed} 个测试失败，请检查配置")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

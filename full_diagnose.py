@@ -1,5 +1,5 @@
 """
-全面API验证 + 静态代码审查
+API验证 + 静态代码审查
 不依赖浏览器，直接验证后端 + 分析前端代码潜在问题
 """
 
@@ -20,16 +20,13 @@ results = {
     "security_issues": [],
 }
 
-
 def ok(msg):
     results["api_pass"].append(msg)
-    print(f"  ✅ {msg}")
-
+    print(f"  [ok] {msg}")
 
 def fail(msg):
     results["api_fail"].append(msg)
-    print(f"  🔴 {msg}")
-
+    print(f"  [FAIL] {msg}")
 
 def http_get(path, timeout=15):
     """GET 请求"""
@@ -42,7 +39,6 @@ def http_get(path, timeout=15):
         return e.code, e.read().decode("utf-8")
     except Exception as e:
         return 0, str(e)
-
 
 def http_post(path, data, timeout=15):
     """POST 请求"""
@@ -58,13 +54,12 @@ def http_post(path, data, timeout=15):
     except Exception as e:
         return 0, str(e)
 
-
-# ═══════════════════════════════════════
-#  第1部分: API 端点全面验证
-# ═══════════════════════════════════════
-print("\n" + "━" * 70)
-print("📡 [1/5] 全部 API 端点验证")
-print("━" * 70)
+# =======================================
+#  第1部分: API 端点验证
+# =======================================
+print("\n" + "-" * 70)
+print(" [1/5] 全部 API 端点验证")
+print("-" * 70)
 
 endpoints = [
     ("GET", "/health", None),
@@ -112,7 +107,7 @@ for path, body in post_endpoints:
         fail(f"POST {path} → {status}: {text[:100]}")
 
 # 检查关键数据完整性
-print("\n  📊 关键数据完整性检查")
+print("\n  [i] 关键数据完整性检查")
 status, text = http_get("/api/v1/cities/list")
 if status == 200:
     data = json.loads(text)
@@ -159,12 +154,12 @@ if status == 200:
     else:
         fail("tax_reduction 字段缺失")
 
-# ═══════════════════════════════════════
+# =======================================
 #  第2部分: 前端代码静态分析
-# ═══════════════════════════════════════
-print("\n" + "━" * 70)
-print("🔍 [2/5] 前端 HTML/JS 静态代码审查")
-print("━" * 70)
+# =======================================
+print("\n" + "-" * 70)
+print("[scan] [2/5] 前端 HTML/JS 静态代码审查")
+print("-" * 70)
 
 html_path = Path("/workspace/frontend/index.html")
 html = html_path.read_text(encoding="utf-8")
@@ -190,7 +185,7 @@ for pattern, desc in checks:
         ok(f"已实现: {desc}")
     else:
         results["code_issues"].append(desc)
-        print(f"  ⚠️  缺失: {desc}")
+        print(f"  [!]  缺失: {desc}")
 
 # 2.2 检查潜在问题
 issues_to_check = [
@@ -208,7 +203,7 @@ for pattern, desc, category in issues_to_check:
     matches = re.findall(pattern, html)
     if matches:
         results[category].append(f"{desc} ({len(matches)} 处)")
-        print(f"  🔍 {desc}: {len(matches)} 处")
+        print(f"  [scan] {desc}: {len(matches)} 处")
 
 # 2.3 检查图表配置 - 是否启用动画和交互
 chart_check = [
@@ -223,7 +218,7 @@ for p, d in chart_check:
         ok(f"图表配置: {d}")
     else:
         results["code_issues"].append(f"图表配置缺失: {d}")
-        print(f"  ⚠️  图表配置: {d}")
+        print(f"  [!]  图表配置: {d}")
 
 # 2.4 检查无障碍（a11y）
 a11y = [
@@ -237,7 +232,7 @@ for p, d in a11y:
         ok(f"无障碍: {d}")
     else:
         results["a11y_issues"].append(d)
-        print(f"  ♿ 无障碍缺失: {d}")
+        print(f"  [a11y] 无障碍缺失: {d}")
 
 # 2.4b 图片 alt 文本（仅在存在 <img> 标签时校验）
 img_tags = re.findall(r"<img\b[^>]*>", html, re.IGNORECASE)
@@ -245,7 +240,7 @@ if img_tags:
     imgs_without_alt = [tag for tag in img_tags if "alt=" not in tag.lower()]
     if imgs_without_alt:
         results["a11y_issues"].append(f"{len(imgs_without_alt)} 张 <img> 缺少 alt 文本")
-        print(f"  ♿ 无障碍缺失: {len(imgs_without_alt)} 张 <img> 缺少 alt 文本")
+        print(f"  [a11y] 无障碍缺失: {len(imgs_without_alt)} 张 <img> 缺少 alt 文本")
     else:
         ok(f"无障碍: 所有 {len(img_tags)} 张 <img> 均有 alt 文本")
 else:
@@ -263,7 +258,7 @@ for p, d in seo:
         ok(f"SEO: {d}")
     else:
         results["code_issues"].append(f"SEO缺失: {d}")
-        print(f"  📈 SEO缺失: {d}")
+        print(f"  [+] SEO缺失: {d}")
 
 # 2.6 关键 UI 模式检查
 ui_patterns = [
@@ -279,14 +274,14 @@ for p, d in ui_patterns:
     if re.search(p, html):
         ok(f"UI模式: {d}")
     else:
-        print(f"  💡 UI建议: {d}")
+        print(f"  [i] UI建议: {d}")
 
-# ═══════════════════════════════════════
+# =======================================
 #  第3部分: 性能分析
-# ═══════════════════════════════════════
-print("\n" + "━" * 70)
-print("⚡ [3/5] 性能分析")
-print("━" * 70)
+# =======================================
+print("\n" + "-" * 70)
+print("[perf] [3/5] 性能分析")
+print("-" * 70)
 
 import time
 
@@ -308,7 +303,7 @@ for ep, status, t in api_times:
             print(f"  🟡 {ep}: {t:.0f}ms (偏慢)")
             results["perf_issues"].append(f"{ep} 偏慢: {t:.0f}ms")
         else:
-            print(f"  🔴 {ep}: {t:.0f}ms (慢)")
+            print(f"  [FAIL] {ep}: {t:.0f}ms (慢)")
             results["perf_issues"].append(f"{ep} 慢: {t:.0f}ms")
 
 # 前端体积
@@ -318,19 +313,19 @@ if fe_size < 50_000:
 elif fe_size < 100_000:
     print(f"  🟡 前端体积: {fe_size/1024:.1f}KB")
 else:
-    print(f"  🔴 前端过大: {fe_size/1024:.1f}KB")
+    print(f"  [FAIL] 前端过大: {fe_size/1024:.1f}KB")
     results["perf_issues"].append(f"前端过大: {fe_size/1024:.1f}KB")
 
 # 同步分析大文件
 eod = re.findall(r"echarts", html, re.IGNORECASE)
 print(f"  ECharts 引用数: {len(eod)}")
 
-# ═══════════════════════════════════════
+# =======================================
 #  第4部分: 业务逻辑验证
-# ═══════════════════════════════════════
-print("\n" + "━" * 70)
+# =======================================
+print("\n" + "-" * 70)
 print("💼 [4/5] 业务逻辑验证")
-print("━" * 70)
+print("-" * 70)
 
 # 4.1 评分合理性
 print("\n  城市评分对比:")
@@ -397,15 +392,15 @@ if status == 200:
             if group_name in ["深圳", "上海", "北京", "广州"]:
                 ok(f"分组名是中文: '{group_name}'")
             else:
-                print(f"  🔴 分组名是代码: '{group_name}'")
+                print(f"  [FAIL] 分组名是代码: '{group_name}'")
                 fail(f"分组名应中文实际 '{group_name}'")
 
-# ═══════════════════════════════════════
+# =======================================
 #  第5部分: 文件结构 & 文档
-# ═══════════════════════════════════════
-print("\n" + "━" * 70)
-print("📁 [5/5] 项目结构完整性")
-print("━" * 70)
+# =======================================
+print("\n" + "-" * 70)
+print(" [5/5] 项目结构完整性")
+print("-" * 70)
 
 required_files = [
     "README.md",
@@ -423,35 +418,34 @@ for f in required_files:
     else:
         fail(f"{f}: 不存在")
 
-# ── 汇总 ──
 print("\n" + "=" * 70)
-print("📋 全面诊断报告")
+print("[report] 诊断报告")
 print("=" * 70)
-print(f"  ✅ API 通过: {len(results['api_pass'])}")
-print(f"  🔴 API 失败: {len(results['api_fail'])}")
-print(f"  🔍 代码问题: {len(results['code_issues'])}")
-print(f"  ⚡ 性能问题: {len(results['perf_issues'])}")
-print(f"  ♿ 无障碍问题: {len(results['a11y_issues'])}")
-print(f"  🔒 安全问题: {len(results['security_issues'])}")
+print(f"  [ok] API 通过: {len(results['api_pass'])}")
+print(f"  [FAIL] API 失败: {len(results['api_fail'])}")
+print(f"  [scan] 代码问题: {len(results['code_issues'])}")
+print(f"  [perf] 性能问题: {len(results['perf_issues'])}")
+print(f"  [a11y] 无障碍问题: {len(results['a11y_issues'])}")
+print(f"  [sec] 安全问题: {len(results['security_issues'])}")
 
 if results["api_fail"]:
-    print("\n  🔴 API 失败:")
+    print("\n  [FAIL] API 失败:")
     for x in results["api_fail"]:
         print(f"     {x}")
 if results["code_issues"]:
-    print("\n  🔍 代码问题:")
+    print("\n  [scan] 代码问题:")
     for x in results["code_issues"]:
         print(f"     {x}")
 if results["perf_issues"]:
-    print("\n  ⚡ 性能问题:")
+    print("\n  [perf] 性能问题:")
     for x in results["perf_issues"]:
         print(f"     {x}")
 if results["a11y_issues"]:
-    print("\n  ♿ 无障碍问题:")
+    print("\n  [a11y] 无障碍问题:")
     for x in results["a11y_issues"]:
         print(f"     {x}")
 if results["security_issues"]:
-    print("\n  🔒 安全问题:")
+    print("\n  [sec] 安全问题:")
     for x in results["security_issues"]:
         print(f"     {x}")
 

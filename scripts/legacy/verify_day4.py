@@ -9,7 +9,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-
 def test_main_entry():
     """测试主入口"""
     print("=" * 60)
@@ -21,22 +20,21 @@ def test_main_entry():
 
         # 测试环境检查
         checker = EnvironmentChecker()
-        print("✅ EnvironmentChecker 导入成功")
+        print("[ok] EnvironmentChecker 导入成功")
 
         # 测试检查方法
         assert hasattr(checker, "check_python_version")
         assert hasattr(checker, "check_dependencies")
         assert hasattr(checker, "check_directories")
-        print("✅ 检查方法完整")
+        print("[ok] 检查方法完整")
 
         return True
     except Exception as e:
-        print(f"❌ main.py 测试失败: {e}")
+        print(f"[x] main.py 测试失败: {e}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def test_setup_py():
     """测试 setup.py"""
@@ -46,24 +44,23 @@ def test_setup_py():
 
     setup_file = Path("setup.py")
     if not setup_file.exists():
-        print("❌ setup.py 不存在")
+        print("[x] setup.py 不存在")
         return False
 
-    print("✅ setup.py 存在")
+    print("[ok] setup.py 存在")
 
     try:
         with open(setup_file, encoding="utf-8") as f:
             content = f.read()
             if "setuptools" in content and "find_packages" in content:
-                print("✅ setup.py 配置正确")
+                print("[ok] setup.py 配置正确")
                 return True
             else:
-                print("❌ setup.py 配置不完整")
+                print("[x] setup.py 配置不完整")
                 return False
     except Exception as e:
-        print(f"❌ 读取 setup.py 失败: {e}")
+        print(f"[x] 读取 setup.py 失败: {e}")
         return False
-
 
 def test_scripts():
     """测试便捷脚本"""
@@ -78,13 +75,12 @@ def test_scripts():
     for script in required_scripts:
         script_path = scripts_dir / script
         if script_path.exists():
-            print(f"✅ {script} 存在")
+            print(f"[ok] {script} 存在")
         else:
-            print(f"❌ {script} 不存在")
+            print(f"[x] {script} 不存在")
             all_exist = False
 
     return all_exist
-
 
 def test_documentation():
     """测试文档"""
@@ -105,17 +101,16 @@ def test_documentation():
         if doc_path.exists():
             # 检查文件大小
             size = doc_path.stat().st_size
-            print(f"✅ {doc} 存在 ({size} bytes)")
+            print(f"[ok] {doc} 存在 ({size} bytes)")
 
             # 检查是否为空
             if size < 100:
-                print(f"⚠️ {doc} 内容过少")
+                print(f"[!] {doc} 内容过少")
         else:
-            print(f"❌ {doc} 不存在")
+            print(f"[x] {doc} 不存在")
             all_exist = False
 
     return all_exist
-
 
 def test_project_structure():
     """测试项目结构"""
@@ -144,13 +139,12 @@ def test_project_structure():
     for dir_name in required_dirs:
         dir_path = Path(dir_name)
         if dir_path.exists():
-            print(f"✅ {dir_name}/")
+            print(f"[ok] {dir_name}/")
         else:
-            print(f"❌ {dir_name}/ 不存在")
+            print(f"[x] {dir_name}/ 不存在")
             all_exist = False
 
     return all_exist
-
 
 def test_examples():
     """测试示例脚本"""
@@ -164,23 +158,22 @@ def test_examples():
 
     data_dir = example_dir / "data"
     if not data_dir.exists():
-        print("❌ 示例数据目录不存在")
+        print("[x] 示例数据目录不存在")
         return False
 
     data_files = list(data_dir.glob("*.json"))
-    print(f"✅ 找到 {len(data_files)} 个数据文件")
+    print(f"[ok] 找到 {len(data_files)} 个数据文件")
 
     all_exist = True
     for file in required_files:
         file_path = example_dir / file
         if file_path.exists():
-            print(f"✅ {file} 存在")
+            print(f"[ok] {file} 存在")
         else:
-            print(f"❌ {file} 不存在")
+            print(f"[x] {file} 不存在")
             all_exist = False
 
     return all_exist
-
 
 def main():
     """主函数"""
@@ -203,7 +196,7 @@ def main():
             result = test_func()
             results.append((name, result))
         except Exception as e:
-            print(f"\n❌ 测试失败: {name}")
+            print(f"\n[x] 测试失败: {name}")
             print(f"   错误: {str(e)}")
             results.append((name, False))
 
@@ -215,18 +208,17 @@ def main():
     total = len(results)
 
     for name, result in results:
-        status = "✅ 通过" if result else "❌ 失败"
+        status = "[ok] 通过" if result else "[x] 失败"
         print(f"  {status}: {name}")
 
     print(f"\n总计: {passed}/{total} 个测试通过")
 
     if passed == total:
-        print("\n🎉 所有测试通过！第四天任务完成！")
+        print("\n 所有测试通过！第四天任务完成！")
         return 0
     else:
-        print(f"\n⚠️ 有 {total - passed} 个测试失败")
+        print(f"\n[!] 有 {total - passed} 个测试失败")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

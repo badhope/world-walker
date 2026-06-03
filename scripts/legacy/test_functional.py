@@ -11,7 +11,6 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-
 class EconomicModelTester:
     """经济学模型测试器"""
 
@@ -35,19 +34,19 @@ class EconomicModelTester:
 
             result = pc.fit(inflation_rates, unemployment_rates)
 
-            print("\n✅ 菲利普斯曲线模型拟合成功")
+            print("\n[ok] 菲利普斯曲线模型拟合成功")
             print(f"   - 拟合优度 (R²): {result.get('r_squared', 'N/A'):.4f}")
             print(f"   - NAIRU (自然失业率): {result.get('nairu', 'N/A'):.2f}%")
 
             # 验证合理性
             passed = True
             if result.get("r_squared", 0) < 0.5:
-                print("⚠️  拟合优度较低，建议检查数据")
+                print("[!]  拟合优度较低，建议检查数据")
                 passed = False
 
             return {"name": "菲利普斯曲线", "status": "passed" if passed else "warning", "details": result}
         except Exception as e:
-            print(f"❌ 测试失败: {e}")
+            print(f"[x] 测试失败: {e}")
             import traceback
 
             traceback.print_exc()
@@ -70,7 +69,7 @@ class EconomicModelTester:
 
             result = okun.fit(gdp_growth_rates, unemployment_rates)
 
-            print("\n✅ 奥肯定律模型拟合成功")
+            print("\n[ok] 奥肯定律模型拟合成功")
             print(f"   - 拟合优度 (R²): {result.get('r_squared', 'N/A'):.4f}")
             print(f"   - 奥肯系数: {result.get('okun_coefficient', 'N/A'):.2f}")
 
@@ -78,12 +77,12 @@ class EconomicModelTester:
             passed = True
             okun_coeff = result.get("okun_coefficient", 0)
             if not (-3 <= okun_coeff <= -1):
-                print(f"⚠️  奥肯系数异常 (期望在-2左右): {okun_coeff}")
+                print(f"[!]  奥肯系数异常 (期望在-2左右): {okun_coeff}")
                 passed = False
 
             return {"name": "奥肯定律", "status": "passed" if passed else "warning", "details": result}
         except Exception as e:
-            print(f"❌ 测试失败: {e}")
+            print(f"[x] 测试失败: {e}")
             import traceback
 
             traceback.print_exc()
@@ -107,7 +106,7 @@ class EconomicModelTester:
 
             result = cd.fit(outputs, labor, capital)
 
-            print("\n✅ 柯布-道格拉斯生产函数拟合成功")
+            print("\n[ok] 柯布-道格拉斯生产函数拟合成功")
             print(f"   - 拟合优度 (R²): {result.get('r_squared', 'N/A'):.4f}")
             print(f"   - 劳动弹性 (α): {result.get('alpha', 'N/A'):.3f}")
             print(f"   - 资本弹性 (β): {result.get('beta', 'N/A'):.3f}")
@@ -121,12 +120,12 @@ class EconomicModelTester:
             beta = result.get("beta", 0)
 
             if not (0 < alpha < 1 and 0 < beta < 1):
-                print("⚠️  弹性系数异常 (应在0-1之间)")
+                print("[!]  弹性系数异常 (应在0-1之间)")
                 passed = False
 
             return {"name": "柯布-道格拉斯生产函数", "status": "passed" if passed else "warning", "details": result}
         except Exception as e:
-            print(f"❌ 测试失败: {e}")
+            print(f"[x] 测试失败: {e}")
             import traceback
 
             traceback.print_exc()
@@ -141,7 +140,6 @@ class EconomicModelTester:
         self.results = [self.test_phillips_curve(), self.test_okun_law(), self.test_cobb_douglas()]
 
         return self.results
-
 
 class AnalysisWorkflowTester:
     """分析工作流测试器"""
@@ -169,12 +167,12 @@ class AnalysisWorkflowTester:
                         data = json.load(f)
                     size = len(json.dumps(data))
                     data_sizes[filename] = size
-                    print(f"✅ {filename} - 加载成功 ({size} 字节)")
+                    print(f"[ok] {filename} - 加载成功 ({size} 字节)")
                 except Exception as e:
-                    print(f"❌ {filename} - 加载失败: {e}")
+                    print(f"[x] {filename} - 加载失败: {e}")
                     all_passed = False
             else:
-                print(f"❌ {filename} - 文件不存在")
+                print(f"[x] {filename} - 文件不存在")
                 all_passed = False
 
         return {"name": "数据加载", "status": "passed" if all_passed else "failed", "data_sizes": data_sizes}
@@ -192,7 +190,7 @@ class AnalysisWorkflowTester:
             runner = EnterpriseAnalysisRunner()
 
             # 测试各分析模块
-            print("\n📊 测试土地成本分析...")
+            print("\n[i] 测试土地成本分析...")
             land_result = runner.analyze_land_cost()
             print(f"   结果包含 {len(land_result)} 个字段")
 
@@ -201,23 +199,23 @@ class AnalysisWorkflowTester:
             print(f"   平均薪资: {labor_result['average_salary']} 元/月")
             print(f"   同比增长: {labor_result['yoy_growth']}%")
 
-            print("\n⚡ 测试能源成本分析...")
+            print("\n[perf] 测试能源成本分析...")
             energy_result = runner.analyze_energy_cost()
             print(f"   工业电价: {energy_result['electricity_price']} 元/kWh")
 
             print("\n💳 测试融资成本分析...")
             financing_result = runner.analyze_financing_cost()
 
-            print("\n📈 测试综合成本指数...")
+            print("\n[+] 测试综合成本指数...")
             cost_index = runner.calculate_comprehensive_cost_index()
             print(f"   深圳成本指数: {cost_index['shenzhen_index']}")
 
-            print("\n🔗 测试供应链分析...")
+            print("\n 测试供应链分析...")
             supply_chain = runner.analyze_supply_chain()
             print(f"   上游覆盖度: {supply_chain['chain_coverage']['upstream']}%")
             print(f"   本地化率: {supply_chain['localization_rate']}%")
 
-            print("\n🏛️ 测试政策红利分析...")
+            print("\n 测试政策红利分析...")
             policy = runner.analyze_policy_benefits()
             print(f"   税收优惠: {policy['total_tax_incentive']} 亿元")
 
@@ -227,17 +225,17 @@ class AnalysisWorkflowTester:
 
             # 检查土地成本
             if not (500 < land_result["city_average"] < 1500):
-                checks.append("⚠️  土地成本可能异常")
+                checks.append("[!]  土地成本可能异常")
                 passed = False
 
             # 检查人力成本
             if not (10000 < labor_result["average_salary"] < 30000):
-                checks.append("⚠️  人力成本可能异常")
+                checks.append("[!]  人力成本可能异常")
                 passed = False
 
             # 检查能源成本
             if not (0.5 < energy_result["electricity_price"] < 1.5):
-                checks.append("⚠️  能源成本可能异常")
+                checks.append("[!]  能源成本可能异常")
                 passed = False
 
             if checks:
@@ -245,7 +243,7 @@ class AnalysisWorkflowTester:
 
             return {"name": "企业端分析流程", "status": "passed" if passed else "warning", "checks": checks}
         except Exception as e:
-            print(f"❌ 测试失败: {e}")
+            print(f"[x] 测试失败: {e}")
             import traceback
 
             traceback.print_exc()
@@ -263,7 +261,7 @@ class AnalysisWorkflowTester:
             runner = GovernmentAnalysisRunner()
 
             # 简单测试初始化和数据加载
-            print("\n✅ 政府分析运行器初始化成功")
+            print("\n[ok] 政府分析运行器初始化成功")
             print(f"   已加载 {len(runner.data)} 个数据文件")
 
             # 测试财政杠杆分析
@@ -272,13 +270,13 @@ class AnalysisWorkflowTester:
             print(f"   财政投入强度: {fiscal_result['investment_intensity']}")
 
             # 测试产业带动分析
-            print("\n📈 测试产业带动分析...")
+            print("\n[+] 测试产业带动分析...")
             multiplier_result = runner.analyze_industry_multiplier()
             print(f"   带动就业: {multiplier_result['employment_effect']['total']} 万人")
 
             return {"name": "政府端分析流程", "status": "passed"}
         except Exception as e:
-            print(f"❌ 测试失败: {e}")
+            print(f"[x] 测试失败: {e}")
             import traceback
 
             traceback.print_exc()
@@ -295,14 +293,14 @@ class AnalysisWorkflowTester:
 
             config = config_loader.load_config()
 
-            print("\n✅ 配置系统加载成功")
+            print("\n[ok] 配置系统加载成功")
             print(f"   区域: {config.get('region', {}).get('name', 'N/A')}")
             print(f"   产业: {config.get('industry', {}).get('name', 'N/A')}")
             print(f"   年份: {config.get('analysis', {}).get('year', 'N/A')}")
 
             return {"name": "配置系统", "status": "passed", "config": {k: v for k, v in list(config.items())[:5]}}
         except Exception as e:
-            print(f"❌ 测试失败: {e}")
+            print(f"[x] 测试失败: {e}")
             import traceback
 
             traceback.print_exc()
@@ -317,7 +315,6 @@ class AnalysisWorkflowTester:
             self.test_config_system(),
         ]
         return self.results
-
 
 class ResultsValidator:
     """结果验证器"""
@@ -342,9 +339,9 @@ class ResultsValidator:
         # 检查土地成本
         land_price = data["land_cost"]["city_average"]
         if 600 <= land_price <= 1200:
-            print(f"✅ 土地成本合理: {land_price} 元/㎡·年")
+            print(f"[ok] 土地成本合理: {land_price} 元/㎡·年")
         else:
-            print(f"⚠️  土地成本可能异常: {land_price}")
+            print(f"[!]  土地成本可能异常: {land_price}")
             passed = False
             checks.append("土地成本异常")
 
@@ -352,18 +349,18 @@ class ResultsValidator:
         labor_data = data["labor_cost"]["data"]["semiconductor_industry"]
         avg_salary = labor_data["average_salary"]["value"]
         if 15000 <= avg_salary <= 25000:
-            print(f"✅ 人力成本合理: {avg_salary} 元/月")
+            print(f"[ok] 人力成本合理: {avg_salary} 元/月")
         else:
-            print(f"⚠️  人力成本可能异常: {avg_salary}")
+            print(f"[!]  人力成本可能异常: {avg_salary}")
             passed = False
             checks.append("人力成本异常")
 
         # 检查能源成本
         elec_price = data["energy_cost"]["data"]["industrial_electricity"]["price"]
         if 0.6 <= elec_price <= 1.0:
-            print(f"✅ 能源成本合理: {elec_price} 元/kWh")
+            print(f"[ok] 能源成本合理: {elec_price} 元/kWh")
         else:
-            print(f"⚠️  能源成本可能异常: {elec_price}")
+            print(f"[!]  能源成本可能异常: {elec_price}")
             passed = False
             checks.append("能源成本异常")
 
@@ -386,27 +383,27 @@ class ResultsValidator:
         # 检查产业产值
         output = data["semiconductor_industry"]["output_value"]["value"]
         if 5000 <= output <= 15000:
-            print(f"✅ 产业产值合理: {output} 亿元")
+            print(f"[ok] 产业产值合理: {output} 亿元")
         else:
-            print(f"⚠️  产业产值可能异常: {output}")
+            print(f"[!]  产业产值可能异常: {output}")
             passed = False
             checks.append("产业产值异常")
 
         # 检查研发强度
         rd_intensity = data["semiconductor_industry"]["rd_intensity"]["value"]
         if 5 <= rd_intensity <= 20:
-            print(f"✅ 研发强度合理: {rd_intensity}%")
+            print(f"[ok] 研发强度合理: {rd_intensity}%")
         else:
-            print(f"⚠️  研发强度可能异常: {rd_intensity}")
+            print(f"[!]  研发强度可能异常: {rd_intensity}")
             passed = False
             checks.append("研发强度异常")
 
         # 检查市场份额
         domestic_share = data["semiconductor_industry"]["market_share"]["domestic"]
         if 20 <= domestic_share <= 40:
-            print(f"✅ 国内市场份额合理: {domestic_share}%")
+            print(f"[ok] 国内市场份额合理: {domestic_share}%")
         else:
-            print(f"⚠️  国内市场份额可能异常: {domestic_share}")
+            print(f"[!]  国内市场份额可能异常: {domestic_share}")
             passed = False
             checks.append("市场份额异常")
 
@@ -429,9 +426,9 @@ class ResultsValidator:
         # 检查财政支持规模
         fiscal_support = data["semiconductor_fiscal_support"]["total_investment"]
         if 500 <= fiscal_support <= 2000:
-            print(f"✅ 财政支持规模合理: {fiscal_support} 亿元")
+            print(f"[ok] 财政支持规模合理: {fiscal_support} 亿元")
         else:
-            print(f"⚠️  财政支持规模可能异常: {fiscal_support}")
+            print(f"[!]  财政支持规模可能异常: {fiscal_support}")
             passed = False
             checks.append("财政支持规模异常")
 
@@ -440,7 +437,6 @@ class ResultsValidator:
     def run_all(self) -> list[dict[str, Any]]:
         """运行所有验证"""
         return [self.validate_business_costs(), self.validate_industry_metrics(), self.validate_fiscal_data()]
-
 
 class TestRunner:
     """测试运行器"""
@@ -498,34 +494,32 @@ class TestRunner:
         failed = sum(1 for t in all_tests if t["status"] == "failed")
         total = len(all_tests)
 
-        print(f"\n📊 总测试数: {total}")
-        print(f"✅ 通过: {passed}")
-        print(f"⚠️  警告: {warnings}")
-        print(f"❌ 失败: {failed}")
+        print(f"\n[i] 总测试数: {total}")
+        print(f"[ok] 通过: {passed}")
+        print(f"[!]  警告: {warnings}")
+        print(f"[x] 失败: {failed}")
 
-        print("\n📝 详细结果:")
+        print("\n 详细结果:")
         for category, tests in self.all_results.items():
             print(f"\n  {category.replace('_', ' ').title()}:")
             for test in tests:
-                status_icon = {"passed": "✅", "warning": "⚠️", "failed": "❌"}.get(test["status"], "?")
+                status_icon = {"passed": "[ok]", "warning": "[!]", "failed": "[x]"}.get(test["status"], "?")
                 print(f"    {status_icon} {test['name']}")
 
         print(f"\n{'=' * 80}")
         if failed == 0:
             if warnings == 0:
-                print("🎉 所有测试通过！系统功能完整且计算合理。")
+                print(" 所有测试通过！系统功能完整且计算合理。")
             else:
-                print("✅ 主要功能正常，部分警告请留意。")
+                print("[ok] 主要功能正常，部分警告请留意。")
         else:
-            print("⚠️  部分测试失败，请检查相关功能。")
+            print("[!]  部分测试失败，请检查相关功能。")
         print("=" * 80)
-
 
 def main():
     """主函数"""
     runner = TestRunner()
     runner.run()
-
 
 if __name__ == "__main__":
     main()

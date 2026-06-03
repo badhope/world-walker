@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 
 print("=" * 70)
-print("🔍 E2E全面诊断 (新前端)")
+print("[scan] E2E诊断 (新前端)")
 print("=" * 70)
 
 with sync_playwright() as p:
@@ -13,11 +13,11 @@ with sync_playwright() as p:
 
     def ok(msg):
         successes.append(msg)
-        print(f"✅ {msg}")
+        print(f"[ok] {msg}")
 
     def err(msg):
         errors.append(msg)
-        print(f"🔴 {msg}")
+        print(f"[FAIL] {msg}")
 
     page.on("console", lambda msg: errors.append(f"[{msg.type}] {msg.text[:150]}") if msg.type == "error" else None)
     page.on("requestfailed", lambda req: errors.append(f"NET {req.method} {req.url}"))
@@ -38,7 +38,7 @@ with sync_playwright() as p:
         exit(1)
 
     # 2. 检查仪表盘
-    print("\n📊 [2/4] 仪表盘检查")
+    print("\n[i] [2/4] 仪表盘检查")
     try:
         stats = page.locator(".stat-value").all()
         cards = page.locator("#cityCards .city-card").all()
@@ -47,7 +47,7 @@ with sync_playwright() as p:
         err(f"仪表盘检查失败: {e}")
 
     # 3. 企业选址分析
-    print("\n🏢 [3/4] 企业选址分析")
+    print("\n [3/4] 企业选址分析")
     try:
         page.locator('.tab-btn[data-tab="enterprise"]').first.click()
         page.wait_for_timeout(500)
@@ -60,7 +60,7 @@ with sync_playwright() as p:
         err(f"企业分析失败: {e}")
 
     # 4. 政府分析 + 城市对比
-    print("\n🏛️ [4/4] 政府分析 + 城市对比")
+    print("\n [4/4] 政府分析 + 城市对比")
     try:
         page.locator('.tab-btn[data-tab="government"]').first.click()
         page.wait_for_timeout(500)
@@ -84,14 +84,14 @@ with sync_playwright() as p:
     browser.close()
 
     print("\n" + "=" * 70)
-    print("📋 汇总")
+    print("[report] 汇总")
     print("=" * 70)
     real_errs = [e for e in errors if "cdn.tailwindcss" not in e and "deprecated" not in e.lower()]
-    print(f"✅ 成功: {len(successes)}/{len(successes)+len(real_errs)}")
-    print(f"🔴 错误: {len(real_errs)}")
+    print(f"[ok] 成功: {len(successes)}/{len(successes)+len(real_errs)}")
+    print(f"[FAIL] 错误: {len(real_errs)}")
     for e in real_errs[:8]:
         print(f"   {e}")
     if not real_errs:
-        print("   🎉 零错误!")
+        print("    零错误!")
 
-print("\n✅ 诊断完成")
+print("\n[ok] 诊断完成")

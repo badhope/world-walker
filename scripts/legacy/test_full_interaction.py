@@ -1,5 +1,5 @@
 """
-全面前端交互自动化测试 - 模拟人工操作全流程
+前端交互自动化测试 - 模拟人工操作全流程
 测试所有4个标签页 + 前后端连接 + 边界情况
 """
 
@@ -12,31 +12,25 @@ os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 RESULTS = {"passed": [], "failed": [], "warnings": [], "network_errors": [], "console_errors": []}
 
-
 def ok(msg):
     RESULTS["passed"].append(msg)
-    print(f"  ✅ {msg}")
-
+    print(f"  [ok] {msg}")
 
 def fail(msg):
     RESULTS["failed"].append(msg)
-    print(f"  🔴 {msg}")
-
+    print(f"  [FAIL] {msg}")
 
 def warn(msg):
     RESULTS["warnings"].append(msg)
-    print(f"  ⚠️ {msg}")
-
+    print(f"  [!] {msg}")
 
 def shot(page, name):
     path = os.path.join(SCREENSHOT_DIR, name)
     page.screenshot(path=path, full_page=True)
     print(f"  📸 截图: {name}")
 
-
-# ─── 启动浏览器 ───
 print("=" * 70)
-print("🎯 全功能前端交互自动化测试")
+print("[*] 全功能前端交互自动化测试")
 print("=" * 70)
 
 with sync_playwright() as p:
@@ -53,12 +47,12 @@ with sync_playwright() as p:
         "response", lambda r: RESULTS["network_errors"].append(f"HTTP{r.status} {r.url}") if r.status >= 500 else None
     )
 
-    # ═══════════════════════════════════════
+    # =======================================
     #  第1步: 加载首页 + 后端健康检查
-    # ═══════════════════════════════════════
-    print("\n" + "━" * 60)
+    # =======================================
+    print("\n" + "-" * 60)
     print("📄 [1/6] 首页加载 & 健康检查")
-    print("━" * 60)
+    print("-" * 60)
 
     try:
         page.goto("http://localhost:8001/app", timeout=20000)
@@ -105,12 +99,12 @@ with sync_playwright() as p:
 
     shot(page, "01_home_loaded.png")
 
-    # ═══════════════════════════════════════
-    #  第2步: 仪表盘标签页全面检查
-    # ═══════════════════════════════════════
-    print("\n" + "━" * 60)
-    print("📊 [2/6] 仪表盘标签页 — 模拟人工浏览")
-    print("━" * 60)
+    # =======================================
+    #  第2步: 仪表盘标签页检查
+    # =======================================
+    print("\n" + "-" * 60)
+    print("[i] [2/6] 仪表盘标签页 — 模拟人工浏览")
+    print("-" * 60)
 
     # 等待异步数据加载
     page.wait_for_timeout(2000)
@@ -182,12 +176,12 @@ with sync_playwright() as p:
 
     shot(page, "02_dashboard_full.png")
 
-    # ═══════════════════════════════════════
+    # =======================================
     #  第3步: 企业选址分析 — 模拟选择城市+点击分析
-    # ═══════════════════════════════════════
-    print("\n" + "━" * 60)
-    print("🏢 [3/6] 企业选址分析 — 模拟人工操作流程")
-    print("━" * 60)
+    # =======================================
+    print("\n" + "-" * 60)
+    print(" [3/6] 企业选址分析 — 模拟人工操作流程")
+    print("-" * 60)
 
     # 模拟人工点击标签切换
     enterprise_tab = page.locator('.tab-btn[data-tab="enterprise"]').first
@@ -282,12 +276,12 @@ with sync_playwright() as p:
     except:
         warn("二次分析超时，但不影响整体")
 
-    # ═══════════════════════════════════════
+    # =======================================
     #  第4步: 政府产业分析 — 模拟人工操作
-    # ═══════════════════════════════════════
-    print("\n" + "━" * 60)
-    print("🏛️ [4/6] 政府产业分析 — 模拟人工操作流程")
-    print("━" * 60)
+    # =======================================
+    print("\n" + "-" * 60)
+    print(" [4/6] 政府产业分析 — 模拟人工操作流程")
+    print("-" * 60)
 
     # 点击标签切换
     gov_tab = page.locator('.tab-btn[data-tab="government"]').first
@@ -360,12 +354,12 @@ with sync_playwright() as p:
     else:
         warn("二次政府分析可能不完整")
 
-    # ═══════════════════════════════════════
+    # =======================================
     #  第5步: 城市数据对比 — 模拟多城市选择+对比
-    # ═══════════════════════════════════════
-    print("\n" + "━" * 60)
+    # =======================================
+    print("\n" + "-" * 60)
     print("🏙️ [5/6] 城市数据对比 — 模拟多城市选择流程")
-    print("━" * 60)
+    print("-" * 60)
 
     # 点击标签切换
     cities_tab = page.locator('.tab-btn[data-tab="cities"]').first
@@ -461,12 +455,12 @@ with sync_playwright() as p:
     rows_full = page.locator("#compareTable tbody tr").all()
     ok(f"全城市对比: {len(rows_full)} 行数据")
 
-    # ═══════════════════════════════════════
-    #  第6步: 全面回归 — 切换回仪表盘验证持久性
-    # ═══════════════════════════════════════
-    print("\n" + "━" * 60)
-    print("🔄 [6/6] 回归测试 — 标签页循环切换 + 后端验证")
-    print("━" * 60)
+    # =======================================
+    #  第6步: 回归 — 切换回仪表盘验证持久性
+    # =======================================
+    print("\n" + "-" * 60)
+    print(" [6/6] 回归测试 — 标签页循环切换 + 后端验证")
+    print("-" * 60)
 
     # 切换回仪表盘
     dashboard_tab = page.locator('.tab-btn[data-tab="dashboard"]').first
@@ -515,14 +509,13 @@ with sync_playwright() as p:
     except Exception as e:
         fail(f"前端 fetch API 测试失败: {e}")
 
-    # ─── 收尾: 关闭浏览器 ───
     browser.close()
 
-# ═══════════════════════════════════════
+# =======================================
 #  汇总报告
-# ═══════════════════════════════════════
+# =======================================
 print("\n" + "=" * 70)
-print("📋 测试汇总报告")
+print("[report] 测试汇总报告")
 print("=" * 70)
 
 # 过滤误报（CDN 相关、deprecated 等）
@@ -537,20 +530,20 @@ failed = len(RESULTS["failed"])
 total = passed + failed
 pass_rate = (passed / total * 100) if total > 0 else 100
 
-print(f"\n  ✅ 通过: {passed}")
-print(f"  🔴 失败: {failed}")
-print(f"  ⚠️ 警告: {len(RESULTS['warnings'])}")
-print(f"  🌐 网络错误 (5xx): {len(RESULTS['network_errors'])}")
+print(f"\n  [ok] 通过: {passed}")
+print(f"  [FAIL] 失败: {failed}")
+print(f"  [!] 警告: {len(RESULTS['warnings'])}")
+print(f"   网络错误 (5xx): {len(RESULTS['network_errors'])}")
 print(f"  📟 前端 Console 错误: {len(real_console_errs)}")
-print(f"  📊 通过率: {pass_rate:.1f}%")
+print(f"  [i] 通过率: {pass_rate:.1f}%")
 
 if failed > 0:
-    print("\n  🔴 失败详情:")
+    print("\n  [FAIL] 失败详情:")
     for f in RESULTS["failed"]:
         print(f"     {f}")
 
 if RESULTS["warnings"]:
-    print("\n  ⚠️ 警告详情:")
+    print("\n  [!] 警告详情:")
     for w in RESULTS["warnings"]:
         print(f"     {w}")
 
@@ -560,7 +553,7 @@ if real_console_errs:
         print(f"     {e}")
 
 if RESULTS["network_errors"]:
-    print("\n  🌐 网络错误详情:")
+    print("\n   网络错误详情:")
     for e in RESULTS["network_errors"][:5]:
         print(f"     {e}")
 
@@ -568,8 +561,8 @@ print(f"\n  📸 截图已保存到: {SCREENSHOT_DIR}")
 print(f"     共 {len(os.listdir(SCREENSHOT_DIR))} 张截图")
 
 if failed == 0:
-    print("\n🎉 全部测试通过! 前端交互完全正常!")
+    print("\n 全部测试通过! 前端交互完全正常!")
 else:
-    print(f"\n⚠️ 有 {failed} 项测试失败，请检查详情")
+    print(f"\n[!] 有 {failed} 项测试失败，请检查详情")
 
 print("=" * 70)

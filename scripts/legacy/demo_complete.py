@@ -113,7 +113,7 @@ def main():
                     if subf.is_file():
                         print(f"    - {subf.name}")
 
-    print("\n💡 提示:")
+    print("\n[i] 提示:")
     print("  - 查看 analysis_summary.txt 获取文本报告")
     print("  - 查看 analysis_report.xlsx 查看 Excel 报告")
     print("  - 查看 analysis_report.json 查看 JSON 报告")
@@ -123,7 +123,6 @@ def main():
     print("\n" + "=" * 80)
     print("演示完成！")
     print("=" * 80)
-
 
 if __name__ == "__main__":
     main()

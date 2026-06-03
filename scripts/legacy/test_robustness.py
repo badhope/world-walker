@@ -29,23 +29,22 @@ def test_case_1_normal_data():
     try:
         adapter = RetailDataAdapter()
         data = adapter.generate_sample_data(num_stores=100)
-        print(f"✅ 生成数据: {data.shape}")
+        print(f"[ok] 生成数据: {data.shape}")
 
         config = RetailLocationConfig.get_default_config()
         analyzer = RetailLocationAnalyzer(config)
         results = analyzer.run_full_analysis(data, save_results=True, output_dir="data/test_case1")
 
-        print(f"✅ 最佳模型: {results['insights']['best_model']['name']}")
-        print(f"✅ R²: {results['insights']['best_model']['r2_score']:.4f}")
+        print(f"[ok] 最佳模型: {results['insights']['best_model']['name']}")
+        print(f"[ok] R²: {results['insights']['best_model']['r2_score']:.4f}")
 
         return True, analyzer
     except Exception as e:
-        print(f"❌ 失败: {str(e)}")
+        print(f"[x] 失败: {str(e)}")
         import traceback
 
         traceback.print_exc()
         return False, None
-
 
 def test_case_2_small_data():
     """测试2: 小数据量（20条）"""
@@ -56,23 +55,22 @@ def test_case_2_small_data():
     try:
         adapter = RetailDataAdapter()
         data = adapter.generate_sample_data(num_stores=20)
-        print(f"✅ 生成数据: {data.shape}")
+        print(f"[ok] 生成数据: {data.shape}")
 
         config = RetailLocationConfig.get_default_config()
         analyzer = RetailLocationAnalyzer(config)
         results = analyzer.run_full_analysis(data, save_results=False)
 
-        print(f"✅ 最佳模型: {results['insights']['best_model']['name']}")
-        print(f"✅ R²: {results['insights']['best_model']['r2_score']:.4f}")
+        print(f"[ok] 最佳模型: {results['insights']['best_model']['name']}")
+        print(f"[ok] R²: {results['insights']['best_model']['r2_score']:.4f}")
 
         return True
     except Exception as e:
-        print(f"❌ 失败: {str(e)}")
+        print(f"[x] 失败: {str(e)}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def test_case_3_minimum_data():
     """测试3: 最小数据量（15条）"""
@@ -83,23 +81,22 @@ def test_case_3_minimum_data():
     try:
         adapter = RetailDataAdapter()
         data = adapter.generate_sample_data(num_stores=15)
-        print(f"✅ 生成数据: {data.shape}")
+        print(f"[ok] 生成数据: {data.shape}")
 
         config = RetailLocationConfig.get_default_config()
         analyzer = RetailLocationAnalyzer(config)
         results = analyzer.run_full_analysis(data, save_results=False)
 
-        print(f"✅ 最佳模型: {results['insights']['best_model']['name']}")
-        print(f"✅ R²: {results['insights']['best_model']['r2_score']:.4f}")
+        print(f"[ok] 最佳模型: {results['insights']['best_model']['name']}")
+        print(f"[ok] R²: {results['insights']['best_model']['r2_score']:.4f}")
 
         return True
     except Exception as e:
-        print(f"❌ 失败: {str(e)}")
+        print(f"[x] 失败: {str(e)}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def test_case_4_save_and_load(analyzer):
     """测试4: 模型保存和加载"""
@@ -111,20 +108,19 @@ def test_case_4_save_and_load(analyzer):
         # 保存
         save_dir = "data/test_save_load"
         analyzer.save_analyzer(save_dir)
-        print(f"✅ 模型保存到: {save_dir}")
+        print(f"[ok] 模型保存到: {save_dir}")
 
         # 加载
         loaded_analyzer = RetailLocationAnalyzer.load_analyzer(save_dir)
-        print("✅ 模型加载成功")
+        print("[ok] 模型加载成功")
 
         return True, loaded_analyzer
     except Exception as e:
-        print(f"❌ 失败: {str(e)}")
+        print(f"[x] 失败: {str(e)}")
         import traceback
 
         traceback.print_exc()
         return False, None
-
 
 def test_case_5_prediction(loaded_analyzer):
     """测试5: 预测功能"""
@@ -140,18 +136,17 @@ def test_case_5_prediction(loaded_analyzer):
         # 预测
         predictions = loaded_analyzer.predict_new_location(test_data)
 
-        print(f"✅ 预测完成: {predictions.shape}")
+        print(f"[ok] 预测完成: {predictions.shape}")
         print("预测结果:")
         print(predictions[["store_id", "store_area", "predicted_sales"]])
 
         return True
     except Exception as e:
-        print(f"❌ 失败: {str(e)}")
+        print(f"[x] 失败: {str(e)}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def test_case_6_prediction_missing_features(loaded_analyzer):
     """测试6: 预测时缺失特征"""
@@ -167,27 +162,26 @@ def test_case_6_prediction_missing_features(loaded_analyzer):
         # 删除一些特征
         if "population_3km" in test_data.columns:
             test_data = test_data.drop(columns=["population_3km"])
-            print("⚠️ 删除了特征: population_3km")
+            print("[!] 删除了特征: population_3km")
 
         if "rent_per_sqm" in test_data.columns:
             test_data = test_data.drop(columns=["rent_per_sqm"])
-            print("⚠️ 删除了特征: rent_per_sqm")
+            print("[!] 删除了特征: rent_per_sqm")
 
         # 预测
         predictions = loaded_analyzer.predict_new_location(test_data)
 
-        print(f"✅ 预测完成: {predictions.shape}")
+        print(f"[ok] 预测完成: {predictions.shape}")
         print("预测结果:")
         print(predictions[["store_id", "store_area", "predicted_sales"]])
 
         return True
     except Exception as e:
-        print(f"❌ 失败: {str(e)}")
+        print(f"[x] 失败: {str(e)}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def test_case_7_error_handling_too_few_data():
     """测试7: 数据量太少（10条以下）的错误处理"""
@@ -198,25 +192,24 @@ def test_case_7_error_handling_too_few_data():
     try:
         adapter = RetailDataAdapter()
         data = adapter.generate_sample_data(num_stores=8)
-        print(f"✅ 生成数据: {data.shape}")
+        print(f"[ok] 生成数据: {data.shape}")
 
         config = RetailLocationConfig.get_default_config()
         analyzer = RetailLocationAnalyzer(config)
 
         # 应该抛出异常
         results = analyzer.run_full_analysis(data, save_results=False)
-        print("❌ 应该抛出异常但没有！")
+        print("[x] 应该抛出异常但没有！")
         return False
     except ValueError as e:
-        print(f"✅ 正确抛出异常: {str(e)}")
+        print(f"[ok] 正确抛出异常: {str(e)}")
         return True
     except Exception as e:
-        print(f"❌ 抛出了意外的异常: {str(e)}")
+        print(f"[x] 抛出了意外的异常: {str(e)}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def main():
     """运行所有测试"""
@@ -232,7 +225,7 @@ def main():
     results["测试1: 正常数据"] = success1
 
     if not success1:
-        print("\n❌ 测试1失败，无法继续后续测试")
+        print("\n[x] 测试1失败，无法继续后续测试")
         return
 
     # 测试2: 小数据
@@ -260,7 +253,7 @@ def main():
     print("测试总结")
     print("=" * 80)
     for test_name, passed in results.items():
-        status = "✅ 通过" if passed else "❌ 失败"
+        status = "[ok] 通过" if passed else "[x] 失败"
         print(f"{status} - {test_name}")
 
     passed_count = sum(1 for passed in results.values() if passed)
@@ -268,10 +261,9 @@ def main():
     print(f"\n总计: {passed_count}/{total_count} 通过")
 
     if passed_count == total_count:
-        print("🎉 所有测试通过！")
+        print(" 所有测试通过！")
     else:
-        print("⚠️ 有测试失败，请检查")
-
+        print("[!] 有测试失败，请检查")
 
 if __name__ == "__main__":
     main()

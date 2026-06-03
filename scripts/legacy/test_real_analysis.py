@@ -23,23 +23,23 @@ def test_real_data_analysis():
         # 1. 获取真实数据
         print("📥 步骤 1: 获取真实宏观经济数据...")
         df = real_data_analyzer.fetch_macro_data()
-        print(f"✅ 数据获取成功！共 {len(df)} 条记录")
+        print(f"[ok] 数据获取成功！共 {len(df)} 条记录")
         print(f"   数据时间范围: {df['year'].min()} - {df['year'].max()}")
         print()
 
         # 2. 显示数据预览
-        print("📊 步骤 2: 数据预览:")
+        print("[i] 步骤 2: 数据预览:")
         print(df.head().to_string())
         print()
 
         # 3. 执行探索性数据分析
-        print("🔍 步骤 3: 执行探索性数据分析...")
+        print("[scan] 步骤 3: 执行探索性数据分析...")
         eda_results = real_data_analyzer.perform_eda(df)
-        print("✅ EDA 完成！")
+        print("[ok] EDA 完成！")
         print()
 
         # 4. 显示摘要统计
-        print("📈 摘要统计:")
+        print("[+] 摘要统计:")
         summary_stats = eda_results["summary_stats"]
         for key, stats in summary_stats.items():
             if key != "year":
@@ -64,20 +64,20 @@ def test_real_data_analysis():
         print()
 
         # 6. 生成洞察
-        print("💡 步骤 4: 生成数据洞察...")
+        print("[i] 步骤 4: 生成数据洞察...")
         insights = real_data_analyzer.generate_insights(eda_results)
-        print(f"✅ 生成了 {len(insights)} 条洞察！")
+        print(f"[ok] 生成了 {len(insights)} 条洞察！")
         print()
         for i, insight in enumerate(insights, 1):
-            icon = {"positive": "✅", "warning": "⚠️", "negative": "❌", "info": "ℹ️"}.get(insight["type"], "📌")
+            icon = {"positive": "[ok]", "warning": "[!]", "negative": "[x]", "info": "ℹ️"}.get(insight["type"], "")
             print(f"   {icon} 洞察 {i}: {insight['title']}")
             print(f"      {insight['content']}")
         print()
 
         # 7. 获取可视化数据
-        print("🎨 步骤 5: 获取可视化数据...")
+        print(" 步骤 5: 获取可视化数据...")
         viz_data = real_data_analyzer.get_visualization_data(df)
-        print("✅ 可视化数据准备完成！")
+        print("[ok] 可视化数据准备完成！")
         print()
 
         if viz_data.get("gdp_trend"):
@@ -94,24 +94,23 @@ def test_real_data_analysis():
         print()
 
         print("=" * 80)
-        print("🎉 所有测试通过！项目现在有真正的数据分析功能了！")
+        print(" 所有测试通过！项目现在有真正的数据分析功能了！")
         print("=" * 80)
         print()
-        print("📌 下一步：")
+        print(" 下一步：")
         print("   - 启动 API 服务: python -m uvicorn backend.api.main:app --reload --port 8001")
         print("   - 访问文档: http://localhost:8001/docs")
         print("   - 测试真实数据接口: GET /api/v1/real-data/complete")
         print()
 
     except Exception as e:
-        print(f"❌ 测试失败: {e}")
+        print(f"[x] 测试失败: {e}")
         import traceback
 
         traceback.print_exc()
         return False
 
     return True
-
 
 if __name__ == "__main__":
     success = test_real_data_analysis()

@@ -1,5 +1,5 @@
 """
-全面诊断脚本 - 模拟用户视角检查所有UI/UX问题
+诊断脚本 - 模拟用户视角检查所有UI/UX问题
 - 视觉问题（对齐、溢出、空白、颜色）
 - 交互问题（按钮无响应、hover失效、焦点丢失）
 - 数据问题（空状态、错误回显、加载状态）
@@ -17,38 +17,31 @@ os.makedirs(OUT, exist_ok=True)
 
 ISSUES = {"critical": [], "major": [], "minor": [], "suggestions": []}
 
-
 def critical(msg):
     ISSUES["critical"].append(msg)
-    print(f"  🔴 严重: {msg}")
-
+    print(f"  [FAIL] 严重: {msg}")
 
 def major(msg):
     ISSUES["major"].append(msg)
     print(f"  🟠 重要: {msg}")
 
-
 def minor(msg):
     ISSUES["minor"].append(msg)
     print(f"  🟡 轻微: {msg}")
 
-
 def suggest(msg):
     ISSUES["suggestions"].append(msg)
-    print(f"  💡 建议: {msg}")
-
+    print(f"  [i] 建议: {msg}")
 
 def ok(msg):
-    print(f"  ✅ {msg}")
-
+    print(f"  [ok] {msg}")
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
 
-    # ── 测试 1: 桌面端 (1920x1080) ──
-    print("\n" + "━" * 70)
+    print("\n" + "-" * 70)
     print("🖥️ [测试 1] 桌面端 1920x1080")
-    print("━" * 70)
+    print("-" * 70)
     ctx = browser.new_context(viewport={"width": 1920, "height": 1080})
     page = ctx.new_page()
     errs = []
@@ -144,10 +137,9 @@ with sync_playwright() as p:
         major("错误状态: 没有任何错误提示（API 失败时）")
     page.unroute("**/api/v1/cities/list")
 
-    # ── 测试 2: 平板端 (768x1024) ──
-    print("\n" + "━" * 70)
+    print("\n" + "-" * 70)
     print("📱 [测试 2] 平板端 768x1024")
-    print("━" * 70)
+    print("-" * 70)
     ctx2 = browser.new_context(viewport={"width": 768, "height": 1024})
     page2 = ctx2.new_page()
     page2.goto("http://localhost:8001/app")
@@ -189,10 +181,9 @@ with sync_playwright() as p:
     }""")
     print(f"  城市卡片布局: {cities_layout['count']}个, 占用 {cities_layout['rows']} 行")
 
-    # ── 测试 3: 移动端 (375x667) ──
-    print("\n" + "━" * 70)
+    print("\n" + "-" * 70)
     print("📱 [测试 3] 移动端 375x667")
-    print("━" * 70)
+    print("-" * 70)
     ctx3 = browser.new_context(viewport={"width": 375, "height": 667})
     page3 = ctx3.new_page()
     page3.goto("http://localhost:8001/app")
@@ -226,10 +217,9 @@ with sync_playwright() as p:
     ctx3.close()
     ctx2.close()
 
-    # ── 测试 4: 加载慢/超时场景 ──
-    print("\n" + "━" * 70)
-    print("⏱️ [测试 4] 慢速API + 超时处理")
-    print("━" * 70)
+    print("\n" + "-" * 70)
+    print(" [测试 4] 慢速API + 超时处理")
+    print("-" * 70)
     ctx4 = browser.new_context(viewport={"width": 1920, "height": 1080})
     page4 = ctx4.new_page()
 
@@ -262,10 +252,9 @@ with sync_playwright() as p:
     page4.screenshot(path=f"{OUT}/timeout_state.png")
     ctx4.close()
 
-    # ── 测试 5: 边界情况 ──
-    print("\n" + "━" * 70)
-    print("⚠️ [测试 5] 边界情况测试")
-    print("━" * 70)
+    print("\n" + "-" * 70)
+    print("[!] [测试 5] 边界情况测试")
+    print("-" * 70)
     ctx5 = browser.new_context(viewport={"width": 1920, "height": 1080})
     page5 = ctx5.new_page()
 
@@ -311,10 +300,9 @@ with sync_playwright() as p:
 
     ctx5.close()
 
-    # ── 测试 6: 控制台错误检查 ──
-    print("\n" + "━" * 70)
+    print("\n" + "-" * 70)
     print("📟 [测试 6] 控制台错误统计")
-    print("━" * 70)
+    print("-" * 70)
     if errs:
         real_errs = [
             e for e in errs if "cdn" not in e.lower() and "favicon" not in e.lower() and "deprecated" not in e.lower()
@@ -330,17 +318,16 @@ with sync_playwright() as p:
 
     browser.close()
 
-# ── 汇总 ──
 print("\n" + "=" * 70)
-print("📋 诊断报告汇总")
+print("[report] 诊断报告汇总")
 print("=" * 70)
-print(f"  🔴 严重问题: {len(ISSUES['critical'])}")
+print(f"  [FAIL] 严重问题: {len(ISSUES['critical'])}")
 print(f"  🟠 重要问题: {len(ISSUES['major'])}")
 print(f"  🟡 轻微问题: {len(ISSUES['minor'])}")
-print(f"  💡 优化建议: {len(ISSUES['suggestions'])}")
+print(f"  [i] 优化建议: {len(ISSUES['suggestions'])}")
 
 if ISSUES["critical"]:
-    print("\n  🔴 严重问题:")
+    print("\n  [FAIL] 严重问题:")
     for i in ISSUES["critical"]:
         print(f"     {i}")
 if ISSUES["major"]:
@@ -352,7 +339,7 @@ if ISSUES["minor"]:
     for i in ISSUES["minor"]:
         print(f"     {i}")
 if ISSUES["suggestions"]:
-    print("\n  💡 优化建议:")
+    print("\n  [i] 优化建议:")
     for i in ISSUES["suggestions"]:
         print(f"     {i}")
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-🎯 一键演示脚本 - 让面试官眼前一亮！
+[*] 一键演示脚本 - 让面试官眼前一亮！
 
 运行这个脚本，它会：
 1. 验证项目完整性
@@ -22,27 +22,22 @@ def print_banner(text):
     print(f"  {text}")
     print("=" * 80)
 
-
 def print_success(text):
-    print(f"✅ {text}")
-
+    print(f"[ok] {text}")
 
 def print_info(text):
     print(f"ℹ️  {text}")
 
-
 def print_error(text):
-    print(f"❌ {text}")
-
+    print(f"[x] {text}")
 
 def print_step(step, text):
-    print(f"\n📋 步骤 {step}: {text}")
-
+    print(f"\n[report] 步骤 {step}: {text}")
 
 def main():
     os.chdir(Path(__file__).parent)
 
-    print_banner("🚀 数据分析师作品集 - 一键演示")
+    print_banner(" 数据分析师作品集 - 一键演示")
 
     # Step 1: 验证项目
     print_step(1, "验证项目完整性...")
@@ -60,7 +55,7 @@ def main():
         if chart_files:
             print_success(f"找到 {len(chart_files)} 张分析图表！")
             for chart in chart_files[:5]:
-                print(f"  📊 {chart.name}")
+                print(f"  [i] {chart.name}")
             if len(chart_files) > 5:
                 print(f"  ... 还有 {len(chart_files) - 5} 张")
         else:
@@ -103,18 +98,18 @@ def main():
 
     # Step 5: 询问是否启动API
     print_step(5, "启动选项...")
-    print("\n" + "─" * 80)
-    print("💡 演示已准备好！你可以：")
+    print("\n" + "-" * 80)
+    print("[i] 演示已准备好！你可以：")
     print("\n  1️⃣  查看项目展示页面 (已打开)")
     print("  2️⃣  运行完整分析: python run_full_demo.py")
     print("  3️⃣  启动API服务: python -m uvicorn backend.api.main:app --reload --port 8001")
     print("  4️⃣  查看简历描述: 打开 RESUME_PROJECT.md")
     print("  5️⃣  查看项目故事: 打开 PROJECT_NARRATIVE.md")
-    print("\n" + "─" * 80)
+    print("\n" + "-" * 80)
 
     # 询问是否启动API
     try:
-        choice = input("\n🚀 是否启动API服务？(y/n，默认n): ").strip().lower()
+        choice = input("\n 是否启动API服务？(y/n，默认n): ").strip().lower()
         if choice == "y":
             print_info("正在启动API服务...")
             print_info("访问: http://localhost:8001/dashboard")
@@ -125,15 +120,14 @@ def main():
     except Exception as e:
         print_error(f"启动API失败: {e}")
 
-    print_banner("✨ 演示完成！")
-    print("\n💡 面试官看这里：")
+    print_banner(" 演示完成！")
+    print("\n[i] 面试官看这里：")
     print("  1. 先看 PROJECT_SHOWCASE.html - 视觉冲击")
     print("  2. 再看 README.md - 项目介绍")
     print("  3. 最后看 RESUME_PROJECT.md - 简历怎么写")
-    print("\n🎯 这个项目展示了完整的数据分析师技能：")
+    print("\n[*] 这个项目展示了完整的数据分析师技能：")
     print("  业务理解 → 数据采集 → EDA → 建模 → 可视化 → 工程落地")
     print("\n" + "=" * 80 + "\n")
-
 
 if __name__ == "__main__":
     main()

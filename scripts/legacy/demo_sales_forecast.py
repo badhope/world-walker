@@ -83,9 +83,8 @@ def main():
     print("- analysis_report.json: Insights in JSON format")
     print("- analysis_summary.txt: Human-readable summary")
 
-    print("\n🎉 销售预测框架第二个场景演示完成！")
+    print("\n 销售预测框架第二个场景演示完成！")
     print("这表明我们的框架可以适用于不同的业务场景！")
-
 
 if __name__ == "__main__":
     main()

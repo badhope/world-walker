@@ -25,7 +25,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 print("=" * 100)
-print("🚀 区域产业经济分析平台 - 完整演示")
+print(" 区域产业经济分析平台 - 完整演示")
 print("=" * 100)
 print()
 
@@ -42,9 +42,9 @@ try:
     from backend.analysis.real_data_analysis import real_data_analyzer
     from backend.database import get_db
 
-    print("   ✅ 模块导入成功")
+    print("   [ok] 模块导入成功")
 except ImportError as e:
-    print(f"   ❌ 导入失败: {e}")
+    print(f"   [x] 导入失败: {e}")
     print("   请确保已安装所有依赖: pip install -r requirements.txt")
     sys.exit(1)
 
@@ -57,11 +57,11 @@ print("[2/7] 获取真实宏观经济数据...")
 
 try:
     df = real_data_analyzer.fetch_macro_data()
-    print(f"   ✅ 数据获取成功: {df.shape[0]} 条记录")
-    print(f"   📊 数据时间范围: {df['year'].min()} - {df['year'].max()}")
-    print(f"   📈 可用指标: {', '.join([col for col in df.columns if col != 'year'])}")
+    print(f"   [ok] 数据获取成功: {df.shape[0]} 条记录")
+    print(f"   [i] 数据时间范围: {df['year'].min()} - {df['year'].max()}")
+    print(f"   [+] 可用指标: {', '.join([col for col in df.columns if col != 'year'])}")
 except Exception as e:
-    print(f"   ❌ 数据获取失败: {e}")
+    print(f"   [x] 数据获取失败: {e}")
     sys.exit(1)
 
 print()
@@ -73,28 +73,28 @@ print("[3/7] 执行探索性数据分析（EDA）...")
 
 try:
     eda_results = real_data_analyzer.perform_eda(df)
-    print("   ✅ EDA完成")
-    print("   📊 描述性统计已生成")
+    print("   [ok] EDA完成")
+    print("   [i] 描述性统计已生成")
 
     stats = eda_results["summary_stats"]
     if "gdp" in stats:
         gdp_stats = stats["gdp"]
         print(f"   💰 GDP均值: {gdp_stats.get('mean', 'N/A'):.2f} 亿元")
-        print(f"   📈 GDP标准差: {gdp_stats.get('std', 'N/A'):.2f}")
+        print(f"   [+] GDP标准差: {gdp_stats.get('std', 'N/A'):.2f}")
 except Exception as e:
-    print(f"   ❌ EDA失败: {e}")
+    print(f"   [x] EDA失败: {e}")
     sys.exit(1)
 
 print()
 
 # =============================================================================
-# 步骤 3: 生成智能洞察
+# 步骤 3: 生成数据洞察
 # =============================================================================
-print("[4/7] 生成智能数据洞察...")
+print("[4/7] 生成数据洞察...")
 
 try:
     insights = real_data_analyzer.generate_insights(eda_results)
-    print(f"   ✅ 生成了 {len(insights)} 条洞察")
+    print(f"   [ok] 生成了 {len(insights)} 条洞察")
     print()
     for i, insight in enumerate(insights[:3], 1):
         print(f"   {i}. [{insight['type']}] {insight['title']}")
@@ -102,7 +102,7 @@ try:
     if len(insights) > 3:
         print(f"      ... 还有 {len(insights) - 3} 条")
 except Exception as e:
-    print(f"   ❌ 洞察生成失败: {e}")
+    print(f"   [x] 洞察生成失败: {e}")
     sys.exit(1)
 
 print()
@@ -131,19 +131,19 @@ sample_data = {
 
 try:
     enterprise_report = enterprise_analyzer_v2.generate_comprehensive_report(sample_data)
-    print("   ✅ 企业分析完成")
+    print("   [ok] 企业分析完成")
     print()
-    print("   📊 分析结果:")
-    print(f"   ├─ 综合评分: {enterprise_report['overall_score']:.1f}/100")
-    print(f"   ├─ 营商成本评分: {enterprise_report['business_costs']['total_cost_score']:.1f}")
-    print(f"   ├─ 供应链配套评分: {enterprise_report['supply_chain']['supply_chain_score']:.1f}")
-    print(f"   └─ 政策红利评分: {enterprise_report['policy_benefits']['policy_benefit_score']:.1f}")
+    print("   [i] 分析结果:")
+    print(f"   ├- 综合评分: {enterprise_report['overall_score']:.1f}/100")
+    print(f"   ├- 营商成本评分: {enterprise_report['business_costs']['total_cost_score']:.1f}")
+    print(f"   ├- 供应链配套评分: {enterprise_report['supply_chain']['supply_chain_score']:.1f}")
+    print(f"   └- 政策红利评分: {enterprise_report['policy_benefits']['policy_benefit_score']:.1f}")
     print()
-    print("   💡 智能建议:")
+    print("   [i] 建议:")
     for i, rec in enumerate(enterprise_report["recommendations"][:3], 1):
         print(f"   {i}. [{rec['priority']}] {rec['content']}")
 except Exception as e:
-    print(f"   ❌ 企业分析失败: {e}")
+    print(f"   [x] 企业分析失败: {e}")
     import traceback
 
     traceback.print_exc()
@@ -170,12 +170,12 @@ try:
     # 获取统计信息
     stats = db.get_statistics()
 
-    print("   ✅ 数据库存储成功")
-    print(f"   📊 经济数据: {stats['economic_data_count']} 条")
-    print(f"   🏢 企业分析: {stats['enterprise_analysis_count']} 条")
+    print("   [ok] 数据库存储成功")
+    print(f"   [i] 经济数据: {stats['economic_data_count']} 条")
+    print(f"    企业分析: {stats['enterprise_analysis_count']} 条")
     print(f"   📆 数据年份: {stats['data_year_range']}")
 except Exception as e:
-    print(f"   ❌ 数据库操作失败: {e}")
+    print(f"   [x] 数据库操作失败: {e}")
     import traceback
 
     traceback.print_exc()
@@ -194,10 +194,10 @@ try:
     charts_dir = project_root / "data" / "charts"
     charts_dir.mkdir(exist_ok=True, parents=True)
 
-    print("   ✅ 可视化数据准备完成")
-    print(f"   📁 图表目录: {charts_dir}")
+    print("   [ok] 可视化数据准备完成")
+    print(f"    图表目录: {charts_dir}")
 except Exception as e:
-    print(f"   ❌ 可视化生成失败: {e}")
+    print(f"   [x] 可视化生成失败: {e}")
     sys.exit(1)
 
 print()
@@ -206,29 +206,29 @@ print()
 # 总结
 # =============================================================================
 print("=" * 100)
-print("🎉 完整演示执行成功！")
+print(" 完整演示执行成功！")
 print("=" * 100)
 print()
-print("📁 项目文件结构:")
+print(" 项目文件结构:")
 print()
-print("  ├── backend/")
-print("  │   ├── analysis/")
-print("  │   │   ├── real_data_analysis.py     - 真实数据分析模块")
-print("  │   │   └── enterprise_analyzer_v2.py  - 企业分析模块 v2")
-print("  │   └── database/")
-print("  │       └── database.py                - 数据库管理模块")
+print("  ├-- backend/")
+print("  │   ├-- analysis/")
+print("  │   │   ├-- real_data_analysis.py     - 真实数据分析模块")
+print("  │   │   └-- enterprise_analyzer_v2.py  - 企业分析模块 v2")
+print("  │   └-- database/")
+print("  │       └-- database.py                - 数据库管理模块")
 print("  │")
-print("  ├── notebooks/")
-print("  │   └── 01_data_collection_analysis.py  - 完整EDA流程")
+print("  ├-- notebooks/")
+print("  │   └-- 01_data_collection_analysis.py  - 完整EDA流程")
 print("  │")
-print("  ├── tests/")
-print("  │   └── backend/")
-print("  │       └── test_real_data_analysis.py - 单元测试")
+print("  ├-- tests/")
+print("  │   └-- backend/")
+print("  │       └-- test_real_data_analysis.py - 单元测试")
 print("  │")
-print("  └── data/")
-print("      ├── regional_economy.db           - SQLite数据库")
-print("      ├── charts/                        - 分析图表")
-print("      └── analysis_output/                - 分析结果")
+print("  └-- data/")
+print("      ├-- regional_economy.db           - SQLite数据库")
+print("      ├-- charts/                        - 分析图表")
+print("      └-- analysis_output/                - 分析结果")
 print()
 print("💼 简历展示要点:")
 print()
@@ -254,7 +254,7 @@ print("  5. 数据持久化")
 print("     - SQLite 数据库存储分析结果")
 print("     - 支持历史数据查询")
 print()
-print("🎯 下一步:")
+print("[*] 下一步:")
 print()
 print("  - 运行 EDA 完整流程: python notebooks/01_data_collection_analysis.py")
 print("  - 运行单元测试: python -m pytest tests/backend/ -v")

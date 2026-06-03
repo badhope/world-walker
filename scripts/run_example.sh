@@ -88,7 +88,7 @@ run_government() {
 
 # 生成综合报告
 generate_report() {
-    print_info "📋 生成综合分析报告..."
+    print_info "生成综合分析报告..."
     echo ""
     
     python3 examples/shenzhen_semiconductor_2025/generate_report.py
@@ -160,7 +160,7 @@ main() {
     # 完成
     echo ""
     echo "========================================================================"
-    echo "  示例运行完成！🎉"
+    echo "  示例运行完成"
     echo "========================================================================"
     echo ""
     echo "查看HTML报告："

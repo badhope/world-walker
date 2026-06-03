@@ -47,10 +47,10 @@ with sync_playwright() as p:
     for r in requests_log:
         if r["type"] == "response":
             status = r["status"]
-            mark = "❌" if status >= 400 else "✅"
+            mark = "[x]" if status >= 400 else "[ok]"
             print(f"  {mark} {status} {r['url']}")
         elif r["type"] == "failed":
-            print(f"  ❌ FAILED {r['url']} - {r['failure']}")
+            print(f"  [x] FAILED {r['url']} - {r['failure']}")
 
     print("\n--- Console errors ---")
     print("--- done ---")

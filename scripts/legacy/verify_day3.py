@@ -10,7 +10,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-
 def test_data_files():
     """测试数据文件"""
     print("=" * 60)
@@ -27,16 +26,15 @@ def test_data_files():
             try:
                 with open(filepath, encoding="utf-8") as f:
                     data = json.load(f)
-                print(f"✅ {filename} - OK ({len(json.dumps(data))} bytes)")
+                print(f"[ok] {filename} - OK ({len(json.dumps(data))} bytes)")
             except Exception as e:
-                print(f"❌ {filename} - JSON解析失败: {e}")
+                print(f"[x] {filename} - JSON解析失败: {e}")
                 all_exist = False
         else:
-            print(f"❌ {filename} - 文件不存在")
+            print(f"[x] {filename} - 文件不存在")
             all_exist = False
 
     return all_exist
-
 
 def test_enterprise_analysis():
     """测试企业分析脚本导入"""
@@ -47,19 +45,18 @@ def test_enterprise_analysis():
     try:
         from examples.shenzhen_semiconductor_2025.enterprise_analysis import EnterpriseAnalysisRunner
 
-        print("✅ EnterpriseAnalysisRunner 导入成功")
+        print("[ok] EnterpriseAnalysisRunner 导入成功")
 
         runner = EnterpriseAnalysisRunner()
-        print("✅ EnterpriseAnalysisRunner 初始化成功")
+        print("[ok] EnterpriseAnalysisRunner 初始化成功")
 
         return True
     except Exception as e:
-        print(f"❌ 企业分析脚本错误: {e}")
+        print(f"[x] 企业分析脚本错误: {e}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def test_government_analysis():
     """测试政府分析脚本导入"""
@@ -70,19 +67,18 @@ def test_government_analysis():
     try:
         from examples.shenzhen_semiconductor_2025.government_analysis import GovernmentAnalysisRunner
 
-        print("✅ GovernmentAnalysisRunner 导入成功")
+        print("[ok] GovernmentAnalysisRunner 导入成功")
 
         runner = GovernmentAnalysisRunner()
-        print("✅ GovernmentAnalysisRunner 初始化成功")
+        print("[ok] GovernmentAnalysisRunner 初始化成功")
 
         return True
     except Exception as e:
-        print(f"❌ 政府分析脚本错误: {e}")
+        print(f"[x] 政府分析脚本错误: {e}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def test_report_generator():
     """测试报告生成器"""
@@ -91,16 +87,15 @@ def test_report_generator():
     print("=" * 60)
 
     try:
-        print("✅ ComprehensiveReportGenerator 导入成功")
+        print("[ok] ComprehensiveReportGenerator 导入成功")
 
         return True
     except Exception as e:
-        print(f"❌ 报告生成器错误: {e}")
+        print(f"[x] 报告生成器错误: {e}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def test_template():
     """测试模板脚本"""
@@ -109,16 +104,15 @@ def test_template():
     print("=" * 60)
 
     try:
-        print("✅ AnalysisTemplate 导入成功")
+        print("[ok] AnalysisTemplate 导入成功")
 
         return True
     except Exception as e:
-        print(f"❌ 模板脚本错误: {e}")
+        print(f"[x] 模板脚本错误: {e}")
         import traceback
 
         traceback.print_exc()
         return False
-
 
 def main():
     """主函数"""
@@ -134,7 +128,7 @@ def main():
             result = test()
             results.append((test.__name__, result))
         except Exception as e:
-            print(f"\n❌ 测试失败: {test.__name__}")
+            print(f"\n[x] 测试失败: {test.__name__}")
             print(f"   错误: {str(e)}")
             import traceback
 
@@ -149,18 +143,17 @@ def main():
     total = len(results)
 
     for name, result in results:
-        status = "✅ 通过" if result else "❌ 失败"
+        status = "[ok] 通过" if result else "[x] 失败"
         print(f"  {status}: {name}")
 
     print(f"\n总计: {passed}/{total} 个测试通过")
 
     if passed == total:
-        print("\n🎉 所有测试通过！第三天任务基本完成！")
+        print("\n 所有测试通过！第三天任务基本完成！")
         return 0
     else:
-        print(f"\n⚠️ 有 {total - passed} 个测试失败")
+        print(f"\n[!] 有 {total - passed} 个测试失败")
         return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

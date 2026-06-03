@@ -7,12 +7,11 @@ import requests
 
 BASE_URL = "http://localhost:8000/api/v1"
 
-
 def test_api(method, path, data=None, params=None):
     """测试单个API"""
     url = f"{BASE_URL}{path}"
     try:
-        print(f"\n🔍 测试: {method.upper()} {url}")
+        print(f"\n[scan] 测试: {method.upper()} {url}")
         if params:
             print(f"   参数: {params}")
 
@@ -27,10 +26,10 @@ def test_api(method, path, data=None, params=None):
 
         if response.status_code == 200:
             result = response.json()
-            print("   ✅ 成功")
+            print("   [ok] 成功")
             return True, result
         else:
-            print("   ❌ 失败")
+            print("   [x] 失败")
             try:
                 print(f"   错误: {response.json()}")
             except:
@@ -38,13 +37,12 @@ def test_api(method, path, data=None, params=None):
             return False, None
 
     except Exception as e:
-        print(f"   ⚠️  异常: {str(e)}")
+        print(f"   [!]  异常: {str(e)}")
         return False, None
-
 
 def main():
     print("=" * 60)
-    print("📊 后端API全面测试")
+    print("[i] 后端API测试")
     print("=" * 60)
 
     results = {}
@@ -60,7 +58,7 @@ def main():
 
     # 数据接口
     print("\n" + "=" * 60)
-    print("📦 数据接口测试")
+    print(" 数据接口测试")
     print("=" * 60)
 
     results["data/basic"] = test_api("get", "/data/basic")
@@ -98,7 +96,7 @@ def main():
 
     # 统计结果
     print("\n" + "=" * 60)
-    print("📈 测试结果汇总")
+    print("[+] 测试结果汇总")
     print("=" * 60)
 
     success_count = 0
@@ -106,15 +104,14 @@ def main():
 
     for path, (success, data) in results.items():
         if success:
-            print(f"✅ {path}")
+            print(f"[ok] {path}")
             success_count += 1
         else:
-            print(f"❌ {path}")
+            print(f"[x] {path}")
             fail_count += 1
 
     print(f"\n总计: {success_count} 成功, {fail_count} 失败")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

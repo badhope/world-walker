@@ -65,7 +65,7 @@ def main() -> int:
     with open(out_path, "w", encoding="utf-8") as fh:
         yaml.dump(doc, fh, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
-    print(f"✅ Wrote {len(cd.CITY_DATA)} cities to {out_path}")
+    print(f"[ok] Wrote {len(cd.CITY_DATA)} cities to {out_path}")
     print(f"   version: {args.version}")
     return 0
 

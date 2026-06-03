@@ -75,7 +75,6 @@ def demo_default_industry():
 
     return result
 
-
 def demo_custom_industry():
     """演示2：自定义零售行业分析"""
     print("\n" + "=" * 80)
@@ -161,7 +160,6 @@ def demo_custom_industry():
 
     return result
 
-
 def demo_time_series_forecast():
     """演示3：时间序列预测"""
     print("\n" + "=" * 80)
@@ -216,7 +214,6 @@ def demo_time_series_forecast():
 
     return result
 
-
 def main():
     """主函数"""
     print("\n" + "=" * 80)
@@ -242,7 +239,6 @@ def main():
     print("6. ✓ 地区无关性 - 支持全球任意地区")
     print("7. ✓ 持续可优化 - 模型可迭代更新")
     print("\n立即使用，只需提供数据！")
-
 
 if __name__ == "__main__":
     main()

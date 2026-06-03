@@ -20,24 +20,24 @@ set -euo pipefail
 REPO="${GITHUB_REPOSITORY:-your-org/regional-economic-analysis}"
 BRANCHES=("main" "develop")
 
-echo "🔐 Configuring branch protection for ${REPO}"
+echo "[sec] Configuring branch protection for ${REPO}"
 echo ""
 
 # Check prerequisites
 if ! command -v gh >/dev/null 2>&1; then
-    echo "❌ GitHub CLI (gh) not found. Install: https://cli.github.com/"
+    echo "[x] GitHub CLI (gh) not found. Install: https://cli.github.com/"
     exit 1
 fi
 
 if ! gh auth status >/dev/null 2>&1; then
-    echo "❌ Not authenticated. Run: gh auth login"
+    echo "[x] Not authenticated. Run: gh auth login"
     exit 1
 fi
 
 for BRANCH in "${BRANCHES[@]}"; do
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📌 Branch: ${BRANCH}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "--------------------"
+    echo " Branch: ${BRANCH}"
+    echo "--------------------"
 
     # Use gh api to PUT branch protection rules
     gh api \
@@ -99,25 +99,25 @@ EOF
 }
 EOF
 
-    echo "✅ ${BRANCH} protection configured"
+    echo "[ok] ${BRANCH} protection configured"
     echo ""
 done
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🎉 Branch protection setup complete!"
+echo "--------------------"
+echo " Branch protection setup complete!"
 echo ""
 echo "Configured for: ${BRANCHES[*]}"
 echo "Repository:     ${REPO}"
 echo ""
 echo "Rules enabled:"
-echo "  ✅ Required status checks (CI, Frontend, CodeQL)"
-echo "  ✅ Required pull request reviews (1+ approver, code owner)"
-echo "  ✅ Dismiss stale approvals on new push"
-echo "  ✅ Require last push approval"
-echo "  ✅ Require conversation resolution"
-echo "  ✅ Linear history required"
-echo "  ✅ Force push disabled"
-echo "  ✅ Branch deletion disabled"
-echo "  ✅ Admin enforcement enabled"
-echo "  ✅ Auto-merge enabled"
-echo "  ✅ Delete branch on merge enabled"
+echo "  [ok] Required status checks (CI, Frontend, CodeQL)"
+echo "  [ok] Required pull request reviews (1+ approver, code owner)"
+echo "  [ok] Dismiss stale approvals on new push"
+echo "  [ok] Require last push approval"
+echo "  [ok] Require conversation resolution"
+echo "  [ok] Linear history required"
+echo "  [ok] Force push disabled"
+echo "  [ok] Branch deletion disabled"
+echo "  [ok] Admin enforcement enabled"
+echo "  [ok] Auto-merge enabled"
+echo "  [ok] Delete branch on merge enabled"

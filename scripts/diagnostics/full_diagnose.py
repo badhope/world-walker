@@ -20,13 +20,16 @@ results = {
     "security_issues": [],
 }
 
+
 def ok(msg):
     results["api_pass"].append(msg)
     print(f"  [ok] {msg}")
 
+
 def fail(msg):
     results["api_fail"].append(msg)
     print(f"  [FAIL] {msg}")
+
 
 def http_get(path, timeout=15):
     """GET 请求"""
@@ -39,6 +42,7 @@ def http_get(path, timeout=15):
         return e.code, e.read().decode("utf-8")
     except Exception as e:
         return 0, str(e)
+
 
 def http_post(path, data, timeout=15):
     """POST 请求"""
@@ -53,6 +57,7 @@ def http_post(path, data, timeout=15):
         return e.code, e.read().decode("utf-8")
     except Exception as e:
         return 0, str(e)
+
 
 # =======================================
 #  第1部分: API 端点验证
@@ -309,12 +314,12 @@ for ep, status, t in api_times:
 # 前端体积
 fe_size = len(html)
 if fe_size < 50_000:
-    ok(f"前端体积合理: {fe_size/1024:.1f}KB")
+    ok(f"前端体积合理: {fe_size / 1024:.1f}KB")
 elif fe_size < 100_000:
-    print(f"  🟡 前端体积: {fe_size/1024:.1f}KB")
+    print(f"  🟡 前端体积: {fe_size / 1024:.1f}KB")
 else:
-    print(f"  [FAIL] 前端过大: {fe_size/1024:.1f}KB")
-    results["perf_issues"].append(f"前端过大: {fe_size/1024:.1f}KB")
+    print(f"  [FAIL] 前端过大: {fe_size / 1024:.1f}KB")
+    results["perf_issues"].append(f"前端过大: {fe_size / 1024:.1f}KB")
 
 # 同步分析大文件
 eod = re.findall(r"echarts", html, re.IGNORECASE)

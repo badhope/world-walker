@@ -60,8 +60,7 @@ class EnvironmentChecker:
 
     @staticmethod
     def check_directories() -> bool:
-        for d in ("data", "data/raw", "data/processed", "data/cache",
-                  "data/exports", "config", "backend", "examples"):
+        for d in ("data", "data/raw", "data/processed", "data/cache", "data/exports", "config", "backend", "examples"):
             p = project_root / d
             if not p.exists():
                 p.mkdir(parents=True, exist_ok=True)

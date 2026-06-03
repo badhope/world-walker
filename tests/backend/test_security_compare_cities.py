@@ -4,6 +4,7 @@
 将 POST /cities/compare 从裸 request.json() 替换为 Pydantic BaseModel,
 让所有字段有类型校验 + 自动文档 + 输入大小限制。
 """
+
 import pytest
 
 

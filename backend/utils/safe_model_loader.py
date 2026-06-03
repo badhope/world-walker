@@ -92,7 +92,7 @@ def verify_model_integrity(
     size = path.stat().st_size
     if size > MAX_MODEL_SIZE_BYTES:
         raise ValueError(
-            f"Model {path} is {size/1024/1024:.1f} MB, exceeds "
+            f"Model {path} is {size / 1024 / 1024:.1f} MB, exceeds "
             f"MAX_MODEL_SIZE_MB={MAX_MODEL_SIZE_MB} (possible zip-bomb / RCE)."
         )
 
@@ -107,7 +107,7 @@ def verify_model_integrity(
     sums = _load_sha256sums(manifest)
     name = path.name
     if name not in sums:
-        raise ValueError(f"Model {name!r} is not listed in {manifest}. " f"Refusing to load an unverified model.")
+        raise ValueError(f"Model {name!r} is not listed in {manifest}. Refusing to load an unverified model.")
 
     actual = _compute_sha256(path)
     expected = sums[name].lower()

@@ -12,22 +12,27 @@ os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 RESULTS = {"passed": [], "failed": [], "warnings": [], "network_errors": [], "console_errors": []}
 
+
 def ok(msg):
     RESULTS["passed"].append(msg)
     print(f"  [ok] {msg}")
+
 
 def fail(msg):
     RESULTS["failed"].append(msg)
     print(f"  [FAIL] {msg}")
 
+
 def warn(msg):
     RESULTS["warnings"].append(msg)
     print(f"  [!] {msg}")
+
 
 def shot(page, name):
     path = os.path.join(SCREENSHOT_DIR, name)
     page.screenshot(path=path, full_page=True)
     print(f"  📸 截图: {name}")
+
 
 print("=" * 70)
 print("[*] 全功能前端交互自动化测试")

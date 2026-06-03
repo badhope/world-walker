@@ -7,6 +7,7 @@ f"SELECT * FROM {table_name}" 的字符串拼接。
 即便当前不通过 API 直接接收 table_name,提前做白名单校验
 可以避免日后添加路由时遗留漏洞。
 """
+
 import pytest
 
 

@@ -108,7 +108,7 @@ if settings.SECRET_KEY == "dev-secret-key-change-in-production":
     import warnings
 
     warnings.warn(
-        "SECRET_KEY is using the default development value. " "Set the SECRET_KEY environment variable for production.",
+        "SECRET_KEY is using the default development value. Set the SECRET_KEY environment variable for production.",
         RuntimeWarning,
     )
 
@@ -116,7 +116,7 @@ if settings.ALGORITHM == "RS256" and not settings.SECRET_KEY.startswith("-----BE
     import warnings
 
     warnings.warn(
-        "SECRET_KEY does not appear to be an RSA private key. " "For RS256, a valid RSA key pair is required.",
+        "SECRET_KEY does not appear to be an RSA private key. For RS256, a valid RSA key pair is required.",
         RuntimeWarning,
     )
 

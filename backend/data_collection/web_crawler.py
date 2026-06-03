@@ -485,11 +485,8 @@ class WebCrawler(BaseCollector):
                         labor_matches = re.findall(r"城镇新增就业.*?(\d+(?:\.\d+)?)\s*万人", text)
                         for value_str in labor_matches:
                             try:
-                                year = (
-                                    int(re.search(r"(\d{4})年", text).group(1))
-                                    if re.search(r"(\d{4})年", text)
-                                    else 2024
-                                )
+                                year_match = re.search(r"(\d{4})年", text)
+                                year = int(year_match.group(1)) if year_match else 2024
                                 value = float(value_str)
                                 results.append(
                                     {

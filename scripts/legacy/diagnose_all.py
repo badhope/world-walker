@@ -17,24 +17,30 @@ os.makedirs(OUT, exist_ok=True)
 
 ISSUES = {"critical": [], "major": [], "minor": [], "suggestions": []}
 
+
 def critical(msg):
     ISSUES["critical"].append(msg)
     print(f"  [FAIL] 严重: {msg}")
+
 
 def major(msg):
     ISSUES["major"].append(msg)
     print(f"  🟠 重要: {msg}")
 
+
 def minor(msg):
     ISSUES["minor"].append(msg)
     print(f"  🟡 轻微: {msg}")
+
 
 def suggest(msg):
     ISSUES["suggestions"].append(msg)
     print(f"  [i] 建议: {msg}")
 
+
 def ok(msg):
     print(f"  [ok] {msg}")
+
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)

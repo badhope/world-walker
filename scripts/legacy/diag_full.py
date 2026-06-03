@@ -87,7 +87,7 @@ with sync_playwright() as p:
     print("[report] 汇总")
     print("=" * 70)
     real_errs = [e for e in errors if "cdn.tailwindcss" not in e and "deprecated" not in e.lower()]
-    print(f"[ok] 成功: {len(successes)}/{len(successes)+len(real_errs)}")
+    print(f"[ok] 成功: {len(successes)}/{len(successes) + len(real_errs)}")
     print(f"[FAIL] 错误: {len(real_errs)}")
     for e in real_errs[:8]:
         print(f"   {e}")

@@ -63,7 +63,7 @@ class ModelMetrics:
     cv_scores: list[float] | None = None
 
     def __str__(self):
-        return f"MAE: {self.mae:.4f}, RMSE: {self.rmse:.4f}, " f"MAPE: {self.mape:.4f}, R2: {self.r2:.4f}"
+        return f"MAE: {self.mae:.4f}, RMSE: {self.rmse:.4f}, MAPE: {self.mape:.4f}, R2: {self.r2:.4f}"
 
     def to_dict(self) -> dict[str, float]:
         return {

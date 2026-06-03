@@ -104,8 +104,8 @@ else:
         "localhost",
         "127.0.0.1",
         "*.local",
-        "testserver",   # Starlette TestClient
-        "testclient",   # pytest
+        "testserver",  # Starlette TestClient
+        "testclient",  # pytest
     ]
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 
@@ -121,6 +121,7 @@ async def _global_rate_limit(request: Request, call_next):
         limiter._apply(request, _rate, 60)
     except Exception as exc:  # HTTPException from limiter
         from fastapi.responses import JSONResponse
+
         status_code = getattr(exc, "status_code", 429)
         return JSONResponse(
             status_code=status_code,

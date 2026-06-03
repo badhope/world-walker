@@ -134,7 +134,7 @@ class UniversalAnalyzer:
         df = self.dataset.to_dataframe()
 
         # 使用配置或提供的参数
-        target = target_column or self.config.ml_config.target_column
+        target = target_column or self.config.ml_config.target_metric
         features = feature_columns or self.config.ml_config.feature_columns
         models = model_names or self.config.ml_config.models
         time_col = time_column or self.config.ml_config.time_column
@@ -229,7 +229,7 @@ class UniversalAnalyzer:
 
         if ml_result:
             recommendations.append(
-                f"最佳预测模型: {ml_result.best_model.model_name} " f"(R² = {ml_result.best_model.metrics.r2:.4f})"
+                f"最佳预测模型: {ml_result.best_model.model_name} (R² = {ml_result.best_model.metrics.r2:.4f})"
             )
 
         return recommendations
@@ -315,9 +315,9 @@ def quick_start_demo():
     print("✓ 数据列:", sample_df.columns.tolist())
 
     # 3. 运行分析
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("开始完整分析...")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     result = analyzer.analyze(
         run_ml=True,
@@ -329,9 +329,9 @@ def quick_start_demo():
     )
 
     # 4. 展示结果
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("分析结果")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     if result.ml_result:
         # 构建模型对比表
@@ -367,7 +367,7 @@ def quick_start_demo():
 
     # 5. 保存结果
     analyzer.save_result()
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("✓ 分析完成！结果已保存。")
     print("=" * 80)
 

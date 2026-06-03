@@ -214,9 +214,9 @@ def test_time_series_never_500(city: str, years: int, metric: str) -> None:
         "metrics": [metric],
     }
     resp = client.post("/api/v1/forecast/time-series", json=payload)
-    assert (
-        resp.status_code < 500
-    ), f"Server error for city={city!r}, years={years}, metric={metric!r}: {resp.text[:200]}"
+    assert resp.status_code < 500, (
+        f"Server error for city={city!r}, years={years}, metric={metric!r}: {resp.text[:200]}"
+    )
 
 
 # ============================================

@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def test_main_entry():
     """测试主入口"""
     print("=" * 60)
@@ -36,6 +37,7 @@ def test_main_entry():
         traceback.print_exc()
         return False
 
+
 def test_setup_py():
     """测试 setup.py"""
     print("\n" + "=" * 60)
@@ -62,6 +64,7 @@ def test_setup_py():
         print(f"[x] 读取 setup.py 失败: {e}")
         return False
 
+
 def test_scripts():
     """测试便捷脚本"""
     print("\n" + "=" * 60)
@@ -81,6 +84,7 @@ def test_scripts():
             all_exist = False
 
     return all_exist
+
 
 def test_documentation():
     """测试文档"""
@@ -111,6 +115,7 @@ def test_documentation():
             all_exist = False
 
     return all_exist
+
 
 def test_project_structure():
     """测试项目结构"""
@@ -146,6 +151,7 @@ def test_project_structure():
 
     return all_exist
 
+
 def test_examples():
     """测试示例脚本"""
     print("\n" + "=" * 60)
@@ -174,6 +180,7 @@ def test_examples():
             all_exist = False
 
     return all_exist
+
 
 def main():
     """主函数"""
@@ -219,6 +226,7 @@ def main():
     else:
         print(f"\n[!] 有 {total - passed} 个测试失败")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

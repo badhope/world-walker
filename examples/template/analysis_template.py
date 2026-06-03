@@ -116,7 +116,7 @@ class AnalysisTemplate:
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>{report['title']}</title>
+    <title>{report["title"]}</title>
     <style>
         body {{ font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }}
         h1 {{ color: #667eea; }}
@@ -126,9 +126,9 @@ class AnalysisTemplate:
     </style>
 </head>
 <body>
-    <h1>{report['title']}</h1>
-    <p>📅 {report['generated_at']}</p>
-    <p>📍 {report['region']['name']} | 🏭 {report['industry']['name']}</p>
+    <h1>{report["title"]}</h1>
+    <p>📅 {report["generated_at"]}</p>
+    <p>📍 {report["region"]["name"]} | 🏭 {report["industry"]["name"]}</p>
     <hr>
     <div id="content">
         <h2>分析结果</h2>

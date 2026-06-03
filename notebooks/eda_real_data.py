@@ -132,7 +132,7 @@ def run_eda():
         for autotext in autotexts:
             autotext.set_color("white")
             autotext.set_fontweight("bold")
-        ax.set_title(f'中国三次产业结构 ({ist["year"]})', fontsize=14, fontweight="bold")
+        ax.set_title(f"中国三次产业结构 ({ist['year']})", fontsize=14, fontweight="bold")
         ax.axis("equal")
         plt.tight_layout()
         industry_chart_path = output_dir / "industry_structure.png"

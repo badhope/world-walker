@@ -55,7 +55,7 @@ class ComprehensiveReportGenerator:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>深圳半导体产业综合分析报告 - {datetime.now().strftime('%Y年%m月%d日')}</title>
+    <title>深圳半导体产业综合分析报告 - {datetime.now().strftime("%Y年%m月%d日")}</title>
     <style>
         * {{
             margin: 0;
@@ -237,7 +237,7 @@ class ComprehensiveReportGenerator:
             <h1>🔬 深圳半导体产业综合分析报告</h1>
             <div class="subtitle">2025年产业发展全景分析</div>
             <div class="meta">
-                <p>📅 报告生成日期: {datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}</p>
+                <p>📅 报告生成日期: {datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")}</p>
                 <p>📍 分析区域: 深圳市 | 🏭 产业: 半导体产业</p>
             </div>
         </div>
@@ -249,22 +249,22 @@ class ComprehensiveReportGenerator:
                 
                 <div class="metric-card">
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['comprehensive_cost_index']['shenzhen_index']}</div>
+                        <div class="value">{self.enterprise_report["comprehensive_cost_index"]["shenzhen_index"]}</div>
                         <div class="label">综合营商成本指数</div>
-                        <div class="unit">全国第{self.enterprise_report['comprehensive_cost_index']['ranking']}位</div>
+                        <div class="unit">全国第{self.enterprise_report["comprehensive_cost_index"]["ranking"]}位</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['policy_benefits_analysis']['total_support']:.1f}</div>
+                        <div class="value">{self.enterprise_report["policy_benefits_analysis"]["total_support"]:.1f}</div>
                         <div class="label">政策支持总额（亿元）</div>
                         <div class="unit">同比增长28.5%</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['supply_chain_analysis']['location_quotient']:.2f}</div>
+                        <div class="value">{self.enterprise_report["supply_chain_analysis"]["location_quotient"]:.2f}</div>
                         <div class="label">产业集聚度（区位熵）</div>
-                        <div class="unit">全国平均水平的{self.enterprise_report['supply_chain_analysis']['location_quotient']:.1f}倍</div>
+                        <div class="unit">全国平均水平的{self.enterprise_report["supply_chain_analysis"]["location_quotient"]:.1f}倍</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.government_report['industry_driving_analysis']['indirect_effects']['employment_driven']/10000:.1f}</div>
+                        <div class="value">{self.government_report["industry_driving_analysis"]["indirect_effects"]["employment_driven"] / 10000:.1f}</div>
                         <div class="label">带动就业（万人）</div>
                         <div class="unit">直接+间接就业</div>
                     </div>
@@ -279,22 +279,22 @@ class ComprehensiveReportGenerator:
                 
                 <div class="metric-card">
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['land_cost_analysis']['city_average']}</div>
+                        <div class="value">{self.enterprise_report["land_cost_analysis"]["city_average"]}</div>
                         <div class="label">工业用地均价</div>
                         <div class="unit">元/平方米·年</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['labor_cost_analysis']['average_salary']:,}</div>
+                        <div class="value">{self.enterprise_report["labor_cost_analysis"]["average_salary"]:,}</div>
                         <div class="label">行业平均月薪</div>
                         <div class="unit">元/月</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['energy_cost_analysis']['electricity_price']}</div>
+                        <div class="value">{self.enterprise_report["energy_cost_analysis"]["electricity_price"]}</div>
                         <div class="label">工业用电价格</div>
                         <div class="unit">元/千瓦时</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['financing_cost_analysis']['practical_rates']['medium_enterprise']}</div>
+                        <div class="value">{self.enterprise_report["financing_cost_analysis"]["practical_rates"]["medium_enterprise"]}</div>
                         <div class="label">中型企业贷款利率</div>
                         <div class="unit">%</div>
                     </div>
@@ -313,17 +313,17 @@ class ComprehensiveReportGenerator:
                     <tbody>
                         <tr>
                             <td>上游（设计/材料/设备）</td>
-                            <td>{self.enterprise_report['supply_chain_analysis']['chain_coverage']['upstream']}%</td>
+                            <td>{self.enterprise_report["supply_chain_analysis"]["chain_coverage"]["upstream"]}%</td>
                             <td>设计环节较强，材料和设备依赖进口</td>
                         </tr>
                         <tr>
                             <td>中游（制造/封测）</td>
-                            <td>{self.enterprise_report['supply_chain_analysis']['chain_coverage']['midstream']}%</td>
+                            <td>{self.enterprise_report["supply_chain_analysis"]["chain_coverage"]["midstream"]}%</td>
                             <td>制造能力突出，封装测试完善</td>
                         </tr>
                         <tr>
                             <td>下游（应用/终端）</td>
-                            <td>{self.enterprise_report['supply_chain_analysis']['chain_coverage']['downstream']}%</td>
+                            <td>{self.enterprise_report["supply_chain_analysis"]["chain_coverage"]["downstream"]}%</td>
                             <td>应用场景丰富，市场活跃</td>
                         </tr>
                     </tbody>
@@ -333,12 +333,12 @@ class ComprehensiveReportGenerator:
                 
                 <div class="metric-card">
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['policy_benefits_analysis']['policy_coverage_rate']}%</div>
+                        <div class="value">{self.enterprise_report["policy_benefits_analysis"]["policy_coverage_rate"]}%</div>
                         <div class="label">政策覆盖率</div>
                         <div class="unit">惠及企业比例</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.enterprise_report['policy_benefits_analysis']['satisfaction_rate']}%</div>
+                        <div class="value">{self.enterprise_report["policy_benefits_analysis"]["satisfaction_rate"]}%</div>
                         <div class="label">企业满意度</div>
                         <div class="unit">综合满意度</div>
                     </div>
@@ -353,22 +353,22 @@ class ComprehensiveReportGenerator:
                 
                 <div class="metric-card">
                     <div class="metric">
-                        <div class="value">{self.government_report['fiscal_leverage_analysis']['semiconductor_investment']:.1f}</div>
+                        <div class="value">{self.government_report["fiscal_leverage_analysis"]["semiconductor_investment"]:.1f}</div>
                         <div class="label">产业投资总额</div>
                         <div class="unit">亿元</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.government_report['fiscal_leverage_analysis']['leverage_effect']['leverage_ratio']:.2f}</div>
+                        <div class="value">{self.government_report["fiscal_leverage_analysis"]["leverage_effect"]["leverage_ratio"]:.2f}</div>
                         <div class="label">杠杆倍数</div>
                         <div class="unit">撬动社会资本</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.government_report['fiscal_leverage_analysis']['leverage_effect']['investment_output_ratio']:.2f}</div>
+                        <div class="value">{self.government_report["fiscal_leverage_analysis"]["leverage_effect"]["investment_output_ratio"]:.2f}</div>
                         <div class="label">投入产出比</div>
                         <div class="unit">财政投入产出</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.government_report['fiscal_leverage_analysis']['deficit_rate']}%</div>
+                        <div class="value">{self.government_report["fiscal_leverage_analysis"]["deficit_rate"]}%</div>
                         <div class="label">财政赤字率</div>
                         <div class="unit">风险可控</div>
                     </div>
@@ -378,17 +378,17 @@ class ComprehensiveReportGenerator:
                 
                 <div class="metric-card">
                     <div class="metric">
-                        <div class="value">{self.government_report['industry_driving_analysis']['indirect_effects']['employment_driven']:,}</div>
+                        <div class="value">{self.government_report["industry_driving_analysis"]["indirect_effects"]["employment_driven"]:,}</div>
                         <div class="label">带动就业人数</div>
                         <div class="unit">人</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.government_report['industry_driving_analysis']['indirect_effects']['related_industry_output']:.0f}</div>
+                        <div class="value">{self.government_report["industry_driving_analysis"]["indirect_effects"]["related_industry_output"]:.0f}</div>
                         <div class="label">相关产业产值</div>
                         <div class="unit">亿元</div>
                     </div>
                     <div class="metric">
-                        <div class="value">{self.government_report['industry_driving_analysis']['multipliers']['fiscal_multiplier']:.2f}</div>
+                        <div class="value">{self.government_report["industry_driving_analysis"]["multipliers"]["fiscal_multiplier"]:.2f}</div>
                         <div class="label">财政乘数</div>
                         <div class="unit">每元投入产出</div>
                     </div>
@@ -397,7 +397,7 @@ class ComprehensiveReportGenerator:
                 <div class="subsection-title">🔗 产业链补全度</div>
                 
                 <div class="highlight-box">
-                    <strong>📊 整体国产化率: {self.enterprise_report['supply_chain_analysis']['localization_rate']}%</strong>
+                    <strong>📊 整体国产化率: {self.enterprise_report["supply_chain_analysis"]["localization_rate"]}%</strong>
                     <p style="margin-top: 10px;">
                         深圳半导体产业链完整性良好，上游材料和设备是主要瓶颈，
                         建议重点突破高端光刻机、先进制程设备、关键材料等"卡脖子"环节。
@@ -425,9 +425,9 @@ class ComprehensiveReportGenerator:
             )
             html_content += f"""
                         <tr>
-                            <td>{bottleneck['segment']}</td>
-                            <td>{bottleneck['dependency']}%</td>
-                            <td style="color: {risk_color}; font-weight: bold;">{bottleneck['risk_level']}</td>
+                            <td>{bottleneck["segment"]}</td>
+                            <td>{bottleneck["dependency"]}%</td>
+                            <td style="color: {risk_color}; font-weight: bold;">{bottleneck["risk_level"]}</td>
                         </tr>
 """
 
@@ -446,8 +446,8 @@ class ComprehensiveReportGenerator:
         for i, rec in enumerate(self.enterprise_report["overall_recommendations"][:3], 1):
             html_content += f"""
                 <div class="recommendation">
-                    <div class="recommendation-title">建议 {i}: {rec['type']}</div>
-                    <p>{rec['suggestion']}</p>
+                    <div class="recommendation-title">建议 {i}: {rec["type"]}</div>
+                    <p>{rec["suggestion"]}</p>
                 </div>
 """
 
@@ -459,8 +459,8 @@ class ComprehensiveReportGenerator:
         for i, rec in enumerate(self.government_report["overall_recommendations"][:3], 1):
             html_content += f"""
                 <div class="recommendation">
-                    <div class="recommendation-title">建议 {i}: {rec['type']}</div>
-                    <p>{rec['suggestion']}</p>
+                    <div class="recommendation-title">建议 {i}: {rec["type"]}</div>
+                    <p>{rec["suggestion"]}</p>
                 </div>
 """
 
@@ -483,7 +483,7 @@ class ComprehensiveReportGenerator:
         
         <div class="footer">
             <p>本报告由区域产业经济分析平台自动生成</p>
-            <p>报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>报告生成时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
             <p style="margin-top: 10px; color: #999;">
                 免责声明：本报告仅供参考，不构成投资建议
             </p>

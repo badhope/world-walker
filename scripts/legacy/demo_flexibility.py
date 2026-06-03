@@ -47,6 +47,7 @@ try:
 except ImportError:
     REPORT_ENABLED = False
 
+
 def demo_indicator_registry():
     """演示指标注册系统"""
     print("\n" + "=" * 70)
@@ -88,6 +89,7 @@ def demo_indicator_registry():
     indicator_registry.save_to_file(str(export_path))
     print(f"   指标配置已导出到: {export_path}")
 
+
 def demo_custom_indicators():
     """演示自定义指标计算"""
     print("\n" + "=" * 70)
@@ -124,6 +126,7 @@ def demo_custom_indicators():
     for code, result in results.items():
         if result.status.value == "success":
             print(f"  [ok] {code}: {result.value}")
+
 
 def demo_data_source_manager():
     """演示数据源管理"""
@@ -169,6 +172,7 @@ def demo_data_source_manager():
         if isinstance(data, dict) and "output_value" in data:
             print(f"  产业产值: {data['output_value']}")
 
+
 def demo_dimension_analysis():
     """演示维度分析"""
     print("\n" + "=" * 70)
@@ -209,6 +213,7 @@ def demo_dimension_analysis():
         print(f"  [i] 发现洞察: {len(result.insights)} 条")
         for insight in result.insights[:3]:
             print(f"    - {insight}")
+
 
 def demo_scenario_manager():
     """演示场景管理"""
@@ -258,6 +263,7 @@ def demo_scenario_manager():
     export_path.parent.mkdir(exist_ok=True)
     scenario_manager.save_scenarios(str(export_path))
     print(f"   已保存到: {export_path}")
+
 
 def demo_report_generator():
     """演示报告生成"""
@@ -334,6 +340,7 @@ def demo_report_generator():
     )
     print(f"  [ok] 快速报告长度: {len(quick)} 字节")
 
+
 def main():
     """主函数"""
     print("\n" + "=" * 80)
@@ -382,6 +389,7 @@ def main():
     print("  # 创建分析场景")
     print("  from config.scenario_manager import register_scenario")
     print("  scenario = register_scenario('新场景', 'custom', years=[2025])")
+
 
 if __name__ == "__main__":
     main()

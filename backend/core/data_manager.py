@@ -35,6 +35,7 @@ def validate_sql_identifier(name: str) -> str:
         )
     return name
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -146,7 +147,8 @@ class DataManager:
         # L-01:防止 SQL 注入
         safe_table = validate_sql_identifier(table_name)
         conn = sqlite3.connect(db_path)
-        df = pd.read_sql(f"SELECT * FROM {safe_table}", conn)
+        # safe_table 已经过 validate_sql_identifier 白名单(只允许字母/数字/下划线),无注入风险。
+        df = pd.read_sql(f"SELECT * FROM {safe_table}", conn)  # nosec B608
         conn.close()
 
         name = name or safe_table

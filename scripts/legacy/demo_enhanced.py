@@ -46,6 +46,7 @@ def demo_basic_analysis():
 
     return analyzer, data
 
+
 def demo_hyperparameter_tuning():
     """超参数调优演示"""
     print("\n" + "=" * 80)
@@ -73,6 +74,7 @@ def demo_hyperparameter_tuning():
     print(f"R² Score: {results['insights']['best_model']['r2_score']:.4f}")
 
     return analyzer
+
 
 def demo_incremental_update(analyzer, initial_data):
     """增量更新演示"""
@@ -110,6 +112,7 @@ def demo_incremental_update(analyzer, initial_data):
     print("\n[ok] 增量更新完成！")
     print(f"新数据上的R² Score: {new_r2:.4f}")
 
+
 def demo_prediction(analyzer):
     """预测演示"""
     print("\n" + "=" * 80)
@@ -127,6 +130,7 @@ def demo_prediction(analyzer):
     print(predictions[["store_id", "store_area", "predicted_sales"]])
 
     return predictions
+
 
 def main():
     print("=" * 80)
@@ -168,6 +172,7 @@ def main():
         import traceback
 
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

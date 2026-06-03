@@ -188,7 +188,10 @@ def custom_analysis_task(self, analysis_type: str, params: dict):
             raise ValueError(f"未知分析类型: {analysis_type}")
 
         # 执行分析
-        result = analyzer.analyze(**params)
+        city_name = params.get("city_name", "")
+        if not city_name:
+            raise ValueError(f"params.city_name is required for {analysis_type} analysis")
+        result = analyzer.analyze_city(city_name)
 
         # 缓存结果（6小时）
         cache_key = f"analysis:{analysis_type}:{hash(str(params))}"
@@ -208,8 +211,8 @@ def start_worker():
     import subprocess
     import sys
 
-    # 使用 subprocess 启动 Worker
-    subprocess.Popen(
+    # 使用 subprocess 启动 Worker(列表参数 + shell=False 默认,无注入风险)
+    subprocess.Popen(  # nosec B404 B603 - trusted internal command
         [
             sys.executable,
             "-m",

@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def test_economic_models():
     """测试经济学模型"""
     print("\n" + "=" * 60)
@@ -49,6 +50,7 @@ def test_economic_models():
         traceback.print_exc()
         return False
 
+
 def test_data_integrity():
     """测试数据完整性"""
     print("\n" + "=" * 60)
@@ -75,6 +77,7 @@ def test_data_integrity():
             all_valid = False
 
     return all_valid
+
 
 def test_basic_data_calculations():
     """测试基本数据计算"""
@@ -110,6 +113,7 @@ def test_basic_data_calculations():
 
         traceback.print_exc()
         return False
+
 
 def test_enterprise_analysis_module():
     """测试企业分析模块"""
@@ -152,6 +156,7 @@ def test_enterprise_analysis_module():
         traceback.print_exc()
         return False
 
+
 def test_government_analysis_module():
     """测试政府分析模块"""
     print("\n" + "=" * 60)
@@ -178,6 +183,7 @@ def test_government_analysis_module():
         traceback.print_exc()
         return False
 
+
 def test_config_system():
     """测试配置系统"""
     print("\n" + "=" * 60)
@@ -201,6 +207,7 @@ def test_config_system():
         traceback.print_exc()
         return False
 
+
 def test_main_entry():
     """测试主入口文件"""
     print("\n" + "=" * 60)
@@ -223,6 +230,7 @@ def test_main_entry():
 
         traceback.print_exc()
         return False
+
 
 def validate_results():
     """验证计算结果的合理性"""
@@ -291,6 +299,7 @@ def validate_results():
 
     return all_valid
 
+
 def run_all_tests():
     """运行所有测试"""
     print("\n" + "=" * 80)
@@ -352,6 +361,7 @@ def run_all_tests():
     print("=" * 80)
 
     return passed == total and validation_passed
+
 
 if __name__ == "__main__":
     success = run_all_tests()

@@ -22,17 +22,22 @@ def print_banner(text):
     print(f"  {text}")
     print("=" * 80)
 
+
 def print_success(text):
     print(f"[ok] {text}")
+
 
 def print_info(text):
     print(f"ℹ️  {text}")
 
+
 def print_error(text):
     print(f"[x] {text}")
 
+
 def print_step(step, text):
     print(f"\n[report] 步骤 {step}: {text}")
+
 
 def main():
     os.chdir(Path(__file__).parent)
@@ -128,6 +133,7 @@ def main():
     print("\n[*] 这个项目展示了完整的数据分析师技能：")
     print("  业务理解 → 数据采集 → EDA → 建模 → 可视化 → 工程落地")
     print("\n" + "=" * 80 + "\n")
+
 
 if __name__ == "__main__":
     main()

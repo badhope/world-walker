@@ -51,6 +51,7 @@ def safe_import_filename(user_filename: str) -> str:
         raise ValueError("file_name must not contain directory components")
     return f"{secrets.token_hex(8)}_{user_filename}"
 
+
 _SAFE_OPS = {
     ast.Add: op.add,
     ast.Sub: op.sub,
@@ -123,7 +124,9 @@ class DataImportRequest(BaseModel):
 class DataExportRequest(BaseModel):
     """数据导出请求"""
 
-    data: list[dict[str, Any]] = Field(..., max_length=_MAX_EXPORT_ROWS, description=f"要导出的数据(<= {_MAX_EXPORT_ROWS} 行)")
+    data: list[dict[str, Any]] = Field(
+        ..., max_length=_MAX_EXPORT_ROWS, description=f"要导出的数据(<= {_MAX_EXPORT_ROWS} 行)"
+    )
     format_type: Literal["json", "csv", "xlsx"] = Field(..., description="格式类型: json, csv, xlsx")
     file_name: str | None = Field(None, max_length=_MAX_FILE_NAME_LEN, description="文件名")
 

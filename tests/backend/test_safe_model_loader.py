@@ -78,7 +78,7 @@ def test_oversized_model_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     target = tmp_path / "tiny.pkl"
     shutil.copy(src, target)
     manifest = tmp_path / "SHA256SUMS"
-    manifest.write_text(f"{'a'*64}  tiny.pkl\n", encoding="utf-8")
+    manifest.write_text(f"{'a' * 64}  tiny.pkl\n", encoding="utf-8")
     monkeypatch.setattr("backend.utils.safe_model_loader.MAX_MODEL_SIZE_BYTES", 0)
     with pytest.raises(ValueError, match="exceeds"):
         load_model(target, manifest=manifest)
@@ -87,7 +87,7 @@ def test_oversized_model_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def test_default_manifest_exists() -> None:
     """The committed SHA256SUMS file must exist at DEFAULT_SHA256SUMS_PATH."""
     assert DEFAULT_SHA256SUMS_PATH.exists(), (
-        f"models/SHA256SUMS not found at {DEFAULT_SHA256SUMS_PATH}. " f"Run: cd models && sha256sum *.pkl > SHA256SUMS"
+        f"models/SHA256SUMS not found at {DEFAULT_SHA256SUMS_PATH}. Run: cd models && sha256sum *.pkl > SHA256SUMS"
     )
 
 

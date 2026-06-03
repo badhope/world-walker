@@ -175,7 +175,9 @@ async def compare_cities(request: CitiesCompareRequest):
         for orig_code in request.city_codes:
             city_code = _resolve_city_code(orig_code)
             city_config = city_manager.get_city(city_code)
-            assert city_config is not None  # 已被上面的 unknown 检查拦截
+            # 上面 unknown 检查已 raise,这里 city_config 必不为 None
+            if city_config is None:  # pragma: no cover - 防御性兜底
+                raise HTTPException(status_code=500, detail="Internal: city vanished from registry")
             city_data = city_manager.get_city_data(city_code)
             for item in city_data:
                 if request.year_start <= item.year <= request.year_end:
@@ -233,7 +235,8 @@ async def time_series_analysis(request: TimeSeriesRequest):
         for orig_code in request.city_codes:
             city_code = _resolve_city_code(orig_code)
             city_config = city_manager.get_city(city_code)
-            assert city_config is not None
+            if city_config is None:  # pragma: no cover - 防御性兜底
+                raise HTTPException(status_code=500, detail="Internal: city vanished from registry")
             city_data = city_manager.get_city_data(city_code)
             for item in city_data:
                 if not (request.year_start <= item.year <= request.year_end):
@@ -455,9 +458,7 @@ async def get_city_dashboard(city_code: str = Query(..., min_length=1, descripti
             if len(series) >= 2:
                 first_value = series[0][1]
                 last_value = series[-1][1]
-                change_rate = (
-                    round((last_value - first_value) / first_value * 100, 2) if first_value else 0.0
-                )
+                change_rate = round((last_value - first_value) / first_value * 100, 2) if first_value else 0.0
                 direction = "increasing" if change_rate > 0.5 else "decreasing" if change_rate < -0.5 else "stable"
                 trends.append({"indicator": indicator, "trend": direction, "change_rate": change_rate})
 

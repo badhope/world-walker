@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def test_data_files():
     """测试数据文件"""
     print("=" * 60)
@@ -36,6 +37,7 @@ def test_data_files():
 
     return all_exist
 
+
 def test_enterprise_analysis():
     """测试企业分析脚本导入"""
     print("\n" + "=" * 60)
@@ -57,6 +59,7 @@ def test_enterprise_analysis():
 
         traceback.print_exc()
         return False
+
 
 def test_government_analysis():
     """测试政府分析脚本导入"""
@@ -80,6 +83,7 @@ def test_government_analysis():
         traceback.print_exc()
         return False
 
+
 def test_report_generator():
     """测试报告生成器"""
     print("\n" + "=" * 60)
@@ -97,6 +101,7 @@ def test_report_generator():
         traceback.print_exc()
         return False
 
+
 def test_template():
     """测试模板脚本"""
     print("\n" + "=" * 60)
@@ -113,6 +118,7 @@ def test_template():
 
         traceback.print_exc()
         return False
+
 
 def main():
     """主函数"""
@@ -154,6 +160,7 @@ def main():
     else:
         print(f"\n[!] 有 {total - passed} 个测试失败")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

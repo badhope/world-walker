@@ -118,7 +118,7 @@ class DescriptiveAnalyzer(BaseAnalyzer):
             if stats["std"] == 0:
                 insights.append(f"{field_name} 保持稳定，无显著变化")
             elif stats["max"] > stats["mean"] * 2:
-                insights.append(f"{field_name} 存在较大波动，峰值是均值的 {stats['max']/stats['mean']:.1f} 倍")
+                insights.append(f"{field_name} 存在较大波动，峰值是均值的 {stats['max'] / stats['mean']:.1f} 倍")
 
         return AnalysisResult(
             dimension_code=self.dimension.code,
@@ -157,7 +157,7 @@ class ComparativeAnalyzer(BaseAnalyzer):
                     max_mean = max(means)
                     min_mean = min(means)
                     diff_pct = (max_mean - min_mean) / min_mean * 100 if min_mean != 0 else 0
-                    insights.append(f"{field} 极差为 {diff_pct:.1f}%，最大/最小比值 {max_mean/min_mean:.2f}")
+                    insights.append(f"{field} 极差为 {diff_pct:.1f}%，最大/最小比值 {max_mean / min_mean:.2f}")
 
         return AnalysisResult(
             dimension_code=self.dimension.code,

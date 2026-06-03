@@ -1,6 +1,7 @@
 """
 安全响应头中间件 — 弥补 <meta> CSP 限制。
 """
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from starlette.types import ASGIApp
@@ -36,9 +37,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         # HSTS(只在生产 HTTPS 启用)
         if self.hsts:
-            response.headers.setdefault(
-                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
-            )
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         # CSP frame-ancestors 必须走 header(meta 标签不生效)
         # 已通过 meta 设置其他指令,这里只补 frame-ancestors
         if "Content-Security-Policy" not in response.headers:

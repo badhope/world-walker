@@ -10,6 +10,7 @@ import sys
 # 配置日志
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
+
 def test_config_loader():
     """测试配置加载器"""
     print("=" * 60)
@@ -35,6 +36,7 @@ def test_config_loader():
 
     print("\n[ok] 配置加载器测试通过！")
     return True
+
 
 def test_region_switch():
     """测试地区切换"""
@@ -65,6 +67,7 @@ def test_region_switch():
     print("\n[ok] 地区切换测试通过！")
     return True
 
+
 def test_industry_switch():
     """测试产业切换"""
     print("\n" + "=" * 60)
@@ -94,6 +97,7 @@ def test_industry_switch():
     print("\n[ok] 产业切换测试通过！")
     return True
 
+
 def test_analysis_config():
     """测试分析配置"""
     print("\n" + "=" * 60)
@@ -111,6 +115,7 @@ def test_analysis_config():
 
     print("\n[ok] 分析配置测试通过！")
     return True
+
 
 def test_settings_config():
     """测试基础配置"""
@@ -130,6 +135,7 @@ def test_settings_config():
 
     print("\n[ok] 基础配置测试通过！")
     return True
+
 
 def test_analyzer_with_config():
     """测试分析器使用配置"""
@@ -158,6 +164,7 @@ def test_analyzer_with_config():
     print("\n[ok] 分析器测试通过！")
     return True
 
+
 def test_data_collection():
     """测试数据采集模块"""
     print("\n" + "=" * 60)
@@ -182,6 +189,7 @@ def test_data_collection():
     print("\n[ok] 数据采集模块测试通过！")
     return True
 
+
 def test_visualizer():
     """测试可视化模块"""
     print("\n" + "=" * 60)
@@ -197,6 +205,7 @@ def test_visualizer():
 
     print("\n[ok] 可视化模块测试通过！")
     return True
+
 
 def main():
     """主测试函数"""
@@ -248,6 +257,7 @@ def main():
     else:
         print(f"\n[!] 有 {total - passed} 个测试失败，请检查配置")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

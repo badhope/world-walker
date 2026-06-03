@@ -46,6 +46,7 @@ def test_case_1_normal_data():
         traceback.print_exc()
         return False, None
 
+
 def test_case_2_small_data():
     """测试2: 小数据量（20条）"""
     print("\n" + "=" * 80)
@@ -71,6 +72,7 @@ def test_case_2_small_data():
 
         traceback.print_exc()
         return False
+
 
 def test_case_3_minimum_data():
     """测试3: 最小数据量（15条）"""
@@ -98,6 +100,7 @@ def test_case_3_minimum_data():
         traceback.print_exc()
         return False
 
+
 def test_case_4_save_and_load(analyzer):
     """测试4: 模型保存和加载"""
     print("\n" + "=" * 80)
@@ -121,6 +124,7 @@ def test_case_4_save_and_load(analyzer):
 
         traceback.print_exc()
         return False, None
+
 
 def test_case_5_prediction(loaded_analyzer):
     """测试5: 预测功能"""
@@ -147,6 +151,7 @@ def test_case_5_prediction(loaded_analyzer):
 
         traceback.print_exc()
         return False
+
 
 def test_case_6_prediction_missing_features(loaded_analyzer):
     """测试6: 预测时缺失特征"""
@@ -183,6 +188,7 @@ def test_case_6_prediction_missing_features(loaded_analyzer):
         traceback.print_exc()
         return False
 
+
 def test_case_7_error_handling_too_few_data():
     """测试7: 数据量太少（10条以下）的错误处理"""
     print("\n" + "=" * 80)
@@ -210,6 +216,7 @@ def test_case_7_error_handling_too_few_data():
 
         traceback.print_exc()
         return False
+
 
 def main():
     """运行所有测试"""
@@ -264,6 +271,7 @@ def main():
         print(" 所有测试通过！")
     else:
         print("[!] 有测试失败，请检查")
+
 
 if __name__ == "__main__":
     main()

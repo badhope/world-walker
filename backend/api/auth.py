@@ -1,6 +1,7 @@
 """
 鉴权工具:创建/校验 JWT,提供 FastAPI 依赖。
 """
+
 from datetime import UTC, datetime, timedelta
 
 import jwt

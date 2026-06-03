@@ -11,6 +11,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 class EconomicModelTester:
     """经济学模型测试器"""
 
@@ -140,6 +141,7 @@ class EconomicModelTester:
         self.results = [self.test_phillips_curve(), self.test_okun_law(), self.test_cobb_douglas()]
 
         return self.results
+
 
 class AnalysisWorkflowTester:
     """分析工作流测试器"""
@@ -316,6 +318,7 @@ class AnalysisWorkflowTester:
         ]
         return self.results
 
+
 class ResultsValidator:
     """结果验证器"""
 
@@ -438,6 +441,7 @@ class ResultsValidator:
         """运行所有验证"""
         return [self.validate_business_costs(), self.validate_industry_metrics(), self.validate_fiscal_data()]
 
+
 class TestRunner:
     """测试运行器"""
 
@@ -516,10 +520,12 @@ class TestRunner:
             print("[!]  部分测试失败，请检查相关功能。")
         print("=" * 80)
 
+
 def main():
     """主函数"""
     runner = TestRunner()
     runner.run()
+
 
 if __name__ == "__main__":
     main()

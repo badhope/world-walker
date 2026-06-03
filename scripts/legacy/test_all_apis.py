@@ -7,6 +7,7 @@ import requests
 
 BASE_URL = "http://localhost:8000/api/v1"
 
+
 def test_api(method, path, data=None, params=None):
     """测试单个API"""
     url = f"{BASE_URL}{path}"
@@ -39,6 +40,7 @@ def test_api(method, path, data=None, params=None):
     except Exception as e:
         print(f"   [!]  异常: {str(e)}")
         return False, None
+
 
 def main():
     print("=" * 60)
@@ -112,6 +114,7 @@ def main():
 
     print(f"\n总计: {success_count} 成功, {fail_count} 失败")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     main()

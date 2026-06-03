@@ -2,6 +2,7 @@
 轻量限流:不依赖 slowapi(避免新增重依赖),用内存 token bucket。
 为单进程设计;多 worker 部署时需要换 Redis 后端。
 """
+
 from __future__ import annotations
 
 import threading

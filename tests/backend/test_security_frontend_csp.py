@@ -7,6 +7,7 @@
 修复:在 index.html 头部添加 Content-Security-Policy meta 标签,
 并为所有外部脚本添加 SRI integrity 属性。
 """
+
 import re
 from pathlib import Path
 
@@ -24,9 +25,7 @@ class TestFrontendCSP:
         return FRONTEND_HTML.read_text(encoding="utf-8")
 
     def test_csp_meta_tag_present(self, html_text):
-        assert "http-equiv=\"Content-Security-Policy\"" in html_text, (
-            "CSP meta tag must be present in <head>"
-        )
+        assert 'http-equiv="Content-Security-Policy"' in html_text, "CSP meta tag must be present in <head>"
 
     def test_csp_eval_restricted_to_script_src(self, html_text):
         """'unsafe-eval' 如必须存在,只能出现在 script-src 中(不能扩散到其他指令)。
@@ -58,15 +57,11 @@ class TestFrontendCSP:
         # Tailwind CDN 在当前 build 中已被移除(见 index.html 注释),但若
         # 重新引入,Tailwind CDN 必须出现在 CSP 白名单中(不能是 *)
         if "cdn.tailwindcss.com" in html_text:
-            assert "cdn.tailwindcss.com" in csp, (
-                f"Tailwind CDN must be explicitly whitelisted in CSP: {csp}"
-            )
+            assert "cdn.tailwindcss.com" in csp, f"Tailwind CDN must be explicitly whitelisted in CSP: {csp}"
         # 不应有通配的 * 作为 script-src
         script_src = re.search(r"script-src\s+([^;]+)", csp)
         if script_src:
-            assert "*" not in script_src.group(1).split(), (
-                f"script-src must not be wildcard: {script_src.group(1)}"
-            )
+            assert "*" not in script_src.group(1).split(), f"script-src must not be wildcard: {script_src.group(1)}"
 
 
 @pytest.mark.unit

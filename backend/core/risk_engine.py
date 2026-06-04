@@ -11,11 +11,17 @@ from __future__ import annotations
 
 import logging
 import math
+import warnings
 from typing import Any
 
 import numpy as np
 
+from backend.core.engine_stack import arch_available, primary_vol_backend
+
 logger = logging.getLogger(__name__)
+
+_VOL_BACKEND = primary_vol_backend()
+logger.info("Risk engine: volatility backend = %s", _VOL_BACKEND)
 
 
 # --------------------------------------------------------------------------- #
@@ -30,7 +36,13 @@ def rolling_volatility(values: list[float], window: int = 3, annualize: bool = T
     """
     n = len(values)
     if n < 3:
-        return {"volatility": 0.0, "annualized": 0.0, "window": window, "reason": "n<3"}
+        return {
+            "volatility": 0.0,
+            "annualized": 0.0,
+            "window": window,
+            "reason": "n<3",
+            "backend": "rolling-std",
+        }
     y = np.array(values, dtype=float)
     # 对数收益
     log_rets = np.diff(np.log(y))
@@ -45,11 +57,95 @@ def rolling_volatility(values: list[float], window: int = 3, annualize: bool = T
         "annualized_volatility": round(annualized, 6),
         "window": window,
         "n_returns": len(log_rets),
+        "backend": "rolling-std",
         "interpretation": (
             f"年化波动率 {annualized*100:.2f}%。"
             f"< 5% 为低波动, 5-15% 中等, > 15% 高波动"
         ),
     }
+
+
+# --------------------------------------------------------------------------- #
+# 1b. GARCH(p,q) 条件波动率(Docker only,需 arch 库)
+# --------------------------------------------------------------------------- #
+
+
+def garch_volatility(values: list[float], horizon: int = 1, p: int = 1, q: int = 1) -> dict[str, Any]:
+    """
+    GARCH(p,q) 条件波动率 — 用 arch 库。
+
+    对年频数据(样本少)用 GARCH(1,1) 即可。返回:
+    - conditional_vol_pct: 末年条件波动率(%)
+    - forecast_vol_pct: horizon 期预测波动率(%)
+    - persistence: alpha + beta 持续性,接近 1 表示波动高度聚集
+    - half_life_years: 半衰期
+    - aic/bic: 模型信息准则
+
+    失败(库未装或拟合失败)时返回 dict 含 'method': 'GARCH failed (...)',
+    调用方应改用 rolling_volatility。
+    """
+    if not arch_available():
+        return {
+            "method": "GARCH failed (arch library not installed)",
+            "conditional_vol_pct": 0.0,
+            "forecast_vol_pct": 0.0,
+        }
+
+    n = len(values)
+    if n < 8:
+        return {
+            "method": "GARCH (insufficient data)",
+            "conditional_vol_pct": 0.0,
+            "forecast_vol_pct": 0.0,
+            "reason": f"n={n} < 8",
+        }
+
+    try:
+        from arch import arch_model
+
+        y = np.array(values, dtype=float)
+        # 算 YoY 收益率(%)
+        returns = 100.0 * np.diff(y) / y[:-1]
+
+        am = arch_model(returns, mean="Constant", vol="GARCH", p=p, q=q, dist="normal")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            res = am.fit(disp="off", show_warning=False)
+
+        cond_vol = float(res.conditional_volatility.iloc[-1])
+        # horizon 步预测
+        fc = res.forecast(horizon=horizon)
+        forecast_vol = float(np.sqrt(np.asarray(fc.variance.iloc[-1]).mean()))
+
+        params = res.params
+        alpha = float(params.get("alpha[1]", 0.0))
+        beta = float(params.get("beta[1]", 0.0))
+        persistence = alpha + beta
+        if 0 < persistence < 1:
+            half_life = math.log(0.5) / math.log(persistence)
+        else:
+            half_life = float("inf")
+
+        return {
+            "method": f"GARCH({p},{q}) via arch",
+            "backend": "arch-garch",
+            "conditional_vol_pct": round(cond_vol, 4),
+            "conditional_vol_annualized_pct": round(cond_vol * math.sqrt(1), 4),
+            "forecast_vol_pct": round(forecast_vol, 4),
+            "persistence": round(persistence, 4),
+            "half_life_years": round(half_life, 2) if half_life != float("inf") else None,
+            "alpha": round(alpha, 4),
+            "beta": round(beta, 4),
+            "aic": round(float(res.aic), 2),
+            "bic": round(float(res.bic), 2),
+        }
+    except Exception as e:
+        logger.warning("GARCH fit failed: %s", e)
+        return {
+            "method": f"GARCH failed ({e})",
+            "conditional_vol_pct": 0.0,
+            "forecast_vol_pct": 0.0,
+        }
 
 
 # --------------------------------------------------------------------------- #
@@ -258,16 +354,21 @@ def risk_full_pipeline(
 ) -> dict[str, Any]:
     """完整风险 + 情景 + MC 流水线"""
     vol = rolling_volatility(values, window=min(3, len(values) - 1))
+    garch = garch_volatility(values)  # arch 未装时内部返回 failed dict
     var95 = var_cvar(values, confidence=0.95)
     var99 = var_cvar(values, confidence=0.99)
     scenarios = scenario_analysis(baseline_predictions, starting_value)
     mc = monte_carlo_simulation(values, years=len(baseline_predictions), n_sims=n_sims)
     return {
         "volatility": vol,
+        "garch": garch,
         "var_95": var95,
         "var_99": var99,
         "scenarios": scenarios,
         "monte_carlo": mc,
+        "engine_stack": {
+            "arch": arch_available(),
+        },
     }
 
 

@@ -254,15 +254,61 @@ _DISPATCH = {
 
 
 def execute_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
-    """执行一个 tool,返回 dict。错误包装为 {"error": "..."}。"""
+    """执行一个 tool,返回 dict。错误包装为 {"error": "..."}。
+
+    返回结构(v7.1):
+    - 成功: {"data": <result>, "navigate_to": <url|None>}
+    - 失败: {"error": "<reason>", "navigate_to": None}
+
+    navigate_to 用于前端 chat widget 渲染"在图表中查看"chip,点击跳转。
+    """
     if name not in _DISPATCH:
-        return {"error": f"Tool not found: {name}"}
+        return {"error": f"Tool not found: {name}", "navigate_to": None}
     required = _REQUIRED_FIELDS[name]
     missing = [f for f in required if f not in args]
     if missing:
-        return {"error": f"Missing required fields: {missing}"}
+        return {"error": f"Missing required fields: {missing}", "navigate_to": None}
     try:
-        return _DISPATCH[name](args)
+        result = _DISPATCH[name](args)
+        if "error" in result:
+            # _call_* 内部已经报 error,把 navigate_to 设为 None
+            return {**result, "navigate_to": None}
+        return {"data": result, "navigate_to": _build_navigate_to(name, args)}
     except Exception as e:
         logger.warning("Tool %s failed: %s", name, e)
-        return {"error": f"Internal: {type(e).__name__}: {e}"}
+        return {"error": f"Internal: {type(e).__name__}: {e}", "navigate_to": None}
+
+
+# --------------------------------------------------------------------------- #
+# navigate_to 映射 — 每个 tool 跳转的图表页 URL,前端 chip 用
+# --------------------------------------------------------------------------- #
+
+
+# tab 字段告诉前端 investment_grade.html 切到哪个 tab(forecast/backtest/...)
+_TAB_FOR_TOOL: dict[str, str | None] = {
+    "get_forecast": None,        # 默认 tab
+    "get_diagnostics": "diagnostics",
+    "get_backtest": "backtest",
+    "get_risk": "risk",
+    "get_scenarios": "scenarios",
+    "get_monte_carlo": "mc",
+}
+
+
+def _build_navigate_to(name: str, args: dict[str, Any]) -> str | None:
+    """构造 chip 跳转 URL;list_cities / 错误情况返 None。"""
+    if name == "list_cities":
+        return None
+    if name == "get_data_provenance":
+        return f"/index.html#provenance&city={args.get('name', '')}"
+    if name == "get_macro_data":
+        return "/index.html#macro"
+    # 默认:investment_grade.html + URL 参数
+    params: list[str] = []
+    for k in ("scope", "name", "indicator", "years"):
+        if k in args:
+            params.append(f"{k}={args[k]}")
+    tab = _TAB_FOR_TOOL.get(name)
+    if tab:
+        params.append(f"tab={tab}")
+    return "/investment_grade.html?" + "&".join(params) if params else "/investment_grade.html"

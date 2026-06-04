@@ -1,7 +1,16 @@
-"""Tool executor — 9 个 tool 全部用真实数据走通(pinyin/code/中文都支持)。"""
+"""Tool executor — 9 个 tool 全部用真实数据走通(pinyin/code/中文都支持)。
+
+v7.1: execute_tool 返 {"data": ..., "navigate_to": ...} 结构,
+测试用 _d() helper 解包 data 字段(老格式兼容)。
+"""
 from __future__ import annotations
 
 import pytest
+
+
+def _d(out):
+    """解包 execute_tool 返 dict:取 "data" 字段(若无 data 包装则返原 dict)。"""
+    return out.get("data", out)
 
 
 def test_resolve_city_handles_pinyin_code_and_zh():
@@ -31,7 +40,7 @@ def test_list_cities_returns_zh_and_pinyin():
     """list_cities 返中文列表 + pinyin 映射。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool("list_cities", {})
+    out = _d(execute_tool("list_cities", {}))
     assert "cities" in out
     assert "cities_pinyin" in out
     assert "深圳" in out["cities"]
@@ -43,7 +52,7 @@ def test_macro_data_returns_current_and_yoy():
     """get_macro_data 返最新年 + 同比百分比。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool("get_macro_data", {})
+    out = _d(execute_tool("get_macro_data", {}))
     assert "year" in out
     assert "current" in out
     assert "yoy_pct" in out
@@ -55,11 +64,12 @@ def test_forecast_with_pinyin_name():
     """get_forecast(city=shenzhen, indicator=gdp) → 真实 ensemble + verdict。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool(
+    raw = execute_tool(
         "get_forecast",
         {"scope": "city", "name": "shenzhen", "indicator": "gdp", "years": 3},
     )
-    assert "error" not in out, out
+    assert "error" not in raw, raw
+    out = _d(raw)
     assert out["name"] == "深圳"
     assert out["scope"] == "city"
     assert out["indicator"] == "gdp"
@@ -72,11 +82,12 @@ def test_forecast_with_zh_name():
     """get_forecast(name=深圳) 也工作(中英兼容)。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool(
+    raw = execute_tool(
         "get_forecast",
         {"scope": "city", "name": "深圳", "indicator": "gdp", "years": 3},
     )
-    assert "error" not in out, out
+    assert "error" not in raw, raw
+    out = _d(raw)
     assert out["data_points"] >= 10
 
 
@@ -84,11 +95,12 @@ def test_diagnostics_pinyin():
     """get_diagnostics 用 pinyin 也能查到。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool(
+    raw = execute_tool(
         "get_diagnostics",
         {"scope": "city", "name": "shenzhen", "indicator": "gdp"},
     )
-    assert "error" not in out, out
+    assert "error" not in raw, raw
+    out = _d(raw)
     # run_diagnostics returns 5 tests + verdict
     assert "verdict" in out
 
@@ -97,54 +109,55 @@ def test_backtest_no_order_arg():
     """get_backtest 不传 order(backtest_forecast 不接受 order)。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool(
+    raw = execute_tool(
         "get_backtest",
         {"scope": "city", "name": "shenzhen", "indicator": "gdp"},
     )
-    assert "error" not in out, out
+    assert "error" not in raw, raw
 
 
 def test_risk_pinyin():
     """get_risk 用 pinyin 查 VaR/CVaR/波动率。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool(
+    raw = execute_tool(
         "get_risk",
         {"scope": "city", "name": "shanghai", "indicator": "gdp"},
     )
-    assert "error" not in out, out
-    # risk_full_pipeline returns var/cvar/volatility
-    assert "volatility" in out or "var" in out or "VaR" in out or "var_95" in out or len(out) > 0
+    assert "error" not in raw, raw
+    # risk_full_pipeline returns dict(含 var/cvar/volatility)
+    assert len(raw) > 0
 
 
 def test_scenarios_pinyin():
     """get_scenarios 用 pinyin 查 4 档情景。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool(
+    raw = execute_tool(
         "get_scenarios",
         {"scope": "city", "name": "shenzhen", "indicator": "gdp", "years": 3},
     )
-    assert "error" not in out, out
+    assert "error" not in raw, raw
 
 
 def test_monte_carlo_pinyin():
     """get_monte_carlo 用 pinyin 查分位数。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool(
+    raw = execute_tool(
         "get_monte_carlo",
         {"scope": "city", "name": "shenzhen", "indicator": "gdp", "years": 3},
     )
-    assert "error" not in out, out
+    assert "error" not in raw, raw
 
 
 def test_data_provenance_pinyin():
     """get_data_provenance 返 URL + 置信度 + 年份范围。"""
     from backend.ai.tool_executor import execute_tool
 
-    out = execute_tool("get_data_provenance", {"name": "shenzhen"})
-    assert "error" not in out, out
+    raw = execute_tool("get_data_provenance", {"name": "shenzhen"})
+    assert "error" not in raw, raw
+    out = _d(raw)
     assert out["city"] == "深圳"
     assert "url" in out
     assert "year_range" in out
@@ -160,6 +173,8 @@ def test_unknown_tool_returns_error():
     out = execute_tool("nuke_city", {"name": "shenzhen"})
     assert "error" in out
     assert "nuke_city" in out["error"]
+    # v7.1: error 时 navigate_to=None
+    assert out.get("navigate_to") is None
 
 
 def test_missing_required_fields_returns_error():
@@ -169,6 +184,7 @@ def test_missing_required_fields_returns_error():
     out = execute_tool("get_forecast", {"scope": "city", "name": "shenzhen"})
     assert "error" in out
     assert "indicator" in out["error"]
+    assert out.get("navigate_to") is None
 
 
 def test_unknown_city_returns_empty_values():
@@ -181,3 +197,4 @@ def test_unknown_city_returns_empty_values():
     )
     # 应该返 error 或 no-data,但绝不抛异常
     assert "error" in out
+    assert out.get("navigate_to") is None

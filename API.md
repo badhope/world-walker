@@ -224,6 +224,57 @@ curl -X POST http://localhost:8000/api/v1/cities/compare \
 }
 ```
 
+### Math-modeling forecasts / 数学建模预测(用过去的发展找规律)
+
+适合**按城市/省份做时序建模**场景:每个城市/省份用过去 6 年(2020–2025)真实发展数据
+做"过去找规律 + 未来 N 年预测 + 真实 95% 置信区间"。
+
+模型:AutoARIMA(首选,需 `statsforecast`)/ LinearRegression + t 分布 PI(fallback,无需额外依赖)。
+预测指标:13 个(5 个绝对量 sum + 8 个率加权平均)。
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/forecast/indicators` | 列出所有支持的预测指标 |
+| GET | `/api/v1/forecast/provinces` | 列出所有省份 → 城市 映射 |
+| GET | `/api/v1/forecast/gdp/{city_name}` | **[兼容]** 预测城市 GDP |
+| GET | `/api/v1/forecast/indicator/{city_name}?indicator=fiscal_revenue` | 预测城市 × 任意指标 |
+| POST | `/api/v1/forecast/compare` | 多城市 × 单指标 预测对比 |
+| POST | `/api/v1/forecast/province/{province_name}` | **省级聚合 + 预测**(广东=深圳+广州 求和) |
+| GET | `/api/v1/forecast/province/all?indicator=gdp` | **全 7 省 × 单指标 批量报告** |
+| GET | `/api/v1/forecast/report/full?indicator=gdp` | 10 城 × 单指标 完整报告 |
+
+**例 1: 深圳 GDP 未来 3 年(兼容)**
+```bash
+curl http://localhost:8000/api/v1/forecast/gdp/深圳?forecast_years=3
+```
+返回 `forecast_lower/forecast_upper`(真实 95% PI)、`model_metrics`(R²/MAE/MAPE/slope)、
+`growth`(历史 CAGR + 预测 CAGR)。
+
+**例 2: 任意指标(财政 / 人口 / R&D / 高新比等)**
+```bash
+curl 'http://localhost:8000/api/v1/forecast/indicator/上海?indicator=fiscal_revenue&forecast_years=5'
+```
+
+**例 3: 省级聚合(广东=深圳+广州 GDP 求和)**
+```bash
+curl -X POST http://localhost:8000/api/v1/forecast/province/广东 \
+  -H "Content-Type: application/json" \
+  -d '{"indicator":"gdp","forecast_years":5}'
+```
+
+**例 4: 全 8 省 × 财政 批量报告**
+```bash
+curl 'http://localhost:8000/api/v1/forecast/province/all?indicator=fiscal_revenue&forecast_years=5'
+```
+返回 8 省预测对比表(末年值降序 + CAGR),方便数学建模报告"按省份 GDP 演化"展示。
+
+**例 5: 多城市预测对比**
+```bash
+curl -X POST http://localhost:8000/api/v1/forecast/compare \
+  -H "Content-Type: application/json" \
+  -d '{"city_names":["深圳","上海","北京","广州"],"indicator":"gdp","forecast_years":5}'
+```
+
 ### Data collection / 数据采集
 
 | Method | Path | Description |

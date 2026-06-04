@@ -638,6 +638,106 @@ HISTORICAL_DATA: dict[str, list[dict[str, Any]]] = {
             "industry_high_tech_ratio": 50.0,
         },
     ],
+    "苏州": [
+        {
+            "year": 2020,
+            "gdp": 20056,
+            "population": 1295,
+            "fiscal_revenue": 2303,
+            "rd_intensity": 3.42,
+            "industry_high_tech_ratio": 50.0,
+        },
+        {
+            "year": 2021,
+            "gdp": 22718,
+            "population": 1310,
+            "fiscal_revenue": 2510,
+            "rd_intensity": 3.74,
+            "industry_high_tech_ratio": 52.0,
+        },
+        {
+            "year": 2022,
+            "gdp": 23958,
+            "population": 1325,
+            "fiscal_revenue": 2691,
+            "rd_intensity": 3.84,
+            "industry_high_tech_ratio": 53.5,
+        },
+        {
+            "year": 2023,
+            "gdp": 24653,
+            "population": 1340,
+            "fiscal_revenue": 2861,
+            "rd_intensity": 3.95,
+            "industry_high_tech_ratio": 54.5,
+        },
+        {
+            "year": 2024,
+            "gdp": 25800,
+            "population": 1355,
+            "fiscal_revenue": 3010,
+            "rd_intensity": 4.05,
+            "industry_high_tech_ratio": 55.5,
+        },
+        {
+            "year": 2025,
+            "gdp": 27000,
+            "population": 1370,
+            "fiscal_revenue": 3150,
+            "rd_intensity": 4.15,
+            "industry_high_tech_ratio": 56.5,
+        },
+    ],
+    "西安": [
+        {
+            "year": 2020,
+            "gdp": 10020,
+            "population": 1295,
+            "fiscal_revenue": 1100,
+            "rd_intensity": 4.50,
+            "industry_high_tech_ratio": 40.0,
+        },
+        {
+            "year": 2021,
+            "gdp": 10688,
+            "population": 1316,
+            "fiscal_revenue": 1230,
+            "rd_intensity": 4.72,
+            "industry_high_tech_ratio": 42.0,
+        },
+        {
+            "year": 2022,
+            "gdp": 11486,
+            "population": 1330,
+            "fiscal_revenue": 1340,
+            "rd_intensity": 4.92,
+            "industry_high_tech_ratio": 43.5,
+        },
+        {
+            "year": 2023,
+            "gdp": 12200,
+            "population": 1340,
+            "fiscal_revenue": 1430,
+            "rd_intensity": 5.10,
+            "industry_high_tech_ratio": 45.0,
+        },
+        {
+            "year": 2024,
+            "gdp": 13100,
+            "population": 1350,
+            "fiscal_revenue": 1500,
+            "rd_intensity": 5.25,
+            "industry_high_tech_ratio": 46.5,
+        },
+        {
+            "year": 2025,
+            "gdp": 14050,
+            "population": 1360,
+            "fiscal_revenue": 1580,
+            "rd_intensity": 5.40,
+            "industry_high_tech_ratio": 48.0,
+        },
+    ],
 }
 
 
@@ -647,8 +747,15 @@ def get_city_data(city_name: str) -> dict[str, Any] | None:
 
 
 def get_all_cities() -> list[str]:
-    """获取所有城市名称列表"""
+    """获取所有有完整指标数据的城市(8 个有 CITY_DATA + 顶层指数)。"""
     return list(CITY_DATA.keys())
+
+
+def get_all_forecast_cities() -> list[str]:
+    """获取所有有历史时序数据的城市(10 个,含苏州 / 西安),
+    给 forecast/* 系列端点使用;其他 analyzer(企业 / 政府)
+    依赖顶层 CITY_DATA,只用 8 城。"""
+    return sorted(set(CITY_DATA.keys()) | set(HISTORICAL_DATA.keys()))
 
 
 def get_historical_data(city_name: str) -> pd.DataFrame:

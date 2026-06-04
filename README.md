@@ -16,8 +16,7 @@ Four scenarios, one backend:
 
 - **Retail site selection** — predict store revenue from foot-traffic,
   competitors, and rent.
-- **Sales forecasting** — multi-model (Linear / RF / GBDT) forecast from
-  historical sales.
+- **Sales forecast** — use 6 years of historical city data to project next 1–20 years; model registry with `AutoARIMA` / `LinearRegression + t-distribution PI` (real 95% confidence intervals, not zero-width placeholders), covers 13 indicators and 8 provinces.
 - **Enterprise environment** — rank cities by operating cost, supply
   chain, and policy support.
 - **Government policy** — industrial chain completeness, fiscal leverage

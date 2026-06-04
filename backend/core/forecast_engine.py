@@ -27,11 +27,20 @@ import numpy as np
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 
+from backend.core.engine_stack import (
+    pmdarima_available,
+    primary_arima_backend,
+    statsforecast_available,
+)
+
 logger = logging.getLogger(__name__)
+
+_ARIMA_BACKEND = primary_arima_backend()
+logger.info("Forecast engine: ARIMA backend = %s", _ARIMA_BACKEND)
 
 
 # --------------------------------------------------------------------------- #
-# 1. auto_arima — statsmodels AIC-driven grid search
+# 1. auto_arima — statsmodels AIC-driven grid search (fallback)
 # --------------------------------------------------------------------------- #
 
 
@@ -47,7 +56,7 @@ def auto_arima(values: list[float], max_p: int = 2, max_d: int = 1, max_q: int =
     y = np.asarray(values, dtype=float)
     n = len(y)
     if n < 5:
-        return {"model": None, "order": None, "aic": float("inf"), "bic": float("inf"), "n": n, "reason": "n<5"}
+        return {"model": None, "order": None, "aic": float("inf"), "bic": float("inf"), "n": n, "reason": "n<5", "backend": "statsmodels"}
 
     from statsmodels.tsa.arima.model import ARIMA
 
@@ -70,22 +79,108 @@ def auto_arima(values: list[float], max_p: int = 2, max_d: int = 1, max_q: int =
             continue
 
     if best_model is None:
-        return {"model": None, "order": None, "aic": float("inf"), "bic": float("inf"), "n": n, "reason": "all orders failed"}
+        return {"model": None, "order": None, "aic": float("inf"), "bic": float("inf"), "n": n, "reason": "all orders failed", "backend": "statsmodels"}
     return {
         "model": best_model,
         "order": best_order,
         "aic": float(best_aic),
         "bic": float(best_model.bic),
         "n": n,
+        "backend": "statsmodels",
     }
+
+
+# --------------------------------------------------------------------------- #
+# 1b. auto_arima_native — 高级路径(statsforecast > pmdarima > statsmodels)
+# --------------------------------------------------------------------------- #
+
+
+def auto_arima_native(values: list[float], max_p: int = 5, max_d: int = 2, max_q: int = 5) -> dict[str, Any]:
+    """
+    高级 AutoARIMA — 优先用 statsforecast(快 + 多季节 + 节假日),
+    回退到 pmdarima,再回退到 statsmodels grid。
+
+    返回 dict 形态与 statsmodels auto_arima 兼容(供 arima_forecast / ensemble_forecast 使用)。
+    """
+    y = np.asarray(values, dtype=float)
+    n = len(y)
+    if n < 5:
+        return {"model": None, "order": None, "aic": float("inf"), "bic": float("inf"), "n": n, "reason": "n<5", "backend": _ARIMA_BACKEND}
+
+    # --- 路径 1: statsforecast ---
+    if statsforecast_available():
+        try:
+            import pandas as pd
+            from statsforecast import StatsForecast
+            from statsforecast.models import AutoARIMA as SF_AutoARIMA
+
+            logger.debug("ARIMA: using statsforecast.AutoARIMA")
+            sf = StatsForecast(models=[SF_AutoARIMA(season_length=1)], freq=1, n_jobs=1)
+            df = pd.DataFrame(
+                {
+                    "unique_id": ["y"] * n,
+                    "ds": pd.date_range("2010-01-01", periods=n, freq="YS"),
+                    "y": y,
+                }
+            )
+            sf.fit(df)
+            sf_model = sf.models[0]
+            order = tuple(sf_model.order) if hasattr(sf_model, "order") and sf_model.order else None
+            aic = float(getattr(sf_model, "aic", float("inf"))) if order else float("inf")
+            bic = float(getattr(sf_model, "bic", float("inf"))) if order else float("inf")
+            if order is None:
+                raise RuntimeError("statsforecast did not return an order")
+            return {
+                "model": sf_model,
+                "order": order,
+                "aic": aic,
+                "bic": bic,
+                "n": n,
+                "backend": "statsforecast",
+            }
+        except Exception as e:
+            logger.warning("statsforecast.AutoARIMA failed: %s, falling back", e)
+
+    # --- 路径 2: pmdarima ---
+    if pmdarima_available():
+        try:
+            import pmdarima as pm
+
+            logger.debug("ARIMA: using pmdarima.auto_arima")
+            m = pm.auto_arima(
+                y,
+                start_p=0,
+                start_q=0,
+                max_p=max_p,
+                max_d=max_d,
+                max_q=max_q,
+                seasonal=False,
+                stepwise=True,  # stepwise 比 grid 快且效果近似
+                suppress_warnings=True,
+                error_action="ignore",
+                information_criterion="aic",
+            )
+            return {
+                "model": m,
+                "order": tuple(m.order),
+                "aic": float(m.aic()),
+                "bic": float(m.bic()),
+                "n": n,
+                "backend": "pmdarima",
+            }
+        except Exception as e:
+            logger.warning("pmdarima.auto_arima failed: %s, falling back", e)
+
+    # --- 路径 3: 现有 statsmodels grid (fallback) ---
+    return auto_arima(values, max_p=2, max_d=1, max_q=2)
 
 
 def arima_forecast(values: list[float], years: int, confidence: float = 0.95) -> dict[str, Any]:
     """
-    用 auto_arima 选出的最佳模型预测未来 years 年。
+    用 auto_arima_native 选出的最佳模型预测未来 years 年。
     返回:{predictions, lower_ci, upper_ci, method, order, aic, bic}
     """
-    fit = auto_arima(values)
+    fit = auto_arima_native(values)
     if fit["model"] is None:
         return {
             "predictions": [float(v) for v in values[-years:]] if values else [0.0] * years,
@@ -96,15 +191,86 @@ def arima_forecast(values: list[float], years: int, confidence: float = 0.95) ->
             "aic": None,
             "bic": None,
         }
+
+    backend = fit.get("backend", "statsmodels")
     model = fit["model"]
-    fc = model.get_forecast(steps=years)
-    ci = np.asarray(fc.conf_int(alpha=1 - confidence))
+    n = len(values)
+    y_arr = np.asarray(values, dtype=float)
+    z = stats.norm.ppf(0.5 + confidence / 2)
+
+    try:
+        if backend == "statsforecast":
+            # 重新 fit (单 series) 然后 predict h=years
+            import pandas as pd
+            from statsforecast import StatsForecast
+            from statsforecast.models import AutoARIMA as SF_AutoARIMA
+
+            sf = StatsForecast(models=[SF_AutoARIMA(season_length=1)], freq=1, n_jobs=1)
+            df = pd.DataFrame(
+                {
+                    "unique_id": ["y"] * n,
+                    "ds": pd.date_range("2010-01-01", periods=n, freq="YS"),
+                    "y": y_arr,
+                }
+            )
+            sf.fit(df)
+            fc_df = sf.predict(h=years)
+            col = "AutoARIMA" if "AutoARIMA" in fc_df.columns else fc_df.columns[-1]
+            preds = [float(x) for x in fc_df[col].tolist()]
+            # statsforecast 不带 conf_int → 用 in-sample 残差 std 算近似
+            try:
+                sf_model = sf.models[0]
+                fitted = sf_model.fitted_values if hasattr(sf_model, "fitted_values") else None
+                if fitted is not None and len(fitted) == n:
+                    resid = y_arr - np.asarray(fitted)
+                else:
+                    raise RuntimeError("no fitted_values")
+            except Exception:
+                resid = np.diff(y_arr, prepend=y_arr[0])
+            sigma = float(np.std(resid, ddof=1)) or 1.0
+            lower = [p - z * sigma * math.sqrt(i + 1) for i, p in enumerate(preds)]
+            upper = [p + z * sigma * math.sqrt(i + 1) for i, p in enumerate(preds)]
+
+        elif backend == "pmdarima":
+            fc = model.predict(n_periods=years, return_conf_int=True, alpha=1 - confidence)
+            if isinstance(fc, tuple) and len(fc) == 2:
+                preds_arr, ci = fc
+                preds = [float(x) for x in preds_arr]
+                lower = [float(x) for x in ci[:, 0]]
+                upper = [float(x) for x in ci[:, 1]]
+            else:
+                preds = [float(x) for x in fc]
+                resid_std = float(np.std(model.resid())) or 1.0
+                lower = [p - z * resid_std * math.sqrt(i + 1) for i, p in enumerate(preds)]
+                upper = [p + z * resid_std * math.sqrt(i + 1) for i, p in enumerate(preds)]
+
+        else:
+            # statsmodels (fallback)
+            fc = model.get_forecast(steps=years)
+            ci = np.asarray(fc.conf_int(alpha=1 - confidence))
+            preds = [float(x) for x in fc.predicted_mean.tolist()]
+            lower = [float(x) for x in ci[:, 0]]
+            upper = [float(x) for x in ci[:, 1]]
+
+    except Exception as e:
+        logger.warning("ARIMA predict failed (%s backend): %s", backend, e)
+        last = float(values[-1]) if values else 0.0
+        return {
+            "predictions": [last] * years,
+            "lower_ci": [last * 0.95] * years,
+            "upper_ci": [last * 1.05] * years,
+            "method": f"ARIMA predict failed ({backend})",
+            "order": list(fit["order"]) if fit["order"] else None,
+            "aic": fit["aic"],
+            "bic": fit["bic"],
+        }
+
     return {
-        "predictions": [float(x) for x in fc.predicted_mean.tolist()],
-        "lower_ci": [float(x) for x in ci[:, 0].tolist()],
-        "upper_ci": [float(x) for x in ci[:, 1].tolist()],
-        "method": f"ARIMA{fit['order']} (statsmodels, AIC={fit['aic']:.1f})",
-        "order": list(fit["order"]),
+        "predictions": preds,
+        "lower_ci": lower,
+        "upper_ci": upper,
+        "method": f"ARIMA{list(fit['order'])} ({backend}, AIC={fit['aic']:.1f})",
+        "order": list(fit["order"]) if fit["order"] else None,
         "aic": fit["aic"],
         "bic": fit["bic"],
     }
@@ -579,7 +745,8 @@ def forecast_full_pipeline(
     ens = ensemble_forecast(arima, ets, lr)
 
     # 3. 残差诊断(基于 ARIMA 残差)
-    order = tuple(arima.get("order", [1, 1, 0])) if arima.get("order") else (1, 1, 0)
+    order_raw = arima.get("order")
+    order = tuple(order_raw) if order_raw else (1, 1, 0)
     diagnostics = run_diagnostics(values, order=order)
 
     # 4. 结构突变

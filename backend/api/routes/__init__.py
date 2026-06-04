@@ -2,6 +2,7 @@
 路由模块
 """
 
+from backend.api.routes.ai import router as ai_router
 from backend.api.routes.analysis import router as analysis_router
 from backend.api.routes.analysis_v3 import router as analysis_v3_router
 from backend.api.routes.cities import router as cities_router
@@ -19,6 +20,7 @@ from backend.api.routes.static import router as static_router
 from backend.api.routes.websocket import router as websocket_router
 
 __all__ = [
+    "ai_router",
     "data_router",
     "data_lineage_router",
     "analysis_router",

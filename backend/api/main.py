@@ -21,6 +21,7 @@ from fastapi.responses import FileResponse, Response
 
 from backend.api.limiter import limiter
 from backend.api.routes import (
+    ai_router,
     analysis_router,
     analysis_v3_router,
     cities_router,
@@ -139,6 +140,7 @@ async def _global_rate_limit(request: Request, call_next):
 # 不重复就能共存。重复项已在代码里拆开(/compare 改为 POST 唯一)。
 for router in (
     auth_router,
+    (ai_router, settings.API_V1_STR),
     (data_router, settings.API_V1_STR),
     (analysis_router, settings.API_V1_STR),
     (inference_router, settings.API_V1_STR),

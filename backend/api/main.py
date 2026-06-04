@@ -31,6 +31,7 @@ from backend.api.routes import (
     forecast_router,
     inference_router,
     interactive_router,
+    investment_router,
     ml_router,
     real_data_router,
     static_router,
@@ -149,6 +150,7 @@ for router in (
     (analysis_v3_router, settings.API_V1_STR),
     (ml_router, settings.API_V1_STR),
     (data_lineage_router, settings.API_V1_STR),
+    (investment_router, settings.API_V1_STR),
 ):
     if isinstance(router, tuple):
         app.include_router(router[0], prefix=router[1])

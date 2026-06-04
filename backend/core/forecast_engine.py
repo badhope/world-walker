@@ -388,11 +388,16 @@ def run_diagnostics(values: list[float], order: tuple[int, int, int] | None = No
         out["tests"]["breusch_pagan"] = {"error": str(e)}
 
     # 综合 verdict
-    fails = sum(
-        1
-        for t in out["tests"].values()
-        if isinstance(t, dict) and t.get("stationary") is False or t.get("no_autocorrelation") is False or t.get("normal") is False or t.get("homoscedastic") is False
-    )
+    fails = 0
+    for name, t in out["tests"].items():
+        if "error" in t:
+            continue
+        # 转换 numpy.bool → python bool
+        for key in ("stationary", "no_autocorrelation", "normal", "homoscedastic"):
+            if key in t:
+                t[key] = bool(t[key])
+                if t[key] is False:
+                    fails += 1
     if fails == 0:
         out["verdict"] = "PASS"
     elif fails <= 1:

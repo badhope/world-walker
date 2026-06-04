@@ -125,3 +125,22 @@
 .rca-chat-input-area button:disabled { background: #9ca3af; cursor: not-allowed; }
 
 .rca-status { padding: 6px 12px; font-size: 12px; color: #6b7280; }
+
+/* v7.1: tool chip — 可点击,跳到对应图表页 */
+.rca-tool-chip {
+  display: inline-block;
+  margin: 4px 6px 4px 0;
+  padding: 4px 10px;
+  background: #e8f4fd;
+  color: #0969da;
+  border: 1px solid #b6e3ff;
+  border-radius: 12px;
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.rca-tool-chip:hover {
+  background: #cdebfc;
+  text-decoration: none;
+}

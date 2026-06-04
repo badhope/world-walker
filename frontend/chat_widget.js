@@ -73,11 +73,17 @@
     return bubbleEl;
   }
 
-  function appendToolChip(name, args) {
-    const chip = document.createElement("span");
+  function appendToolChip(name, args, navigate_to) {
+    const chip = document.createElement("a");
     chip.className = "rca-tool-chip";
-    chip.textContent = "🔧 " + name + "(" + JSON.stringify(args).slice(0, 60) + ")";
+    chip.href = navigate_to || "#";
+    chip.target = "_blank";  // 新窗口打开,保留 chat
+    chip.rel = "noopener noreferrer";
+    // 显示:🔧 get_forecast(name=shenzhen, indicator=gdp) → 📊 在图表中查看
+    const argsStr = Object.entries(args || {}).map(([k, v]) => k + "=" + v).join(", ").slice(0, 60);
+    chip.innerHTML = "🔧 " + name + "(" + argsStr + ") → 📊 在图表中查看";
     body.appendChild(chip);
+    return chip;
   }
 
   // SSE 解析器 — 把 ReadableStream 拆成 {event, data} 对象
@@ -154,6 +160,9 @@
         const d = ev.data || {};
         if (d.type === "thinking") {
           if (status) status.textContent = "🤔 思考中…";
+        } else if (d.type === "tool_call") {
+          // v7.1: 渲染可点击 chip,跳转到对应图表页
+          appendToolChip(d.name, d.args, d.navigate_to);
         } else if (d.type === "token" && d.content) {
           accumulated += d.content;
           placeholder.textContent = accumulated;  // 打字机:逐字覆盖

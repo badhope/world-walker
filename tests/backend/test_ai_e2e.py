@@ -114,3 +114,30 @@ def test_ai_chat_stream_emits_error(monkeypatch):
     assert r.status_code == 200
     assert "error" in r.text
     assert "API key invalid" in r.text
+
+
+def test_chat_widget_html_served():
+    """StaticFiles mount: /chat_widget/chat_widget.html 真能 serve(不再是 404)。"""
+    from backend.api.main import app
+    client = TestClient(app)
+    r = client.get("/chat_widget/chat_widget.html")
+    assert r.status_code == 200
+    assert "AI Chat Widget" in r.text
+
+
+def test_chat_widget_js_served():
+    """StaticFiles mount: /chat_widget/chat_widget.js 真能 serve。"""
+    from backend.api.main import app
+    client = TestClient(app)
+    r = client.get("/chat_widget/chat_widget.js")
+    assert r.status_code == 200
+    assert "RCAChatLoaded" in r.text
+
+
+def test_chat_widget_css_served():
+    """StaticFiles mount: /chat_widget/chat_widget.css 真能 serve。"""
+    from backend.api.main import app
+    client = TestClient(app)
+    r = client.get("/chat_widget/chat_widget.css")
+    assert r.status_code == 200
+    assert ".rca-chat-bubble" in r.text

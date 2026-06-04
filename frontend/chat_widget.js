@@ -13,7 +13,7 @@
   // 注入 CSS
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "/chat_widget.css";
+  css.href = "/chat_widget/chat_widget.css";
   document.head.appendChild(css);
 
   // 注入 HTML

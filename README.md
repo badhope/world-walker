@@ -128,7 +128,7 @@ docker compose up --build
 # 测试
 curl -s http://localhost:8000/api/v1/ai/config | jq
 # 打开 demo 页面
-open http://localhost:8000/chat_widget.html
+open http://localhost:8000/chat_widget/chat_widget.html
 ```
 
 ---

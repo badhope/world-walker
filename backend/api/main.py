@@ -18,6 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from backend.api.limiter import limiter
 from backend.api.routes import (
@@ -164,6 +165,11 @@ app.include_router(database_router)
 app.include_router(static_router)
 
 frontend_index = Path(__file__).parent.parent.parent / "frontend" / "index.html"
+chat_widget_dir = Path(__file__).parent.parent.parent / "frontend"
+
+# 单独挂载 chat_widget 静态资源(.html / .js / .css)供 demo 页使用
+if chat_widget_dir.is_dir() and (chat_widget_dir / "chat_widget.html").exists():
+    app.mount("/chat_widget", StaticFiles(directory=str(chat_widget_dir), html=True), name="chat_widget")
 
 
 @app.get("/dashboard", tags=["页面"])

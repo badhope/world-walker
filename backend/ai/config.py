@@ -50,7 +50,6 @@ def _is_backend_available(backend: str) -> bool:
         return bool(os.getenv("LLM_OLLAMA_BASE_URL"))
     return False
 
-
 def _model_for(backend: str) -> str:
     default, _ = _BACKEND_DEFAULTS[backend]
     env = {

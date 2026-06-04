@@ -98,6 +98,12 @@ def _build_kwargs(cfg: AIConfig, messages: list[dict], tools: list[dict] | None)
     # ollama 需要 api_base(本地)
     if cfg.active_backend == "ollama":
         kwargs["api_base"] = os.getenv("LLM_OLLAMA_BASE_URL", "http://localhost:11434")
+    # openai 兼容模式(百炼 / 自建 gateway)— 显式加前缀让 litellm 走 OpenAI client
+    if cfg.active_backend == "openai":
+        openai_base = os.getenv("LLM_OPENAI_BASE_URL")
+        if openai_base:
+            kwargs["api_base"] = openai_base
+            kwargs["model"] = f"openai/{cfg.model}"
     return kwargs
 
 

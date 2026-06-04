@@ -5,8 +5,8 @@ from fastapi.testclient import TestClient
 
 
 def test_chat_stream_route_yields_tool_call_event(monkeypatch):
-    from backend.api.main import app
     from backend.ai import chat_service, llm_client
+    from backend.api.main import app
 
     def _fake_stream_with_trace(cfg, session_id, user_message):
         yield {"type": "thinking"}
@@ -41,8 +41,8 @@ def test_chat_stream_route_yields_tool_call_event(monkeypatch):
 
 def test_chat_route_response_includes_tool_calls(monkeypatch):
     """/chat 一次性响应含 tool_calls 字段(老 client 也拿得到导航 URL)。"""
-    from backend.api.main import app
     from backend.ai import chat_service
+    from backend.api.main import app
 
     def _fake_chat(cfg, session_id, user_message):
         return {

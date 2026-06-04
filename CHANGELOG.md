@@ -3,6 +3,26 @@
 Format: [Keep a Changelog](https://keepachangelog.com/).
 Versioning: [SemVer](https://semver.org/).
 
+## 7.1.0 — 2026-06-04
+
+### Added
+- **Tool-call UI 联动** — LLM 调 tool 后,前端 chat widget 渲染"📊 在图表中查看" chip,点击新窗口打开 `investment_grade.html` / `index.html` 并 prefilled URL 参数
+- **SSE 新事件类型** `type=tool_call`(老 client 兼容,新 client 渲染 chip)
+- **`/chat` 响应新增** `tool_calls` 字段(老 client 也能拿到导航 URL)
+- **`tool_executor` 返回结构升级** — `{"data": ..., "navigate_to": <url|None>}`(v7.0 老内部 API 也兼容)
+- **OpenAI 兼容 base_url 支持** — `LLM_OPENAI_BASE_URL` env var,让百炼 / 自建 gateway 走 OpenAI 客户端
+
+### Changed
+- `chat_service.chat_stream_with_trace()` — 新生成器模式 yield `{thinking, tool_call, token, done}` 事件
+- `chat_service.chat()` — 累积 `tool_calls_log` 给响应
+- `frontend/chat_widget.js` — `appendToolChip(name, args, navigate_to)` 改 `<a target=_blank>`
+- `frontend/chat_widget.css` — 新增 `.rca-tool-chip` 样式(浅蓝 chip + hover)
+- `routes/ai.py` `/chat/stream` — 改用 `chat_stream_with_trace` 拿事件流
+
+### Tests
+- 新增 11 个测试:`5 stream trace + 2 route + 4 widget chip`(10 navigate_to 在 v7.0 阶段)
+- 总测试:**335 pass / 2 skip**
+
 ## 7.0.0 — 2026-06-04
 
 ### Added

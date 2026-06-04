@@ -14,7 +14,7 @@ def test_chat_widget_js_is_valid_javascript():
     assert result.returncode == 0, f"JS syntax error: {result.stderr}"
 
 
-def test_chat_widget_exposes_parseSSEEvent():
+def test_chat_widget_exposes_parseSSEEvent():  # noqa: N802
     """parseSSEEvent 必须在文件里定义;用花括号配对提取并跑一次。"""
     js = WIDGET_JS.read_text()
     # 找到 'function parseSSEEvent' 起点
@@ -55,7 +55,7 @@ def test_chat_widget_exposes_parseSSEEvent():
     assert out["navigate_to"] == "/x"
 
 
-def test_chat_widget_exposes_appendToolChip():
+def test_chat_widget_exposes_appendToolChip():  # noqa: N802
     """appendToolChip 必须存在并能调(签名 chip(name, args, navigate_to))。"""
     js = WIDGET_JS.read_text()
     assert "function appendToolChip" in js

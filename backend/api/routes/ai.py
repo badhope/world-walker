@@ -18,7 +18,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.ai import chat_service, conversation
+from backend.ai import chat_service
 from backend.ai.config import load_config
 from backend.ai.tool_registry import TOOLS, list_tool_names
 

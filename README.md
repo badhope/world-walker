@@ -115,12 +115,14 @@ tests/fuzz/     hypothesis property-based fuzz
 scripts/        dev utilities + legacy demos
 ```
 
-### AI Chat Assistant (v7.0)
+### AI Chat Assistant (v7.0+)
 
 ```bash
 # 配置 LLM(任选一种)
 export LLM_OPENAI_API_KEY=sk-...  # OpenAI
 # 或 export LLM_OLLAMA_BASE_URL=http://localhost:11434  # 本地 Ollama
+# 或 阿里百炼 (OpenAI 兼容):
+# export LLM_OPENAI_API_KEY=sk-... LLM_OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1 LLM_OPENAI_MODEL=qwen-turbo
 
 # 启服务
 docker compose up --build
@@ -130,6 +132,14 @@ curl -s http://localhost:8000/api/v1/ai/config | jq
 # 打开 demo 页面
 open http://localhost:8000/chat_widget/chat_widget.html
 ```
+
+#### v7.1 新增:Tool-chip 联动
+LLM 调 tool 后,聊天流里会显示一个"📊 在图表中查看"蓝色 chip。点击:
+- 新窗口打开 `investment_grade.html`(forecast/risk/scenarios/mc/backtest/diagnostics)
+- URL 参数已 prefilled(scope, name, indicator, years, tab)
+- 保留 chat 不动
+
+后端透传 `type=tool_call` SSE 事件 + `navigate_to` URL;前端 `appendToolChip(name, args, navigate_to)` 渲染可点击链接。
 
 ---
 

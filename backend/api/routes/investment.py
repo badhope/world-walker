@@ -28,7 +28,6 @@ from backend.core.forecast_engine import (
 )
 from backend.core.risk_engine import (
     monte_carlo_simulation,
-    risk_full_pipeline,
     rolling_volatility,
     scenario_analysis,
     var_cvar,
@@ -36,7 +35,6 @@ from backend.core.risk_engine import (
 from backend.data.historical_extended import (
     EXTENDED_HISTORICAL,
     INDICATOR_META,
-    get_city_timeseries,
     list_extended_cities,
     list_extended_indicators,
 )
@@ -109,7 +107,7 @@ def _get_scope_timeseries(
             raise HTTPException(404, f"{name} 无数据")
         values: list[float] = []
         for y in all_years:
-            points = []
+            points: list[tuple[float, float]] = []
             for c in cities:
                 cell = EXTENDED_HISTORICAL.get(c, {}).get(y, {})
                 v = cell.get(indicator)
@@ -117,15 +115,21 @@ def _get_scope_timeseries(
                 if v is None:
                     continue
                 if indicator in _ABSOLUTE_INDICATORS:
+                    # 绝对量:sum,denominator=1
                     points.append((float(v), 1.0))
                 else:
-                    # rate: 人口加权
+                    # 率:人口加权
                     points.append((float(v), float(pop) if pop else 1.0))
             if not points:
                 continue
-            num = sum(p * w for p, w in points)
-            den = sum(w for _, w in points)
-            values.append(num / den)
+            if indicator in _ABSOLUTE_INDICATORS:
+                # 绝对量:各省值 = sum
+                values.append(sum(p for p, _ in points))
+            else:
+                # 率:加权平均
+                num = sum(p * w for p, w in points)
+                den = sum(w for _, w in points)
+                values.append(num / den)
         if not values:
             raise HTTPException(404, f"{name}/{indicator} 无数据")
         return values, all_years[0]

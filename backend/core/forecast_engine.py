@@ -24,7 +24,6 @@ import warnings
 from typing import Any
 
 import numpy as np
-import pandas as pd
 from scipy import stats
 from sklearn.linear_model import LinearRegression
 
@@ -274,7 +273,7 @@ def ensemble_forecast(
         "predictions": pred,
         "lower_ci": lower,
         "upper_ci": upper,
-        "method": f"Ensemble(ARIMA+ETS+LR, AIC-weighted)",
+        "method": "Ensemble(ARIMA+ETS+LR, AIC-weighted)",
         "weights": {k: round(v, 4) for k, v in weights.items()},
     }
 
@@ -488,7 +487,9 @@ def backtest_forecast(
         return {"error": f"n={n} too small for n_test={n_test}", "metrics": {}}
 
     if model_func is None:
-        model_func = lambda v, h: arima_forecast(v, h)
+
+        def model_func(v, h):
+            return arima_forecast(v, h)
 
     actuals: list[float] = []
     forecasts: list[float] = []

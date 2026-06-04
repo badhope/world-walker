@@ -16,7 +16,7 @@ Four scenarios, one backend:
 
 - **Retail site selection** — predict store revenue from foot-traffic,
   competitors, and rent.
-- **Sales forecast** — use 6 years of historical city data to project next 1–20 years; model registry with `AutoARIMA` / `LinearRegression + t-distribution PI` (real 95% confidence intervals, not zero-width placeholders), covers 13 indicators and 8 provinces.
+- **Sales forecast** — **investment-grade**: 10 cities × 12 indicators × 16 years (2010-2025) of real public data + 4 macro covariates; 3-model ensemble (ARIMA + ETS + Linear Regression, AIC-weighted); 5 residual diagnostics (ADF / KPSS / Ljung-Box / Jarque-Bera / Breusch-Pagan); Chow test for structural breaks; walk-forward CV (5 metrics: MAPE / RMSE / MASE / sMAPE / Coverage); VaR / CVaR / volatility; 4 scenarios; 1000-iter Monte Carlo. See [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 - **Enterprise environment** — rank cities by operating cost, supply
   chain, and policy support.
 - **Government policy** — industrial chain completeness, fiscal leverage
@@ -42,7 +42,9 @@ uvicorn backend.api.main:app --reload --port 8000
 
 # terminal 2 — frontend
 cd frontend && python3 -m http.server 8080
-# open http://localhost:8080/index.html
+# open http://localhost:8080/index.html             # standard dashboard
+# open http://localhost:8080/investment_grade.html  # investment-grade analytics
+# open http://localhost:8080/province_forecast.html # province-level forecast
 ```
 
 Docker:

@@ -140,9 +140,31 @@ def stream_chat(
     messages: list[dict],
     tools: list[dict] | None = None,
 ) -> Iterator[dict[str, Any]]:
-    """流式 chat — yield 增量 chunk(供 FastAPI SSE 用)。
+    """真流式 chat — 调 litellm.completion(stream=True),yield 增量 token / done / error 事件。
 
-    暂时抛 NotImplementedError,后续 Task 6 / Task 7 如果需要再实现。
-    这里留接口占位,避免 chat_service 导入报错。
+    每个 yield 是 dict:
+    - {"type": "token", "content": "..."} — 增量文本片段
+    - {"type": "done", "finish_reason": "..."} — 最后一个 chunk(stream 完结标记)
+    - {"type": "error", "message": "..."} — 任何底层错误,绝不抛异常给上层 SSE 消费者
+
+    tool_calls 暂不在 stream 中处理(流式 + tool calling 各 provider 支持差异大),
+    流式场景下用户先看思考过程 + 增量回答,tool 调用的批处理走 /chat 端点。
     """
-    raise NotImplementedError("stream_chat will be implemented when SSE endpoint lands")
+    try:
+        kwargs = _build_kwargs(cfg, messages, tools)
+        kwargs["stream"] = True
+        for chunk in litellm.completion(**kwargs):
+            try:
+                choice = chunk.choices[0]
+                delta = getattr(choice, "delta", None)
+                content = getattr(delta, "content", None) if delta else None
+                finish_reason = getattr(choice, "finish_reason", None)
+            except (AttributeError, IndexError):
+                continue
+            if content:
+                yield {"type": "token", "content": content}
+            if finish_reason:
+                yield {"type": "done", "finish_reason": finish_reason}
+    except Exception as e:
+        logger.warning("LLM stream failed (backend=%s, model=%s): %s", cfg.active_backend, cfg.model, e)
+        yield {"type": "error", "message": f"{type(e).__name__}: {e}"}

@@ -18,8 +18,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from backend.ai import chat_service
+from backend.ai import chat_service, conversation
 from backend.ai.config import load_config
+from backend.ai.llm_client import stream_chat
 from backend.ai.tool_registry import TOOLS, list_tool_names
 
 logger = logging.getLogger(__name__)
@@ -112,10 +113,13 @@ def post_chat(req: ChatRequest):
 
 @router.post("/chat/stream")
 def post_chat_stream(req: ChatRequest):
-    """SSE 流式 — 当前实现是非流式 chat 包装成 SSE event,简化版。
+    """SSE 真流式 — 透传 stream_chat 增量事件。
 
-    真正的流式需要改造 chat_service 用 stream_chat + 增量工具调用,
-    后续可加(本 task 先确保非流式工作)。
+    流式事件:
+    - {"type": "thinking"} — 启动,等 LLM
+    - {"type": "token", "content": "..."} — 增量文本
+    - {"type": "done", "finish_reason": "stop"} — 完成
+    - {"type": "error", "message": "..."} — 错误
     """
     _check_rate(req.session_id)
     user_msgs = [m for m in req.messages if m.role == "user"]
@@ -127,12 +131,16 @@ def post_chat_stream(req: ChatRequest):
         try:
             cfg = load_config()
             yield f"event: message\ndata: {json.dumps({'type': 'thinking'})}\n\n"
-            result = chat_service.chat(cfg, session_id=req.session_id, user_message=user_message)
-            # 拆 content 为 token(粗粒度,按字符流)
-            content = result.get("content", "")
-            for i in range(0, len(content), 4):
-                yield f"event: message\ndata: {json.dumps({'type': 'token', 'content': content[i:i+4]})}\n\n"
-            yield f"event: message\ndata: {json.dumps({'type': 'done', 'tool_rounds': result.get('tool_rounds', 0)})}\n\n"
+            from backend.ai.prompts import SYSTEM_PROMPT
+
+            messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+            messages.extend(conversation.get_history(req.session_id))
+            messages.append({"role": "user", "content": user_message})
+
+            for event in stream_chat(cfg, messages=messages, tools=None):
+                yield f"event: message\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+                if event.get("type") == "done":
+                    break
         except Exception as e:
             yield f"event: error\ndata: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 

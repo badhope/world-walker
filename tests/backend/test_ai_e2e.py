@@ -67,3 +67,50 @@ def test_ai_chat_message_too_long():
         "messages": [{"role": "user", "content": "x" * 5000}],
     })
     assert r.status_code in {400, 422}
+
+
+def test_ai_chat_stream_real_streaming(monkeypatch):
+    """/chat/stream 端到端 — 验证真流式:incremental tokens + done 事件。"""
+    from backend.api.main import app
+    from backend.api.routes import ai as ai_route
+
+    def fake_stream_chat(cfg, messages, tools=None):
+        yield {"type": "token", "content": "深"}
+        yield {"type": "token", "content": "圳"}
+        yield {"type": "token", "content": " GDP"}
+        yield {"type": "done", "finish_reason": "stop"}
+
+    monkeypatch.setattr(ai_route, "stream_chat", fake_stream_chat)
+
+    client = TestClient(app)
+    r = client.post("/api/v1/ai/chat/stream", json={
+        "session_id": "stream-test-1",
+        "messages": [{"role": "user", "content": "深圳 GDP"}],
+    })
+    assert r.status_code == 200
+    body = r.text
+    # 验证 SSE 格式:多个 event: message\ndata: {...}\n\n
+    assert body.count("event: message") == 5  # thinking + 3 token + done
+    assert '"type": "thinking"' in body
+    assert '"type": "token"' in body
+    assert '"type": "done"' in body
+
+
+def test_ai_chat_stream_emits_error(monkeypatch):
+    """/chat/stream 在 LLM 错误时返 SSE error 事件(不抛 500)。"""
+    from backend.api.main import app
+    from backend.api.routes import ai as ai_route
+
+    def fake_stream_chat(cfg, messages, tools=None):
+        yield {"type": "error", "message": "API key invalid"}
+
+    monkeypatch.setattr(ai_route, "stream_chat", fake_stream_chat)
+
+    client = TestClient(app)
+    r = client.post("/api/v1/ai/chat/stream", json={
+        "session_id": "stream-err-1",
+        "messages": [{"role": "user", "content": "x"}],
+    })
+    assert r.status_code == 200
+    assert "error" in r.text
+    assert "API key invalid" in r.text

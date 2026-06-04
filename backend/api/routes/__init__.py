@@ -12,8 +12,8 @@ from backend.api.routes.data_lineage import router as data_lineage_router
 from backend.api.routes.database import router as database_router
 from backend.api.routes.forecast import router as forecast_router
 from backend.api.routes.inference import router as inference_router
-from backend.api.routes.investment import router as investment_router
 from backend.api.routes.interactive import router as interactive_router
+from backend.api.routes.investment import router as investment_router
 from backend.api.routes.ml import router as ml_router
 from backend.api.routes.real_data import router as real_data_router
 from backend.api.routes.static import router as static_router

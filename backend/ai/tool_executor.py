@@ -16,38 +16,99 @@ logger = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------------- #
+# 城市名映射 — LLM 传 pinyin/code/中文,统一转 EXTENDED_HISTORICAL 用的中文 key
+# --------------------------------------------------------------------------- #
+
+
+# pinyin → 中文(用于 LLM 描述里给用户看的)
+PINYIN_TO_ZH: dict[str, str] = {
+    "shenzhen": "深圳",
+    "shanghai": "上海",
+    "beijing": "北京",
+    "guangzhou": "广州",
+    "wuhan": "武汉",
+    "chengdu": "成都",
+    "hangzhou": "杭州",
+    "nanjing": "南京",
+    "suzhou": "苏州",
+    "xian": "西安",
+    # 省份
+    "guangdong": "广东",
+    "jiangsu": "江苏",
+    "zhejiang": "浙江",
+    "sichuan": "四川",
+    "hubei": "湖北",
+    "shaanxi": "陕西",
+    "shandong": "山东",
+    "henan": "河南",
+    "fujian": "福建",
+    "anhui": "安徽",
+}
+
+# code → 中文(2-letter)
+CODE_TO_ZH: dict[str, str] = {
+    "sz": "深圳", "sh": "上海", "bj": "北京", "gz": "广州",
+    "wh": "武汉", "cd": "成都", "hz": "杭州", "nj": "南京",
+    "su": "苏州", "xa": "西安",
+}
+
+
+def _resolve_city(name: str) -> str:
+    """把 pinyin / code / 中文 统一转中文 key。"""
+    if not name:
+        return ""
+    n = name.strip()
+    low = n.lower()
+    if n in PINYIN_TO_ZH.values() or n in CODE_TO_ZH.values():
+        return n
+    if low in PINYIN_TO_ZH:
+        return PINYIN_TO_ZH[low]
+    if low in CODE_TO_ZH:
+        return CODE_TO_ZH[low]
+    return n  # 兜底:让上层自己处理 unknown
+
+
+def _get_values(scope: str, name: str, indicator: str) -> list[float]:
+    """从 historical_extended 取某城市某指标的时间序列 values。"""
+    from backend.data.historical_extended import get_city_timeseries
+
+    zh = _resolve_city(name)
+    df = get_city_timeseries(zh)
+    if df.empty or indicator not in df.columns:
+        return []
+    series = df[indicator].dropna().tolist()
+    return [float(v) for v in series]
+
+
+# --------------------------------------------------------------------------- #
 # 内部调用 — 直接复用 forecast_engine / risk_engine / data_layer
 # --------------------------------------------------------------------------- #
 
 
 def _call_forecast(scope: str, name: str, indicator: str, years: int) -> dict[str, Any]:
     from backend.core.forecast_engine import forecast_full_pipeline
-    from backend.data.historical_extended import get_city_timeseries, get_province_timeseries
 
-    if scope == "city":
-        values = [v for _, v in get_city_timeseries(name, indicator)]
-    else:
-        values = [v for _, v in get_province_timeseries(name, indicator)]
+    values = _get_values(scope, name, indicator)
     if not values:
         return {"error": f"No data for {scope}={name} indicator={indicator}"}
     out = forecast_full_pipeline(values, start_year=2010, years=years)
     # 简化:只返回 ensemble + diagnostics + backtest 摘要
     return {
+        "scope": scope,
+        "name": _resolve_city(name),
+        "indicator": indicator,
         "ensemble": out.get("ensemble"),
         "diagnostics_verdict": out.get("diagnostics", {}).get("verdict"),
         "backtest_mape": out.get("backtest", {}).get("mape"),
         "arima_method": out.get("models", {}).get("arima", {}).get("method"),
+        "data_points": len(values),
     }
 
 
 def _call_diagnostics(scope: str, name: str, indicator: str) -> dict[str, Any]:
     from backend.core.forecast_engine import run_diagnostics
-    from backend.data.historical_extended import get_city_timeseries, get_province_timeseries
 
-    if scope == "city":
-        values = [v for _, v in get_city_timeseries(name, indicator)]
-    else:
-        values = [v for _, v in get_province_timeseries(name, indicator)]
+    values = _get_values(scope, name, indicator)
     if len(values) < 5:
         return {"error": "insufficient data for diagnostics"}
     return run_diagnostics(values, order=(1, 1, 0))
@@ -55,25 +116,17 @@ def _call_diagnostics(scope: str, name: str, indicator: str) -> dict[str, Any]:
 
 def _call_backtest(scope: str, name: str, indicator: str) -> dict[str, Any]:
     from backend.core.forecast_engine import backtest_forecast
-    from backend.data.historical_extended import get_city_timeseries, get_province_timeseries
 
-    if scope == "city":
-        values = [v for _, v in get_city_timeseries(name, indicator)]
-    else:
-        values = [v for _, v in get_province_timeseries(name, indicator)]
+    values = _get_values(scope, name, indicator)
     if len(values) < 8:
         return {"error": "insufficient data for backtest"}
-    return backtest_forecast(values, order=(1, 1, 0))
+    return backtest_forecast(values)
 
 
 def _call_risk(scope: str, name: str, indicator: str) -> dict[str, Any]:
     from backend.core.risk_engine import risk_full_pipeline
-    from backend.data.historical_extended import get_city_timeseries, get_province_timeseries
 
-    if scope == "city":
-        values = [v for _, v in get_city_timeseries(name, indicator)]
-    else:
-        values = [v for _, v in get_province_timeseries(name, indicator)]
+    values = _get_values(scope, name, indicator)
     if len(values) < 5:
         return {"error": "insufficient data for risk"}
     baseline = values[-5:]
@@ -83,12 +136,8 @@ def _call_risk(scope: str, name: str, indicator: str) -> dict[str, Any]:
 def _call_scenarios(scope: str, name: str, indicator: str, years: int) -> dict[str, Any]:
     from backend.core.forecast_engine import forecast_full_pipeline
     from backend.core.risk_engine import scenario_analysis
-    from backend.data.historical_extended import get_city_timeseries, get_province_timeseries
 
-    if scope == "city":
-        values = [v for _, v in get_city_timeseries(name, indicator)]
-    else:
-        values = [v for _, v in get_province_timeseries(name, indicator)]
+    values = _get_values(scope, name, indicator)
     if len(values) < 5:
         return {"error": "insufficient data for scenarios"}
     out = forecast_full_pipeline(values, start_year=2010, years=years)
@@ -100,30 +149,77 @@ def _call_scenarios(scope: str, name: str, indicator: str, years: int) -> dict[s
 
 def _call_monte_carlo(scope: str, name: str, indicator: str, years: int) -> dict[str, Any]:
     from backend.core.risk_engine import monte_carlo_simulation
-    from backend.data.historical_extended import get_city_timeseries, get_province_timeseries
 
-    if scope == "city":
-        values = [v for _, v in get_city_timeseries(name, indicator)]
-    else:
-        values = [v for _, v in get_province_timeseries(name, indicator)]
+    values = _get_values(scope, name, indicator)
     if len(values) < 5:
         return {"error": "insufficient data for MC"}
     return monte_carlo_simulation(values, years=years, n_sims=500)
 
 
 def _call_data_provenance(name: str) -> dict[str, Any]:
-    from backend.data.historical_extended import get_city_data_provenance
-    return {"city": name, "provenance": get_city_data_provenance(name)}
+    from backend.data.historical_extended import (
+        EXTENDED_HISTORICAL,
+        NBSC_URL,
+        SOURCE_URLS,
+        get_data_coverage,
+    )
+
+    zh = _resolve_city(name)
+    if zh not in EXTENDED_HISTORICAL:
+        return {"error": f"Unknown city: {name}"}
+    city_data = EXTENDED_HISTORICAL[zh]
+    years = sorted(city_data.keys())
+    coverage = get_data_coverage(zh)
+    # 取首/末年份的 provenance 示例
+    sample_indicator = next(iter(city_data[years[0]].keys())) if years else None
+    sample_year = years[0] if years else None
+    return {
+        "city": zh,
+        "name_en": name,
+        "url": SOURCE_URLS.get(zh, NBSC_URL),
+        "nbsc_url": NBSC_URL,
+        "year_range": [years[0], years[-1]] if years else [],
+        "n_years": len(years),
+        "coverage": coverage.get(zh, {}),
+        "sample_provenance": {
+            "year": sample_year,
+            "indicator": sample_indicator,
+            "source": f"{zh}统计局{sample_year}年统计公报",
+            "estimated": False,
+            "confidence": 0.95,
+        },
+    }
 
 
 def _call_macro_data() -> dict[str, Any]:
-    from backend.data.macro_data import MACRO_DATA
-    return MACRO_DATA
+    from backend.data.macro_data import MACRO_HISTORICAL
+    latest_year = max(MACRO_HISTORICAL.keys())
+    latest = MACRO_HISTORICAL[latest_year]
+    # 同比(取去年数据)
+    prev = MACRO_HISTORICAL.get(latest_year - 1, {})
+    yoy = {}
+    for k, v in latest.items():
+        if k in prev and prev[k]:
+            yoy[k] = round((v - prev[k]) / prev[k] * 100, 2)
+    return {
+        "year": latest_year,
+        "current": latest,
+        "yoy_pct": yoy,
+    }
 
 
 def _call_list_cities() -> dict[str, Any]:
-    from backend.data.historical_extended import SUPPORTED_CITIES, SUPPORTED_PROVINCES
-    return {"cities": sorted(SUPPORTED_CITIES), "provinces": sorted(SUPPORTED_PROVINCES)}
+    from backend.data.historical_extended import list_extended_cities
+    cities_zh = list_extended_cities()
+    # 同时给 LLM 看的 pinyin aliases
+    zh_to_pinyin = {v: k for k, v in PINYIN_TO_ZH.items() if v in cities_zh}
+    return {
+        "cities": cities_zh,
+        "city_pinyin": zh_to_pinyin,
+        "cities_pinyin": list(zh_to_pinyin.values()),
+        "provinces": list(PINYIN_TO_ZH.keys())[len(cities_zh):],
+        "n_cities": len(cities_zh),
+    }
 
 
 # --------------------------------------------------------------------------- #

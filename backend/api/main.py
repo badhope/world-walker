@@ -25,6 +25,7 @@ from backend.api.routes import (
     analysis_v3_router,
     cities_router,
     cities_v2_router,
+    data_lineage_router,
     data_router,
     database_router,
     forecast_router,
@@ -147,6 +148,7 @@ for router in (
     (forecast_router, settings.API_V1_STR),
     (analysis_v3_router, settings.API_V1_STR),
     (ml_router, settings.API_V1_STR),
+    (data_lineage_router, settings.API_V1_STR),
 ):
     if isinstance(router, tuple):
         app.include_router(router[0], prefix=router[1])

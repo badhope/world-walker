@@ -370,6 +370,6 @@ if __name__ == "__main__":
         print(f"\n{c}: {df.shape[0]}y × {df.shape[1]} cols")
         print(df.head(2).to_string())
     cov = get_data_coverage()
-    print(f"\nCoverage summary:")
+    print("\nCoverage summary:")
     for c, info in cov.items():
         print(f"  {c}: {info['year_count']}y, completeness={info['completeness']:.1%}")

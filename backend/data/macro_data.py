@@ -142,5 +142,5 @@ if __name__ == "__main__":
     df = get_macro_timeseries()
     print(f"Macro: {df.shape[0]}y × {df.shape[1]} indicators")
     print(df.to_string(index=False))
-    print(f"\nYoY growth:")
+    print("\nYoY growth:")
     print(compute_growth_rates()[["year", "national_gdp", "national_gdp_yoy"]].tail().to_string(index=False))

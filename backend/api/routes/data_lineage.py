@@ -14,18 +14,25 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from backend.data.historical_extended import (
-    EXTENDED_HISTORICAL,
-    get_city_indicator as ext_get_city_indicator,
-    get_city_timeseries as ext_get_city_timeseries,
-    get_data_coverage as ext_get_data_coverage,
-    list_extended_cities,
-    list_extended_indicators,
     INDICATOR_META as CITY_META,
 )
+from backend.data.historical_extended import (
+    get_city_indicator as ext_get_city_indicator,
+)
+from backend.data.historical_extended import (
+    get_data_coverage as ext_get_data_coverage,
+)
+from backend.data.historical_extended import (
+    list_extended_cities,
+    list_extended_indicators,
+)
 from backend.data.macro_data import (
-    MACRO_HISTORICAL,
     INDICATOR_META as MACRO_META,
+)
+from backend.data.macro_data import (
     compute_growth_rates as macro_growth,
+)
+from backend.data.macro_data import (
     get_macro_timeseries,
     get_macro_value,
     list_macro_indicators,

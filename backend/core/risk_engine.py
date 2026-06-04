@@ -286,6 +286,6 @@ if __name__ == "__main__":
     print("\n情景(5 年后):")
     for sid, s in risk["scenarios"]["scenarios"].items():
         print(f"  {s['name']}: {s['final_value']:.0f} 亿元 ({s['final_change_pct']:+.2f}%)")
-    print(f"\nMC 1000 次:")
+    print("\nMC 1000 次:")
     print(f"  末年 P5/P50/P95: {risk['monte_carlo']['quantiles']['p05'][-1]:.0f} / {risk['monte_carlo']['quantiles']['p50'][-1]:.0f} / {risk['monte_carlo']['quantiles']['p95'][-1]:.0f}")
     print(f"  低于衰退情景概率: {risk['monte_carlo']['final_value_stats']['prob_below_recession']*100:.1f}%")

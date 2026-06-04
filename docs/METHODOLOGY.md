@@ -58,11 +58,13 @@
 
 平台使用 3 个独立模型,AIC 加权集成:
 
-| 模型 | 实现 | 适用场景 |
-|---|---|---|
-| **ARIMA (p,d,q)** | statsmodels AIC grid search,p/d/q ∈ {0..2}×{0..1}×{0..2} | 趋势 + 自相关 |
-| **ETS** | statsmodels ExponentialSmoothing (Holt 加法趋势 / SES fallback) | 趋势 + 季节性 |
-| **Linear Regression + t 分布** | sklearn OLS + `t(0.975, df=n-2)` 杠杆修正 PI | 纯趋势 / 小样本 fallback |
+| 模型 | Backend (Docker) | Backend (sandbox fallback) | 适用场景 |
+|---|---|---|---|
+| **ARIMA (p,d,q)** | `statsforecast.AutoARIMA` (max_p/q=5) → `pmdarima.auto_arima` | `statsmodels` grid (max_p/q=2) | 趋势 + 自相关 |
+| **ETS** | `statsmodels` ExponentialSmoothing | `statsmodels` ExponentialSmoothing | 趋势 + 季节性 |
+| **Linear Regression** | `sklearn` OLS + t 分布杠杆修正 PI | `sklearn` OLS + t 分布杠杆修正 PI | 纯趋势 / 小样本 fallback |
+
+**引擎探测**: 启动时 `backend.core.engine_stack` 自动跑一次,选定 ARIMA 与波动率后端。详见 [§10](#10-docker-部署与引擎探测)。
 
 **集成权重**:
 ```python
@@ -171,7 +173,19 @@ CVaR_{1-α} = -mean(sorted_returns[:⌊(1-α)·n⌋])  # 尾部平均
 - CVaR 95% = -5.48% (尾部 5% 的平均损失)
 - 注:CVaR < VaR 是数据无厚尾的迹象
 
-**局限**:基于历史 16 年,样本量小;实际投资决策应配合 GARCH(本平台 `arch` 库未装,改用滚动 std)。
+**局限**: 基于历史 16 年,样本量小;实际投资决策应配合 GARCH(见 §6.2.1)。
+
+### 6.2.1 GARCH(1,1) 条件波动率 (Docker only)
+
+当 `arch` 库可用时,对年频收益序列拟合 GARCH(1,1),输出:
+- `conditional_vol_pct`: 末年条件波动率(%)
+- `forecast_vol_pct`: horizon 期预测波动率(%)
+- `persistence = α + β`: 持续性,接近 1 表示波动高度聚集
+- `half_life_years = log(0.5) / log(persistence)`: 半衰期
+- `alpha` / `beta`: ARCH/GARCH 系数
+
+`arch` 未装时降级为滚动 std + 历史 VaR(§6.1/§6.2)。
+**当前状态**: Docker 镜像预装 `arch>=7.0`,sandbox 未装时通过 `engine_stack()` 探测并自动降级。
 
 ### 6.3 4 档情景
 
@@ -204,14 +218,13 @@ pred_shocked(t) = pred_baseline(t) × (1 + shock) ^ t
 
 | # | 局限 | 影响 | 缓解 |
 |---|---|---|---|
-| 1 | 16 年数据对 ARIMA grid 偏短 | 复杂 (p,d,q) 不稳定 | grid 上限 max_p=2,max_q=2 |
+| 1 | 16 年数据对 ARIMA grid 偏短 | 复杂 (p,d,q) 不稳定 | grid 上限 max_p=2,max_q=2(sandbox);max_p/q=5(Docker + statsforecast) |
 | 2 | 2020 人口口径变更 | 时间序列不连续 | 标注 methodology_change,模型自动检测 |
-| 3 | `statsforecast` 未装 | 不能用 AutoARIMA + 节假日效应 | 用 statsmodels grid search 替代 |
-| 4 | `arch` (GARCH) 未装 | 没有波动率聚集建模 | 滚动 std + 历史 VaR 替代 |
-| 5 | `prophet` 未装 | 没有自动节假日 + 季节性 | 半年/年度数据无季节性,影响小 |
-| 6 | 残差 bootstrap 假设独立 | 低估尾部风险 | 文档已说明,实际使用应配合正态扰动 |
-| 7 | rate 指标 2010-2014 部分插值 | 早期数据有 ±0.5% 误差 | provenance 标 confidence=0.6-0.9 |
-| 8 | 单变量时序 | 没考虑跨城相关性 | 未来可加 VAR / VECM |
+| 3 | `arch` (GARCH) 未装时无波动聚集建模 | 滚动 std + 历史 VaR 替代(§6.1/§6.2) | `engine_stack()` 探测,Docker 镜像预装 |
+| 4 | `statsforecast` / `pmdarima` 未装 | 不能用 AutoARIMA + 节假日效应 | 运行时探测,自动降级到 `statsmodels` grid |
+| 5 | 残差 bootstrap 假设独立 | 低估尾部风险 | 文档已说明,实际使用应配合正态扰动 |
+| 6 | rate 指标 2010-2014 部分插值 | 早期数据有 ±0.5% 误差 | provenance 标 confidence=0.6-0.9 |
+| 7 | 单变量时序 | 没考虑跨城相关性 | 未来可加 VAR / VECM |
 
 ---
 
@@ -257,6 +270,58 @@ pred_shocked(t) = pred_baseline(t) × (1 + shock) ^ t
 
 ---
 
+## 10. Docker 部署与引擎探测
+
+### 10.1 镜像能力
+
+`Dockerfile` 基于 `python:3.11-slim` + `build-essential/gfortran`,预装:
+- `statsforecast>=1.5.0` — 高速 AutoARIMA(支持节假日、多季节)
+- `arch>=7.0.0` — GARCH(1,1) 条件波动率
+- `pmdarima>=2.0.0` — auto_arima 备选
+
+### 10.2 运行时探测
+
+模块 `backend.core.engine_stack` 提供 4 个 `*_available()` 函数和 `engine_stack()` 汇总:
+
+```python
+from backend.core.engine_stack import engine_stack, primary_arima_backend
+print(engine_stack())
+# {'statsforecast': True, 'arch': True, 'pmdarima': True, 'prophet': False}
+print(primary_arima_backend())  # 'statsforecast'
+```
+
+API 端点 `/health` 也会回带 `engine_stack` 字段,便于部署后确认。
+
+### 10.3 Fallback 行为
+
+| 库 | 装了 | 没装 |
+|---|---|---|
+| `statsforecast` | `AutoARIMA(max_p/q=5)`,10x 快,支持多季节 | `pmdarima.auto_arima` 或 `statsmodels` grid |
+| `arch` | GARCH(1,1) 条件波动率 + 持续性 + 半衰期 | 滚动 std + 历史 VaR |
+| `pmdarima` | `auto_arima(stepwise=True)` | `statsmodels` grid |
+| `prophet` | 节假日 + 季节性 | 不影响(年频数据) |
+
+每条 `arima_forecast` / `garch_volatility` 输出都带 `"backend"` 字段,前端可显示当前实际用的引擎。`/api/v1/investment/forecast/full` 等投资 API 自动切换。
+
+### 10.4 验证步骤
+
+```bash
+# 1. 启服务
+docker-compose up --build
+
+# 2. 探测引擎
+curl -s http://localhost:8000/health | jq '.engine_stack'
+# 期望: {"statsforecast": true, "arch": true, "pmdarima": true, "prophet": false}
+
+# 3. 跑投资级流水线
+curl -s 'http://localhost:8000/api/v1/investment/forecast/full?scope=city&name=shenzhen&indicator=gdp&years=5' | jq '.models.arima.method'
+# 期望: "ARIMA[1,1,1] (statsforecast, AIC=-XXX.X)"
+
+# 4. 跑 GARCH 风险
+curl -s 'http://localhost:8000/api/v1/investment/risk/city/shenzhen?indicator=gdp' | jq '.garch.method'
+# 期望: "GARCH(1,1) via arch"
+```
+
 **最后更新**: 2026-06-04
-**版本**: 1.0 (Investment-Grade)
+**版本**: 1.1 (Docker Investment-Grade Stack)
 **负责人**: Platform Engineering

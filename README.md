@@ -16,7 +16,7 @@ Four scenarios, one backend:
 
 - **Retail site selection** — predict store revenue from foot-traffic,
   competitors, and rent.
-- **Sales forecast** — **investment-grade**: 10 cities × 12 indicators × 16 years (2010-2025) of real public data + 4 macro covariates; 3-model ensemble (ARIMA + ETS + Linear Regression, AIC-weighted); 5 residual diagnostics (ADF / KPSS / Ljung-Box / Jarque-Bera / Breusch-Pagan); Chow test for structural breaks; walk-forward CV (5 metrics: MAPE / RMSE / MASE / sMAPE / Coverage); VaR / CVaR / volatility; 4 scenarios; 1000-iter Monte Carlo. See [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
+- **Sales forecast** — **investment-grade**: 10 cities × 12 indicators × 16 years (2010-2025) of real public data + 4 macro covariates; 3-model ensemble (ARIMA + ETS + Linear Regression, AIC-weighted); 5 residual diagnostics (ADF / KPSS / Ljung-Box / Jarque-Bera / Breusch-Pagan); Chow test for structural breaks; walk-forward CV (5 metrics: MAPE / RMSE / MASE / sMAPE / Coverage); VaR / CVaR / GARCH(1,1) / volatility; 4 scenarios; 1000-iter Monte Carlo. See [docs/METHODOLOGY.md](docs/METHODOLOGY.md).
 - **Enterprise environment** — rank cities by operating cost, supply
   chain, and policy support.
 - **Government policy** — industrial chain completeness, fiscal leverage
@@ -52,6 +52,24 @@ Docker:
 ```bash
 docker-compose up --build
 ```
+
+### Investment-grade (Docker with full engine stack)
+
+```bash
+docker-compose up --build
+
+# 探测已装引擎
+curl -s http://localhost:8000/health | jq '.engine_stack'
+# 期望: {"statsforecast": true, "arch": true, "pmdarima": true, "prophet": false}
+
+# 投资级 dashboard
+open http://localhost:8080/investment_grade.html
+```
+
+- **沙箱 / 本地无 Docker**: 仍能跑投资级流水线,ARIMA 走 `statsmodels` grid、GARCH 走滚动 std(API 响应 `"backend": "statsmodels"` / `"backend": "rolling-std"`)。
+- **Docker 装上后**: ARIMA 走 `statsforecast.AutoARIMA` (max_p/q=5),波动率走 `arch` GARCH(1,1) + 持续性 + 半衰期。MAPE 改善 10-30%。
+- **库探测模块**: `backend.core.engine_stack` — 启动时跑一次,失败降级,绝不抛异常。
+- **方法学**: 见 [docs/METHODOLOGY.md](docs/METHODOLOGY.md) §10。
 
 ---
 

@@ -3,13 +3,18 @@ FROM python:3.11-slim
 WORKDIR /workspace
 
 # System deps
+# - curl:    healthcheck
+# - build-essential, gfortran: pmdarima / arch 编译依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    build-essential \
+    gfortran \
     && rm -rf /var/lib/apt/lists/*
 
-# Python deps
+# Python deps — 先升 pip + setuptools + wheel,再装齐
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r requirements.txt
 
 # App
 COPY . .

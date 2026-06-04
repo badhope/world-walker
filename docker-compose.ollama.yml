@@ -1,0 +1,46 @@
+# docker-compose.ollama.yml — 可选本地 Ollama 服务
+#
+# 用法:
+#   docker compose -f docker-compose.yml -f docker-compose.ollama.yml up --build
+#   docker exec -it $(docker compose ps -q ollama) ollama pull qwen2.5:7b
+#
+# 验证:
+#   curl -s http://localhost:8000/api/v1/ai/config | jq
+#   # 期望: active_backend = "ollama", model = "qwen2.5:7b"
+#
+# 优势: 数据完全在本机处理(问题 + tool 数据不出本机),适合隐私 / 生产场景。
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: regional-economic-analysis-ollama
+    restart: unless-stopped
+    # Linux 需要 privileged 或加 --network=host;Mac/Win 自动用 docker host
+    network_mode: host
+    volumes:
+      - ollama_data:/root/.ollama
+    # 健康检查:等 ollama serve 起来
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  # 覆盖 api service 的 LLM env,指向本地 ollama
+  api:
+    environment:
+      - LLM_DEFAULT_BACKEND=ollama
+      - LLM_OLLAMA_BASE_URL=http://localhost:11434
+      - LLM_OLLAMA_MODEL=${LLM_OLLAMA_MODEL:-qwen2.5:7b}
+      # 显式置空云端 key,避免误用
+      - LLM_OPENAI_API_KEY=
+      - LLM_ANTHROPIC_API_KEY=
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+volumes:
+  ollama_data:
+    name: regional-economic-analysis-ollama-data
+    driver: local

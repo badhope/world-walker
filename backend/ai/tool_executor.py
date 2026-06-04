@@ -296,13 +296,17 @@ _TAB_FOR_TOOL: dict[str, str | None] = {
 
 
 def _build_navigate_to(name: str, args: dict[str, Any]) -> str | None:
-    """构造 chip 跳转 URL;list_cities / 错误情况返 None。"""
+    """构造 chip 跳转 URL;list_cities / 错误情况返 None。
+
+    URL prefix 用 /chat_widget 因为 FastAPI 把 frontend/ 静态资源挂在这下面。
+    部署到 production 时应改为根 / — 这是 v7.2 (前端 route) 的事。
+    """
     if name == "list_cities":
         return None
     if name == "get_data_provenance":
-        return f"/index.html#provenance&city={args.get('name', '')}"
+        return f"/chat_widget/index.html#provenance&city={args.get('name', '')}"
     if name == "get_macro_data":
-        return "/index.html#macro"
+        return "/chat_widget/index.html#macro"
     # 默认:investment_grade.html + URL 参数
     params: list[str] = []
     for k in ("scope", "name", "indicator", "years"):
@@ -311,4 +315,5 @@ def _build_navigate_to(name: str, args: dict[str, Any]) -> str | None:
     tab = _TAB_FOR_TOOL.get(name)
     if tab:
         params.append(f"tab={tab}")
-    return "/investment_grade.html?" + "&".join(params) if params else "/investment_grade.html"
+    base = "/chat_widget/investment_grade.html"
+    return base + "?" + "&".join(params) if params else base

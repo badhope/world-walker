@@ -5,7 +5,7 @@ def test_forecast_navigate_to_investment_grade():
     from backend.ai.tool_executor import execute_tool
     out = execute_tool("get_forecast", {"scope": "city", "name": "shenzhen", "indicator": "gdp", "years": 3})
     assert "navigate_to" in out
-    assert out["navigate_to"] == "/investment_grade.html?scope=city&name=shenzhen&indicator=gdp&years=3"
+    assert out["navigate_to"] == "/chat_widget/investment_grade.html?scope=city&name=shenzhen&indicator=gdp&years=3"
 
 
 def test_diagnostics_navigate_with_tab():
@@ -42,13 +42,13 @@ def test_monte_carlo_navigate_with_tab():
 def test_data_provenance_navigate_to_index():
     from backend.ai.tool_executor import execute_tool
     out = execute_tool("get_data_provenance", {"name": "shenzhen"})
-    assert out["navigate_to"] == "/index.html#provenance&city=shenzhen"
+    assert out["navigate_to"] == "/chat_widget/index.html#provenance&city=shenzhen"
 
 
 def test_macro_data_navigate_to_index():
     from backend.ai.tool_executor import execute_tool
     out = execute_tool("get_macro_data", {})
-    assert out["navigate_to"] == "/index.html#macro"
+    assert out["navigate_to"] == "/chat_widget/index.html#macro"
 
 
 def test_list_cities_no_navigate_to():

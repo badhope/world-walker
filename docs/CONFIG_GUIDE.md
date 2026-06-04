@@ -337,6 +337,69 @@ config_loader.__init__()
 
 ---
 
+## 9. 投资级引擎栈配置 (v6.1+)
+
+[`backend/core/engine_stack.py`](file:///workspace/backend/core/engine_stack.py) 在启动时
+自动探测 4 个可选库,无需手动配置。
+
+### 9.1 探测的库
+
+| 库 | 用途 | 推荐来源 |
+|---|---|---|
+| `statsforecast` | AutoARIMA + 多季节 + 节假日 | Docker 镜像预装 |
+| `arch` | GARCH(1,1) 条件波动率 | Docker 镜像预装 |
+| `pmdarima` | `auto_arima` 备选 | Docker 镜像预装 |
+| `prophet` | 节假日 + 季节性 | 可选,本平台未直接用 |
+
+### 9.2 手动强制 backend(可选)
+
+如需绕过探测逻辑(例如生产环境调试),可设环境变量:
+
+```bash
+# 强制 statsforecast
+export ENGINE_FORCE_ARIMA_BACKEND=statsforecast
+# 强制 arch
+export ENGINE_FORCE_VOL_BACKEND=arch-garch
+```
+
+代码读取示例:
+```python
+import os
+from backend.core.engine_stack import primary_arima_backend
+
+forced = os.getenv("ENGINE_FORCE_ARIMA_BACKEND")
+if forced:
+    arima_backend = forced
+else:
+    arima_backend = primary_arima_backend()  # 自动探测
+```
+
+### 9.3 验证
+
+```bash
+# 启服务后
+curl -s http://localhost:8000/health | jq '.engine_stack'
+# 期望: {"statsforecast": true, "arch": true, "pmdarima": true, "prophet": false}
+
+# 投资级 API 应反映 backend
+curl -s 'http://localhost:8000/api/v1/investment/forecast/full?scope=city&name=shenzhen&indicator=gdp&years=3' | jq '.models.arima.backend'
+# 期望: "statsforecast"(Docker 装上)或 "statsmodels"(sandbox)
+```
+
+### 9.4 故障排查
+
+**Q: 装了 `arch` 但仍走 rolling-std?**
+- 检查 `python -c "import arch; print(arch.__version__)"` 是否能 import
+- 检查 `curl -s http://localhost:8000/health | jq .engine_stack` 是否显示 `arch: true`
+- 如果显示 `false`,重新 build 镜像:`docker compose build --no-cache api`
+
+**Q: 装不上 `statsforecast` 提示编译错误?**
+- 装 `gcc` + `gfortran`(已在 Dockerfile 中)
+- 装 `python3-dev`(`apt-get install python3-dev`)
+- 确认 `numpy < 3.0` 兼容(statsforecast 1.5-2.x 支持 numpy 2.x)
+
+---
+
 ## 更多信息
 
 - 📖 查看 [USAGE_GUIDE.md](./USAGE_GUIDE.md) - 使用指南

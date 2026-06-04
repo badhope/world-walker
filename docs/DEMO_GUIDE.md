@@ -197,6 +197,39 @@ tree -L 2 -I '__pycache__|*.pyc|.git'
 - 标注config配置模块
 - 标注examples示例模块
 
+### 11. 投资决策级 Dashboard 截图
+
+**文件命名**: `11-investment-grade.png`
+
+**截图内容**:
+打开 investment_grade dashboard 页面
+
+**预期显示**:
+- 7 个区块布局
+- 4 个 ECharts 可视化
+- 投资建议、风险评级、收益预测
+
+**标注要点**:
+- 标注"投资决策级 dashboard"
+- 标注关键指标
+- 标注可视化图表
+
+### 12. 数据血缘截图
+
+**文件命名**: `12-data-lineage.png`
+
+**截图内容**:
+打开 data_lineage 页面
+
+**预期显示**:
+- 数据覆盖率
+- 数据来源溯源 (provenance)
+- 质量评分
+
+**标注要点**:
+- 标注数据覆盖率
+- 标注数据来源
+
 ---
 
 ## 截图要求

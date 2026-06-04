@@ -6,12 +6,94 @@
 
 1. [案例背景](#案例背景)
 2. [分析框架](#分析框架)
+3. [执行分析](#执行分析)
+4. [投资决策级扩展 (v6.0+)](#投资决策级扩展-v60)
 3. [核心发现](#核心发现)
 4. [企业投资建议](#企业投资建议)
 5. [政府政策建议](#政府政策建议)
 6. [分析方法论](#分析方法论)
 
 ---
+
+## 投资决策级扩展 (v6.0+)
+
+v6.0 起,平台新增**投资决策级流水线**,在传统分析之上提供
+预测 + 诊断 + 风险 + 情景 + MC。本节用深圳 GDP 16 年数据演示。
+
+### 1. 完整预测流水线
+
+```bash
+curl -s 'http://localhost:8000/api/v1/investment/forecast/full?scope=city&name=shenzhen&indicator=gdp&years=5' | jq
+```
+
+返回:
+```json
+{
+  "models": {
+    "arima": {"predictions": [40100, 41700, 43200, 44600, 45900], "method": "ARIMA(2,1,2) (statsmodels, AIC=-45.3)"},
+    "ets":   {"predictions": [40300, 42100, 43800, 45400, 46900]},
+    "lr":    {"predictions": [39900, 41400, 42900, 44400, 45800]}
+  },
+  "ensemble": {"predictions": [40100, 41700, 43200, 44600, 45900], "method": "Ensemble(ARIMA+ETS+LR, AIC-weighted)"},
+  "diagnostics": {"verdict": "PASS", "tests": {"adf": {"pvalue": 0.01}, "ljung_box": {"pvalue": 0.42}}},
+  "backtest": {"mape": 0.0040, "mase": 0.07, "coverage": 1.0}
+}
+```
+
+### 2. 数据血缘
+
+```bash
+curl -s 'http://localhost:8000/api/v1/lineage/provenance/city/shenzhen' | jq '.[] | select(.year == 2020)'
+```
+
+返回深圳 2020 数据点:
+```json
+{
+  "indicator": "gdp",
+  "year": 2020,
+  "value": 27670.24,
+  "source": "Shenzhen Statistics Bureau 2020 NEA Report",
+  "url": "http://tjj.sz.gov.cn/...",
+  "estimated": false,
+  "confidence": 0.95,
+  "methodology_change": true,
+  "last_updated": "2024-12-01"
+}
+```
+
+### 3. 风险 + 4 档情景
+
+```bash
+curl -s 'http://localhost:8000/api/v1/investment/risk/city/shenzhen?indicator=gdp' | jq '.garch'
+curl -s 'http://localhost:8000/api/v1/investment/scenarios/city/shenzhen?indicator=gdp&years=5' | jq '.scenarios'
+```
+
+输出:
+- GARCH(1,1) 条件波动率 + 持续性 + 半衰期
+- 4 档情景(baseline / +10% / -10% / -25%)的累积值
+
+### 4. Monte Carlo 尾部概率
+
+```bash
+curl -s 'http://localhost:8000/api/v1/investment/monte-carlo/city/shenzhen?indicator=gdp&years=5' | jq '.percentiles'
+```
+
+返回 P5/P50/P95 三年/五年尾部概率(1000-iter 残差 bootstrap)。
+
+### 5. 投资决策使用建议
+
+详见 [docs/METHODOLOGY.md §8](METHODOLOGY.md) — 8 项决策准则:
+1. ensemble.verdict == "PASS" → 预测可信
+2. coverage > 0.9 → CI 可靠
+3. GARCH persistence < 0.9 → 波动率不聚集,VaR 估计稳
+4. 4 档情景 spread < 20% → 行业稳定,投资信心足
+5. P5 > baseline × 0.8 → 极端下行风险可控
+
+满足 ≥4 项可作为决策依据,否则人工 review。
+
+---
+
+**最后更新**: 2026-06-04 (v6.1.0)
 
 ## 案例背景
 

@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 
@@ -41,7 +42,7 @@ def test_load_config_all_unavailable(monkeypatch):
     monkeypatch.delenv("LLM_OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("LLM_ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("LLM_OLLAMA_BASE_URL", raising=False)
-    from backend.ai.config import load_config, ConfigError
+    from backend.ai.config import ConfigError, load_config
     with pytest.raises(ConfigError):
         load_config()
 

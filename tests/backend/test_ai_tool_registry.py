@@ -34,7 +34,8 @@ def test_indicator_enum_consistent():
 
 def test_get_tool_by_name():
     import pytest
-    from backend.ai.tool_registry import get_tool, TOOLS
+
+    from backend.ai.tool_registry import TOOLS, get_tool
     tool = get_tool("get_forecast")
     assert tool in TOOLS
     assert tool["function"]["name"] == "get_forecast"

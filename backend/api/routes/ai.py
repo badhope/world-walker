@@ -16,7 +16,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from backend.ai import chat_service
 from backend.ai.config import load_config

@@ -1,4 +1,4 @@
-// 浮动 chat widget — 调 /api/v1/ai/chat
+// 浮动 chat widget — 调 /api/v1/ai/chat/stream(SSE 真流式 + 打字机渲染)
 (function () {
   if (window.RCAChatLoaded) return;
   window.RCAChatLoaded = true;
@@ -64,13 +64,13 @@
   function appendMessage(role, content) {
     const msg = document.createElement("div");
     msg.className = "rca-msg " + role;
-    const bubble = document.createElement("div");
-    bubble.className = "rca-msg-bubble";
-    bubble.textContent = content;
-    msg.appendChild(bubble);
+    const bubbleEl = document.createElement("div");
+    bubbleEl.className = "rca-msg-bubble";
+    bubbleEl.textContent = content;
+    msg.appendChild(bubbleEl);
     body.appendChild(msg);
     body.scrollTop = body.scrollHeight;
-    return bubble;
+    return bubbleEl;
   }
 
   function appendToolChip(name, args) {
@@ -80,6 +80,42 @@
     body.appendChild(chip);
   }
 
+  // SSE 解析器 — 把 ReadableStream 拆成 {event, data} 对象
+  // SSE 格式: "event: message\ndata: {...}\n\n"
+  async function* consumeSSE(resp) {
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // 按 \n\n 拆 event
+      let idx;
+      while ((idx = buffer.indexOf("\n\n")) >= 0) {
+        const raw = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        const event = parseSSEEvent(raw);
+        if (event) yield event;
+      }
+    }
+  }
+
+  function parseSSEEvent(raw) {
+    let event = "message";
+    let data = "";
+    for (const line of raw.split("\n")) {
+      if (line.startsWith("event: ")) event = line.slice(7).trim();
+      else if (line.startsWith("data: ")) data += line.slice(6);
+    }
+    if (!data) return null;
+    try {
+      return { event, data: JSON.parse(data) };
+    } catch {
+      return { event, data: { type: "raw", content: data } };
+    }
+  }
+
   async function send() {
     const text = input.value.trim();
     if (!text) return;
@@ -87,11 +123,14 @@
     input.value = "";
     btn.disabled = true;
 
-    // 占位 assistant 气泡
+    // 占位 assistant 气泡(打字机渲染,逐字追加)
     const placeholder = appendMessage("assistant", "");
+    let accumulated = "";
+    const status = win.querySelector(".rca-status");
+    const originalStatus = status ? status.textContent : "";
 
     try {
-      const resp = await fetch("/api/v1/ai/chat", {
+      const resp = await fetch("/api/v1/ai/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -102,13 +141,36 @@
       if (!resp.ok) {
         const err = await resp.text();
         placeholder.textContent = "(错误 " + resp.status + "): " + err;
-        btn.disabled = false;
         return;
       }
-      const data = await resp.json();
-      placeholder.textContent = data.content || "(无内容)";
+      if (!resp.body || !resp.body.getReader) {
+        // 老浏览器:降级为一次性
+        const data = await resp.json();
+        placeholder.textContent = data.content || "(无内容)";
+        return;
+      }
+      // 真流式消费 SSE
+      for await (const ev of consumeSSE(resp)) {
+        const d = ev.data || {};
+        if (d.type === "thinking") {
+          if (status) status.textContent = "🤔 思考中…";
+        } else if (d.type === "token" && d.content) {
+          accumulated += d.content;
+          placeholder.textContent = accumulated;  // 打字机:逐字覆盖
+          body.scrollTop = body.scrollHeight;
+        } else if (d.type === "done") {
+          if (status) status.textContent = originalStatus;
+          break;
+        } else if (d.type === "error") {
+          placeholder.textContent = "(LLM 错误): " + (d.message || "未知");
+          if (status) status.textContent = originalStatus;
+          break;
+        }
+      }
+      if (!accumulated) placeholder.textContent = "(无内容)";
     } catch (e) {
       placeholder.textContent = "(网络错误): " + e.message;
+      if (status) status.textContent = originalStatus;
     } finally {
       btn.disabled = false;
       input.focus();

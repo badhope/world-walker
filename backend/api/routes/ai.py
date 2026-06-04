@@ -20,7 +20,6 @@ from pydantic import BaseModel, Field
 
 from backend.ai import chat_service, conversation
 from backend.ai.config import load_config
-from backend.ai.llm_client import stream_chat
 from backend.ai.tool_registry import TOOLS, list_tool_names
 
 logger = logging.getLogger(__name__)
@@ -113,12 +112,13 @@ def post_chat(req: ChatRequest):
 
 @router.post("/chat/stream")
 def post_chat_stream(req: ChatRequest):
-    """SSE 真流式 — 透传 stream_chat 增量事件。
+    """SSE 真流式 — 透传 chat_stream_with_trace 增量事件。
 
     流式事件:
     - {"type": "thinking"} — 启动,等 LLM
-    - {"type": "token", "content": "..."} — 增量文本
-    - {"type": "done", "finish_reason": "stop"} — 完成
+    - {"type": "tool_call", "name", "args", "navigate_to"} — v7.1 新增,前端渲染 chip
+    - {"type": "token", "content": "..."} — 增量文本(v7.1: 整段;v7.2: 真流)
+    - {"type": "done", "finish_reason": "stop", "tool_rounds": N, "tool_calls": [...]} — 完成
     - {"type": "error", "message": "..."} — 错误
     """
     _check_rate(req.session_id)
@@ -130,14 +130,9 @@ def post_chat_stream(req: ChatRequest):
     def event_gen() -> Any:
         try:
             cfg = load_config()
-            yield f"event: message\ndata: {json.dumps({'type': 'thinking'})}\n\n"
-            from backend.ai.prompts import SYSTEM_PROMPT
-
-            messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
-            messages.extend(conversation.get_history(req.session_id))
-            messages.append({"role": "user", "content": user_message})
-
-            for event in stream_chat(cfg, messages=messages, tools=None):
+            for event in chat_service.chat_stream_with_trace(
+                cfg=cfg, session_id=req.session_id, user_message=user_message,
+            ):
                 yield f"event: message\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
                 if event.get("type") == "done":
                     break

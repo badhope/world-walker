@@ -73,14 +73,17 @@ def test_ai_chat_stream_real_streaming(monkeypatch):
     """/chat/stream 端到端 — 验证真流式:incremental tokens + done 事件。"""
     from backend.api.main import app
     from backend.api.routes import ai as ai_route
+    from backend.ai import chat_service
 
-    def fake_stream_chat(cfg, messages, tools=None):
+    def fake_chat_stream_with_trace(cfg, session_id, user_message):
+        yield {"type": "thinking"}
         yield {"type": "token", "content": "深"}
         yield {"type": "token", "content": "圳"}
         yield {"type": "token", "content": " GDP"}
-        yield {"type": "done", "finish_reason": "stop"}
+        yield {"type": "done", "finish_reason": "stop", "tool_rounds": 0, "tool_calls": []}
 
-    monkeypatch.setattr(ai_route, "stream_chat", fake_stream_chat)
+    monkeypatch.setattr(chat_service, "chat_stream_with_trace", fake_chat_stream_with_trace)
+    monkeypatch.setattr(ai_route, "load_config", lambda: type("C", (), {"max_tool_rounds": 5})())
 
     client = TestClient(app)
     r = client.post("/api/v1/ai/chat/stream", json={
@@ -100,11 +103,13 @@ def test_ai_chat_stream_emits_error(monkeypatch):
     """/chat/stream 在 LLM 错误时返 SSE error 事件(不抛 500)。"""
     from backend.api.main import app
     from backend.api.routes import ai as ai_route
+    from backend.ai import chat_service
 
-    def fake_stream_chat(cfg, messages, tools=None):
+    def fake_chat_stream_with_trace(cfg, session_id, user_message):
         yield {"type": "error", "message": "API key invalid"}
 
-    monkeypatch.setattr(ai_route, "stream_chat", fake_stream_chat)
+    monkeypatch.setattr(chat_service, "chat_stream_with_trace", fake_chat_stream_with_trace)
+    monkeypatch.setattr(ai_route, "load_config", lambda: type("C", (), {"max_tool_rounds": 5})())
 
     client = TestClient(app)
     r = client.post("/api/v1/ai/chat/stream", json={

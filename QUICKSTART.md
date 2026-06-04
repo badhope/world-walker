@@ -1,16 +1,19 @@
 # Quick start
 
+## 1. 演示模式(零配置)
+
 ```bash
 pip install -r requirements.txt
 python main.py --mode example
 ```
 
-That single command generates a sample dataset, trains the bundled
-estimators, runs a multi-city forecast, and writes an HTML report into
-`examples/shenzhen_semiconductor_2025/outputs/`. Open the `.html` file
-to see the dashboard.
+生成样例数据集 → 训练模型 → 多城预测 → 写 HTML 报告到
+`examples/shenzhen_semiconductor_2025/outputs/`。打开 `.html`
+文件即可看 dashboard。
 
-## Run the web app
+## 2. 投资决策级(推荐)
+
+### 2.1 Sandbox / 无 Docker(向后兼容)
 
 ```bash
 # terminal 1 — API on :8000
@@ -18,19 +21,43 @@ uvicorn backend.api.main:app --reload
 
 # terminal 2 — frontend on :8080
 cd frontend && python3 -m http.server 8080
-# open http://localhost:8080/index.html
+# 打开投资级 dashboard:
+# open http://localhost:8080/investment_grade.html
+# open http://localhost:8080/province_forecast.html
 ```
 
-The web app is a single `index.html` — Tailwind and ECharts load from a
-CDN, no `npm install` required. The same file works behind nginx, plain
-`http.server`, and a tunnel.
+ARIMA 走 `statsmodels` grid (max_p/q=2),GARCH 走 rolling std。
+所有 investment API 自动 fallback,响应 `"backend"` 字段显示当前引擎。
 
-## Run the test suite
+### 2.2 Docker 投资级(完整 engine stack)
 
 ```bash
-pytest tests/backend/ -v          # 185 unit + integration tests
+docker compose up --build
+
+# 验证引擎装上
+curl -s http://localhost:8000/health | jq '.engine_stack'
+# 期望: {"statsforecast": true, "arch": true, "pmdarima": true, "prophet": false}
+
+# 投资级流水线 — 应看到 statsforecast 标签
+curl -s 'http://localhost:8000/api/v1/investment/forecast/full?scope=city&name=shenzhen&indicator=gdp&years=5' | jq '.models.arima.method'
+
+# GARCH 风险
+curl -s 'http://localhost:8000/api/v1/investment/risk/city/shenzhen?indicator=gdp' | jq '.garch.method'
+
+# 打开 dashboard
+open http://localhost:8080/investment_grade.html
+```
+
+ARIMA 走 `statsforecast.AutoARIMA` (max_p/q=5,10x 快 + 多季节),
+GARCH 走 `arch` GARCH(1,1) + 持续性 + 半衰期。MAPE 改善 10-30%。
+
+## 3. 跑测试
+
+```bash
+pytest tests/backend/ -v          # 263 后端测试 + 集成
 pytest tests/fuzz/ -v             # hypothesis property-based fuzz
-python full_diagnose.py           # end-to-end smoke (API + SPA)
+python scripts/diagnostics/full_diagnose.py   # end-to-end smoke test
+python scripts/diagnostics/browser_test.py    # browser screenshots
 ```
 
 ## Customise the analysis

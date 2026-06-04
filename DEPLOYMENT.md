@@ -160,6 +160,55 @@ docker tag rea-backend:latest your-registry.example.com/rea-backend:v4.0.0
 docker push your-registry.example.com/rea-backend:v4.0.0
 ```
 
+### 投资级镜像(v6.1+)— statsforecast / arch / pmdarima 预装
+
+[`Dockerfile`](Dockerfile) 默认基础 `python:3.11-slim` + `build-essential` +
+`gfortran`,预装投资级 3 库(版本与 Python 3.11 + numpy 2.x 兼容):
+
+| 库 | 版本 | 作用 |
+|---|---|---|
+| `statsforecast` | `>=1.5,<3.0` | 高速 AutoARIMA + 多季节 + 节假日 |
+| `arch` | `>=7.0,<8.0` | GARCH(1,1) 条件波动率 + 持续性 + 半衰期 |
+| `pmdarima` | `>=2.0,<3.0` | `auto_arima` 备选 |
+
+**验证镜像装上**:
+```bash
+docker compose up --build
+curl -s http://localhost:8000/health | jq '.engine_stack'
+# 期望: {"statsforecast": true, "arch": true, "pmdarima": true, "prophet": false}
+```
+
+**镜像大小影响**: 加上 `statsforecast` + `arch` + `pmdarima` + 编译依赖,
+镜像从 ~350MB 增至 ~750MB。生产环境建议加 `--no-cache-dir` 和 `pip cache purge`。
+
+**Sandbox / 无 Docker**: `engine_stack.py` 运行时自动探测,
+`auto_arima_native` 走 `statsforecast > pmdarima > statsmodels` 优先级,
+`garch_volatility` 走 `arch > rolling-std`。所有 API 输出 `"backend"` 字段
+标识当前引擎,前端可显示。
+
+### 多镜像变体(可选)
+
+如果想区分"轻量"和"投资级"两个镜像,可加 `engine-stack` build arg:
+
+```dockerfile
+# Dockerfile.investment
+FROM python:3.11-slim
+ARG ENGINE_STACK=full
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gfortran curl
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+```
+
+```bash
+# 轻量(只 statsmodels,无 GARCH)
+docker build -t rea:light -f Dockerfile.investment --build-arg ENGINE_STACK=base .
+
+# 投资级(statsforecast + arch + pmdarima)
+docker build -t rea:investment -f Dockerfile.investment --build-arg ENGINE_STACK=full .
+```
+
 ---
 
 ## 生产环境部署 / Production Deployment
@@ -321,6 +370,19 @@ sudo certbot --nginx -d rea.example.com
 ---
 
 ## 监控与日志 / Monitoring & Logging
+
+`/health` 端点现在包含 `engine_stack` 字段,可纳入监控告警。
+
+```bash
+# 健康检查
+curl -s http://localhost:8000/health | jq
+
+# 监控脚本(伪代码)
+HEALTH=$(curl -fs http://localhost:8000/health)
+if ! echo "$HEALTH" | jq -e '.engine_stack.statsforecast or .engine_stack.arch' >/dev/null; then
+    alert "Investment-grade engine not fully loaded"
+fi
+```
 
 ### 日志位置
 
@@ -512,5 +574,7 @@ curl http://localhost:8000/health
 
 ---
 
-**最后更新**: 2026-06-02
+**最后更新**: 2026-06-04
+**当前版本**: v6.1.0
+**配套文档**: [README.md](README.md) · [METHODOLOGY.md](docs/METHODOLOGY.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md)
 **适用版本**: v4.0.0+

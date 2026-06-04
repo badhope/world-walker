@@ -3,6 +3,114 @@
 Format: [Keep a Changelog](https://keepachangelog.com/).
 Versioning: [SemVer](https://semver.org/).
 
+## 6.1.0 — 2026-06-04
+
+### Added
+- **Docker investment-grade engine stack** — `Dockerfile` 预装
+  `statsforecast>=1.5`、`arch>=7.0`、`pmdarima>=2.0`(与 Python 3.11
+  + numpy 2.x 兼容);`build-essential` + `gfortran` 编译依赖。
+- **`backend/core/engine_stack.py`** — 运行时库探测模块
+  (`statsforecast_available()` / `arch_available()` / `pmdarima_available()`
+  / `prophet_available()` + `engine_stack()` 汇总 +
+  `primary_arima_backend()` / `primary_vol_backend()` 优先级选择)。
+  启动时探测一次,失败返回 False 不抛异常。
+- **`arima_forecast` AutoARIMA 路径** — `auto_arima_native()` 走
+  statsforecast > pmdarima > statsmodels 优先级,sandbox 装不上时
+  自动 fallback 到现有 statsmodels grid search。
+- **GARCH(1,1) 路径** — `garch_volatility()` 用 `arch` 库,输出
+  conditional_vol_pct / persistence / half_life_years / alpha / beta;
+  arch 未装时降级为 rolling std + 历史 VaR。
+- **`engine_stack.py` 探测测试** (`tests/backend/test_engine_stack.py`,
+  10 个新测试) — 覆盖:探测函数永不抛异常、缓存稳定、sandbox
+  fallback 路径、schema 不变、向后兼容。
+- **`docs/METHODOLOGY.md` §10** — Docker 部署与引擎探测章节
+  (镜像能力、运行时探测、fallback 矩阵、验证步骤)。
+- **`docs/superpowers/plans/2026-06-05-docker-investment-grade-libraries.md`**
+  — 8 个 task 的升级实施计划。
+
+### Changed
+- `forecast_engine.arima_forecast` 改用 `auto_arima_native`,按
+  backend 分支处理 predict(statsforecast / pmdarima / statsmodels),
+  所有返回 dict 加 `"backend"` 字段。
+- `risk_engine.rolling_volatility` 加 `"backend"` 字段;
+  `risk_full_pipeline` 输出含 `garch` + `engine_stack` 字段。
+- `forecast_engine.auto_arima` 返回 dict 加 `"backend": "statsmodels"`,
+  向后兼容。
+- `docs/METHODOLOGY.md` §2.1 三模型表加 backend 双列(Docker /
+  sandbox fallback);§6.2.1 新增 GARCH 章节;§7 局限表重排(移除
+  "未装"3 项,改写为 fallback 描述)。
+- `README.md` Quick start 加 Investment-grade 段(docker compose
+  up --build + 引擎探测命令)。
+
+## 6.0.0 — 2026-06-04
+
+### Added
+- **Investment-grade forecasting platform** — 10 城 × 12 指标 × 16 年
+  (2010-2025) 真实公开数据(1920 数据点) + 4 宏观协变量(national_gdp /
+  cpi_yoy / lpr_1y / fdi_inflow,64 数据点)。
+- **`backend/data/historical_extended.py`** — 12 指标 × 16 年 × 10 城
+  完整数据集,每条带 provenance(source URL + estimated flag +
+  confidence + methodology_change,2020 人口口径变更)。
+- **`backend/data/macro_data.py`** — 4 宏观协变量(2010-2025)。
+- **`backend/core/forecast_engine.py`** — 投资决策级预测引擎:
+  - `auto_arima` — statsmodels AIC-driven grid search(p/d/q ∈
+    {0..2}×{0..1}×{0..2})
+  - `ets_forecast` — statsmodels ExponentialSmoothing(Holt 加法趋势
+    + SES fallback)
+  - `linear_regression_forecast` — sklearn OLS + t 分布杠杆修正 PI
+  - `ensemble_forecast` — 3 模型 AIC-weighted 集成
+  - `run_diagnostics` — 5 项残差诊断(ADF / KPSS / Ljung-Box /
+    Jarque-Bera / Breusch-Pagan)+ 综合 verdict
+  - `chow_test` / `find_structural_breaks` — 结构突变检测
+  - `backtest_forecast` — 5 项 walk-forward CV(MAPE / RMSE / MASE /
+    sMAPE / Coverage)
+  - `forecast_full_pipeline` — 主入口
+- **`backend/core/risk_engine.py`** — 投资决策级风险分析:
+  - `rolling_volatility` — 滚动年化波动率(对数收益 std)
+  - `var_cvar` — 历史模拟 VaR 95/99 + CVaR
+  - `scenario_analysis` — 4 档情景(baseline / optimistic +10% /
+    pessimistic -10% / recession -25%)
+  - `monte_carlo_simulation` — 1000-iter 残差 bootstrap(P5/P50/P95)
+  - `risk_full_pipeline` — 主入口
+- **`backend/api/routes/investment.py`** — 7 个新投资端点
+  (`/api/v1/investment/*`):
+  - `/forecast/full` — 完整流水线(forecast + diagnostics + backtest)
+  - `/diagnostics/{scope}/{name}` — 残差诊断
+  - `/structural-breaks/{scope}/{name}` — 结构突变
+  - `/backtest/{scope}/{name}` — 滚动回测
+  - `/risk/{scope}/{name}` — 风险 + VaR / CVaR
+  - `/scenarios/{scope}/{name}` — 4 档情景
+  - `/monte-carlo/{scope}/{name}` — MC 1000 iter
+- **`backend/api/routes/data_lineage.py`** — 5 个血缘端点
+  (`/api/v1/lineage/*`):
+  - `/summary` `/coverage` `/macro` `/macro/growth`
+  - `/provenance/city/{name}`
+- **`frontend/investment_grade.html`** — 投资决策级 dashboard
+  (7 区块 + 4 ECharts 图表,ECharts 5.6 加载)。
+- **`docs/METHODOLOGY.md`** — 完整方法学(9 章节 + 9 局限 +
+  投资决策使用建议 + 引用)。
+- **`docs/superpowers/plans/2026-06-04-investment-grade-forecast.md`**
+  — 13 phases 投资级升级计划。
+- 4 个新投资端点测试组(`tests/backend/test_integration_investment.py`,
+  4 个 e2e 测试)— 验证 7+5 端点全部 200,无 null,CI 带宽非零。
+
+### Fixed
+- **`/data/{id}` 路由冲突** — `data_lineage.py` 改前缀为
+  `/lineage`,避开 `data.py` 的 `/data/{indicator_id}` 路由。
+- **`province 绝对量错误除以城市数`** — 修复 `investment.py` 中
+  `_get_scope_timeseries()`:绝对量用 sum,率按人口加权(广东 GDP
+  2026 预测从 37,205 修正为 74,402 亿元)。
+- **`numpy.bool` PydanticSerializationError** — `run_diagnostics`
+  中 `t[key] = bool(t[key])` 转换。
+- **ETS API 错** — `fc.iloc[i]` 改为 `fc.values[i]`(新 statsmodels
+  返回 ndarray)。
+- **LR RSS=0 时 log(0)** — `rss_safe = max(rss, 1e-9 * n)` 兜底。
+
+### Quality
+- 全量 263 后端测试通过(原 253 + 10 新 investment/lineage 集成),
+  ruff 新代码 clean。
+- 深圳 GDP 16 年实测:MAPE 0.40% / MASE 0.07 / Coverage 100%(优秀)。
+
 ## Unreleased
 
 ### Changed

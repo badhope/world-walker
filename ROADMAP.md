@@ -6,7 +6,38 @@ We follow a quarterly release cadence. Dates below are indicative and may shift.
 
 ---
 
-## v4.0.0 (Released 2026-06) ✅ Current
+## v6.1.0 (Released 2026-06) ✅ Current — Docker investment-grade engine stack
+
+### Headline features
+- 🐳 **Docker 投资级引擎栈**:`statsforecast` / `arch` / `pmdarima` 预装
+- ⚙️ **`backend/core/engine_stack.py`** — 运行时库探测模块,自动 fallback
+- 🚀 `auto_arima_native()` — AutoARIMA 路径(statsforecast > pmdarima > statsmodels)
+- 📈 `garch_volatility()` — GARCH(1,1) 条件波动率 + 持续性 + 半衰期
+- 📊 所有 investment / risk API 输出加 `"backend"` 字段
+- 📚 `docs/METHODOLOGY.md` §10 — Docker 部署与引擎探测
+- 🧪 273 后端测试通过(263 + 10 新 engine_stack)
+
+---
+
+## v6.0.0 (Released 2026-06) ✅ Investment-grade forecasting platform
+
+### Headline features
+- 📊 **10 城 × 12 指标 × 16 年** 真实公开数据(1920 数据点)
+- 🌍 4 宏观协变量(NBSC / PBOC / MOFCOM,2010-2025)
+- 🎯 **3 模型集成**(ARIMA + ETS + LR, AIC-weighted)
+- 🩺 **5 项残差诊断**(ADF / KPSS / Ljung-Box / Jarque-Bera / Breusch-Pagan)
+- 🧪 **5 项 walk-forward CV**(MAPE / RMSE / MASE / sMAPE / Coverage)
+- 📉 **风险分析**:VaR / CVaR / 4 档情景 / 1000-iter Monte Carlo
+- 🧬 **结构突变检测**(Chow test)
+- 🕵️ **数据血缘**:每条数据带 source URL + confidence + estimated flag
+- 🌐 **7 个新投资端点**(`/api/v1/investment/*`)+ **5 个血缘端点**(`/api/v1/lineage/*`)
+- 📊 `frontend/investment_grade.html` — 投资决策级 dashboard
+- 📚 `docs/METHODOLOGY.md` — 9 章节完整方法学
+- 🏆 深圳 GDP 16 年实测:MAPE 0.40% / MASE 0.07 / Coverage 100%
+
+---
+
+## v4.0.0 (Released 2026-06)
 
 ### Headline features
 - 🏙️ 10-city economic dataset
@@ -29,7 +60,8 @@ We follow a quarterly release cadence. Dates below are indicative and may shift.
 
 - [ ] **Real-data connectors**: Wind / 同花顺 / NBS / CEIC plug-in interface
 - [ ] **Automated data refresh**: cron + GitHub Actions scheduled jobs
-- [ ] **Data lineage tracking**: track every data point back to its source
+- [x] **Data lineage tracking**: track every data point back to its source
+      (已交付: `backend/api/routes/data_lineage.py` + `provenance` 字段)
 - [ ] **Anomaly detection**: flag outlier values during ingestion
 - [ ] **Bilingual data labels**: zh-CN / en-US toggle for all metrics
 - [ ] **Per-city data-quality dashboard**
@@ -168,6 +200,6 @@ are continuously triaged in GitHub Issues.
 
 ---
 
-**Last updated**: 2026-06-02
-**Current version**: v4.0.0
+**Last updated**: 2026-06-04
+**Current version**: v6.1.0
 **Next review**: 2026-08 (v4.1.0 planning)

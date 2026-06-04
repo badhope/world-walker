@@ -275,6 +275,128 @@ curl -X POST http://localhost:8000/api/v1/forecast/compare \
   -d '{"city_names":["深圳","上海","北京","广州"],"indicator":"gdp","forecast_years":5}'
 ```
 
+### Investment-grade forecast / 投资决策级预测 (v6.0+)
+
+7 个端点,前缀 `/api/v1/investment/*`,提供 3 模型集成 + 5 项残差诊断 +
+结构突变检测 + 5 项 walk-forward CV + VaR / CVaR / 4 档情景 + 1000-iter MC。
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/investment/forecast/full` | 完整预测流水线(query: `scope=city\|province`, `name`, `indicator`, `years`, `start_year`) |
+| GET | `/api/v1/investment/diagnostics/{scope}/{name}` | 5 项残差诊断(ADF / KPSS / Ljung-Box / Jarque-Bera / Breusch-Pagan) |
+| GET | `/api/v1/investment/structural-breaks/{scope}/{name}` | Chow test 结构突变检测 |
+| GET | `/api/v1/investment/backtest/{scope}/{name}` | walk-forward CV(5 指标:MAPE / RMSE / MASE / sMAPE / Coverage) |
+| GET | `/api/v1/investment/risk/{scope}/{name}` | VaR / CVaR 95/99 + GARCH(1,1) 条件波动率 |
+| GET | `/api/v1/investment/scenarios/{scope}/{name}` | 4 档情景(baseline / optimistic +10% / pessimistic -10% / recession -25%) |
+| GET | `/api/v1/investment/monte-carlo/{scope}/{name}` | 1000-iter 残差 bootstrap(P5 / P50 / P95) |
+
+**例 1: 完整流水线(深圳 GDP 5 年)**
+```bash
+curl -s 'http://localhost:8000/api/v1/investment/forecast/full?scope=city&name=shenzhen&indicator=gdp&years=5' | jq
+```
+返回:
+```json
+{
+  "models": {
+    "arima": {"predictions": [...], "lower_ci": [...], "method": "ARIMA(2,1,2) (statsmodels, AIC=-45.3)", "backend": "statsmodels"},
+    "ets":   {"predictions": [...], "method": "ETS(A,A,N) Holt additive"},
+    "lr":    {"predictions": [...], "method": "LinearRegression + t(0.975,df=14)"}
+  },
+  "ensemble": {"predictions": [40100, 41700, 43200, 44600, 45900], "method": "Ensemble(ARIMA+ETS+LR, AIC-weighted)"},
+  "diagnostics": {"verdict": "PASS", "tests": {"adf": {...}, "kpss": {...}, "ljung_box": {...}}},
+  "backtest": {"mape": 0.0040, "mase": 0.07, "coverage": 1.0}
+}
+```
+
+**例 2: 风险 + VaR**
+```bash
+curl -s 'http://localhost:8000/api/v1/investment/risk/city/shenzhen?indicator=gdp' | jq '.garch'
+```
+返回(Docker 装上 `arch` 后):
+```json
+{
+  "method": "GARCH(1,1) via arch",
+  "backend": "arch-garch",
+  "conditional_vol_pct": 5.42,
+  "persistence": 0.78,
+  "half_life_years": 2.84,
+  "alpha": 0.12,
+  "beta": 0.66,
+  "aic": 42.3,
+  "bic": 45.1
+}
+```
+
+**例 3: 4 档情景**
+```bash
+curl -s 'http://localhost:8000/api/v1/investment/scenarios/city/shenzhen?indicator=gdp&years=5' | jq '.scenarios'
+```
+返回 4 个情景,每个含 `predictions` + `total_change_pct` + `cumulative_value` + `probability`。
+
+### Data lineage / 数据血缘 (v6.0+)
+
+5 个端点,前缀 `/api/v1/lineage/*`,提供数据点 provenance、覆盖率、宏观协变量。
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/lineage/summary` | 总体血缘摘要(总数据点 / 已估算 / 已插值 / 缺失) |
+| GET | `/api/v1/lineage/coverage` | 每城 × 指标覆盖率矩阵 |
+| GET | `/api/v1/lineage/macro` | 4 宏观协变量当前值(national_gdp / cpi_yoy / lpr_1y / fdi_inflow) |
+| GET | `/api/v1/lineage/macro/growth` | 宏观协变量同比增长率 |
+| GET | `/api/v1/lineage/provenance/city/{name}` | 指定城市所有数据点 provenance(URL / estimated / confidence / methodology_change) |
+
+**例 1: 总体摘要**
+```bash
+curl -s http://localhost:8000/api/v1/lineage/summary | jq
+```
+返回:
+```json
+{
+  "total_data_points": 1920,
+  "estimated_count": 200,
+  "interpolated_count": 80,
+  "missing_count": 0,
+  "coverage_rate": 1.0,
+  "cities": ["深圳", "上海", "北京", ...],
+  "indicators": ["gdp", "population", "gdp_per_capita", ...]
+}
+```
+
+**例 2: 深圳数据血缘**
+```bash
+curl -s http://localhost:8000/api/v1/lineage/provenance/city/shenzhen | jq '.[] | {indicator, year, value, source, estimated, confidence}'
+```
+
+### Engine stack / 引擎探测 (v6.1+)
+
+`/health` 端点包含 `engine_stack` 字段,显示当前已装可选库。
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | 服务健康 + `engine_stack` 摘要 |
+
+**例: 验证 Docker 投资级镜像**
+```bash
+curl -s http://localhost:8000/health | jq
+```
+返回:
+```json
+{
+  "status": "ok",
+  "engine_stack": {
+    "statsforecast": true,
+    "arch": true,
+    "pmdarima": true,
+    "prophet": false
+  },
+  "primary_arima_backend": "statsforecast",
+  "primary_vol_backend": "arch-garch",
+  "version": "6.1.0"
+}
+```
+
+所有 investment API 输出自带 `"backend"` 字段,前端可显示当前引擎。
+
 ### Data collection / 数据采集
 
 | Method | Path | Description |

@@ -205,3 +205,54 @@ Client ← 200 OK
 ## 9. 部署架构
 
 详见 [DEPLOYMENT.md](DEPLOYMENT.md)。
+
+## Backend
+
+FastAPI app split into **routers → services → data + engines**.
+
+```
+backend/
+├── api/
+│   ├── main.py            # FastAPI app, CORS, /health, exception handlers
+│   ├── routes/
+│   │   ├── data.py            # /api/v1/data/*        (legacy 12 endpoints)
+│   │   ├── scenarios.py       # /api/v1/scenarios/*   (4 endpoint groups)
+│   │   ├── data_lineage.py    # /api/v1/lineage/*     (5 endpoints)
+│   │   └── investment.py      # /api/v1/investment/*  (7 endpoints)
+│   ├── schemas.py             # Pydantic v2 request/response models
+│   └── deps.py                # dependency injection (auth, rate-limit)
+├── core/
+│   ├── forecast_engine.py     # investment-grade forecast pipeline
+│   ├── risk_engine.py         # VaR/CVaR/GARCH/scenarios/Monte Carlo
+│   ├── engine_stack.py        # runtime library detection (NEW v6.1.0)
+│   ├── explainability.py      # SHAP / permutation importance
+│   ├── ensemble.py            # model stacking
+│   └── scorable.py            # pluggable scoring functions
+├── data/
+│   ├── historical_extended.py # 10 城 × 12 指标 × 16 年 (1920 数据点) + provenance
+│   ├── macro_data.py          # 4 宏观协变量 (2010-2025)
+│   ├── cities/cities.yaml     # canonical city list (v4.0+)
+│   └── city_data.py           # legacy compatibility shim
+└── utils/
+    ├── numbers.py             # rounding / format helpers
+    └── time.py                # business-day calendar
+```
+
+### Engine stack (v6.1.0+)
+
+[`backend/core/engine_stack.py`](backend/core/engine_stack.py) provides
+runtime detection of optional libraries:
+
+| Library | Use | Loaded in |
+|---|---|---|
+| `statsforecast` (nixtla) | AutoARIMA + multi-seasonal | Docker image only |
+| `arch` (bashtage) | GARCH(1,1) volatility | Docker image only |
+| `pmdarima` (alkaline-ml) | `auto_arima` fallback | Docker image only |
+| `prophet` (facebook) | holidays + seasonality | optional, not used |
+
+The `auto_arima_native()` function in `forecast_engine.py` walks
+`statsforecast → pmdarima → statsmodels` priority; `garch_volatility()`
+in `risk_engine.py` uses `arch` if available, otherwise falls back to
+rolling std. Every API response carries a `"backend"` field so the
+frontend can show which engine is currently active.  See
+[docs/METHODOLOGY.md §10](docs/METHODOLOGY.md) for full details.

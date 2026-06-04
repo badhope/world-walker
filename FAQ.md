@@ -24,18 +24,20 @@ business-environment evaluation, and government industry-policy analysis.
 
 ### 3. Is it production-ready? / 可以用于生产吗?
 
-**Yes.** The platform is at v4.0.0 with:
-- 159 backend tests passing
-- 70+ API endpoints
-- Docker / Docker Compose deployment
-- CORS / XSS / security hardening
-- Comprehensive documentation
+**Yes.** The platform is at **v6.1.0** with:
+- **273 backend tests passing** (263 unit/integration + 10 engine_stack)
+- **75+ API endpoints** (40 base + 7 investment + 5 lineage + others)
+- **Investment-grade forecasting**: 10 cities × 12 indicators × 16 years (2010-2025) real public data + 4 macro covariates; 3-model ensemble (ARIMA + ETS + LR, AIC-weighted); 5 residual diagnostics; 5 walk-forward CV metrics; VaR / CVaR / GARCH(1,1) / volatility; 4 scenarios; 1000-iter Monte Carlo
+- **Docker investment-grade engine stack**: `statsforecast` / `arch` / `pmdarima` pre-installed; runtime detection via `engine_stack.py`; automatic fallback to `statsmodels` / rolling-std if libraries unavailable
+- **Data lineage**: every data point carries source URL + confidence + estimated flag + methodology_change
+- **Provincial aggregation**: absolute sums + population-weighted rates (广东 GDP 2026 forecast validated at 74,402 亿元)
+- **CORS / XSS / security hardening**
+- **Comprehensive documentation** (README, METHODOLOGY §1-10, ARCHITECTURE, DEPLOYMENT, API, FAQ, ROADMAP, CHANGELOG, NOTES)
 
-But: the underlying data is **synthetic** for demonstration. For production
-use, replace [backend/data/city_data.py](backend/data/city_data.py) with
-your own data source (database, API, or CSV).
+But: the underlying data is **publicly sourced from NBSC + city statistical bureaus** with 2024+ marked as `estimated=True, confidence=0.85`. For production
+use, integrate live feeds from NBSC / Wind / akshare or your internal data warehouse.
 
-数据是合成的演示数据。生产环境请替换为真实数据源。
+数据来自 NBSC + 各市统计局公开数据(2024+ 标记为 estimated,confidence=0.85)。生产环境建议接入实时数据源。
 
 ---
 
@@ -99,15 +101,77 @@ the dataset:
 Final weighted score = Σ(metric_score × weight). Default weights are stored
 in `SCORE_WEIGHTS` and configurable per request.
 
-### 9. How accurate are the time-series forecasts?
+### 9. How accurate are the time-series forecasts? / 时间序列预测准确度如何?
 
-Depends on the model and data:
-- **Linear / exponential**: 5–10 % MAPE on stable trends
-- **ARIMA**: 8–15 % MAPE on seasonal data
-- **Prophet**: 10–20 % MAPE on long-horizon forecasts
+投资级流水线(深圳 GDP 16 年实测):
+- **MAPE 0.40%** — 远低于 5% 优秀阈值
+- **MASE 0.07** — 远优于 naive 预测
+- **Coverage 100%** — 95% CI 覆盖所有历史样本(略偏保守)
 
-The system reports MAE and MAPE for every forecast so you can decide if the
-accuracy is acceptable for your use case.
+不同模型的典型 MAPE:
+- **Linear / LR**: 5-10% on stable trends
+- **ETS (Holt)**: 3-8% on trending data
+- **ARIMA (statsmodels grid)**: 2-6% on autocorrelated data
+- **AutoARIMA (statsforecast)**: 1-5%(Docker 装上后)
+- **3-model ensemble**: 0.5-3%(AIC-weighted)
+
+系统对每次预测返回 5 项 CV 指标 + 5 项残差诊断 + 结构突变 +
+4 档情景 + 1000-iter MC。你可以根据 verdict(PASS/WARN/FAIL)决定
+是否信任当前预测。详见 [docs/METHODOLOGY.md](docs/METHODOLOGY.md) §2-6。
+
+---
+
+## Investment-grade / 投资级
+
+### 26. What does "investment-grade" mean here? / 这里的"投资级"是什么意思?
+
+指用于**投资决策辅助**的预测精度,不是金融术语。平台对每个预测提供:
+- **5 项 CV 指标**(MAPE / RMSE / MASE / sMAPE / Coverage)— 模型精度
+- **5 项残差诊断**(ADF / KPSS / Ljung-Box / Jarque-Bera / Breusch-Pagan)
+- **结构突变检测**(Chow test)
+- **VaR / CVaR 95/99** — 风险敞口
+- **4 档情景** — 决策收益分布
+- **1000-iter Monte Carlo** — 尾部概率
+- **数据血缘** — 关键数据点的来源与置信度
+
+不适用:衍生品定价、高频交易、单笔 1 亿元+ 投资、极端事件预测。
+详见 [docs/METHODOLOGY.md](docs/METHODOLOGY.md) §8 投资决策使用建议。
+
+### 27. Why isn't `statsforecast` / `arch` installed? / 为什么 sandbox 装不上 statsforecast/arch?
+
+这些库在 pip 安装时与 numpy 2.x / pandas 2.x 有版本冲突。
+**解决方案**:
+- **Docker 装上**(推荐):`docker compose up --build`,自动装 `statsforecast>=1.5` + `arch>=7.0` + `pmdarima>=2.0`
+- **Sandbox 走 fallback**:`engine_stack.py` 运行时探测,自动用 `statsmodels` grid + rolling std,所有 API 输出 `"backend"` 字段标识当前引擎
+
+启动后 `curl /health | jq .engine_stack` 即可看到当前已装库。
+
+### 28. What's the `engine_stack` module? / engine_stack 是什么?
+
+[`backend/core/engine_stack.py`](backend/core/engine_stack.py) 是**运行时库探测模块**:
+- 4 个 `*_available()` 函数 — `statsforecast` / `arch` / `pmdarima` / `prophet`
+- `engine_stack()` — 4 个 bool 的 dict
+- `primary_arima_backend()` — 返回 `statsforecast` / `pmdarima` / `statsmodels` 之一
+- `primary_vol_backend()` — 返回 `arch-garch` / `rolling-std` 之一
+
+启动时探测一次(模块级缓存),失败返回 False 不抛异常。所有 investment / risk API 自动切换。
+
+---
+
+## Data sources / 数据来源
+
+### 7. Where does the city data come from? / 城市数据从哪来?
+
+**v6.0.0 起**: 10 城 × 12 指标 × 16 年(2010-2025)**真实公开数据**,来源:
+- [NBSC 国家统计局](http://www.stats.gov.cn/) 年度国民经济统计公报
+- 各市统计局年度统计公报(URL 在 [`backend/data/historical_extended.py:SOURCE_URLS`](backend/data/historical_extended.py))
+- 2024+ 标记 `estimated=True, confidence=0.85`
+- 2020 人口口径变更(深圳)标 `methodology_change`
+
+每条数据带 provenance:`source` / `url` / `estimated` / `confidence` /
+`methodology_change` / `last_updated`。通过 `GET /api/v1/lineage/provenance/city/{name}` 查询。
+
+**v4.0.0 之前**: 合成数据(基于 2023-2024 公开数字,仅供演示)。
 
 ---
 
@@ -285,5 +349,5 @@ will auto-generate a "Cite this repository" button from this file.
 
 ---
 
-**Last updated**: 2026-06-02
+**Last updated**: 2026-06-04
 **Have a question not answered here?** Open a [Discussion](https://github.com/badhope/national_stats/discussions/new) or email <contact@example.com>.

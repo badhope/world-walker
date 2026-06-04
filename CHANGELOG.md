@@ -3,6 +3,21 @@
 Format: [Keep a Changelog](https://keepachangelog.com/).
 Versioning: [SemVer](https://semver.org/).
 
+## 7.0.0 — 2026-06-04
+
+### Added
+- **AI 对话助手** — LiteLLM 统一 3 类 LLM backend(OpenAI/Claude/Ollama)
+- **9 个 tool** — 7 投资(forecast/diagnostics/backtest/risk/scenarios/monte_carlo)+ 2 数据(provenance/macro/list_cities)
+- **FastAPI 路由** — `/api/v1/ai/chat`, `/api/v1/ai/chat/stream`, `/api/v1/ai/tools`, `/api/v1/ai/config`
+- **前端 chat widget** — 浮动按钮 + SSE 消费 + 打字机渲染
+- **`backend/ai/` 模块** — 6 文件:config / llm_client / tool_registry / tool_executor / chat_service / conversation / prompts
+- **双模式可切换** — 云端 API(开发)+ 本地 Ollama(隐私/生产)
+- **短期对话历史** — 内存 dict,TTL 30 分钟
+- **14 个新测试** — `tests/backend/test_ai_*.py`
+
+### 不做
+- 报告生成 / 投资建议 / RAG / Agent 协作 / 长期记忆(后续可加)
+
 ## 6.1.0 — 2026-06-04
 
 ### Added

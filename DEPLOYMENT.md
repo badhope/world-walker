@@ -574,6 +574,27 @@ curl http://localhost:8000/health
 
 ---
 
+## AI 助手 + 本地 Ollama (v7.0+)
+
+```bash
+# 1. 启动 ollama 服务
+docker compose -f docker-compose.ollama.yml up -d
+
+# 2. 拉模型
+docker exec -it $(docker compose ps -q ollama) ollama pull qwen2.5:7b
+
+# 3. 启 API
+LLM_DEFAULT_BACKEND=ollama docker compose up --build
+
+# 4. 验证
+curl -s http://localhost:8000/api/v1/ai/config | jq
+# 期望: active_backend = "ollama", model = "qwen2.5:7b"
+```
+
+数据完全在本机,适合生产/隐私场景。
+
+---
+
 **最后更新**: 2026-06-04
 **当前版本**: v6.1.0
 **配套文档**: [README.md](README.md) · [METHODOLOGY.md](docs/METHODOLOGY.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md)

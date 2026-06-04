@@ -6,7 +6,18 @@ We follow a quarterly release cadence. Dates below are indicative and may shift.
 
 ---
 
-## v6.1.0 (Released 2026-06) ✅ Current — Docker investment-grade engine stack
+## v7.0.0 (Released 2026-06) ✅ Current — AI chat assistant
+
+### Headline features
+- 🤖 LLM 对话助手(LiteLLM 统一 OpenAI/Claude/Ollama)
+- 🛠 9 个 tool(Function Calling 自动路由到现有 API)
+- 💬 浮动 chat widget(SSE 流式 + 打字机)
+- 🔄 双模式可切换(云端 API ↔ 本地 Ollama)
+- 🧪 14 新测试(277 总 → 291 总)
+
+---
+
+## v6.1.0 (Released 2026-06) ✅ Docker investment-grade engine stack
 
 ### Headline features
 - 🐳 **Docker 投资级引擎栈**:`statsforecast` / `arch` / `pmdarima` 预装

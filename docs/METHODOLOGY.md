@@ -325,3 +325,44 @@ curl -s 'http://localhost:8000/api/v1/investment/risk/city/shenzhen?indicator=gd
 **最后更新**: 2026-06-04
 **版本**: 1.1 (Docker Investment-Grade Stack)
 **负责人**: Platform Engineering
+
+---
+
+## 11. AI 对话助手 (v7.0)
+
+LLM-based chat assistant,自然语言查询 → Function Calling 调现有投资/血缘 API → 流式回答。
+
+### 11.1 架构
+
+见 [spec](../superpowers/specs/2026-06-04-ai-chat-assistant-design.md)。核心模块:
+- `backend/ai/llm_client.py` — LiteLLM 统一接口(OpenAI/Claude/Ollama)
+- `backend/ai/tool_registry.py` — 9 个 tool(7 投资 + 2 数据)
+- `backend/ai/tool_executor.py` — 调现有 forecast_engine / risk_engine / data_layer
+- `backend/ai/chat_service.py` — 主循环 LLM ↔ tool
+- `frontend/chat_widget.*` — 浮动 widget,SSE 消费
+
+### 11.2 配置
+
+```bash
+LLM_DEFAULT_BACKEND=openai  # openai | anthropic | ollama
+LLM_OPENAI_API_KEY=sk-...
+LLM_OPENAI_MODEL=gpt-4o-mini
+# 或本地 Ollama
+LLM_OLLAMA_BASE_URL=http://localhost:11434
+LLM_OLLAMA_MODEL=qwen2.5:7b
+```
+
+### 11.3 验证
+
+```bash
+curl -s http://localhost:8000/api/v1/ai/config | jq
+# 期望: active_backend, model, available_backends
+```
+
+### 11.4 局限
+
+- 不做报告生成 / 投资建议 / RAG 文档问答 / 长期记忆(后续可加)
+- Sandbox / 无 API key → 不可用,前端显示 503
+- 数据出本机风险(云端 API)— 生产建议用 Ollama
+
+**最后更新**: 2026-06-04 (v7.0)

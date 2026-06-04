@@ -94,6 +94,7 @@ For the long version, see [ARCHITECTURE.md](ARCHITECTURE.md).
 ```
 backend/
   api/          FastAPI routes + main app
+  ai/           LLM chat assistant (v7.0): config / llm_client / tool_registry / tool_executor / chat_service
   analysis/     analyzers (enterprise / government / dimension / custom)
   core/         config, data manager, multi-city, caching, tasks
   data/         static city dataset (10 cities, 20+ indicators)
@@ -107,11 +108,27 @@ backend/
 config/         industry / region templates
 data/cities/    city dataset (YAML, regenerable)
 examples/       runnable scenario demos
-frontend/       single-file SPA
+frontend/       single-file SPA + chat_widget.{html,js,css}
 models/         bundled pickled estimators + SHA-256 manifest
 tests/backend/  pytest unit tests
 tests/fuzz/     hypothesis property-based fuzz
 scripts/        dev utilities + legacy demos
+```
+
+### AI Chat Assistant (v7.0)
+
+```bash
+# 配置 LLM(任选一种)
+export LLM_OPENAI_API_KEY=sk-...  # OpenAI
+# 或 export LLM_OLLAMA_BASE_URL=http://localhost:11434  # 本地 Ollama
+
+# 启服务
+docker compose up --build
+
+# 测试
+curl -s http://localhost:8000/api/v1/ai/config | jq
+# 打开 demo 页面
+open http://localhost:8000/chat_widget.html
 ```
 
 ---

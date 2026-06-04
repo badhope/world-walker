@@ -400,6 +400,37 @@ curl -s 'http://localhost:8000/api/v1/investment/forecast/full?scope=city&name=s
 
 ---
 
+## 10. LLM 配置 (v7.0+)
+
+```bash
+# === Backend 选择 ===
+LLM_DEFAULT_BACKEND=openai  # openai | anthropic | ollama
+
+# === OpenAI ===
+LLM_OPENAI_API_KEY=sk-...
+LLM_OPENAI_MODEL=gpt-4o-mini  # 默认
+
+# === Anthropic ===
+LLM_ANTHROPIC_API_KEY=sk-ant-...
+LLM_ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+
+# === Ollama(本地)===
+LLM_OLLAMA_BASE_URL=http://localhost:11434
+LLM_OLLAMA_MODEL=qwen2.5:7b
+
+# === 行为 ===
+LLM_TEMPERATURE=0.3
+LLM_MAX_TOKENS=2000
+LLM_MAX_TOOL_ROUNDS=5
+LLM_TIMEOUT_SEC=60
+```
+
+启动时 `load_config()` 选可用 backend,无 key 降级,全无 → 503。
+
+**验证**: `curl -s http://localhost:8000/api/v1/ai/config | jq`
+
+---
+
 ## 更多信息
 
 - 📖 查看 [USAGE_GUIDE.md](./USAGE_GUIDE.md) - 使用指南

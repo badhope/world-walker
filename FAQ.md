@@ -349,5 +349,28 @@ will auto-generate a "Cite this repository" button from this file.
 
 ---
 
+## AI chat assistant (v7.0)
+
+### 26. How does the AI chat assistant work? / AI 助手怎么用?
+
+平台 v7.0 新增。打开 `chat_widget.html` 或任意页面右下角浮动按钮。
+
+示例对话:
+- "深圳 GDP 2026 预测多少?" → 调 `get_forecast`
+- "广东 GDP 5 年情景分析" → 调 `get_scenarios`
+- "数据从哪来?" → 调 `get_data_provenance`
+
+支持 LLM: OpenAI(默认 gpt-4o-mini)/ Claude 3.5 / 本地 Ollama(qwen2.5 / llama3.1)。
+
+**不做**: 投资建议、报告生成、RAG 文档问答。
+
+### 27. 隐私 / 数据出本机 / Privacy?
+
+云端 LLM(OpenAI/Claude)→ 你的问题 + tool 数据会发到外部。
+**隐私场景建议用本地 Ollama**:配置 `LLM_OLLAMA_BASE_URL=http://localhost:11434`,
+所有请求只在本机处理。
+
+---
+
 **Last updated**: 2026-06-04
 **Have a question not answered here?** Open a [Discussion](https://github.com/badhope/national_stats/discussions/new) or email <contact@example.com>.

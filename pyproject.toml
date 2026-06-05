@@ -55,6 +55,10 @@ Issues = "https://github.com/badhope/national_stats/issues"
 Documentation = "https://github.com/badhope/national_stats/blob/main/README.md"
 Changelog = "https://github.com/badhope/national_stats/blob/main/CHANGELOG.md"
 
+[project.scripts]
+# `rca` command → cli.main Typer app
+rca = "cli.main:app"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

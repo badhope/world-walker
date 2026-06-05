@@ -16,11 +16,15 @@ import json
 from typing import Any
 
 
-# 可重试的 tool 错误白名单(这些错误通常是参数问题,改参数可解)
+# 可重试的 tool 错误白名单(子串匹配,大小写不敏感)
+# 这些错误通常是参数问题,改参数可解
 RETRYABLE_TOOL_ERRORS: set[str] = {
     "city_not_found",          # 城市名拼写错(中文/拼音)
+    "unknown city",            # tool_executor 的实际错误格式
     "data_unavailable",        # 数据缺失,换 scope/indicator
+    "no data",                 # tool_executor 实际错误
     "missing_required_fields", # 缺必填参数
+    "insufficient data",       # 数据不够
     "timeout",                 # tool 执行超时
 }
 
@@ -39,8 +43,9 @@ def should_retry(tool_result: dict[str, Any]) -> bool:
     err = tool_result.get("error")
     if not err:
         return False
-    # 匹配白名单子串(支持 "city_not_found: 深圳" 这种带 context 的)
-    return any(e in str(err) for e in RETRYABLE_TOOL_ERRORS)
+    # 子串匹配 + 大小写不敏感(支持 "city_not_found: 深圳" / "Unknown city: X" 等)
+    err_lower = str(err).lower()
+    return any(e.lower() in err_lower for e in RETRYABLE_TOOL_ERRORS)
 
 
 def build_retry_hint(tool_name: str, original_args: dict[str, Any], error: str) -> str:

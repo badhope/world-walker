@@ -53,6 +53,28 @@ Docker:
 docker-compose up --build
 ```
 
+### Python SDK & CLI (v9.0+)
+
+```bash
+pip install -e .              # 装 rca 包 + CLI entry point
+rca --format rich forecast --city shenzhen --indicator gdp --years 5
+```
+
+```python
+import rca
+print(rca.__version__)  # '9.0.0'
+
+# 9 个 tool 完全本地 — 0 LLM 调用、0 费用
+fc = rca.forecast(scope="city", name="shenzhen", indicator="gdp", years=5)
+print(fc["data"]["ensemble"]["predictions"])
+
+# 跑 LLM agent
+result = rca.chat(session_id="u1", user_message="深圳 GDP 走势如何?")
+print(result["content"])
+```
+
+完整文档:[docs/SDK_CLI_GUIDE.md](docs/SDK_CLI_GUIDE.md)(11 CLI 子命令 · 3 输出格式 · 错误处理 · 退出码 · SDK vs CLI 选择)。
+
 ### Investment-grade (Docker with full engine stack)
 
 ```bash

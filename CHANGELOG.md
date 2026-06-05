@@ -3,6 +3,45 @@
 Format: [Keep a Changelog](https://keepachangelog.com/).
 Versioning: [SemVer](https://semver.org/).
 
+## 9.0.0 — 2026-06-05
+
+### Added — Python SDK (`rca` package)
+- **新顶层包 `rca`** — 9 个 tool wrapper + chat + chat_stream + RCAClient + 错误层次,完整公共 API:
+  - `rca.forecast()` / `diagnostics()` / `backtest()` / `risk()` / `scenarios()` / `monte_carlo()` / `data_provenance()` / `macro_data()` / `list_cities()` — 9 个 module-level 函数,**kwargs 跟 backend tool schema 一致
+  - `rca.chat(session_id, user_message)` — 单轮 LLM agent
+  - `rca.chat_stream(session_id, user_message)` — 流式 LLM agent(thinking → tool_call → token → done / error)
+  - `rca.RCAClient(config=None)` — OO 入口,长生命周期友好,委托 module-level 函数
+  - `rca.RCAError` + 3 子类:`ToolNotFoundError` / `ToolArgumentError` / `LLMUnavailableError` / `ConfigError` — 业务错 → `RCAError`,LLM 错 → `LLMUnavailableError`,tool 错 → `ToolNotFoundError` / `ToolArgumentError`
+- **`rca._config.load_config()`** — 读 `LLM_*` env vars,补 `fallback_chain` 默认值(5 个模型),wrap 异常 → `ConfigError`
+- **9 tool 真实数据流** — SDK tool 调 `execute_tool()` 直接拿 backend 内部数据,**0 LLM 调用、0 网络、0 费用**,可 air-gap 跑
+
+### Added — CLI (`rca` command)
+- **新 Typer CLI `rca`** — 11 个子命令:
+  - 9 tool 子命令:`forecast` / `diagnostics` / `backtest` / `risk` / `scenarios` / `monte-carlo` / `data-provenance` / `macro-data` / `list-cities`
+  - 2 chat 子命令:`chat` / `chat-stream`
+- **3 输出格式** — `--format {rich,json,plain}`(global flag,默认 rich):
+  - `rich` — 6 个命令走专门 table(`forecast` / `list-cities` / `risk` / `data-provenance` / `macro-data`),其他走 generic key-value
+  - `json` — `json.dumps(..., ensure_ascii=False, indent=2)`,直接 `jq` 拿字段
+  - `plain` — `key=value` 行,嵌套用 `.` 拼接,shell 脚本可 `eval`
+- **Global flags** — `--format` / `--model <name>` / `--base-url <url>` / `--no-color`(必须在 subcommand 前)
+- **退出码规范** — 0 成功 / 1 业务错(`RCAError`) / 2 CLI 用法错 / 3 LLM 不可用(`LLMUnavailableError`)
+- **CLI entry point** — `pyproject.toml [project.scripts] rca = "cli.main:app"`,装好后 `rca <cmd>` 即可;也支持 `python -m cli.main` 和 `python cli/main.py`(有 `__main__` guard)
+- **错误处理** — `ToolNotFoundError` / `ToolArgumentError` → exit 1;`LLMUnavailableError` → exit 3,stderr 打 `ERROR: ...` 一行
+
+### Added — Documentation
+- **`docs/SDK_CLI_GUIDE.md`** — 完整 SDK + CLI 用户指南(安装 / API 表 / 11 CLI 用法 / 3 输出格式 / 退出码 / 错误处理 / SDK vs CLI 何时用哪个 / FAQ)
+- **`docs/superpowers/specs/2026-06-05-v90-sdk-cli-design.md`** — 设计 spec
+- **`docs/superpowers/plans/2026-06-05-v90-sdk-cli.md`** — 22 task TDD 实施计划
+
+### Changed
+- `rca/__init__.py` — 完整 re-export 9 tool + chat + chat_stream + RCAClient + 错误类
+- `cli/main.py` — 加 `if __name__ == "__main__": app()` 让 `python -m cli.main` 也能跑(修了一个 bug)
+
+### Tests
+- v9.0 新增 66 个测试:3 errors + 3 config + 10 tools + 4 chat + 5 client + 9 formatters + 13 resolve + 18 main(其中 1 个是 `__main__` guard regression test)
+- **总测试:370 pass / 5 pre-existing fail(missing openpyxl 缺包) / 2 skip**
+- 真 LLM smoke 端到端验证 9 SDK tool + 9 CLI tool 全 pass(forecast pred0=40344.36 / risk var_95 / monte_carlo P5-P50-P95 / data_provenance city 字段 / macro_data 4 协变量)
+
 ## 8.0.0 — 2026-06-05
 
 ### Added

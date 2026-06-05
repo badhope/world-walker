@@ -19,6 +19,10 @@ sys.path.insert(0, str(project_root))
 os.environ.setdefault("ALLOW_UNSIGNED_MODELS", "1")
 # 给一个固定 SECRET_KEY,避免 settings.py 在 import 时打 RuntimeWarning。
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
+# 给 AI fallback 一个 fake API key,避免 load_config() 抛 ConfigError 让单测无法 import。
+os.environ.setdefault("LLM_OPENAI_API_KEY", "sk-test-fake-key-for-unit-tests")
+os.environ.setdefault("LLM_DEFAULT_BACKEND", "openai")
+os.environ.setdefault("LLM_OPENAI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
 
 
 @pytest.fixture(scope="session")

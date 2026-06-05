@@ -120,6 +120,8 @@ def run_with_fallback(
                 timeout_sec=_base.timeout_sec,
                 max_tool_rounds=_base.max_tool_rounds,
                 available_backends=_base.available_backends,
+                tool_timeout_sec=_base.tool_timeout_sec,
+                parallel_max_workers=_base.parallel_max_workers,
             )
             resp = llm_client.chat(cfg, messages=messages, tools=tools)
             if entry != chain[0]:

@@ -55,3 +55,26 @@ def test_config_exposes_constants(monkeypatch):
     assert cfg.temperature == 0.3
     assert cfg.max_tool_rounds == 5
     assert cfg.timeout_sec == 60
+
+
+# v8.0 新字段
+def test_config_tool_timeout_default(monkeypatch):
+    monkeypatch.setenv("LLM_OPENAI_API_KEY", "sk-test")
+    from backend.ai.config import load_config
+    cfg = load_config()
+    assert cfg.tool_timeout_sec == 30
+
+
+def test_config_parallel_max_workers_default(monkeypatch):
+    monkeypatch.setenv("LLM_OPENAI_API_KEY", "sk-test")
+    from backend.ai.config import load_config
+    cfg = load_config()
+    assert cfg.parallel_max_workers == 5
+
+
+def test_config_tool_timeout_env_override(monkeypatch):
+    monkeypatch.setenv("LLM_OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("LLM_TOOL_TIMEOUT_SEC", "60")
+    from backend.ai.config import load_config
+    cfg = load_config()
+    assert cfg.tool_timeout_sec == 60

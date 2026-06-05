@@ -29,6 +29,10 @@ class AIConfig:
     max_tool_rounds: int
     timeout_sec: int
     available_backends: list[str]
+    # v8.0: 多模型 fallback / 并行 tool
+    fallback_chain: tuple = ()  # tuple[ModelEntry, ...](frozen + hashable)
+    tool_timeout_sec: int = 30
+    parallel_max_workers: int = 5
 
 
 _BACKEND_DEFAULTS: dict[str, tuple[str, str]] = {
@@ -91,4 +95,6 @@ def load_config() -> AIConfig:
         max_tool_rounds=int(os.getenv("LLM_MAX_TOOL_ROUNDS", "5")),
         timeout_sec=int(os.getenv("LLM_TIMEOUT_SEC", "60")),
         available_backends=available,
+        tool_timeout_sec=int(os.getenv("LLM_TOOL_TIMEOUT_SEC", "30")),
+        parallel_max_workers=int(os.getenv("LLM_PARALLEL_MAX_WORKERS", "5")),
     )

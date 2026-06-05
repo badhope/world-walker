@@ -18,7 +18,6 @@ from backend.api.admin_store import (  # noqa: E402
     QueryRecord,
 )
 
-
 # --------------------------------------------------------------------------- #
 # HistoryStore
 # --------------------------------------------------------------------------- #
@@ -167,10 +166,13 @@ def test_config_update_thread_safety():
     try:
         def worker(name):
             c.update(model=name)
+
         t1 = threading.Thread(target=worker, args=("model-a",))
         t2 = threading.Thread(target=worker, args=("model-b",))
-        t1.start(); t2.start()
-        t1.join(); t2.join()
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
         # 终态是 a 或 b
         assert c.get().model in ("model-a", "model-b")
     finally:

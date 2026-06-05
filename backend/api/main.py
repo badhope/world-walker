@@ -39,6 +39,7 @@ from backend.api.routes import (
     static_router,
     websocket_router,
 )
+from backend.api.routes.admin import router as admin_router
 from backend.api.routes.auth import router as auth_router
 from backend.api.security_headers import SecurityHeadersMiddleware
 from config import settings
@@ -163,13 +164,23 @@ for router in (
 app.include_router(real_data_router)
 app.include_router(database_router)
 app.include_router(static_router)
+app.include_router(admin_router, prefix=settings.API_V1_STR)
 
 frontend_index = Path(__file__).parent.parent.parent / "frontend" / "index.html"
 chat_widget_dir = Path(__file__).parent.parent.parent / "frontend"
+console_dir = Path(__file__).parent.parent.parent / "frontend" / "console"
 
 # 单独挂载 chat_widget 静态资源(.html / .js / .css)供 demo 页使用
 if chat_widget_dir.is_dir() and (chat_widget_dir / "chat_widget.html").exists():
     app.mount("/chat_widget", StaticFiles(directory=str(chat_widget_dir), html=True), name="chat_widget")
+
+# v9.1 Web Console 静态目录
+if console_dir.is_dir():
+    app.mount(
+        "/console",
+        StaticFiles(directory=str(console_dir), html=True, check_dir=False),
+        name="console",
+    )
 
 
 @app.get("/dashboard", tags=["页面"])

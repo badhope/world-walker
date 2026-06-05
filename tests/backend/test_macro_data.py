@@ -2,30 +2,35 @@
 Phase 3: 数据血缘 + provenance API
 """
 import sys
+
 sys.path.insert(0, ".")
 
 from backend.data.historical_extended import (
     EXTENDED_HISTORICAL,
-    INDICATOR_META as CITY_META,
-    list_extended_cities,
-    list_extended_indicators,
+    NBSC_URL,
+    SOURCE_URLS,
     get_city_indicator,
     get_data_coverage,
-    SOURCE_URLS,
-    NBSC_URL,
+    list_extended_cities,
+    list_extended_indicators,
+)
+from backend.data.historical_extended import (
+    INDICATOR_META as CITY_META,
+)
+from backend.data.macro_data import (
+    INDICATOR_META as MACRO_META,
 )
 from backend.data.macro_data import (
     MACRO_HISTORICAL,
-    INDICATOR_META as MACRO_META,
-    list_macro_indicators,
     get_macro_value,
+    list_macro_indicators,
 )
 
 
 def test_macro_data_basic():
     from backend.data.macro_data import (
-        MACRO_HISTORICAL, get_macro_timeseries, get_macro_value,
         compute_growth_rates,
+        get_macro_timeseries,
     )
     assert len(MACRO_HISTORICAL) == 16
     df = get_macro_timeseries()
@@ -37,8 +42,8 @@ def test_macro_data_basic():
     assert info2020["provenance"]["estimated"] is False
     growth = compute_growth_rates()
     assert "national_gdp_yoy" in growth.columns
-    print(f"✓ Macro: 4 indicators × 16 years")
-    print(f"✓ 2024+ 标记为 estimated (初步核算)")
+    print("✓ Macro: 4 indicators × 16 years")
+    print("✓ 2024+ 标记为 estimated (初步核算)")
 
 
 def test_data_provenance_endpoint_simulation():

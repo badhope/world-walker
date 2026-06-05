@@ -42,6 +42,51 @@ Versioning: [SemVer](https://semver.org/).
 - **总测试:370 pass / 5 pre-existing fail(missing openpyxl 缺包) / 2 skip**
 - 真 LLM smoke 端到端验证 9 SDK tool + 9 CLI tool 全 pass(forecast pred0=40344.36 / risk var_95 / monte_carlo P5-P50-P95 / data_provenance city 字段 / macro_data 4 协变量)
 
+## 9.1.0 — 2026-06-05
+
+### Added — Web Console (`/console/`)
+- **后端 8 个 admin endpoint**(`backend/api/routes/admin.py` + `backend/api/admin_store.py`):
+  - `GET /api/v1/admin/tools` — 9 个 tool 的 metadata(name/params/description)
+  - `POST /api/v1/admin/tools/{name}/run` — 调一个 tool,返 `data + duration_ms + id`,自动写 history
+  - `GET /api/v1/admin/history(?tool=&limit=)` + `GET /admin/history/{id}` + `DELETE /admin/history` — 1000 条 ring buffer 查询
+  - `GET /api/v1/admin/config` + `PUT /api/v1/admin/config` — LLM 配置(model/base_url/temperature/max_tokens/max_tool_rounds/timeout)在线改,`threading.Lock` 串行化
+  - `POST /api/v1/admin/chat` — 同步 chat
+  - `GET /api/v1/admin/chat/stream(?session_id=&message=)` — **SSE 流式 chat**,FastAPI `StreamingResponse` + `text/event-stream`
+- **`HistoryStore` / `ConfigStore`** — 内存 ring buffer + thread-safe 锁;`QueryRecord` TypedDict(ts/tool/params/result_summary/duration_ms/status/error);AIConfig hot-swap race 由 `update()` 构造新 frozen 对象 + 原子 swap 解决
+- **`backend/api/main.py` 挂载**:`/console` 静态目录(`frontend/console/`),SPA 直接挂 FastAPI,无需单独 frontend server
+- **前端 13 个静态页**(`frontend/console/`):
+  - **`index.html`** — Dashboard:6 metric System Status + 9 tool 卡片网格 + Recent History 5 条
+  - **`tool/{9 个}.html`** — 9 个 tool 独立页:forecast(ensemble 折线 + 95% CI 区间带)/ diagnostics(5 项 bar + verdict)/ backtest(双线 + 5 指标卡 + 逐年明细)/ risk(4 bar + VaR/CVaR 详细表)/ scenarios(4 档折线对比)/ monte-carlo(P5/P50/P95 扇形带 + 区间宽)/ data-provenance(树形 HTML/CSS + URL/置信度/估算标记)/ macro-data(4 sparkline + 当前值/同比)/ list-cities(卡片网格 + 搜索过滤)
+  - **`chat.html`** — SSE 流式 chat + 同步 sync 按钮,自适应 `token` / `content` / `delta` / `tool_call` / `final` / `error` 6 种 event
+  - **`settings.html`** — GET/PUT config 表单 + 后端元信息只读卡
+  - **`history.html`** — 列表(200 条)+ tool 过滤 + 清空
+- **前端 3 个 JS helper 模块**:
+  - **`js/api.js`** — `rcaFetch(path, opts)` 不抛返回 `{ok, status, data, error}`;9 个 endpoint 包装;SSE 用 `fetch + reader` 解析(不用 EventSource,EventSource 不支持 POST / headers)
+  - **`js/form-helpers.js`** — `populateCityDatalist` / `populateIndicatorSelect` / `formToDict` / `toast` / `showError` / `clearError` / `escapeHtml` / `verdictClass`
+  - **`js/chart.js`** — 7 个 ECharts helper:renderForecastChart / BacktestChart / RiskChart / ScenariosChart / MonteCarloChart / DiagnosticsChart / Sparkline;`testsAsArray()` 把后端 dict-shape tests 转 array
+  - **`js/sidebar.js`** — 共享侧栏(避免 12 页重复 25 行 nav HTML),自动高亮当前页
+- **`css/console.css`(550+ 行)** — 完整继承 `frontend/index.html` design tokens(navy + copper + Fraunces/Geist/JetBrains Mono),240px 侧栏,移动端顶 nav
+
+### Fixed
+- **前端/后端 4 处字段不匹配漏洞**(审计发现):
+  1. `diagnostics.tests` 是 dict(后端 `forecast_engine.run_diagnostics`),前端 `diagnostics.html` 当 array 用 → 抛 `TypeError`;修:`chart.testsAsArray()` 公共 helper
+  2. `forecast.ensemble` 用 `lower_ci` / `upper_ci`(后端),`chart.js` 用 `ci_lower` / `ci_upper` → 显 0;修:加 fallback
+  3. `backtest.metrics` 用 `MAPE_pct` / `RMSE` / ...(后端大写 + 后缀),admin `_summarize` 用 `mape` → None;修:用对字段
+  4. `monte_carlo` 用 `quantiles.p05` / `p50` / `p95`(后端),`chart.js` 用 `percentiles.p5` / `p50` / `p95` → 显 0;修:用对字段
+
+### Documentation
+- **`docs/CONSOLE_GUIDE.md`** — 完整 Web Console 用户指南(启动 / 13 页导览 / 9 tool 输入输出 / 设计语言 / API 表含字段约束 / 故障排查 / 部署建议)
+- **`docs/superpowers/specs/2026-06-05-v91-web-console-design.md`** — 设计 spec(8 endpoint + 19 前端文件 + 9 tool UI + 风险缓解)
+- **`docs/superpowers/plans/2026-06-05-v91-web-console.md`** — 26 task TDD 实施计划
+
+### Tests
+- v9.1 新增 36 个 admin 测试:`12 admin_store`(`HistoryStore` / `ConfigStore` 锁 / ring buffer / `update()` 原子 swap)+ `24 admin` route(8 endpoint + 9 tool dispatch + `_summarize` 字段对齐 + 4 chat events / SSE 边界)
+- **总测试:483 pass / 5 pre-existing fail / 2 skip**(v9.0 370 + v9.1 113 admin/api/chat/...)
+
+### Not yet
+- **GitHub Pages 改展示站**(v9.1 Phase 3)— 当前是 v9.0 的 index.html 投资 dashboard;后续要改成"介绍 RCA + 引导用户到 Console"的 marketing 站
+- WebSocket / LLM 流式 token trace 持久化
+
 ## 8.0.0 — 2026-06-05
 
 ### Added

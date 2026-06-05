@@ -2,6 +2,7 @@
 投资决策级扩展数据测试
 """
 import sys
+
 sys.path.insert(0, ".")
 
 
@@ -9,8 +10,8 @@ def test_extended_data_basic():
     from backend.data.historical_extended import (
         EXTENDED_HISTORICAL,
         INDICATOR_META,
-        get_city_timeseries,
         get_city_indicator,
+        get_city_timeseries,
         get_data_coverage,
     )
 
@@ -52,8 +53,8 @@ def test_extended_data_basic():
         assert info["completeness"] == 1.0, f"{city} 完整性 {info['completeness']}"
 
     print("✓ All 12 indicators × 16 years × 10 cities — 1920 data points covered")
-    print(f"✓ Completeness: 100%")
-    print(f"✓ Provenance metadata: present")
+    print("✓ Completeness: 100%")
+    print("✓ Provenance metadata: present")
 
 
 def test_gdp_values_sanity():

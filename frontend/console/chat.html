@@ -116,6 +116,10 @@
         contentEl.textContent = buf;
         setStatus("流式中…(" + buf.length + " 字)");
         lastEvType = "stream";
+      } else if (ev.type === "thinking") {
+        // LLM 思考中 — 状态栏显示,不渲染内容
+        setStatus("思考中…");
+        lastEvType = "thinking";
       } else if (ev.type === "tool_call" || ev.type === "tool") {
         const call = ev.name || ev.tool || "tool";
         setStatus("调 tool: " + call);
@@ -124,10 +128,11 @@
       } else if (ev.type === "final" || ev.type === "done") {
         setStatus("就绪");
       } else if (ev.type === "error") {
-        contentEl.textContent += "\n[error] " + (ev.message || JSON.stringify(ev));
+        if (buf) buf += "\n\n";
+        buf += "[error] " + (ev.message || JSON.stringify(ev));
+        contentEl.textContent = buf;
         setStatus("出错");
       } else if (ev.content) {
-        // 其他 event 形态 — 拼上
         buf += ev.content;
         contentEl.textContent = buf;
         lastEvType = "stream";

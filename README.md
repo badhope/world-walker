@@ -75,6 +75,17 @@ print(result["content"])
 
 完整文档:[docs/SDK_CLI_GUIDE.md](docs/SDK_CLI_GUIDE.md)(11 CLI 子命令 · 3 输出格式 · 错误处理 · 退出码 · SDK vs CLI 选择)。
 
+### Web Console (v9.1+)
+
+后端跑起来后,直接浏览器打开 `http://localhost:8000/console/` — 零代码、零安装的管理界面:
+
+- 9 项 tool 可视化(ensemble 折线 / 95% CI 区间带 / 残差诊断 bar / VaR-CVaR 双图 / 4 档情景对比 / P5-P50-P95 扇形 / 数据血缘树 / 宏观 sparkline / 城市网格)
+- LLM Agent 流式 chat(SSE,打字机渲染)
+- 在线改 LLM 配置(model / base_url / temperature / max_tokens / max_tool_rounds / timeout)
+- 历史记录(1000 条 ring buffer + tool 过滤 + 清空)
+
+完整文档:[docs/CONSOLE_GUIDE.md](docs/CONSOLE_GUIDE.md)(启动 / 13 页导览 / 9 tool 输入输出 / 设计语言 / API 表含字段约束 / 故障排查)。
+
 ### Investment-grade (Docker with full engine stack)
 
 ```bash

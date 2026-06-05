@@ -9,10 +9,10 @@
 - Backtest 有 5 指标
 - 数据血缘 endpoint 正确
 """
-import sys
-import urllib.request
-import urllib.parse
 import json
+import sys
+import urllib.parse
+import urllib.request
 
 sys.path.insert(0, ".")
 
@@ -104,16 +104,16 @@ def test_lineage_endpoints_e2e():
 
     cov = get("/lineage/coverage")
     assert len(cov) == 10
-    print(f"  ✓ /lineage/coverage: 10 cities × 16 years")
+    print("  ✓ /lineage/coverage: 10 cities × 16 years")
 
     macro = get("/lineage/macro")
     assert len(macro["timeseries"]) == 16
     assert len(macro["indicators"]) == 4
-    print(f"  ✓ /lineage/macro: 4 indicators × 16 years")
+    print("  ✓ /lineage/macro: 4 indicators × 16 years")
 
     growth = get("/lineage/macro/growth")
     assert "national_gdp_yoy" in growth
-    print(f"  ✓ /lineage/macro/growth: YoY rates computed")
+    print("  ✓ /lineage/macro/growth: YoY rates computed")
 
     prov = get(f"/lineage/provenance/city/{enc}?indicator=gdp&year=2024")
     assert prov["value"] == 36500
@@ -146,7 +146,7 @@ def test_no_null_in_predictions():
         # CI 带宽 > 0
         for lo, hi in zip(full["ensemble"]["lower_ci"], full["ensemble"]["upper_ci"]):
             assert lo < hi, f"{c} CI 带宽 <= 0"
-    print(f"  ✓ 10 城 × 5 年 = 50 个预测点,全部 > 0,CI 带宽非零")
+    print("  ✓ 10 城 × 5 年 = 50 个预测点,全部 > 0,CI 带宽非零")
 
 
 if __name__ == "__main__":

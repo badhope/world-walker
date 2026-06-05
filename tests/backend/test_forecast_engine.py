@@ -2,13 +2,14 @@
 Phase 4-7 投资决策级预测引擎测试
 """
 import sys
+
 sys.path.insert(0, ".")
 
 import math
 
 
 def test_auto_arima_finds_best_order():
-    from backend.core.forecast_engine import auto_arima, arima_forecast
+    from backend.core.forecast_engine import arima_forecast, auto_arima
 
     # 已知带趋势的序列
     y = [10, 12, 14, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39]
@@ -45,7 +46,7 @@ def test_linear_regression_forecast():
 
 
 def test_ensemble_weights_sum_to_one():
-    from backend.core.forecast_engine import arima_forecast, ets_forecast, linear_regression_forecast, ensemble_forecast
+    from backend.core.forecast_engine import arima_forecast, ensemble_forecast, ets_forecast, linear_regression_forecast
 
     y = [10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32]
     ar = arima_forecast(y, 3)
@@ -89,7 +90,7 @@ def test_chow_test_no_break_on_linear():
 
     breaks = find_structural_breaks(y, min_segment=3)
     assert len(breaks) == 0, f"完美线性不应找到突变,实际 {len(breaks)}"
-    print(f"✓ find_structural_breaks: 0 个突变点")
+    print("✓ find_structural_breaks: 0 个突变点")
 
 
 def test_chow_test_detects_break():
@@ -114,7 +115,7 @@ def test_backtest_5_metrics():
     expected = ["MAPE_pct", "RMSE", "MASE", "sMAPE_pct", "Coverage_pct"]
     for m in expected:
         assert m in out["metrics"], f"缺 {m}"
-    print(f"✓ Backtest 5 项指标:")
+    print("✓ Backtest 5 项指标:")
     for k, v in out["metrics"].items():
         print(f"    {k}: {v}")
 
@@ -140,7 +141,7 @@ def test_full_pipeline_shenzhen_gdp():
     # CAGR
     assert out["growth"]["historical_cagr_pct"] > 5
     assert out["growth"]["forecast_cagr_pct"] > 0
-    print(f"\n✓ 深圳 GDP 16 年全流水线:")
+    print("\n✓ 深圳 GDP 16 年全流水线:")
     print(f"    集成预测 5 年: {[round(p) for p in out['ensemble']['predictions']]}")
     print(f"    95% CI width: {round(out['ensemble']['upper_ci'][0] - out['ensemble']['lower_ci'][0])}")
     print(f"    集成权重: {out['ensemble']['weights']}")

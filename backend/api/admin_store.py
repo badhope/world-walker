@@ -14,10 +14,9 @@ import threading
 import time
 import uuid
 from collections import deque
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 from backend.ai.config import AIConfig
-
 from rca._config import load_config
 
 
@@ -30,7 +29,7 @@ class QueryRecord(TypedDict):
     result_summary: dict[str, Any]  # 不存全 result,只存摘要(防 history 膨胀)
     duration_ms: int
     status: str  # "ok" / "error"
-    error: Optional[str]  # status=error 时填
+    error: str | None  # status=error 时填
 
 
 class HistoryStore:
@@ -46,7 +45,7 @@ class HistoryStore:
             self._buf.append(record)
 
     def list(
-        self, tool: Optional[str] = None, limit: Optional[int] = None,
+        self, tool: str | None = None, limit: int | None = None,
     ) -> list[QueryRecord]:
         with self._lock:
             items = list(self._buf)
@@ -58,7 +57,7 @@ class HistoryStore:
             items = items[:limit]
         return items
 
-    def get(self, record_id: str) -> Optional[QueryRecord]:
+    def get(self, record_id: str) -> QueryRecord | None:
         with self._lock:
             for r in self._buf:
                 if r["id"] == record_id:
@@ -88,12 +87,12 @@ class ConfigStore:
     def update(
         self,
         *,
-        model: Optional[str] = None,
-        base_url: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
-        max_tool_rounds: Optional[int] = None,
-        timeout_sec: Optional[int] = None,
+        model: str | None = None,
+        base_url: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        max_tool_rounds: int | None = None,
+        timeout_sec: int | None = None,
     ) -> AIConfig:
         """构造新 AIConfig(只改传入字段),原子 swap。
 

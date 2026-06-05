@@ -1,10 +1,10 @@
 """Tests for rca._config — 从 env 读 LLM 配置构造 AIConfig,带 fallback chain 默认值。"""
 import pytest
 
-from rca._config import load_config
-from rca.errors import ConfigError
 from backend.ai.config import AIConfig
 from backend.ai.fallback import DEFAULT_FALLBACK_CHAIN
+from rca._config import load_config
+from rca.errors import ConfigError
 
 
 def test_load_config_reads_env(monkeypatch):

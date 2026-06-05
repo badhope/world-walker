@@ -9,9 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.ai import tool_executor as _tool_executor
 from backend.ai.tool_executor import execute_tool
-
 from rca.errors import ToolArgumentError, ToolNotFoundError
 
 

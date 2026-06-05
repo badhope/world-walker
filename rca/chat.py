@@ -8,14 +8,14 @@
 """
 from __future__ import annotations
 
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from backend.ai import chat_service as _chat_service
 from backend.ai.fallback import FallbackError, FatalLLMError
 from backend.ai.llm_client import LLMError
-
 from rca._config import load_config
-from rca.errors import LLMUnavailableError, RCAError
+from rca.errors import LLMUnavailableError
 
 _cached_cfg = None
 
@@ -61,8 +61,7 @@ def chat_stream(session_id: str, user_message: str) -> Iterator[dict[str, Any]]:
     """
     try:
         gen = _chat_service.chat_stream_with_trace(_get_cfg(), session_id, user_message)
-        for ev in gen:
-            yield ev
+        yield from gen
     except (FallbackError, FatalLLMError, LLMError) as e:
         # 不能 raise(generator 半路抛会断流);改 yield error event
         yield {"type": "error", "message": str(e), "trace": []}

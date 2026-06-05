@@ -15,8 +15,6 @@ Usage:
     client = rca.RCAClient()
     client.list_cities()
 """
-from rca import chat as _chat_module
-from rca import tools as _tools_module
 from rca.chat import chat, chat_stream
 from rca.client import RCAClient
 from rca.errors import (

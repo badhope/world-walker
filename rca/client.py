@@ -8,11 +8,10 @@
 """
 from __future__ import annotations
 
-from typing import Any, Iterator, Optional
+from collections.abc import Iterator
+from typing import Any
 
 from backend.ai.config import AIConfig
-
-from rca import chat as _chat
 from rca import tools as _tools
 from rca._config import load_config
 from rca.chat import chat as _chat_fn
@@ -32,7 +31,7 @@ class RCAClient:
             ...
     """
 
-    def __init__(self, config: Optional[AIConfig] = None):
+    def __init__(self, config: AIConfig | None = None):
         """构造。
 
         Args:

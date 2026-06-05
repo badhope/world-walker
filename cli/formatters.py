@@ -65,7 +65,6 @@ def format_rich(data: dict[str, Any], command: str) -> str:
     - 其他: 嵌套 key=value 表
     """
     from rich.console import Console
-    from rich.table import Table
 
     buf = io.StringIO()
     console = Console(file=buf, force_terminal=False, width=120, legacy_windows=False, record=True)

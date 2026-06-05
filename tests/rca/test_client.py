@@ -1,9 +1,10 @@
 """RCAClient — 顶层 SDK 入口,聚合 9 tools + chat + custom config。"""
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from rca.client import RCAClient
+import pytest
+
 from backend.ai.config import AIConfig
+from rca.client import RCAClient
 
 
 def _custom_cfg() -> AIConfig:
@@ -52,10 +53,22 @@ def test_rca_public_api_reexports():
     """rca.* 直接 import 能用 — 9 tool + chat + chat_stream + RCAClient + errors。"""
     import rca
     from rca import (
-        RCAClient, chat, chat_stream,
-        forecast, diagnostics, backtest, risk, scenarios, monte_carlo,
-        data_provenance, macro_data, list_cities,
-        RCAError, ToolArgumentError, ToolNotFoundError, LLMUnavailableError,
+        LLMUnavailableError,
+        RCAClient,
+        RCAError,
+        ToolArgumentError,
+        ToolNotFoundError,
+        backtest,
+        chat,
+        chat_stream,
+        data_provenance,
+        diagnostics,
+        forecast,
+        list_cities,
+        macro_data,
+        monte_carlo,
+        risk,
+        scenarios,
     )
     assert rca.RCAClient is RCAClient
     assert rca.forecast is forecast

@@ -1,6 +1,7 @@
 """9 tool wrapper 单元测试 — 每个 tool 一个 test,验证与 tool_executor 输出一致。"""
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from rca import tools
 

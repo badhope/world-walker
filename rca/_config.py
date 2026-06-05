@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from backend.ai.config import AIConfig
 from backend.ai.fallback import DEFAULT_FALLBACK_CHAIN
-
 from rca.errors import ConfigError
 
 

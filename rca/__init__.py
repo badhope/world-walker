@@ -1,29 +1,63 @@
 """rca — Python SDK for the Regional Economic Analysis agent.
 
-Public API: 9 tool functions + chat() + chat_stream() + RCAClient.
+Public API:
+- 9 tool functions: forecast / diagnostics / backtest / risk / scenarios /
+  monte_carlo / data_provenance / macro_data / list_cities
+- chat() / chat_stream() — LLM agent
+- RCAClient — 顶层类,聚合以上所有
+- 错误: RCAError / ToolArgumentError / ToolNotFoundError / LLMUnavailableError
+
+Usage:
+    import rca
+    rca.forecast(scope="city", name="shenzhen", indicator="gdp", years=3)
+    rca.chat("session-1", "深圳 GDP 2026 多少?")
+
+    client = rca.RCAClient()
+    client.list_cities()
 """
+from rca import chat as _chat_module
+from rca import tools as _tools_module
+from rca.chat import chat, chat_stream
+from rca.client import RCAClient
 from rca.errors import (
     LLMUnavailableError,
     RCAError,
     ToolArgumentError,
     ToolNotFoundError,
 )
+from rca.tools import (
+    backtest,
+    data_provenance,
+    diagnostics,
+    forecast,
+    list_cities,
+    macro_data,
+    monte_carlo,
+    risk,
+    scenarios,
+)
 
 __all__ = [
+    # Client
     "RCAClient",
+    # Errors
     "RCAError",
     "ToolNotFoundError",
     "ToolArgumentError",
     "LLMUnavailableError",
+    # Chat
     "chat",
     "chat_stream",
-    "data_provenance",
-    "diagnostics",
+    # Tools (9)
     "forecast",
-    "list_cities",
-    "macro_data",
-    "monte_carlo",
+    "diagnostics",
+    "backtest",
     "risk",
     "scenarios",
-    "backtest",
+    "monte_carlo",
+    "data_provenance",
+    "macro_data",
+    "list_cities",
 ]
+
+__version__ = "9.0.0"

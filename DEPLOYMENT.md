@@ -1,8 +1,8 @@
 # 部署指南 / Deployment Guide
 
-本文档介绍如何在不同环境中部署 **区域产业经济分析平台**。
+本文档介绍如何在不同环境中部署 **Regional Economic Analysis Agent** (v9.1.0)。
 
-This document describes how to deploy the **Regional Industrial Economic Analysis Platform** in different environments.
+This document describes how to deploy the **Regional Economic Analysis Agent** in different environments (currently v9.1.0).
 
 ---
 
@@ -18,6 +18,7 @@ This document describes how to deploy the **Regional Industrial Economic Analysi
 8. [性能调优](#性能调优--performance-tuning)
 9. [备份与恢复](#备份与恢复--backup--recovery)
 10. [故障排查](#故障排查--troubleshooting)
+11. [Web Console 部署](#web-console-部署-v91)
 
 ---
 
@@ -83,7 +84,7 @@ cp .env.example .env
 # 编辑 .env，至少修改 SECRET_KEY
 ```
 
-### 5. 启动后端
+### 5. 启动后端(前端 v9.1+ 已挂到后端 8000)
 
 ```bash
 # 方式 1: 通过 Makefile
@@ -93,21 +94,15 @@ make run
 uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 6. 启动前端（新终端）
+> **v9.1+ 重要变更**:Web Console (`/console/`) 和 Web Dashboard (`/`) 都已挂在后端 :8000,**不再需要单独启前端 server**。如果想保留 v6.0 之前的 split 模式(前端在 :8080),依然可用 — `cd frontend && python3 -m http.server 8080`,但 Console 只能在 :8000 访问。
 
-```bash
-# 方式 1
-make run-frontend
+### 6. 访问应用
 
-# 方式 2
-cd frontend && python3 -m http.server 8080
-```
-
-### 7. 访问应用
-
-- 前端: <http://localhost:8080>
-- 后端 API: <http://localhost:8000/api/v1>
-- API 文档: <http://localhost:8000/api/docs>
+- Web Dashboard: <http://localhost:8000/>
+- **Web Console v9.1**: <http://localhost:8000/console/>
+- Swagger API 文档: <http://localhost:8000/docs>
+- (legacy,可选) 前端: <http://localhost:8080>
+- (legacy,可选) 后端 API: <http://localhost:8000/api/v1>
 
 ---
 
@@ -130,8 +125,8 @@ docker-compose down
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
-| `api` | 8000 | FastAPI 后端 |
-| `frontend` | 8080 | 静态前端 (Nginx) |
+| `api` | 8000 | FastAPI 后端(**含 Web Console v9.1 mount 在 `/console/`**) |
+| `frontend` | 8080 | 静态前端 (Nginx) — 投资 dashboard(只读) |
 | `db` | 5432 | PostgreSQL (可选) |
 | `redis` | 6379 | Redis 缓存 (可选) |
 
@@ -306,7 +301,26 @@ server {
     server_name rea.example.com;
     client_max_body_size 50M;
 
-    # 前端静态资源
+    # Web Console v9.1 (basic auth 套在 /console/ 路径,因为没内置认证)
+    location /console/ {
+        auth_basic "RCA Console";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+        proxy_pass http://rea_backend/console/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # SSE 专用 — 长 timeout
+    location /api/v1/admin/chat/stream {
+        proxy_pass http://rea_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_buffering off;  # 关键:SSE 必须禁用 buffer
+        proxy_cache off;
+        proxy_read_timeout 600s;
+    }
+
+    # 前端静态资源(Dashboard)
     location / {
         root /opt/rea/app/frontend;
         try_files $uri $uri/ /index.html;
@@ -323,6 +337,11 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_read_timeout 300s;
+    }
+
+    # Swagger
+    location /docs {
+        proxy_pass http://rea_backend/docs;
     }
 
     # WebSocket
@@ -595,7 +614,109 @@ curl -s http://localhost:8000/api/v1/ai/config | jq
 
 ---
 
-**最后更新**: 2026-06-04
-**当前版本**: v6.1.0
-**配套文档**: [README.md](README.md) · [METHODOLOGY.md](docs/METHODOLOGY.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md)
-**适用版本**: v4.0.0+
+**最后更新**: 2026-06-05
+**当前版本**: v9.1.0
+**配套文档**: [README.md](README.md) · [QUICKSTART.md](QUICKSTART.md) · [METHODOLOGY.md](docs/METHODOLOGY.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [API.md](API.md) · [CONSOLE_GUIDE.md](docs/CONSOLE_GUIDE.md) · [SDK_CLI_GUIDE.md](docs/SDK_CLI_GUIDE.md)
+**适用版本**: v9.1.0+
+
+---
+
+## Web Console 部署 (v9.1+)
+
+Web Console (`/console/`) 是一组静态 HTML + JS + CSS,挂在后端 :8000。**不需要单独的 frontend server**。
+
+### 基本(同后端)
+
+后端起来后,浏览器开 <http://localhost:8000/console/> 即可。
+
+### 生产:加 basic auth
+
+Web Console **没内置认证**。生产环境强烈建议在 nginx 层加 basic auth:
+
+```bash
+# 1. 创建密码文件
+sudo apt install apache2-utils       # 装 htpasswd
+sudo htpasswd -c /etc/nginx/.htpasswd console_user
+
+# 2. nginx 配置 — 套 /console/ 路径(见上文 nginx 段)
+location /console/ {
+    auth_basic "RCA Console";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+    proxy_pass http://rea_backend/console/;
+}
+```
+
+### 生产:配置 SSE proxy
+
+Web Console 的 chat 用 SSE (`/api/v1/admin/chat/stream`)。**Nginx 默认 buffer 会破坏 SSE** — 必须显式禁用:
+
+```nginx
+location /api/v1/admin/chat/stream {
+    proxy_pass http://rea_backend;
+    proxy_buffering off;       # 关键:禁用 buffer
+    proxy_cache off;
+    proxy_read_timeout 600s;   # 长 timeout,LLM 慢
+}
+```
+
+### 部署后验证
+
+```bash
+# 1. 后端启动后能拉到 console 静态资源
+curl -s -o /dev/null -w "HTTP %{http_code} size=%{size_download} bytes\n" \
+    http://localhost:8000/console/index.html
+# 期望: HTTP 200 size > 5000
+
+# 2. 9 tool 端点都能返 data
+for t in get_forecast get_diagnostics get_backtest get_risk get_scenarios \
+         get_monte_carlo get_data_provenance get_macro_data get_list_cities; do
+  echo -n "$t: "
+  curl -s -o /dev/null -w "HTTP %{http_code}\n" \
+    -X POST "http://localhost:8000/api/v1/admin/tools/$t/run" \
+    -H 'Content-Type: application/json' \
+    -d '{"scope":"city","name":"shenzhen","indicator":"gdp"}'
+done
+# 期望: 9 个 HTTP 200(macro_data/list_cities/body 需 {} )
+
+# 3. config PUT 工作
+curl -s -X PUT http://localhost:8000/api/v1/admin/config \
+    -H 'Content-Type: application/json' \
+    -d '{"temperature":0.5}' | jq '.temperature'
+# 期望: 0.5
+
+# 4. history 写入工作
+curl -s "http://localhost:8000/api/v1/admin/history?limit=5" | jq '.items | length'
+# 期望: 5(刚跑过的 5 个 tool)
+```
+
+详细 Console 用户指南:[docs/CONSOLE_GUIDE.md](docs/CONSOLE_GUIDE.md)
+
+---
+
+## Python SDK + CLI 部署 (v9.0+)
+
+如果部署环境需要程序化调用分析工具,在 host 装 SDK:
+
+```bash
+pip install -e /opt/rea/app
+
+# 验证
+rca --version
+python -c "import rca; print(rca.__version__)"   # 期望: 9.1.0(或者 git describe)
+```
+
+SDK 是 stateless,直接调后端 in-process 分析引擎。**不** 需要后端运行 — 适合 cron / ETL / 离线分析。
+
+CLI 默认 3 种输出格式: `rich` / `plain` / `json`。
+
+```bash
+# 离屏 / cron
+rca --format json forecast --city shenzhen --indicator gdp --years 5 > forecast.json
+
+# pipe 给 jq
+rca --format json monte-carlo --city shenzhen --indicator gdp --years 5 | jq '.data.quantiles.p50'
+```
+
+详细 SDK + CLI 用户指南:[docs/SDK_CLI_GUIDE.md](docs/SDK_CLI_GUIDE.md)
+
+---

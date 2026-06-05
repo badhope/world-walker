@@ -1,6 +1,6 @@
-# Regional Economic Analysis Agent — Python SDK & CLI Guide (v9.0)
+# Regional Economic Analysis Agent — Python SDK & CLI Guide (v9.1)
 
-> **Status**: stable · v9.0.0
+> **Status**: stable · v9.1.0
 > **Audience**: 数据科学家、量化分析师、MLOps、需要把区域经济分析能力嵌入应用/管道的开发者
 
 RCA Agent 是一套可调用的区域经济分析工具集 + LLM agent。v9.0 起,你有两个互操作的入口:
@@ -37,7 +37,7 @@ rca --help
 
 # SDK 版本
 python -c "import rca; print(rca.__version__)"
-# → 9.0.0
+# → 9.1.0
 ```
 
 ### 1.3 LLM API Key(可选,但要 chat 必须)
@@ -61,7 +61,7 @@ export LLM_DEFAULT_BACKEND="openai"
 
 ```python
 import rca
-rca.__version__  # '9.0.0'
+rca.__version__  # '9.1.0'
 ```
 
 顶层 API:
@@ -459,4 +459,4 @@ echo $LLM_DEFAULT_BACKEND
 
 ---
 
-**License**: Apache-2.0 · **Status**: v9.0.0 stable · 9 tool + chat + chat-stream · 0 第三方 SaaS 依赖(LLM 除外)
+**License**: Apache-2.0 · **Status**: v9.1.0 stable · 9 tool + chat + chat-stream · 0 第三方 SaaS 依赖(LLM 除外)

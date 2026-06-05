@@ -93,7 +93,7 @@ curl -s 'http://localhost:8000/api/v1/investment/monte-carlo/city/shenzhen?indic
 
 ---
 
-**最后更新**: 2026-06-04 (v6.1.0)
+**最后更新**: 2026-06-05 (v9.1.0)
 
 ## 案例背景
 

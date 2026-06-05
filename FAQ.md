@@ -1,6 +1,6 @@
 # Frequently Asked Questions / 常见问题
 
-Answers to the most common questions about the **Regional Industrial Economic Analysis Platform**.
+Answers to the most common questions about the **Regional Economic Analysis Agent**.
 
 ---
 
@@ -8,31 +8,39 @@ Answers to the most common questions about the **Regional Industrial Economic An
 
 ### 1. What is this project? / 这是什么项目?
 
-An open-source analytics platform for **regional economic analysis**, focused on
+An open-source analytics agent for **regional economic analysis**, focused on
 four scenarios: retail site selection, sales forecasting, enterprise
 business-environment evaluation, and government industry-policy analysis.
 
-一个开源的产业经济分析平台，聚焦 **4 大场景**：零售选址、销售预测、企业营商环境评估、政府产业政策分析。
+**v9.0+ 新增**: Python SDK + CLI(任选入口),所有 9 项分析 + LLM Agent。
+
+**v9.1+ 新增**: Web Console(`/console/`),零代码、零安装浏览器管理界面 — 9 tool 可视化 + LLM chat + 改 LLM 配置 + 看历史。
+
+一个开源的产业经济分析 agent,聚焦 **4 大场景**:零售选址、销售预测、企业营商环境评估、政府产业政策分析。
 
 ### 2. Who is the target audience? / 目标用户是谁?
 
 - Data analysts working on regional economics
 - Corporate strategy & site-selection teams
 - Government planning & development departments
+- Product managers / operations(non-coders, use Web Console)
 - Data-science students looking for a production-grade reference project
-- Anyone interested in Python + FastAPI + ECharts
+- Anyone interested in Python + FastAPI + ECharts + LLM agent
 
 ### 3. Is it production-ready? / 可以用于生产吗?
 
-**Yes.** The platform is at **v6.1.0** with:
-- **273 backend tests passing** (263 unit/integration + 10 engine_stack)
-- **75+ API endpoints** (40 base + 7 investment + 5 lineage + others)
+**Yes.** The agent is at **v9.1.0** with:
+- **452 backend tests passing** (v6.0 263 + v6.1 10 + v7.0 14 + v8.0 7 + v9.0 66 + v9.1 82 + 10 misc)
+- **80+ API endpoints** (40 base + 7 investment + 5 lineage + 8 admin v9.1 + others)
+- **3 entry points**: Web Dashboard(只读展示)/ Python SDK / CLI / **Web Console v9.1**(零代码管理)
 - **Investment-grade forecasting**: 10 cities × 12 indicators × 16 years (2010-2025) real public data + 4 macro covariates; 3-model ensemble (ARIMA + ETS + LR, AIC-weighted); 5 residual diagnostics; 5 walk-forward CV metrics; VaR / CVaR / GARCH(1,1) / volatility; 4 scenarios; 1000-iter Monte Carlo
+- **Self-developed LLM agent** (no LangGraph / Pydantic AI): Trace + Fallback(5 models) + Parallel tools + Retry hint
+- **Web Console v9.1**: 8 admin endpoint + 13 静态 HTML + 4 JS helper + 1 CSS
 - **Docker investment-grade engine stack**: `statsforecast` / `arch` / `pmdarima` pre-installed; runtime detection via `engine_stack.py`; automatic fallback to `statsmodels` / rolling-std if libraries unavailable
 - **Data lineage**: every data point carries source URL + confidence + estimated flag + methodology_change
 - **Provincial aggregation**: absolute sums + population-weighted rates (广东 GDP 2026 forecast validated at 74,402 亿元)
 - **CORS / XSS / security hardening**
-- **Comprehensive documentation** (README, METHODOLOGY §1-10, ARCHITECTURE, DEPLOYMENT, API, FAQ, ROADMAP, CHANGELOG, NOTES)
+- **Comprehensive documentation** (README, QUICKSTART, METHODOLOGY §1-10, ARCHITECTURE, DEPLOYMENT, API, FAQ, ROADMAP, CHANGELOG, NOTES, CONSOLE_GUIDE v9.1, SDK_CLI_GUIDE v9.0)
 
 But: the underlying data is **publicly sourced from NBSC + city statistical bureaus** with 2024+ marked as `estimated=True, confidence=0.85`. For production
 use, integrate live feeds from NBSC / Wind / akshare or your internal data warehouse.
@@ -372,5 +380,96 @@ will auto-generate a "Cite this repository" button from this file.
 
 ---
 
-**Last updated**: 2026-06-04
+## Python SDK + CLI (v9.0+)
+
+### 28. 怎么装 SDK? / How to install SDK?
+
+```bash
+pip install -e .          # 装 rca 包 + rca CLI entry point
+rca --version             # 应输出: 9.0.0(或者 git describe 给出的实际 version)
+python -c "import rca; print(rca.__version__)"  # 同
+```
+
+### 29. SDK vs CLI 怎么选?
+
+- **SDK** — 写代码、需要 flow control、要集成到自己的 pipeline、产出供别人调用
+- **CLI** — shell 一行 / cron / 脚本 / 没 Python 环境的机器
+- **Web Console** v9.1 — 零代码、可视化、不想装任何东西
+- **Web Dashboard** — 看投资级图表(只读)
+
+### 30. CLI 支持哪些输出格式?
+
+3 种:`rich`(默认,彩色表格,terminal 友好)/ `plain`(纯文本,管道友好)/ `json`(机器可读)。
+
+```bash
+rca --format rich forecast --city shenzhen --indicator gdp --years 5
+rca --format plain risk --city shenzhen --indicator gdp
+rca --format json monte-carlo --city shenzhen --indicator gdp --years 5 | jq
+```
+
+### 31. 怎么用 SDK 改 LLM 配置?
+
+SDK 不直接改(改的是后端 in-memory 状态),但可以通过 HTTP API:
+
+```python
+import httpx
+httpx.put("http://localhost:8000/api/v1/admin/config", json={"model": "gpt-4o-mini", "temperature": 0.5})
+# 或用 CLI
+```
+
+也可以用 CLI:`rca config set --model gpt-4o-mini --temperature 0.5`。
+
+### 32. SDK 出错有几种?
+
+4 种错误类,都从 `rca` 直接 re-export:
+- `RCAError` — 基类
+- `ToolArgumentError` — tool 收到错参数
+- `ToolNotFoundError` — tool 名拼错
+- `LLMUnavailableError` — LLM 不可达 / fallback 链全失败
+
+详情见 [docs/SDK_CLI_GUIDE.md](docs/SDK_CLI_GUIDE.md)。
+
+---
+
+## Web Console (v9.1+)
+
+### 33. 怎么打开 Console?
+
+后端起来后: <http://localhost:8000/console/>。**不需要** 装任何东西,也不需要单独起 frontend。
+
+### 34. Console 和 Dashboard 什么区别?
+
+| | Dashboard (`/`) | Console (`/console/`) |
+|---|---|---|
+| 用途 | 投资级图表(只读) | 跑 9 tool + chat + 改配置 + 看历史 |
+| 写操作 | 无 | 有(改 LLM 配置、清历史、chat 发消息) |
+| 写代码 | 无 | 无 |
+| 用户 | 看数据的人 | 跑分析的人(分析师 / PM / 运营) |
+| API | `/api/v1/investment/*` 之类 | `/api/v1/admin/*` 之类 |
+
+### 35. Console 怎么保证安全?
+
+**没内置认证**。假定 trusted 私有部署。生产环境在 nginx 层套 basic auth:
+
+```nginx
+location /console/ {
+    auth_basic "RCA Console";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+}
+```
+
+### 36. Console 的历史存多久?
+
+1000 条 in-memory ring buffer,**重启后端就清空**。需要持久化请提 issue(已在 v9.2 计划)。
+
+### 37. Console 怎么调 LLM?
+
+**先选 model**:`/settings.html` 改 model / base_url / temperature / max_tokens / max_tool_rounds / timeout,Save。
+**再 chat**:`/chat.html` 发消息,支持 6 种 SSE event(`thinking` / `token` / `tool_call` / `tool_result` / `final` / `error`)。
+
+完整文档见 [docs/CONSOLE_GUIDE.md](docs/CONSOLE_GUIDE.md)。
+
+---
+
+**Last updated**: 2026-06-05
 **Have a question not answered here?** Open a [Discussion](https://github.com/badhope/national_stats/discussions/new) or email <contact@example.com>.

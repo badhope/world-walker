@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "regional-economic-analysis"
-version = "4.0.0"
-description = "Regional Industrial Economic Analysis Platform: a production-grade multi-scenario analytics system for city comparison, retail site selection, sales forecasting and government industry policy evaluation."
+version = "9.1.0"
+description = "Regional Economic Analysis Agent: a production-grade multi-scenario analytics system with self-developed LLM agent, 3 entry points (Web Dashboard / Python SDK / CLI / Web Console) for city comparison, retail site selection, sales forecasting and government industry policy evaluation."
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.11"

@@ -22,6 +22,7 @@
    - [Interactive](#interactive)
    - [Reports / export](#reports--export)
    - [WebSocket](#websocket)
+   - [Admin / Web Console (v9.1+)](#admin--web-console-v91)
    - [System / static](#system--static)
 4. [Common request / response schemas](#common-request--response-schemas)
 5. [Error handling](#error-handling)
@@ -90,7 +91,7 @@ Authorization: Bearer <access_token>
 
 ## Endpoints by category
 
-> Total: **70+ endpoints** across **11 functional groups**
+> Total: **80+ endpoints** across **12 functional groups**(v9.1+)
 > Auto-generated reference (live): <http://localhost:8000/openapi.json>
 
 ### City data / 城市数据
@@ -459,6 +460,104 @@ ws.onmessage = (event) => {
 };
 ```
 
+### Admin / Web Console (v9.1+)
+
+**8 个 admin endpoint**(`/api/v1/admin/*`),由 Web Console (`/console/`) 使用。
+**假定 trusted 私有部署** — 无内置认证,生产环境在 nginx 层加 basic auth。
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/admin/tools` | 9 个 tool 的 metadata(name/params/description) |
+| POST | `/api/v1/admin/tools/{name}/run` | 跑一个 tool,自动写 history(1000 条 ring buffer) |
+| GET | `/api/v1/admin/history?tool=&limit=` | 历史列表(可按 tool 过滤) |
+| GET | `/api/v1/admin/history/{id}` | 单条历史详情 |
+| DELETE | `/api/v1/admin/history` | 清空全部历史 |
+| GET | `/api/v1/admin/config` | 当前 LLM 配置(model / base_url / temperature / max_tokens / max_tool_rounds / timeout_sec) |
+| PUT | `/api/v1/admin/config` | 改 LLM 配置(立即生效,in-memory) |
+| POST | `/api/v1/admin/chat` | 同步 LLM chat |
+| GET | `/api/v1/admin/chat/stream` | **SSE** 流式 chat(query: `session_id`, `message`) |
+
+**例 1: 列 9 个 tool**
+```bash
+curl -s http://localhost:8000/api/v1/admin/tools | jq
+```
+返回:
+```json
+{
+  "tools": [
+    {"name": "get_forecast", "label": "Forecast", "label_zh": "预测",
+     "params": {"scope": "...", "name": "...", "indicator": "...", "years": 5}},
+    {"name": "get_diagnostics", "label": "Diagnostics", "label_zh": "残差诊断", ...},
+    ...
+  ]
+}
+```
+
+**例 2: 跑 forecast**
+```bash
+curl -s -X POST http://localhost:8000/api/v1/admin/tools/get_forecast/run \
+  -H 'Content-Type: application/json' \
+  -d '{"scope":"city","name":"shenzhen","indicator":"gdp","years":5}' | jq
+```
+返回:
+```json
+{
+  "id": "q-20260605-abc123",
+  "tool": "get_forecast",
+  "duration_ms": 1280,
+  "data": {
+    "scope": "city",
+    "name": "深圳",
+    "indicator": "gdp",
+    "ensemble": {"predictions": [40100, 41700, ...], "lower_ci": [...], "upper_ci": [...], "method": "Ensemble(ARIMA+ETS+LR)"},
+    "diagnostics_verdict": "PASS",
+    "backtest_mape": 0.004
+  }
+}
+```
+
+**例 3: 改 LLM 配置(立即生效)**
+```bash
+curl -s -X PUT http://localhost:8000/api/v1/admin/config \
+  -H 'Content-Type: application/json' \
+  -d '{"model": "qwen-max", "temperature": 0.5, "max_tokens": 2000}' | jq
+```
+
+**例 4: 看历史**
+```bash
+# 全部
+curl -s "http://localhost:8000/api/v1/admin/history?limit=20" | jq '.items | length'
+
+# 按 tool 过滤
+curl -s "http://localhost:8000/api/v1/admin/history?tool=get_forecast&limit=10" | jq
+```
+
+**例 5: SSE 流式 chat**
+```bash
+# 用 curl 看 SSE 协议原始输出
+curl -N "http://localhost:8000/api/v1/admin/chat/stream?session_id=u1&message=hi"
+# → data: {"type": "thinking"}
+# → data: {"type": "tool_call", "name": "get_forecast"}
+# → data: {"type": "token", "content": "深圳"}
+# → data: {"type": "token", "content": " GDP"}
+# → ...
+# → data: {"type": "final"}
+```
+
+**已知 tool 输出字段约束**(v9.1.0 修复后):
+
+| Tool | 关键字段 | 备注 |
+|------|----------|------|
+| `get_forecast` | `data.ensemble.{predictions, lower_ci, upper_ci}` | CI 字段名是 `lower_ci` / `upper_ci` |
+| `get_diagnostics` | `data.tests` 是 **dict**{adf/kpss/ljung_box/jarque_bera/breusch_pagan},不是 array | 每个有 `statistic` / `pvalue` / boolean / `conclusion` |
+| `get_backtest` | `data.metrics.{MAPE_pct, RMSE, MASE, sMAPE_pct, Coverage_pct}` | 大写 + 后缀 |
+| `get_risk` | `data.var_95.var_pct` / `data.garch.conditional_vol_pct` | |
+| `get_scenarios` | `data.scenarios` 是 **dict**{baseline/optimistic/pessimistic/recession} | 每个有 `predictions` / `final_value` / `final_change_pct` |
+| `get_monte_carlo` | `data.quantiles.{p05, p50, p95}` | **p05 不是 p5** |
+| `get_data_provenance` | `data.{city, url, nbsc_url, year_range, n_years, coverage, sample_provenance}` | |
+| `get_macro_data` | `data.current.{national_gdp/cpi_yoy/lpr_1y/fdi_inflow}` | |
+| `get_list_cities` | `data.{cities[], city_pinyin{}, cities_pinyin[], n_cities}` | |
+
 ### System / static / 系统
 
 | Method | Path | Description |
@@ -574,6 +673,6 @@ openapi-generator-cli generate -i http://localhost:8000/openapi.json \
 
 ---
 
-**Last updated**: 2026-06-02
-**API version**: v1 (4.0.0)
-**Total endpoints**: 70+
+**Last updated**: 2026-06-05
+**API version**: v1 (9.1.0)
+**Total endpoints**: 80+

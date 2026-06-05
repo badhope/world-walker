@@ -1,258 +1,359 @@
-# 架构总览
+# Architecture
 
-> 本文档面向开发者与运维人员，说明系统的设计原则、模块划分、数据流与扩展点。
+> **Current version**: v9.1.0 (2026-06-05)
+> **Stack**: Python 3.12+ / FastAPI / Pydantic v2 / SQLite-in-memory / ECharts 5.6 / LiteLLM
 
-## 1. 设计原则
+This document describes the high-level architecture of the
+**Regional Economic Analysis Agent** — a production-grade multi-scenario
+analytics system with **3 entry points** (Web Dashboard / Python SDK / CLI /
+**Web Console v9.1**).
 
-| 原则 | 说明 |
-|------|------|
-| **API First** | 一切功能通过 REST API 暴露；前端只是 API 的可视化层 |
-| **零前端构建** | 前端是单 HTML 文件 + CDN，零 npm / 零 webpack / 零 node_modules |
-| **配置外置** | 所有可调参数（端口、密钥、CORS、模型权重）通过环境变量注入 |
-| **关注点分离** | `api`（路由）/ `core`（业务）/ `data`（数据）三层严格分离 |
-| **可测试性** | 所有业务逻辑纯函数化，便于 pytest |
+---
 
-## 2. 系统组件图
+## 1 · High-level diagram
 
 ```
-                       ┌─────────────────────────────────────┐
-                       │  Browser (Chrome / Edge / Firefox)  │
-                       │   ↳ http://localhost:8080/index.html │
-                       └──────────┬──────────────────────────┘
-                                  │ fetch + JSON
-                                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     FastAPI Application (port 8000)            │
-│                                                                 │
-│  ┌────────────────┐  ┌─────────────────┐  ┌──────────────────┐ │
-│  │  routes/       │  │  core/          │  │  data/           │ │
-│  │  cities        │  │  analyzer       │  │  city_data.py    │ │
-│  │  analysis      │  │  forecaster     │  │  8 城市数据     │ │
-│  │  forecast      │  │  city_manager   │  │  缓存层          │ │
-│  │  static        │  │  city_aggregator│  └──────────────────┘ │
-│  │  favicon       │  └─────────────────┘                       │
-│  └────────┬───────┘          │                                  │
-│           │                  ▼                                  │
-│           │       ┌─────────────────────┐                       │
-│           │       │  analysis/          │                       │
-│           │       │  enterprise_v3      │                       │
-│           │       │  government         │                       │
-│           │       │  retail_location    │                       │
-│           │       │  sales_forecast     │                       │
-│           │       └─────────────────────┘                       │
-│           ▼                                                      │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Middleware: CORS / GZip / Logging / Auth (optional)     │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-                       ┌────────────────────────┐
-                       │  SQLite / In-Memory    │
-                       │  8 城市数据集 (HARDCODE)│
-                       └────────────────────────┘
+                       ┌─────────────────────────────────────────────┐
+                       │  FastAPI app (single process, port 8000)     │
+                       ├─────────────────────────────────────────────┤
+                       │  /            Web Dashboard (index.html)   │
+   浏览器 ◀────HTTP────▶│  /console/    Web Console v9.1 (13 页 SPA) │
+                       │  /docs        Swagger UI                    │
+                       │  /api/v1/...  80+ endpoint                  │
+                       │    ├ /admin/  8 admin endpoint v9.1         │
+                       │    ├ /ai/chat LLM Agent SSE                 │
+                       │    ├ /investment/  7 forecast endpoint       │
+                       │    └ /lineage/    5 data-lineage endpoint   │
+                       └────────────────┬────────────────────────────┘
+                                        │
+              ┌─────────────────────────┼──────────────────────────┐
+              │                         │                          │
+              ▼                         ▼                          ▼
+   backend.core                backend.ai                   backend.data
+   (forecast_engine /         (LLM Agent v7+:              (10 城 × 12 指标
+    risk_engine /              trace / fallback /           × 16 年 = 1920
+    engine_stack)              parallel_tools /             + 4 宏观协变量)
+                               retry / tool_executor)
+              │                         │                          │
+              └─────────────────────────┼──────────────────────────┘
+                                        │
+                                        ▼
+                              SQLite-in-memory cache
+                              (LRU, no Redis required)
+
+
+   Other entry points (打同一后端,功能 100% 覆盖):
+
+   ┌─────────────────┐  ┌─────────────────┐
+   │  Python SDK     │  │  CLI            │
+   │  rca package    │  │  rca command    │
+   │  (9 tool + chat)│  │  (11 子命令)    │
+   └─────────────────┘  └─────────────────┘
+   pip install -e .     rca = "cli.main:app"
+   (pyproject.toml)
 ```
 
-## 3. 目录结构
+---
 
-```
-backend/
-├── api/                  # FastAPI 路由层（HTTP 边界）
-│   ├── main.py          # 应用入口 + 中间件
-│   ├── dependencies.py  # 依赖注入
-│   └── routes/
-│       ├── cities.py        # 城市列表/对比/时间序列
-│       ├── cities_v2.py     # 城市数据/历史
-│       ├── analysis.py      # 企业/政府分析
-│       ├── forecast.py      # GDP 预测
-│       └── static.py        # 静态文件
-├── core/                 # 业务核心（纯逻辑，无 HTTP）
-│   ├── analyzer.py      # 评分基类
-│   ├── city_aggregation.py  # 城市聚合
-│   ├── forecaster.py    # 预测模型
-│   └── city_manager.py  # 城市数据访问
-├── analysis/             # 业务分析器（继承 BaseAnalyzer）
-│   ├── enterprise_analyzer_v3.py
-│   ├── government_analyzer.py
-│   ├── retail_location_analyzer.py
-│   └── sales_forecast_analyzer.py
-├── data/                 # 数据访问层
-│   └── city_data.py     # 8 城市综合数据（~10K 行）
-└── config/               # 后端配置加载
-
-frontend/
-├── index.html           # 单页应用（64KB，所有 JS/CSS 内联）
-└── favicon.ico          # 站点图标
-
-config/                   # 全局配置
-└── settings.py          # Pydantic Settings（环境变量加载）
-
-docs/                     # 详细文档
-tests/backend/            # pytest 单元测试
-screenshots/              # 浏览器测试输出
-scripts/                  # 辅助脚本（启动/停止/诊断）
-```
-
-## 4. 核心数据流
-
-### 4.1 企业选址分析
-
-```
-Client → POST /api/v1/analysis/enterprise/v3/{city}
-        ↓
-routes/cities.py::analyze_enterprise_v3
-        ↓
-analysis/enterprise_analyzer_v3.py::EnterpriseAnalyzerV3
-        ├─ 加载城市数据 (data/city_data.py)
-        ├─ 计算 12 个指标的归一化得分
-        ├─ 加权聚合 → 3 维度分（成本/供应/政策）
-        ├─ 加权聚合 → 总分 (0-100)
-        └─ 返回 JSON
-        ↓
-Client ← 200 OK
-        ├─ 总分
-        ├─ 3 维度明细
-        ├─ 12 指标明细
-        └─ 优化建议
-```
-
-### 4.2 GDP 预测
-
-```
-Client → GET /api/v1/forecast/gdp/{city}?forecast_years=5
-        ↓
-routes/cities.py::forecast_gdp
-        ↓
-core/forecaster.py::Forecaster
-        ├─ 取历史 N 年 GDP
-        ├─ 尝试 LinearRegression
-        │   └─ 失败 → 简单平均
-        ├─ 计算 95% 置信区间（残差标准差 × 1.96）
-        └─ 返回 {years, actual, forecast, lower, upper}
-        ↓
-Client ← 200 OK
-```
-
-### 4.3 多城市对比
-
-```
-Client → POST /api/v1/cities/compare  ["深圳","上海","北京"]
-        ↓
-routes/cities.py::compare_cities
-        ├─ 解析 city_codes（兼容简单数组）
-        ├─ 拉取每城市指标
-        ├─ core/city_aggregation.py::compare_cities
-        │   ├─ 排名计算
-        │   └─ 洞察生成（规则引擎）
-        └─ 返回 {cities, rankings, insights}
-        ↓
-Client ← 200 OK
-        ├─ 前端 ECharts 渲染时序图
-        ├─ ECharts 渲染热力图
-        └─ DOM 渲染对比表
-```
-
-## 5. 关键技术决策
+## 2 · Tech decisions / 关键技术决策
 
 | 决策 | 替代方案 | 选择理由 |
 |------|---------|---------|
-| 单 HTML + CDN | Vue 3 + Vite | 零构建依赖、即开即用、容器化更小 |
-| FastAPI | Flask / Django | 自动 OpenAPI、类型注解、Pydantic 集成 |
-| ECharts 5.4 | Chart.js / D3 | 中文文档完善、置信区间/雷达/热力图原生支持 |
-| SQLite | PostgreSQL | 8 城市数据集硬编码足够，无需 DB |
-| 内存缓存 | Redis | 延迟 < 1ms，零运维 |
-| Pydantic Settings | python-decouple | 类型安全、IDE 提示、自动 .env 加载 |
+| **单 HTML + CDN** | Vue 3 + Vite | 零构建依赖、即开即用、容器化更小 |
+| **FastAPI + Pydantic v2** | Flask / Django | 自动 OpenAPI、类型注解、依赖注入 |
+| **ECharts 5.6** | Chart.js / D3 | 中文文档完善、置信区间/雷达/热力图原生支持 |
+| **In-memory data** | PostgreSQL | 10 城硬编码 1920 数据点 + 4 宏观 = 满足需求,延迟 < 1ms,零运维 |
+| **Pydantic Settings** | python-decouple | 类型安全、IDE 提示、自动 `.env` 加载 |
+| **LiteLLM** | 直接调 SDK | 统一 OpenAI / Claude / Ollama / 百炼,fallback chain 简单 |
+| **Typer + Rich** | argparse | v9.0 CLI:3 输出格式 + 错误处理 + 退出码 + auto-completion |
+| **SSE 文本流** | WebSocket | v9.1 chat stream:单向、HTTP 友好、CDN 代理不破坏 |
 
-## 6. 扩展点
+---
 
-### 6.1 新增分析场景
+## 3 · Project layout / 目录结构
 
-1. 在 `backend/analysis/` 创建 `*_analyzer.py`，继承 `BaseAnalyzer`
-2. 在 `backend/api/routes/` 注册路由
-3. 在 `frontend/index.html` 添加 Tab + 渲染函数
-4. 在 `tests/backend/test_analysis.py` 添加用例
+```
+backend/
+  api/                  FastAPI 路由层（HTTP 边界）
+    main.py             应用入口 + 中间件 + StaticFiles mount /console/
+    admin_store.py      v9.1 HistoryStore(deque+Lock)+ ConfigStore(Lock+frozen swap)
+    routes/
+      admin.py          v9.1 8 admin endpoint(/tools /history /config /chat + SSE)
+      cities.py / cities_v2.py / analysis.py / forecast.py / static.py
+      data.py           /api/v1/data/*  (legacy 12)
+      scenarios.py      /api/v1/scenarios/*  (4)
+      data_lineage.py   /api/v1/lineage/*  (5)
+      investment.py     /api/v1/investment/*  (7)
+    schemas.py          Pydantic v2 request/response models
+    deps.py             依赖注入 (auth / rate-limit)
+  ai/                   v7.0+ LLM Agent
+    config.py / llm_client.py   LiteLLM 包装
+    tool_registry.py / tool_executor.py   9 tool dispatch
+    chat_service.py     同步 + 流式 chat
+    trace.py            v8.0 Step + TraceStore
+    fallback.py         v8.0 5 模型降级链
+    parallel_tools.py   v8.0 ThreadPoolExecutor + 异常隔离
+    retry.py            v8.0 7 类白名单 + 反射
+  analysis/             业务分析器
+    enterprise_analyzer_v3.py / government_analyzer.py
+    retail_location_analyzer.py / sales_forecast_analyzer.py
+  core/                 业务核心
+    forecast_engine.py  v6.0 投资级 forecast 流水线
+    risk_engine.py      v6.0 VaR/CVaR/GARCH/scenarios/Monte Carlo
+    engine_stack.py     v6.1 运行时库探测 + 自动 fallback
+    explainability.py / ensemble.py / scorable.py
+  data/                 数据访问
+    historical_extended.py  v6.0 10 城 × 12 指标 × 16 年 + provenance
+    macro_data.py           v6.0 4 宏观协变量 (2010-2025)
+    cities/cities.yaml      canonical 城市列表
+    city_data.py            legacy 兼容层
+  data_collection/      akshare / NBS / finance / industry 采集器
+  data_processing/      cleaner / transformer / validator
+  ml/                   model registry + trainer
+  models/               Pydantic schemas
+  retail_location/      零售场景
+  sales_forecast/       销售场景
+  utils/                safe model loader / report generator / visualizer
 
-### 6.2 新增城市
+cli/                    v9.0 Typer CLI(11 子命令 + 3 输出格式)
+  main.py               Typer app + Rich 表格 + 错误处理
 
-1. 在 `backend/data/city_data.py` 添加数据集
-2. 在 `backend/core/city_manager.py` 注册
-3. 在 `frontend/index.html` 的 `populateCitySelects` 自动读取
+rca/                    v9.0 Python SDK
+  __init__.py           完整 re-export 9 tool + chat + chat_stream + RCAClient + 4 错误类
+  _config.py            SDK 独立的 LLM config 加载
+  _errors.py            4 错误类
+  _resolve.py           scope/name/indicator 解析
+  client.py             RCAClient 高层 API
+  tools.py              9 tool wrapper
+  chat.py               chat / chat_stream
+  _formatters.py        rich / plain / json 格式化器
 
-### 6.3 接入数据库
+config/                 全局配置
+  settings.py           Pydantic Settings
+  industries.yaml / regions.yaml
 
-1. 在 `backend/data/` 创建 `db_client.py`（SQLAlchemy）
-2. 修改 `city_manager.py` 替换内存数据源
-3. 添加 `DATABASE_URL` 到 `.env.example`
+data/cities/            城市数据集
+  cities.yaml           10 城清单
+  *.yaml                per-city 数据
 
-## 7. 性能特征
+frontend/
+  index.html            投资 dashboard(只读,Plan: Phase 3 改展示站)
+  favicon.ico
+  console/              v9.1 Web Console
+    index.html          Dashboard 页(6 metric + 9 tool 卡片 + 5 历史)
+    chat.html           SSE 流式 chat
+    settings.html       GET/PUT config 表单
+    history.html        列表 + tool 过滤
+    tool/               9 个 tool 独立页
+      forecast.html / diagnostics.html / backtest.html
+      risk.html / scenarios.html / monte-carlo.html
+      data-provenance.html / macro-data.html / list-cities.html
+    js/                 4 JS helper
+      api.js            rcaFetch 包装 8 endpoint + SSE 解析
+      form-helpers.js   populateCityDatalist / formToDict / toast / escapeHtml
+      chart.js          7 ECharts helper
+      sidebar.js        共享侧栏 + 自动高亮
+    css/console.css     完整继承 index.html design tokens
+
+docs/                   详细文档
+  CONSOLE_GUIDE.md      v9.1 Web Console 用户指南
+  SDK_CLI_GUIDE.md      v9.0 Python SDK + CLI 用户指南
+  METHODOLOGY.md        投资级方法学 §1-10
+  AI_MODEL_REGISTRY.md  25 个百炼模型
+  CONFIG_GUIDE.md / DEMO_GUIDE.md / EXAMPLE_ANALYSIS.md
+  superpowers/
+    specs/2026-06-05-v90-sdk-cli-design.md
+    specs/2026-06-05-v91-web-console-design.md
+    plans/2026-06-05-v90-sdk-cli.md
+    plans/2026-06-05-v91-web-console.md
+
+tests/
+  backend/              pytest 单元 + 集成
+  cli/                  v9.0 CLI 18 测试
+  api/                  v9.0 + v9.1 admin 36 测试
+  rca/                  v9.0 SDK 36 测试
+  eval/                 v8.0 真 LLM 跑分
+  fuzz/                 hypothesis property-based fuzz
+
+scripts/                dev utilities + legacy demos
+```
+
+---
+
+## 4 · Core data flow
+
+### 4.1 Web Console tool call (v9.1)
+
+```
+Browser /console/tool/forecast.html
+  ↓ submit form
+  RCA.api.runTool("get_forecast", {scope, name, indicator, years})
+  ↓ fetch POST /api/v1/admin/tools/get_forecast/run
+  backend.api.routes.admin::run_tool
+    ├─ _resolve_tool_func("get_forecast")  ← 动态 getattr(rca.tools, "forecast")
+    ├─ try: func(**payload) → result
+    ├─ _summarize(result)  ← result_summary 摘要存 history
+    └─ HistoryStore.add(QueryRecord{...})  ← deque(maxlen=1000) + Lock
+  ↓ return {data, duration_ms, id}
+Browser ← setOption({...}) ← ECharts 渲染
+```
+
+### 4.2 SDK call (v9.0)
+
+```
+import rca
+rca.forecast(scope="city", name="shenzhen", indicator="gdp", years=5)
+  ↓
+rca._resolve.resolve_city("shenzhen") → ("city", "深圳")
+  ↓
+rca.tools.forecast(scope, name, indicator, years)
+  ↓
+backend.core.forecast_engine.forecast_full_pipeline(...)
+  ├─ run_ensemble(values)         # 3 模型集成
+  ├─ run_diagnostics(residuals)   # 5 项
+  ├─ run_backtest(values)         # walk-forward
+  ├─ run_risk(returns)            # VaR/CVaR/GARCH
+  └─ return {data: {...}}  ← packed
+  ↓
+rca._formatters.format(result, "rich")   ← CLI 用
+return dict                                       ← SDK 用
+```
+
+### 4.3 LLM Agent chat (v7.0+ → v8.0 → v9.1)
+
+```
+User: "深圳 GDP 走势如何?"
+  ↓
+rca.chat(session_id="u1", message=...)
+  ↓
+backend.ai.chat_service.chat(cfg, session_id, message)
+  ↓
+  run_with_fallback(base_cfg, ...)                ← v8.0
+  ├─ try qwen-max
+  │   └─ LLMClient.call(messages, tools=9) → tool_call: get_forecast
+  │       └─ ParallelTools.execute(tool_call)   ← v8.0
+  │           └─ backend.core.forecast_engine.forecast(...)
+  │       └─ LLMClient.call(messages + tool_result) → final text
+  ├─ on 401/403/404: raise (immediately)
+  └─ on timeout/429: fallback next model
+  ↓
+  return {content, tool_calls[], trace, usage}
+```
+
+### 4.4 SSE chat stream (v9.1)
+
+```
+Browser /console/chat.html
+  ↓ fetch GET /api/v1/admin/chat/stream?session_id=...&message=...
+backend.api.routes.admin::chat_stream
+  ↓ StreamingResponse(generator, media_type="text/event-stream")
+  for event in chat_service.chat_stream(cfg, session_id, message):
+    yield f"data: {json.dumps(event)}\n\n"
+  ↓
+Browser RCA.api.streamChat() parses:
+  - {type: "thinking"}    → status bar "思考中…"
+  - {type: "tool_call"}   → status "调 tool: ..."
+  - {type: "token"}       → textContent += content
+  - {type: "tool_result"} → status "tool 返回"
+  - {type: "final"}       → status "就绪"
+  - {type: "error"}       → render error
+```
+
+---
+
+## 5 · 4 entry points — 共享数据 / 共享 API
+
+| 入口 | 触发方式 | 数据来源 | 适合 |
+|------|----------|----------|------|
+| **Web Dashboard** | 浏览器 `/` | `frontend/index.html` 直接拉 `/api/v1/investment/*` + `/api/v1/lineage/*` | 看投资级图表(只读) |
+| **Web Console v9.1** | 浏览器 `/console/` | 13 静态 HTML + `RCA.api.*` 打 `/api/v1/admin/*` | 零代码跑 9 tool + chat + 改配置 + 看历史 |
+| **Python SDK v9.0** | `import rca; rca.forecast(...)` | `rca.tools.forecast` → `backend.core.forecast_engine.forecast_full_pipeline` | 写代码 / 集成 |
+| **CLI v9.0** | `rca forecast --city shenzhen ...` | `cli/main.py` Typer → `rca.tools.*` → `rca._formatters.format(...)` | shell / cron / 脚本 |
+
+**重要**:4 个入口**完全打同一个后端**。Web Console 改的 LLM 配置(Dashboard 不存持久化)是 in-memory ring buffer,后端重启后回到 env var 默认。SDK/CLI 是 stateless,每次调起都读 env var。
+
+---
+
+## 6 · Extension points / 扩展点
+
+### 6.1 Add a new tool to Console (v9.1)
+
+1. 写 tool 函数到 `rca/tools.py`(或 `backend/ai/tool_executor.py`)
+2. 在 `backend/api/routes/admin.py` `_TOOL_META` 加 metadata + `_TOOL_FUNC_NAMES` 加 mapping
+3. 在 `frontend/console/tool/<name>.html` 写可视化页
+4. 写测试:`tests/api/test_admin.py` 加 dispatch case
+5. 重启后端即可,自动出现在 Console Dashboard 卡片网格
+
+### 6.2 Add a city (v6.0+)
+
+1. `data/cities/<city_en>.yaml` 添加数据集(参照其它城市格式)
+2. `data/cities/cities.yaml` 注册城市
+3. `scripts/regen_cities_yaml.py` 重生成
+4. 重启后端,自动出现在 `/console/tool/list-cities.html`
+
+### 6.3 Add a new LLM model to fallback chain (v8.0+)
+
+1. `backend/ai/fallback.py` `_DEFAULT_FALLBACK_CHAIN` 加 model id
+2. `docs/AI_MODEL_REGISTRY.md` 加 metadata(25 个已注册)
+3. `tests/api/test_admin.py` 验证 `updateConfig` 接受新 model
+
+### 6.4 Add a new analyzer (v3.0+ 模式)
+
+1. `backend/analysis/<scenario>_analyzer.py` 继承 `BaseAnalyzer`
+2. `backend/api/routes/` 注册 endpoint
+3. `tests/backend/test_analysis.py` 加用例
+
+### 6.5 Add a new LLM tool call (v7.0+)
+
+1. `backend/ai/tool_executor.py` 加 tool wrapper(签名/参数 JSON schema)
+2. `rca/tools.py` 加 SDK 包装
+3. `cli/main.py` 加 Typer 子命令
+4. `tests/rca/test_tools.py` + `tests/cli/test_main.py` 加 case
+
+---
+
+## 7 · Performance / 性能特征
 
 | 端点 | 平均响应 | P99 | 备注 |
 |------|--------|-----|------|
 | `/health` | 2ms | 5ms | 内存读取 |
-| `/api/v1/cities/list` | 8ms | 15ms | 8 城市硬编码 |
-| `/api/v1/analysis/enterprise/v3/{city}` | 35ms | 80ms | 12 指标计算 |
-| `/api/v1/forecast/gdp/{city}` | 50ms | 120ms | sklearn LR |
-| `/api/v1/cities/compare` (8 城市) | 110ms | 250ms | 聚合 + 排名 |
+| `/api/v1/admin/tools` | 5ms | 10ms | 9 tool metadata |
+| `/api/v1/admin/tools/{name}/run`(forecast) | 1.2s | 3s | 3 模型集成 + 5 诊断 |
+| `/api/v1/admin/tools/{name}/run`(backtest) | 0.6s | 1.5s | walk-forward |
+| `/api/v1/admin/tools/{name}/run`(risk) | 0.4s | 1s | VaR/CVaR/GARCH |
+| `/api/v1/admin/tools/{name}/run`(monte_carlo) | 4s | 10s | 1000 iter bootstrap |
+| `/api/v1/admin/history` | 2ms | 5ms | 1000 条 ring buffer |
+| `/api/v1/admin/config` GET/PUT | 1ms | 3ms | Lock + frozen swap |
+| `/api/v1/admin/chat/stream` | 5-30s | 60s | 取决于 LLM |
+| `/console/index.html` | 200ms | 500ms | CDN 拉 ECharts |
+| `/console/tool/*.html` | 150ms | 400ms | 静态 HTML + 1 ECharts |
 
-## 8. 安全模型
+---
 
-- **CORS**: 默认白名单模式（`CORS_ORIGINS` 环境变量）
-- **XSS**: 前端所有用户输入通过 `esc()` 转义；`innerHTML` 仅用于可信静态字符串
-- **CSRF**: 纯 GET 端点为主，POST 端点无副作用
-- **认证**: 当前版本无认证（公开 API），生产部署建议加 JWT（代码已预留）
-- **模型签名**: 加载的 ML 模型使用 HMAC-SHA256 签名校验
+## 8 · Security / 安全模型
 
-## 9. 部署架构
+- **CORS**: 默认白名单模式(`CORS_ORIGINS` 环境变量)
+- **XSS**: Console 所有用户输入通过 `escapeHtml` 转义;`textContent` 优先,`innerHTML` 仅用于可信静态字符串
+- **CSRF**: `/api/v1/admin/config` PUT 用 `SameSite=Strict` cookie(将来)
+- **认证**: Web Console (`/console/`) 假定 trusted 私有部署,**没有内置认证**;生产环境必须在 nginx 层套 basic auth 或反向代理加 SSO
+- **SSE Origin**: 强制 same-origin(防 cross-origin 拉取)
+- **History ring buffer**: 1000 条 maxlen,自动丢弃旧的(防 DoS)
+- **AIConfig frozen + Lock**: 配置改动构造新 frozen 对象,Lock 串行化,杜绝 hot-swap race
+- **模型签名**: 加载的 ML 模型使用 HMAC-SHA256 签名校验(不引入第三方)
+- **Env 隔离**: SDK (`rca._config.load_config`) 读 env var,**不** 改;Web Console 改的是后端 in-memory,SDK 不感知
+
+---
+
+## 9 · Deployment / 部署架构
 
 详见 [DEPLOYMENT.md](DEPLOYMENT.md)。
 
-## Backend
+- **Docker compose** — 单容器
+- **Systemd** — 裸 Python 进程
+- **Kubernetes** — 多副本 + ingress
+- **Web Console** — 同后端 single process,无需单独 frontend server
 
-FastAPI app split into **routers → services → data + engines**.
+---
 
-```
-backend/
-├── api/
-│   ├── main.py            # FastAPI app, CORS, /health, exception handlers
-│   ├── routes/
-│   │   ├── data.py            # /api/v1/data/*        (legacy 12 endpoints)
-│   │   ├── scenarios.py       # /api/v1/scenarios/*   (4 endpoint groups)
-│   │   ├── data_lineage.py    # /api/v1/lineage/*     (5 endpoints)
-│   │   └── investment.py      # /api/v1/investment/*  (7 endpoints)
-│   ├── schemas.py             # Pydantic v2 request/response models
-│   └── deps.py                # dependency injection (auth, rate-limit)
-├── core/
-│   ├── forecast_engine.py     # investment-grade forecast pipeline
-│   ├── risk_engine.py         # VaR/CVaR/GARCH/scenarios/Monte Carlo
-│   ├── engine_stack.py        # runtime library detection (NEW v6.1.0)
-│   ├── explainability.py      # SHAP / permutation importance
-│   ├── ensemble.py            # model stacking
-│   └── scorable.py            # pluggable scoring functions
-├── data/
-│   ├── historical_extended.py # 10 城 × 12 指标 × 16 年 (1920 数据点) + provenance
-│   ├── macro_data.py          # 4 宏观协变量 (2010-2025)
-│   ├── cities/cities.yaml     # canonical city list (v4.0+)
-│   └── city_data.py           # legacy compatibility shim
-└── utils/
-    ├── numbers.py             # rounding / format helpers
-    └── time.py                # business-day calendar
-```
-
-### Engine stack (v6.1.0+)
-
-[`backend/core/engine_stack.py`](backend/core/engine_stack.py) provides
-runtime detection of optional libraries:
-
-| Library | Use | Loaded in |
-|---|---|---|
-| `statsforecast` (nixtla) | AutoARIMA + multi-seasonal | Docker image only |
-| `arch` (bashtage) | GARCH(1,1) volatility | Docker image only |
-| `pmdarima` (alkaline-ml) | `auto_arima` fallback | Docker image only |
-| `prophet` (facebook) | holidays + seasonality | optional, not used |
-
-The `auto_arima_native()` function in `forecast_engine.py` walks
-`statsforecast → pmdarima → statsmodels` priority; `garch_volatility()`
-in `risk_engine.py` uses `arch` if available, otherwise falls back to
-rolling std. Every API response carries a `"backend"` field so the
-frontend can show which engine is currently active.  See
-[docs/METHODOLOGY.md §10](docs/METHODOLOGY.md) for full details.
+**Last updated**: 2026-06-05
+**See also**: [README.md](README.md) · [QUICKSTART.md](QUICKSTART.md) · [docs/METHODOLOGY.md](docs/METHODOLOGY.md) · [docs/CONSOLE_GUIDE.md](docs/CONSOLE_GUIDE.md) · [docs/SDK_CLI_GUIDE.md](docs/SDK_CLI_GUIDE.md)

@@ -1,36 +1,77 @@
 # Roadmap / 路线图
 
-This document outlines the high-level direction of the **Regional Industrial Economic Analysis Platform**.
+> **Current version**: v9.1.0 (2026-06)
+> **Release cadence**: 季度大版本 + 持续小补丁
 
-We follow a quarterly release cadence. Dates below are indicative and may shift.
+This document outlines the high-level direction of the **Regional Economic Analysis Agent** —
+production-grade multi-scenario analytics with self-developed LLM agent and 3 entry points
+(Web Dashboard / Python SDK / CLI / **Web Console**).
 
 ---
 
-## v7.0.0 (Released 2026-06) ✅ Current — AI chat assistant
+## v9.1.0 (2026-06) ✅ **Current — Web Console**
 
 ### Headline features
-- 🤖 LLM 对话助手(LiteLLM 统一 OpenAI/Claude/Ollama)
+- 🌐 **Web Console** `/console/` — 零代码、零安装浏览器管理界面
+  - 9 项 tool 可视化(ensemble / diagnostics / backtest / risk / scenarios / MC / provenance / macro / cities)
+  - LLM Agent 流式 chat(SSE)
+  - 在线改 LLM 配置(model / base_url / temperature / max_tokens / max_tool_rounds / timeout)
+  - 历史 1000 条 ring buffer + tool 过滤 + 清空
+- 🛠 后端 8 个 admin endpoint (`/api/v1/admin/*`) + `HistoryStore` + `ConfigStore`(thread-safe)
+- 🎨 13 个静态 HTML + 4 JS helper + 1 CSS(零 build step,继承 `index.html` design tokens)
+- 🐛 修 4 处前端/后端字段不匹配漏洞(diagnostics.tests / ensemble.ci / backtest.metrics / monte_carlo.quantiles)
+- 🧪 +82 测试(370 → 452 pass)
+- 📚 `docs/CONSOLE_GUIDE.md`(257 行用户指南)
+
+---
+
+## v9.0.0 (2026-06) ✅ — Python SDK + CLI
+
+### Headline features
+- 🐍 **Python SDK `rca` 包** — 9 tool + chat + chat_stream + RCAClient + 4 错误类,完整 re-export
+- 🖥 **CLI `rca` 命令** — 11 Typer 子命令(9 tool + chat + chat-stream + config)
+- 📤 **3 输出格式** — `rich` / `plain` / `json`
+- 🔧 **`rca config`** — 在线查/改 LLM 配置(set / show)
+- 🐛 修 `--model` / `--base-url` show-only 漏洞(2 个回归 test)
+- 🧪 +66 测试(304 → 370 pass)
+- 📚 `docs/SDK_CLI_GUIDE.md`(完整用户指南)
+- ⚙️ `pyproject.toml` 加 `rca = "cli.main:app"` entry point
+
+---
+
+## v8.0.0 (2026-06) ✅ — Self-developed LLM Agent + Eval
+
+### Headline features
+- 🧠 **4 个自研模块**(不引 LangGraph / Pydantic AI):
+  - `Trace` — 完整审计 + SSE `done` 事件含 `trace: [...]`
+  - `Fallback` — 5 个百炼模型自动降级,401/403/404 立即抛,超时/429 降级
+  - `Parallel tools` — `ThreadPoolExecutor` + 异常隔离 + 单 tool 超时
+  - `Retry hint` — 7 类白名单 + 反射 prompt
+- 📊 **Eval 框架** — 10 个真实业务 query 跑分(6 维度评分 + case 对比)
+
+---
+
+## v7.0.0 (2026-06) ✅ — AI chat assistant
+
+### Headline features
+- 🤖 LLM 对话助手(LiteLLM 统一 OpenAI / Claude / Ollama)
 - 🛠 9 个 tool(Function Calling 自动路由到现有 API)
 - 💬 浮动 chat widget(SSE 流式 + 打字机)
 - 🔄 双模式可切换(云端 API ↔ 本地 Ollama)
-- 🧪 14 新测试(277 总 → 291 总)
 
 ---
 
-## v6.1.0 (Released 2026-06) ✅ Docker investment-grade engine stack
+## v6.1.0 (2026-06) ✅ — Docker investment-grade engine stack
 
 ### Headline features
 - 🐳 **Docker 投资级引擎栈**:`statsforecast` / `arch` / `pmdarima` 预装
 - ⚙️ **`backend/core/engine_stack.py`** — 运行时库探测模块,自动 fallback
 - 🚀 `auto_arima_native()` — AutoARIMA 路径(statsforecast > pmdarima > statsmodels)
 - 📈 `garch_volatility()` — GARCH(1,1) 条件波动率 + 持续性 + 半衰期
-- 📊 所有 investment / risk API 输出加 `"backend"` 字段
-- 📚 `docs/METHODOLOGY.md` §10 — Docker 部署与引擎探测
-- 🧪 273 后端测试通过(263 + 10 新 engine_stack)
 
 ---
 
-## v6.0.0 (Released 2026-06) ✅ Investment-grade forecasting platform
+## v6.0.0 (2026-06) ✅ — Investment-grade forecasting platform
 
 ### Headline features
 - 📊 **10 城 × 12 指标 × 16 年** 真实公开数据(1920 数据点)
@@ -43,122 +84,68 @@ We follow a quarterly release cadence. Dates below are indicative and may shift.
 - 🕵️ **数据血缘**:每条数据带 source URL + confidence + estimated flag
 - 🌐 **7 个新投资端点**(`/api/v1/investment/*`)+ **5 个血缘端点**(`/api/v1/lineage/*`)
 - 📊 `frontend/investment_grade.html` — 投资决策级 dashboard
-- 📚 `docs/METHODOLOGY.md` — 9 章节完整方法学
-- 🏆 深圳 GDP 16 年实测:MAPE 0.40% / MASE 0.07 / Coverage 100%
 
 ---
 
-## v4.0.0 (Released 2026-06)
+## v9.2.0 (Target: 2026-07) 📋 **Next**
 
-### Headline features
-- 🏙️ 10-city economic dataset
-- 📊 4 analysis scenarios (enterprise / retail / sales / government)
-- 🚀 70+ REST API endpoints
-- 🎨 Zero-build web UI (HTML + Tailwind CDN + ECharts CDN)
-- 🐳 Production-ready Docker deployment
-- 🧪 159 backend tests passing
-- 📚 Comprehensive documentation (README, ARCHITECTURE, DEPLOYMENT, API, FAQ)
-- 🛡️ Security hardening (CORS, XSS, ARIA, secrets)
-- 🤖 GitHub Actions CI (lint + test)
-- 🐙 Dependabot auto-updates
-- 📝 Full open-source compliance (LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, etc.)
+### 🎯 Theme: Console 增强 + Phase 3 展示站
 
----
+- [ ] **GitHub Pages 改展示站** — `frontend/index.html` 改成 RCA 介绍 marketing 站(功能 / demo 截图 / 文档链接 / 引导到 Console)
+- [ ] **Console 用户认证** — Web Console 加 basic auth 套件 / 集成 OAuth(配合 nginx)
+- [ ] **Console 导出** — 单 tool 结果导出 CSV / PNG / PDF
+- [ ] **Console 主题切换** — light / dark 模式
+- [ ] **Console 国际化** — zh-CN / en-US toggle
 
-## v4.1.0 (Target: 2026-08) 🔨 In progress
-
-### 🎯 Theme: Data accuracy & data-source integrations
-
-- [ ] **Real-data connectors**: Wind / 同花顺 / NBS / CEIC plug-in interface
-- [ ] **Automated data refresh**: cron + GitHub Actions scheduled jobs
-- [x] **Data lineage tracking**: track every data point back to its source
-      (已交付: `backend/api/routes/data_lineage.py` + `provenance` 字段)
-- [ ] **Anomaly detection**: flag outlier values during ingestion
-- [ ] **Bilingual data labels**: zh-CN / en-US toggle for all metrics
-- [ ] **Per-city data-quality dashboard**
-- [ ] **5 new cities**: 苏州工业园 / 重庆 / 长沙 / 青岛 / 宁波
-
-### Performance
-- [ ] Response-time SLA dashboards
-- [ ] Query-result cache (Redis adapter)
-
-### Documentation
-- [ ] Tutorials in `docs/tutorials/`
-- [ ] English translation of all `.md` files (currently bilingual)
-
----
-
-## v4.2.0 (Target: 2026-10) 📋 Planned
-
-### 🎯 Theme: Advanced analytics & ML
-
-- [ ] **Prophet** integration for time-series forecasting
-- [ ] **XGBoost / LightGBM** for non-linear scoring
-- [ ] **SHAP values** for model interpretability
-- [ ] **Clustering analysis**: group cities by similarity
-- [ ] **Sensitivity analysis**: how do score changes when weights change?
-- [ ] **Scenario simulation**: "What if I open 5 stores in city X?"
-- [ ] **Geo-spatial analysis**: Leaflet / Mapbox integration with city coordinates
-- [ ] **Custom model upload**: users can upload their own ML model
-
-### Frontend
-- [ ] **Interactive map view** of all cities with metrics overlay
-- [ ] **Scenario builder** UI (drag-and-drop weights)
-- [ ] **Saved scenarios / share via URL**
+### Console 健壮性
+- [ ] history 持久化(可选 SQLite 替代 ring buffer)
+- [ ] tool result 缓存(避免重跑相同 query)
+- [ ] LLM chat WebSocket(替代 SSE,支持双向)
 
 ### Quality
-- [ ] Achieve 90 % test coverage
-- [ ] Type checking with mypy strict mode
-- [ ] OpenSSF Scorecard 8+ score
+- [ ] Console 前端单测(Playwright)
+- [ ] Console 无障碍(ARIA roles)
+- [ ] Console 性能:Lighthouse 90+
 
 ---
 
-## v4.3.0 (Target: 2026-12) 📋 Planned
+## v9.3.0 (Target: 2026-08) 📋 Planned
 
-### 🎯 Theme: Multi-tenancy & permissions
+### 🎯 Theme: 数据采集 + 第三方集成
 
-- [ ] **User accounts**: registration / login / password reset
-- [ ] **Roles**: admin / analyst / viewer
-- [ ] **Organisations**: multi-tenant workspace
-- [ ] **API key management** for external integrations
-- [ ] **Audit log**: who did what, when
-- [ ] **Per-organisation data isolation**
+- [ ] **Wind / 同花顺** 数据连接器
+- [ ] **NBS / CEIC** 公开数据 cron 自动刷新
+- [ ] **Anomaly detection** — 数据接入时 flag 异常值
+- [ ] **5 个新城市**:苏州 / 重庆 / 长沙 / 青岛 / 宁波
+- [ ] **Bilingual labels** — zh-CN / en-US toggle
 
-### Integrations
-- [ ] Slack / DingTalk / WeCom notifications
-- [ ] Webhook subscriptions
-- [ ] Email reports (weekly digest)
-- [ ] OpenAPI client SDKs (Python, TS, Java) published to package registries
+### Performance
+- [ ] Redis 适配器(查询结果缓存)
+- [ ] Response-time SLA dashboard
 
 ---
 
-## v5.0.0 (Target: 2027-03) 🔭 Vision
+## v10.0.0 (Target: 2026-10) 🔭 Vision
 
-### 🎯 Theme: Real-time & streaming
+### 🎯 Theme: Multi-tenancy & 实时
 
-- [ ] **Streaming analytics**: Apache Kafka / Pulsar input
-- [ ] **WebSocket-based real-time dashboards**
-- [ ] **Live forecast updates** as new data arrives
-- [ ] **Edge deployment**: K3s / lightweight K8s for on-premise
-- [ ] **GraphQL API** alongside REST
-- [ ] **Mobile app** (iOS / Android via React Native)
-- [ ] **Voice / chat interface** (LLM-powered natural-language queries)
-
-### Architecture
-- [ ] Migrate to **microservices** (data / analysis / presentation tiers)
-- [ ] Event-driven architecture (CQRS + Event Sourcing)
-- [ ] Service mesh (Istio / Linkerd)
-- [ ] **Multi-region** active-active deployment
+- [ ] **User accounts / roles / orgs** — 多租户 + 权限
+- [ ] **API key management** 外部集成
+- [ ] **Audit log** — 谁在何时做了什么
+- [ ] **WebSocket** 实时推送(forecast 更新)
+- [ ] **Streaming analytics** — Kafka / Pulsar 接入
+- [ ] **Mobile app** — React Native
+- [ ] **GraphQL API** 与 REST 并行
 
 ---
 
-## Long-term vision (2027+)
+## Long-term vision (2026 Q4+)
 
-- 🌐 **Open data marketplace** — share derived datasets back to the community
-- 🏆 **Industry benchmarks** — community-contributed scoring rubrics
-- 🤝 **Partner ecosystem** — third-party plugins / themes
-- 🎓 **Education edition** — sandboxed environment for students
-- 📱 **Mobile-first redesign** of the dashboard
+- 🌐 **Open data marketplace** — 分享 derived datasets
+- 🏆 **Industry benchmarks** — 社区贡献的评分标准
+- 🤝 **Partner ecosystem** — 第三方 plugin / theme
+- 🎓 **Education edition** — 学生沙箱环境
+- 🏢 **Enterprise edition** — SSO / RBAC / 审计
 
 ---
 
@@ -177,40 +164,13 @@ If you need any of these, please build on top of our public API.
 
 ## Contributing to the roadmap / 参与规划
 
-We welcome community input on the roadmap!
-
 - 💭 **Open a Discussion** in the `roadmap` category
 - 🗳️ **Vote on existing proposals** with 👍 / 👎 reactions
-- 📝 **Submit a Feature Request** issue (use the `feature_request` template)
-- 🤝 **Maintainer nomination** for a topic area you specialise in
-
-Major decisions are made by the **maintainer team** quarterly. Minor decisions
-are continuously triaged in GitHub Issues.
+- 📝 **Submit a Feature Request** issue
+- 🤝 **Maintainer nomination** for a topic area
 
 ---
 
-## Release process / 发布流程
-
-1. **Sprint planning** (week 0)
-   - Triage all open issues
-   - Pick 5–10 issues for the sprint
-2. **Development** (week 1–10)
-   - PRs against `main`
-   - Daily CI runs
-3. **Pre-release testing** (week 11)
-   - Tag `vX.Y.Z-rc.1`
-   - Community testing
-4. **Release** (week 12)
-   - Tag `vX.Y.Z`
-   - Update CHANGELOG
-   - Publish GitHub Release
-   - Publish to PyPI (if applicable)
-5. **Post-release** (week 13)
-   - Hot-fix window for blockers
-   - Begin next sprint planning
-
----
-
-**Last updated**: 2026-06-04
-**Current version**: v6.1.0
-**Next review**: 2026-08 (v4.1.0 planning)
+**Last updated**: 2026-06-05
+**Current version**: v9.1.0
+**Next review**: 2026-07 (v9.2.0 planning)

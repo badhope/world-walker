@@ -1,8 +1,10 @@
 """并行 tool 执行:多个 tool_call 一次返回时,并行执行,顺序保持。"""
 
 import time
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from backend.ai.llm_client import ToolCall
 from backend.ai.parallel_tools import execute_tools_parallel
 

@@ -1,11 +1,13 @@
 """eval 框架单元测试 — 不跑真 LLM,只测 scorer/reporter/case loader。"""
 
 import json
-import pytest
 from pathlib import Path
-from tests.eval.scorer import score_case
-from tests.eval.reporter import save_report, save_comparison
+
+import pytest
+
+from tests.eval.reporter import save_comparison, save_report
 from tests.eval.run_eval import _load_cases
+from tests.eval.scorer import score_case
 
 
 def test_score_case_perfect_match():
@@ -81,3 +83,17 @@ def test_save_report_creates_file(tmp_path, monkeypatch):
     assert data["model"] == "test-model"
     assert data["summary"]["total_cases"] == 1
     assert data["cases"][0]["id"] == "r1"
+
+
+def test_main_exits_with_clear_error_when_no_api_key(monkeypatch, capsys):
+    """没 LLM_OPENAI_API_KEY 时 main() 返回 2 并打印明确指引(避免默默 fail)。"""
+    monkeypatch.delenv("LLM_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    from tests.eval.run_eval import main
+    monkeypatch.setattr("sys.argv", ["run_eval", "--model", "qwen-max", "--ids", "shenzhen-gdp-forecast-3y"])
+    rc = main()
+    assert rc == 2
+    captured = capsys.readouterr()
+    assert "API key" in captured.err
+    assert "LLM_OPENAI_API_KEY" in captured.err

@@ -16,7 +16,7 @@ from typing import Any
 
 from backend.ai import conversation
 from backend.ai.config import AIConfig
-from backend.ai.fallback import FatalLLMError, FallbackError, run_with_fallback
+from backend.ai.fallback import FallbackError, FatalLLMError, run_with_fallback
 from backend.ai.llm_client import LLMError
 from backend.ai.parallel_tools import execute_tools_parallel
 from backend.ai.prompts import SYSTEM_PROMPT
@@ -48,7 +48,7 @@ def chat(cfg: AIConfig, session_id: str, user_message: str) -> dict[str, Any]:
 
     try:
         for _ in range(cfg.max_tool_rounds + 1):
-            resp, _ = run_with_fallback(messages, TOOLS)
+            resp, _ = run_with_fallback(cfg, messages, TOOLS)
             tool_rounds += 1
 
             if not resp.tool_calls:
@@ -98,7 +98,7 @@ def chat(cfg: AIConfig, session_id: str, user_message: str) -> dict[str, Any]:
 
             if tool_rounds >= cfg.max_tool_rounds:
                 messages.append({"role": "user", "content": "请基于已有 tool 结果直接给最终答案,不要再调 tool。"})
-                resp2, _ = run_with_fallback(messages, TOOLS)
+                resp2, _ = run_with_fallback(cfg, messages, TOOLS)
                 content = resp2.content or "(问题过于复杂,无法在限定步数内回答)"
                 conversation.append_message(session_id, {"role": "user", "content": user_message})
                 conversation.append_message(session_id, {"role": "assistant", "content": content})
@@ -155,17 +155,25 @@ def chat_stream_with_trace(
     total_prompt_tokens = 0
     total_completion_tokens = 0
 
-    # cfg 可为 None(单测/未来 plugin 模式)— 缺省 5 轮
+    # cfg 可为 None(老 API routes 用 load_config)— 缺省 5 轮
     max_rounds = getattr(cfg, "max_tool_rounds", 5) if cfg is not None else 5
     tool_timeout = getattr(cfg, "tool_timeout_sec", 30) if cfg is not None else 30
     max_workers = getattr(cfg, "parallel_max_workers", 5) if cfg is not None else 5
+
+    # 当 cfg 为 None 时,fallback 仍需 base_cfg → 临时从 env 加载(老兼容)
+    # 当 cfg 显式传时,完全走 cfg 不读 env(新设计)
+    if cfg is None:
+        from backend.ai.config import load_config
+        base_cfg = load_config()
+    else:
+        base_cfg = cfg
 
     try:
         for _ in range(max_rounds + 1):
             # 1. LLM (带 fallback)
             t0 = time.perf_counter()
             try:
-                resp, used_model = run_with_fallback(messages, TOOLS)
+                resp, used_model = run_with_fallback(base_cfg, messages, TOOLS)
             except FatalLLMError as e:
                 trace.append(Step(round=0, type="llm_call", error=str(e),
                                   duration_ms=int((time.perf_counter()-t0)*1000)))
@@ -258,7 +266,7 @@ def chat_stream_with_trace(
             if tool_rounds >= max_rounds:
                 messages.append({"role": "user", "content": "请基于已有 tool 结果直接给最终答案,不要再调 tool。"})
                 try:
-                    resp2, used_model2 = run_with_fallback(messages, TOOLS)
+                    resp2, used_model2 = run_with_fallback(base_cfg, messages, TOOLS)
                     content = resp2.content or "(问题过于复杂,无法在限定步数内回答)"
                 except (FatalLLMError, FallbackError) as e:
                     content = f"(强制总结时 LLM 失败: {e})"

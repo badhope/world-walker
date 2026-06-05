@@ -1,10 +1,11 @@
 """反射重试:tool 失败时,构造 hint 消息让 LLM 改参数重试。"""
 
 import pytest
+
 from backend.ai.retry import (
     RETRYABLE_TOOL_ERRORS,
-    should_retry,
     build_retry_hint,
+    should_retry,
 )
 
 

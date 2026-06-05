@@ -71,9 +71,9 @@ def test_ai_chat_message_too_long():
 
 def test_ai_chat_stream_real_streaming(monkeypatch):
     """/chat/stream 端到端 — 验证真流式:incremental tokens + done 事件。"""
+    from backend.ai import chat_service
     from backend.api.main import app
     from backend.api.routes import ai as ai_route
-    from backend.ai import chat_service
 
     def fake_chat_stream_with_trace(cfg, session_id, user_message):
         yield {"type": "thinking"}
@@ -101,9 +101,9 @@ def test_ai_chat_stream_real_streaming(monkeypatch):
 
 def test_ai_chat_stream_emits_error(monkeypatch):
     """/chat/stream 在 LLM 错误时返 SSE error 事件(不抛 500)。"""
+    from backend.ai import chat_service
     from backend.api.main import app
     from backend.api.routes import ai as ai_route
-    from backend.ai import chat_service
 
     def fake_chat_stream_with_trace(cfg, session_id, user_message):
         yield {"type": "error", "message": "API key invalid"}

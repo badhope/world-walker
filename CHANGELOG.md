@@ -3,6 +3,34 @@
 Format: [Keep a Changelog](https://keepachangelog.com/).
 Versioning: [SemVer](https://semver.org/).
 
+## 8.0.0 — 2026-06-05
+
+### Added
+- **自研 agent 增强** — 4 个独立可组合模块,不引入 LangGraph/Pydantic AI:
+  - `backend/ai/trace.py` — `Step` + `TraceStore`(bounded deque),所有 LLM/tool/retry 步骤结构化记录
+  - `backend/ai/fallback.py` — `ModelEntry` + `run_with_fallback()` 多模型降级链,错误分类(fatal vs retryable)
+  - `backend/ai/parallel_tools.py` — `execute_tools_parallel()` 用 ThreadPoolExecutor,异常隔离 + 单 tool 超时
+  - `backend/ai/retry.py` — `should_retry()` + `build_retry_hint()` 反射重试(白名单 7 类可重试错误)
+- **AIConfig 新字段** — `fallback_chain: tuple[ModelEntry, ...]` + `tool_timeout_sec` + `parallel_max_workers`
+- **`chat_stream_with_trace` 重构** — 组合 4 模块,事件链 `thinking → tool_call → token → done`(done/error 含 trace)
+- **阿里百炼模型注册表** — `docs/AI_MODEL_REGISTRY.md`,含 25 个全功能模型 + 5 个 fallback 链
+- **Eval 框架** — `tests/eval/` 子包,支持真 LLM 跑分:
+  - `golden_cases.jsonl` — 10 个真实业务 query(覆盖 7 个投资类 + 3 个数据类 tool)
+  - `scorer.py` — 6 维度评分(tool 30 + args 20 + keywords 20 + latency 15 + fallback 10 + tokens 5)
+  - `reporter.py` — JSON + Markdown 报表,含 case 级别对比
+  - `run_eval.py` — CLI(`--model` / `--compare` / `--ids`),无 API key 时给清晰错误并 exit 2
+- **设计修复** — `run_with_fallback(base_cfg, ...)` 必填 base_cfg,**去掉内部 `load_config()`**(解耦 env vars,支持多租户/隔离环境)
+
+### Changed
+- `backend/ai/chat_service.py` — 4 模块组合 + 事件流 + 反射重试
+- `backend/ai/config.py` — `AIConfig` 加 3 字段(frozen=True,tuple for fallback_chain)
+- `backend/ai/llm_client.py` — 不变,但 env 双写(`LLM_OPENAI_API_KEY` + `OPENAI_API_KEY`)litellm 兼容
+
+### Tests
+- v8.0 新增 36 个测试:5 trace + 4 fallback + 4 parallel + 4 retry + 5 stream_v8 + 7 eval + 4 stream_trace(向后兼容)
+- **总测试:113 pass / 2 skip**(v7.1 76 + v8.0 37)
+- 真 LLM eval:`qwen-max` 80% pass(77.8 avg) / `deepseek-v3` 90% pass(74.4 avg),case 级别对比 + 胜出栏
+
 ## 7.1.0 — 2026-06-04
 
 ### Added

@@ -1,15 +1,31 @@
 """多模型 fallback 链:首选失败时降级到下一项。"""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
+from backend.ai.config import AIConfig
 from backend.ai.fallback import (
-    ModelEntry,
     DEFAULT_FALLBACK_CHAIN,
-    FatalLLMError,
     FallbackError,
-    run_with_fallback,
+    FatalLLMError,
+    ModelEntry,
     classify_error,
+    run_with_fallback,
 )
+
+
+def _base_cfg() -> AIConfig:
+    return AIConfig(
+        default_backend="openai",
+        active_backend="openai",
+        model="qwen-max",
+        temperature=0.3,
+        max_tokens=100,
+        timeout_sec=30,
+        max_tool_rounds=3,
+        available_backends=["openai"],
+    )
 
 
 def test_default_fallback_chain_has_five_models():
@@ -37,6 +53,7 @@ def test_run_with_fallback_first_model_succeeds():
     mock_resp.choices = [MagicMock()]
     with patch("backend.ai.llm_client.litellm.completion", return_value=mock_resp) as m:
         resp, used = run_with_fallback(
+            base_cfg=_base_cfg(),
             messages=[{"role": "user", "content": "hi"}],
             tools=None,
         )
@@ -60,6 +77,7 @@ def test_run_with_fallback_degrades_on_retryable_error():
 
     with patch("backend.ai.llm_client.litellm.completion", side_effect=fake_completion) as m:
         resp, used = run_with_fallback(
+            base_cfg=_base_cfg(),
             messages=[{"role": "user", "content": "hi"}],
             tools=None,
         )
@@ -72,7 +90,7 @@ def test_run_with_fallback_fatal_error_raises_immediately():
     """首选 401 → 立即抛 FatalLLMError,不降级。"""
     with patch("backend.ai.llm_client.litellm.completion", side_effect=Exception("401 unauthorized")):
         with pytest.raises(FatalLLMError):
-            run_with_fallback(messages=[{"role": "user", "content": "hi"}], tools=None)
+            run_with_fallback(base_cfg=_base_cfg(), messages=[{"role": "user", "content": "hi"}], tools=None)
 
 
 def test_run_with_fallback_chain_exhausted_raises():
@@ -82,7 +100,7 @@ def test_run_with_fallback_chain_exhausted_raises():
         side_effect=Exception("connection timeout"),
     ):
         with pytest.raises(FallbackError) as exc_info:
-            run_with_fallback(messages=[{"role": "user", "content": "hi"}], tools=None)
+            run_with_fallback(base_cfg=_base_cfg(), messages=[{"role": "user", "content": "hi"}], tools=None)
         # 异常信息含每项模型的错误
         msg = str(exc_info.value)
         assert "qwen-max" in msg
@@ -94,5 +112,30 @@ def test_run_with_fallback_custom_chain():
     custom = [ModelEntry("openai", "deepseek-v3", 0, "deepseek")]
     with patch("backend.ai.llm_client.litellm.completion", side_effect=Exception("timeout")):
         with pytest.raises(FallbackError) as exc_info:
-            run_with_fallback(messages=[{"role": "user", "content": "hi"}], tools=None, chain=custom)
+            run_with_fallback(
+                base_cfg=_base_cfg(),
+                messages=[{"role": "user", "content": "hi"}],
+                tools=None,
+                chain=custom,
+            )
         assert "deepseek-v3" in str(exc_info.value)
+
+
+def test_run_with_fallback_works_without_env_vars(monkeypatch):
+    """关键设计:run_with_fallback 不再依赖 env vars — 完全靠 base_cfg 跑。
+
+    这保证 eval / 测试 / 多租户配置可在隔离环境跑(不需要 export LLM_OPENAI_API_KEY)。
+    """
+    # 清空所有 LLM env vars
+    for k in ("LLM_OPENAI_API_KEY", "LLM_ANTHROPIC_API_KEY", "LLM_OLLAMA_BASE_URL"):
+        monkeypatch.delenv(k, raising=False)
+
+    mock_resp = MagicMock()
+    mock_resp.choices = [MagicMock()]
+    with patch("backend.ai.llm_client.litellm.completion", return_value=mock_resp) as m:
+        resp, used = run_with_fallback(
+            base_cfg=_base_cfg(),
+            messages=[{"role": "user", "content": "hi"}],
+        )
+        assert used.model == "qwen-max"
+        assert m.call_count == 1

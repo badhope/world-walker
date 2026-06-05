@@ -19,11 +19,11 @@ import sys
 import time
 from pathlib import Path
 
-from backend.ai.config import AIConfig
-from backend.ai.fallback import ModelEntry, DEFAULT_FALLBACK_CHAIN
 from backend.ai import chat_service
-from tests.eval.scorer import score_case, CaseResult
-from tests.eval.reporter import save_report, save_comparison
+from backend.ai.config import AIConfig
+from backend.ai.fallback import DEFAULT_FALLBACK_CHAIN, ModelEntry
+from tests.eval.reporter import save_comparison, save_report
+from tests.eval.scorer import CaseResult, score_case
 
 
 def _load_cases(path: Path, ids: list[str] | None = None) -> list[dict]:
@@ -65,6 +65,9 @@ def _run_case(case: dict, cfg: AIConfig) -> CaseResult:
                 actual_args.append(ev.get("args") or {})
             elif ev["type"] == "token":
                 answer_parts.append(ev.get("content", ""))
+            elif ev["type"] == "error":
+                # 错误事件也记入 answer(便于排查)
+                answer_parts.append(f"[error: {ev.get('message', '')[:200]}]")
             elif ev["type"] == "done":
                 # 从 trace 统计 fallback 和 tokens
                 for step in ev.get("trace", []):
@@ -92,6 +95,13 @@ def main() -> int:
     parser.add_argument("--compare", nargs="+", help="multiple models to compare")
     parser.add_argument("--ids", nargs="+", help="filter to specific case ids")
     args = parser.parse_args()
+
+    # Pre-flight: 必须有 API key(eval 跑真 LLM,不能 mock)
+    if not (os.getenv("LLM_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")):
+        print("ERROR: 跑 eval 需要 LLM API key。请先设置环境变量:", file=sys.stderr)
+        print("  export LLM_OPENAI_API_KEY=sk-...", file=sys.stderr)
+        print("  export LLM_OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1", file=sys.stderr)
+        return 2
 
     cases_path = Path(__file__).parent / "golden_cases.jsonl"
     cases = _load_cases(cases_path, args.ids)

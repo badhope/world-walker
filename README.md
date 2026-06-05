@@ -141,6 +141,44 @@ LLM 调 tool 后,聊天流里会显示一个"📊 在图表中查看"蓝色 chip
 
 后端透传 `type=tool_call` SSE 事件 + `navigate_to` URL;前端 `appendToolChip(name, args, navigate_to)` 渲染可点击链接。
 
+#### v8.0 新增:自研 agent 增强 + Eval 框架
+
+4 个独立可组合模块,自研不引入 LangGraph/Pydantic AI:
+
+| 模块 | 文件 | 功能 |
+|------|------|------|
+| **Trace** | `backend/ai/trace.py` | `Step` + `TraceStore` 记录每次 LLM/tool/retry,出现在 SSE `done` 事件的 `trace` 字段 |
+| **Fallback** | `backend/ai/fallback.py` | `run_with_fallback(base_cfg, ...)` 5 个百炼模型自动降级,401/403/404 立即抛,超时/429 降级 |
+| **Parallel tools** | `backend/ai/parallel_tools.py` | `ThreadPoolExecutor` + 异常隔离 + 单 tool 超时 |
+| **Retry** | `backend/ai/retry.py` | `should_retry()` 7 类白名单(city_not_found / data_unavailable / ...),`build_retry_hint()` 构造反射 prompt |
+
+**关键设计**:`run_with_fallback(base_cfg, ...)` 必填 `base_cfg`,内部不再 `load_config()` — 完全解耦 env vars,支持多租户 / 隔离环境跑 eval。
+
+SSE 事件链:
+```
+thinking → tool_call → token → done
+                  └─ error(失败时)
+```
+
+每个 `done` 事件含 `trace: [...]` — 完整审计。
+
+**Eval 框架** — 真 LLM 跑分,10 个真实业务 query:
+```bash
+# 单模型
+export LLM_OPENAI_API_KEY=sk-... LLM_OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+python -m tests.eval.run_eval --model qwen-max
+
+# 多模型对比
+python -m tests.eval.run_eval --compare qwen-max deepseek-v3
+
+# 跑指定 case
+python -m tests.eval.run_eval --model qwen-max --ids shenzhen-gdp-forecast-3y
+```
+
+报表含 6 维度评分(tool / args / keywords / latency / fallback / tokens) + case 级别对比 + 胜出栏。
+
+模型注册表: [docs/AI_MODEL_REGISTRY.md](docs/AI_MODEL_REGISTRY.md)(25 个百炼全功能模型 + fallback 链选择)
+
 ---
 
 ## Tests

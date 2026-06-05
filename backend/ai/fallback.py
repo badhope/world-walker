@@ -70,29 +70,34 @@ def classify_error(err: Exception) -> str:
     return "retryable"  # 默认可重试,降级更安全
 
 
-def _build_cfg_for_entry(entry: ModelEntry):
-    """根据 ModelEntry 构造一个临时 AIConfig(用当前 cfg 的其他参数 + 切换 backend/model)。"""
-    from backend.ai.config import AIConfig, load_config
-    base = load_config()
+def _build_cfg_for_entry(base, entry: ModelEntry):
+    """根据 ModelEntry 构造一个临时 AIConfig(继承 base 的连接/限制参数,只换 backend/model)。"""
+    from backend.ai.config import AIConfig
     return AIConfig(
         default_backend=base.default_backend,
         active_backend=entry.backend,
         model=entry.model,
-        api_key=base.api_key,
-        base_url=base.base_url,
         temperature=base.temperature,
         max_tokens=base.max_tokens,
         timeout_sec=base.timeout_sec,
         max_tool_rounds=base.max_tool_rounds,
+        available_backends=base.available_backends,
+        tool_timeout_sec=base.tool_timeout_sec,
+        parallel_max_workers=base.parallel_max_workers,
     )
 
 
 def run_with_fallback(
+    base_cfg: Any,                   # AIConfig — 必填,提供连接/限制参数(不再 reload env)
     messages: list[dict],
     tools: list[dict] | None = None,
     chain: list[ModelEntry] | None = None,
 ) -> tuple[Any, ModelEntry]:
     """循环 fallback 链,成功立刻返 (LLMResponse, ModelEntry);失败抛 FallbackError/FatalLLMError。
+
+    base_cfg 提供:default_backend, available_backends, temperature, max_tokens,
+                   timeout_sec, max_tool_rounds, tool_timeout_sec, parallel_max_workers。
+    不读 env(由调用方负责初始化 base_cfg)。
 
     可重试错误(timeout/429/...)→ 降级下一项
     致命错误(401/403/404)→ 立即抛 FatalLLMError
@@ -101,28 +106,9 @@ def run_with_fallback(
     chain = chain or DEFAULT_FALLBACK_CHAIN
     errors: list[str] = []
 
-    # 加载一次基础 config(避免每个 entry 重复 load);失败立刻 fatal
-    try:
-        from backend.ai.config import AIConfig, load_config
-        _base = load_config()
-    except Exception as e:
-        raise FatalLLMError(f"基础 config 加载失败(API key 缺失?): {e}") from e
-
     for entry in chain:
         try:
-            # 只换 backend/model,api_key/base_url 从 env 读(llm_client._build_kwargs 会处理)
-            cfg = AIConfig(
-                default_backend=_base.default_backend,
-                active_backend=entry.backend,
-                model=entry.model,
-                temperature=_base.temperature,
-                max_tokens=_base.max_tokens,
-                timeout_sec=_base.timeout_sec,
-                max_tool_rounds=_base.max_tool_rounds,
-                available_backends=_base.available_backends,
-                tool_timeout_sec=_base.tool_timeout_sec,
-                parallel_max_workers=_base.parallel_max_workers,
-            )
+            cfg = _build_cfg_for_entry(base_cfg, entry)
             resp = llm_client.chat(cfg, messages=messages, tools=tools)
             if entry != chain[0]:
                 logger.info("fallback succeeded: %s", entry)

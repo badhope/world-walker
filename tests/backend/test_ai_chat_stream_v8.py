@@ -6,12 +6,14 @@ mock LLM + tool,验证:
 - retry hint 事件
 - trace 出现在 done 事件中
 """
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from backend.ai import chat_service
 from backend.ai.config import AIConfig
-from backend.ai.llm_client import LLMResponse, ToolCall
 from backend.ai.fallback import ModelEntry
+from backend.ai.llm_client import LLMResponse, ToolCall
 
 
 def _cfg():

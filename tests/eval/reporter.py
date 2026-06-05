@@ -63,7 +63,7 @@ def save_comparison(
     all_results: dict[str, list[CaseResult]],
     date_str: str | None = None,
 ) -> Path:
-    """保存多模型对比报表(每个模型一份 JSON,加一份总览 MD)。"""
+    """保存多模型对比报表(每个模型一份 JSON,加一份总览 MD 含 case 级别对比表)。"""
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     date_str = date_str or datetime.now().strftime("%Y-%m-%d")
     # 每个模型独立 JSON
@@ -72,11 +72,41 @@ def save_comparison(
     # 总览 MD
     md_path = REPORTS_DIR / f"{date_str}-compare.md"
     lines = [f"# Eval 对比报告 — {date_str}", ""]
+    # 汇总
+    lines.append("## 汇总")
+    lines.append("")
     lines.append("| 模型 | 平均分 | 通过率 | Case 数 |")
     lines.append("|------|--------|--------|---------|")
     for m, results in all_results.items():
         s = _summary(results)
         lines.append(f"| {m} | {s['avg_score']} | {s['pass_rate']*100:.0f}% | {s['total_cases']} |")
     lines.append("")
+
+    # Case 级别对比
+    if models and all_results:
+        first_model = models[0]
+        case_ids = [r.case_id for r in all_results[first_model]]
+        lines.append("## Case 级别对比")
+        lines.append("")
+        header = "| Case | " + " | ".join(models) + " | 胜出 |"
+        sep = "|------|" + "|".join("----" for _ in models) + "|------|"
+        lines.append(header)
+        lines.append(sep)
+        for cid in case_ids:
+            scores = []
+            for m in models:
+                # 找到该 case 的分数
+                match = next((r.score for r in all_results[m] if r.case_id == cid), None)
+                scores.append(f"{match:.0f}" if match is not None else "-")
+            best_score = max(
+                (next((r.score for r in all_results[m] if r.case_id == cid), -1) for m in models),
+                default=-1,
+            )
+            winner = "平" if scores.count(scores[0]) == len(scores) else (
+                models[scores.index(max(scores))] if any(s != "-" for s in scores) else "-"
+            )
+            lines.append(f"| {cid} | " + " | ".join(scores) + f" | {winner} |")
+        lines.append("")
+
     md_path.write_text("\n".join(lines))
     return md_path

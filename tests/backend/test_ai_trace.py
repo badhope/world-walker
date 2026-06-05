@@ -1,6 +1,7 @@
 """Trace 日志:agent 决策过程(llm_call / tool_call / fallback / retry / done)的累积与序列化。"""
 
 import pytest
+
 from backend.ai.trace import Step, TraceStore
 
 

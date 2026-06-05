@@ -68,10 +68,34 @@ class RCAClient:
         return _tools.list_cities()
 
     # LLM agent
-    def chat(self, session_id: str, user_message: str) -> dict[str, Any]:
-        """单轮 LLM agent。"""
-        return _chat_fn(session_id=session_id, user_message=user_message)
+    def chat(
+        self, session_id: str, user_message: str,
+        *, config: AIConfig | None = None, base_url: str | None = None,
+    ) -> dict[str, Any]:
+        """单轮 LLM agent。
 
-    def chat_stream(self, session_id: str, user_message: str) -> Iterator[dict[str, Any]]:
-        """流式 LLM agent。"""
-        return _chat_stream_fn(session_id=session_id, user_message=user_message)
+        Args:
+            session_id: 会话 ID
+            user_message: 用户问题
+            config: 临时覆盖 AIConfig(默认 self._cfg)
+            base_url: 临时覆盖 LLM gateway(走 env)
+        """
+        return _chat_fn(
+            session_id=session_id, user_message=user_message,
+            config=config if config is not None else self._cfg,
+            base_url=base_url,
+        )
+
+    def chat_stream(
+        self, session_id: str, user_message: str,
+        *, config: AIConfig | None = None, base_url: str | None = None,
+    ) -> Iterator[dict[str, Any]]:
+        """流式 LLM agent。
+
+        同 chat() 的 config / base_url 语义。
+        """
+        return _chat_stream_fn(
+            session_id=session_id, user_message=user_message,
+            config=config if config is not None else self._cfg,
+            base_url=base_url,
+        )

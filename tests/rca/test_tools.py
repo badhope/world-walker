@@ -72,8 +72,11 @@ def test_list_cities_no_args():
 
 def test_invoke_wraps_tool_error_as_tool_argument_error():
     """tool_executor 返 {"error": "..."} 时,SDK 抛 ToolArgumentError。"""
+    from rca.errors import ToolArgumentError
+
     with patch("rca.tools.execute_tool", return_value={"error": "No data for city=atlantis"}):
-        with pytest.raises(Exception) as exc:
+        with pytest.raises(ToolArgumentError) as exc:
             tools.forecast(scope="city", name="atlantis", indicator="gdp")
-    # 不管是 ToolArgumentError 还是其他,关键是 message 含原 error
+    # message 含原 error 文本
     assert "atlantis" in str(exc.value)
+    assert "No data" in str(exc.value)

@@ -5,7 +5,14 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from cli.main import _TOOL_FUNC_NAMES, _invoke_sdk, app
+from cli.main import (
+    _TOOL_FUNC_NAMES,
+    State,
+    _apply_base_url_env,
+    _effective_config,
+    _invoke_sdk,
+    app,
+)
 
 runner = CliRunner()
 
@@ -184,7 +191,9 @@ def test_chat_message_invokes_sdk():
         result = runner.invoke(app, ["chat", "--message", "深圳 GDP 2026 多少?", "--session", "t1"])
     assert result.exit_code == 0
     assert "4.42" in result.stdout
-    m.assert_called_once_with(session_id="t1", user_message="深圳 GDP 2026 多少?")
+    # 验证 _rca_chat 收到 session_id="t1" 和 user_message="..."
+    assert m.call_args.kwargs["session_id"] == "t1"
+    assert m.call_args.kwargs["user_message"] == "深圳 GDP 2026 多少?"
 
 
 def test_chat_stream_message_renders_events():
@@ -249,3 +258,72 @@ def test_module_entry_guard_present():
     src = inspect.getsource(cli_main_mod)
     assert '__name__ == "__main__"' in src
     assert "app()" in src.split('if __name__ == "__main__":', 1)[1]
+
+
+# --------------------------------------------------------------------------- #
+# --model / --base-url global flag 真的接上后端(不是 show-only)
+# --------------------------------------------------------------------------- #
+
+
+def test_effective_config_overrides_model():
+    """state.model set → 返回的 AIConfig.model == state.model(其他字段保留)。"""
+    from backend.ai.config import AIConfig
+
+    state = State()
+    state.model = "deepseek-v3"
+    cfg = _effective_config(state)
+    assert isinstance(cfg, AIConfig)
+    assert cfg.model == "deepseek-v3"
+
+
+def test_effective_config_no_override_returns_base():
+    """state.model == None → 返回 base cfg(同 _get_cfg())。"""
+    state = State()
+    state.model = None
+    cfg = _effective_config(state)
+    from rca._config import load_config
+
+    base = load_config()
+    assert cfg.model == base.model
+
+
+def test_apply_base_url_env_sets_environ(monkeypatch):
+    """state.base_url set → os.environ['LLM_OPENAI_BASE_URL'] 被设置。"""
+    monkeypatch.delenv("LLM_OPENAI_BASE_URL", raising=False)
+    state = State()
+    state.base_url = "https://my-gateway.example.com/v1"
+    _apply_base_url_env(state)
+    import os
+
+    assert os.environ["LLM_OPENAI_BASE_URL"] == "https://my-gateway.example.com/v1"
+
+
+def test_apply_base_url_env_noop_when_unset(monkeypatch):
+    """state.base_url is None → 不动 env。"""
+    monkeypatch.delenv("LLM_OPENAI_BASE_URL", raising=False)
+    state = State()
+    state.base_url = None
+    _apply_base_url_env(state)
+    import os
+
+    assert "LLM_OPENAI_BASE_URL" not in os.environ
+
+
+def test_chat_uses_overridden_model(monkeypatch):
+    """rca --model X chat --message Y → _rca_chat 收到 config=... 且 config.model == X。"""
+    state = State()
+    state.model = "deepseek-v3"
+    monkeypatch.setenv("LLM_OPENAI_API_KEY", "sk-test-fake-key")
+    captured = {}
+
+    def fake_chat(session_id, user_message, *, config=None, base_url=None):
+        captured["config"] = config
+        captured["base_url"] = base_url
+        return {"content": "ok", "tool_rounds": 0}
+
+    monkeypatch.setattr("cli.main._rca_chat", fake_chat)
+    cfg = _effective_config(state)
+    _apply_base_url_env(state)
+    fake_chat(session_id="s1", user_message="hi", config=cfg, base_url=state.base_url)
+    assert captured["config"] is not None
+    assert captured["config"].model == "deepseek-v3"

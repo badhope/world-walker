@@ -6,11 +6,13 @@
   data-provenance / macro-data / list-cities
 - 2 chat 子命令: chat / chat-stream
 - global --format {rich,json,plain} (默认 rich)
-- global --model X 覆盖 LLM
-- global --base-url X 覆盖 gateway
+- global --model X 覆盖 LLM(传 rca.chat(config=...))
+- global --base-url X 覆盖 LLM gateway(传 rca.chat(base_url=...))
 - 错误处理: RCAError → exit 1; LLM 错 → exit 3
 """
 from __future__ import annotations
+
+import os
 
 import typer
 
@@ -73,6 +75,39 @@ def _main_callback(
 
 def _get_state(ctx: typer.Context) -> State:
     return ctx.obj or State()
+
+
+def _effective_config(state: State):
+    """根据 state.model 构造 override AIConfig(保留 fallback_chain / 其他字段)。
+
+    base_url 不在 AIConfig 里,走 env(后端 llm_client 实时读)。
+    """
+    from backend.ai.config import AIConfig
+    from rca._config import load_config
+
+    base = load_config()
+    if not state.model:
+        return base
+    # AIConfig 是 frozen,不能 mutate — 重建
+    return AIConfig(
+        default_backend=base.default_backend,
+        active_backend=base.active_backend,
+        model=state.model,  # ← 唯一改的字段
+        temperature=base.temperature,
+        max_tokens=base.max_tokens,
+        max_tool_rounds=base.max_tool_rounds,
+        timeout_sec=base.timeout_sec,
+        available_backends=base.available_backends,
+        fallback_chain=base.fallback_chain,
+        tool_timeout_sec=base.tool_timeout_sec,
+        parallel_max_workers=base.parallel_max_workers,
+    )
+
+
+def _apply_base_url_env(state: State) -> None:
+    """state.base_url → os.environ['LLM_OPENAI_BASE_URL'](后端 llm_client 调用时读)。"""
+    if state.base_url:
+        os.environ["LLM_OPENAI_BASE_URL"] = state.base_url
 
 
 # --------------------------------------------------------------------------- #
@@ -248,10 +283,18 @@ def chat(
     message: str = typer.Option(..., "--message", "-m", help="用户问题"),
     session: str = typer.Option("cli-default", "--session", "-s", help="会话 ID(保留多轮上下文)"),
 ) -> None:
-    """单轮 LLM agent — 自然语言 → 调 tool → 返答案。"""
+    """单轮 LLM agent — 自然语言 → 调 tool → 返答案。
+
+    接受 --model / --base-url global flags(覆盖默认 LLM)。
+    """
     state = _get_state(ctx)
+    cfg = _effective_config(state) if (state.model or state.base_url) else None
+    _apply_base_url_env(state)
     try:
-        result = _rca_chat(session_id=session, user_message=message)
+        result = _rca_chat(
+            session_id=session, user_message=message,
+            config=cfg, base_url=state.base_url,
+        )
     except LLMUnavailableError as e:
         typer.echo(f"ERROR: LLM unavailable: {e}", err=True)
         raise typer.Exit(code=3)
@@ -264,6 +307,8 @@ def chat(
         typer.echo(result.get("content", "(no content)"))
         if result.get("tool_rounds"):
             typer.echo(f"\n[tool_rounds: {result['tool_rounds']}]", err=True)
+        if state.model:
+            typer.echo(f"\n[model: {state.model}]", err=True)
 
 
 @app.command(name="chat-stream")
@@ -272,9 +317,18 @@ def chat_stream(
     message: str = typer.Option(..., "--message", "-m", help="用户问题"),
     session: str = typer.Option("cli-default", "--session", "-s"),
 ) -> None:
-    """流式 LLM agent — 实时显示 thinking → tool_call → token 增量。"""
+    """流式 LLM agent — 实时显示 thinking → tool_call → token 增量。
+
+    接受 --model / --base-url global flags(覆盖默认 LLM)。
+    """
+    state = _get_state(ctx)
+    cfg = _effective_config(state) if (state.model or state.base_url) else None
+    _apply_base_url_env(state)
     try:
-        for ev in _rca_chat_stream(session_id=session, user_message=message):
+        for ev in _rca_chat_stream(
+            session_id=session, user_message=message,
+            config=cfg, base_url=state.base_url,
+        ):
             et = ev.get("type")
             if et == "thinking":
                 typer.echo("[thinking]...", err=True)

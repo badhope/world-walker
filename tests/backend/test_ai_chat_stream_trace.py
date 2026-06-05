@@ -71,7 +71,7 @@ def test_chat_stream_with_trace_yields_tool_call_after_thinking(monkeypatch):
     assert e["name"] == "get_forecast"
     assert e["args"] == {"scope": "city", "name": "shenzhen", "indicator": "gdp", "years": 3}
     assert "navigate_to" in e
-    assert e["navigate_to"].startswith("/investment_grade.html")
+    assert e["navigate_to"].startswith("/chat_widget/investment_grade.html")
 
 
 def test_chat_stream_with_trace_yields_done_at_end(monkeypatch):

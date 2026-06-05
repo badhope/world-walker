@@ -1,10 +1,11 @@
 """cli.main — Typer app, CliRunner 测子命令 + global flags。"""
 import json
-import pytest
-from typer.testing import CliRunner
 from unittest.mock import patch
 
-from cli.main import app, _invoke_sdk, _TOOL_FUNC_NAMES
+import pytest
+from typer.testing import CliRunner
+
+from cli.main import _TOOL_FUNC_NAMES, _invoke_sdk, app
 
 runner = CliRunner()
 
@@ -234,3 +235,17 @@ def test_help_works():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert "rca" in result.stdout.lower() or "Regional" in result.stdout
+
+
+def test_module_entry_guard_present():
+    """`python -m cli.main` 走 if __name__ == '__main__': app() — 验证 guard 在源码里。
+
+    否则用户 `python -m cli.main ...` 静默退出(只剩 logger 错乱输出)。
+    """
+    import inspect
+
+    import cli.main as cli_main_mod
+
+    src = inspect.getsource(cli_main_mod)
+    assert '__name__ == "__main__"' in src
+    assert "app()" in src.split('if __name__ == "__main__":', 1)[1]

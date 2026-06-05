@@ -12,20 +12,7 @@
 """
 from __future__ import annotations
 
-from typing import Optional
-
 import typer
-
-from rca import chat as _rca_chat_module
-from rca import tools as _rca_tools
-from rca.chat import chat as _rca_chat
-from rca.chat import chat_stream as _rca_chat_stream
-from rca.errors import (
-    LLMUnavailableError,
-    RCAError,
-    ToolArgumentError,
-    ToolNotFoundError,
-)
 
 from cli import formatters
 from cli._resolve import (
@@ -38,6 +25,15 @@ from cli._resolve import (
     build_monte_carlo_args,
     build_risk_args,
     build_scenarios_args,
+)
+from rca import tools as _rca_tools
+from rca.chat import chat as _rca_chat
+from rca.chat import chat_stream as _rca_chat_stream
+from rca.errors import (
+    LLMUnavailableError,
+    RCAError,
+    ToolArgumentError,
+    ToolNotFoundError,
 )
 
 app = typer.Typer(
@@ -54,8 +50,8 @@ app = typer.Typer(
 
 class State:
     format: str = "rich"
-    model: Optional[str] = None
-    base_url: Optional[str] = None
+    model: str | None = None
+    base_url: str | None = None
     no_color: bool = False
 
 
@@ -63,8 +59,8 @@ class State:
 def _main_callback(
     ctx: typer.Context,
     format: str = typer.Option("rich", "--format", help="Output format: rich / json / plain"),
-    model: Optional[str] = typer.Option(None, "--model", help="Override LLM model (e.g. deepseek-v3)"),
-    base_url: Optional[str] = typer.Option(None, "--base-url", help="Override LLM gateway base URL"),
+    model: str | None = typer.Option(None, "--model", help="Override LLM model (e.g. deepseek-v3)"),
+    base_url: str | None = typer.Option(None, "--base-url", help="Override LLM gateway base URL"),
     no_color: bool = typer.Option(False, "--no-color", help="Disable rich colors"),
 ) -> None:
     state = State()
@@ -139,7 +135,7 @@ def forecast(
     city: str = typer.Option(..., "--city", help="城市拼音 (shenzhen) / 省份名 (guangdong)"),
     indicator: str = typer.Option(..., "--indicator", help="指标: gdp / population / ..."),
     scope: str = typer.Option("city", "--scope", help="city 或 province"),
-    years: Optional[int] = typer.Option(None, "--years", help="预测年数 (默认 5)"),
+    years: int | None = typer.Option(None, "--years", help="预测年数 (默认 5)"),
 ) -> None:
     """多年预测 ensemble + diagnostics + backtest 摘要。"""
     args = build_forecast_args(city=city, indicator=indicator, scope=scope, years=years)
@@ -192,7 +188,7 @@ def scenarios(
     city: str = typer.Option(..., "--city"),
     indicator: str = typer.Option(..., "--indicator"),
     scope: str = typer.Option("city", "--scope"),
-    years: Optional[int] = typer.Option(None, "--years", help="默认 5"),
+    years: int | None = typer.Option(None, "--years", help="默认 5"),
 ) -> None:
     """4 档情景预测:baseline/optimistic +10%/pessimistic -10%/recession -25%。"""
     args = build_scenarios_args(city=city, indicator=indicator, scope=scope, years=years)
@@ -206,7 +202,7 @@ def monte_carlo(
     city: str = typer.Option(..., "--city"),
     indicator: str = typer.Option(..., "--indicator"),
     scope: str = typer.Option("city", "--scope"),
-    years: Optional[int] = typer.Option(None, "--years", help="默认 5"),
+    years: int | None = typer.Option(None, "--years", help="默认 5"),
 ) -> None:
     """Monte Carlo 1000 次模拟分位数 (P5/P50/P95)。"""
     args = build_monte_carlo_args(city=city, indicator=indicator, scope=scope, years=years)
@@ -298,3 +294,12 @@ def chat_stream(
         typer.echo(f"\nERROR: {e}", err=True)
         raise typer.Exit(code=1)
     typer.echo("")
+
+
+# --------------------------------------------------------------------------- #
+# Module entry — 让 `python -m cli.main ...` 也能跑
+# --------------------------------------------------------------------------- #
+
+
+if __name__ == "__main__":
+    app()

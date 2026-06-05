@@ -1,6 +1,6 @@
 # ⚙️ 配置指南
 
-本指南详细说明如何配置区域产业经济分析平台。
+本指南详细说明如何配置**区域经济分析智能体 (REA) v9.1**。
 
 ## 目录
 
@@ -227,8 +227,8 @@ class AnalysisConfig:
 # .env 文件示例
 
 # 项目配置
-PROJECT_NAME=区域产业经济分析平台
-VERSION=4.0.0
+PROJECT_NAME=区域经济分析智能体
+VERSION=9.1.0
 
 # API配置
 API_HOST=0.0.0.0
@@ -401,6 +401,39 @@ curl -s 'http://localhost:8000/api/v1/investment/forecast/full?scope=city&name=s
 ---
 
 ## 10. LLM 配置 (v7.0+)
+## 11. SDK / CLI / Console 配置 (v9.0+ / v9.1+)
+
+```bash
+# === SDK / CLI (v9.0) ===
+# `rca` 命令组:RCAClient (Python SDK) + Typer CLI
+# 安装:pip install -e .   (会自动引入 typer/rich)
+RCA_API_URL=http://localhost:8000
+RCA_API_KEY=                  # 留空 = 不走 auth
+RCA_OUTPUT_FORMAT=rich        # rich | plain | json
+
+# === Web Console (v9.1) ===
+# 静态文件由 FastAPI /console 挂载,无需额外启动服务
+# 访问:http://localhost:8000/console/
+# 后端管理 API:GET/PUT /api/v1/admin/config
+# 历史:GET  /api/v1/admin/history?tool=forecast&limit=50
+```
+
+调用示例:
+
+```python
+# Python SDK
+from rca import RCAClient
+client = RCAClient(base_url="http://localhost:8000")
+result = client.forecast(scope="city", name="shenzhen", indicator="gdp", years=3)
+print(result["forecast"][0])
+```
+
+```bash
+# CLI
+rca forecast --scope city --name shenzhen --indicator gdp --years 3 --format rich
+rca chat "深圳 GDP 趋势如何?"
+rca tools list
+```
 
 ```bash
 # === Backend 选择 ===

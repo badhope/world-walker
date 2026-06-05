@@ -18,9 +18,9 @@ class Settings(BaseSettings):
     """Application configuration."""
 
     # Basic metadata
-    PROJECT_NAME: str = "Regional Industrial Economic Analysis Platform"
-    PROJECT_NAME_ZH: str = "区域产业经济分析平台"
-    VERSION: str = "4.0.0"
+    PROJECT_NAME: str = "Regional Economic Analysis Agent"
+    PROJECT_NAME_ZH: str = "区域经济分析智能体"
+    VERSION: str = "9.1.0"
     API_V1_STR: str = "/api/v1"
 
     # Environment (dev / staging / production / test)

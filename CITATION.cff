@@ -1,9 +1,9 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it using these metadata."
-title: "Regional Industrial Economic Analysis Platform"
+title: "Regional Economic Analysis Agent (REA)"
 type: software
-version: 4.0.0
-date-released: 2026-06-02
+version: 9.1.0
+date-released: 2026-06-05
 license: GPL-3.0-or-later
 repository-code: "https://github.com/badhope/national_stats"
 repository: "https://github.com/badhope/national_stats"
@@ -12,6 +12,7 @@ doi: "10.5281/zenodo.0000000"
 keywords:
   - regional-economy
   - economic-analysis
+  - agent
   - city-comparison
   - industry-analysis
   - retail-location
@@ -24,13 +25,21 @@ keywords:
   - echarts
   - data-science
   - machine-learning
+  - python-sdk
+  - typer-cli
+  - ai-chat-assistant
+  - litellm
   - python
 abstract: >
-  A production-grade, multi-scenario analytics platform for regional economic
-  comparison, retail site selection, sales forecasting and government
-  industry-policy evaluation. Covers 10 major Chinese cities with 4 analysis
-  scenarios, REST API and zero-build web UI. Built with FastAPI, pandas,
-  scikit-learn, statsmodels, and ECharts.
+  A production-grade Regional Economic Analysis Agent (REA) with v9.0
+  Python SDK + Typer CLI (11 sub-commands, 3 output formats) and v9.1
+  Web Console (13 HTML pages, SSE chat, 9 analytics tools, ECharts
+  dashboards). Covers 10 major Chinese cities with 4 analysis scenarios
+  (city comparison, retail site selection, sales forecasting, government
+  industry-policy evaluation) plus an AI chat assistant powered by
+  LiteLLM (OpenAI / Anthropic / Ollama). Backend built with FastAPI,
+  pandas, scikit-learn, statsmodels; frontend uses ECharts and a
+  custom CSS design-token system.
 authors:
   - family-names: "Maintainers"
     given-names: "Regional Economic Analysis Team"
@@ -43,7 +52,7 @@ contact:
     affiliation: "your-org"
 preferred-citation:
   type: article
-  title: "Regional Industrial Economic Analysis Platform: A Production-Grade Multi-Scenario Analytics System"
+  title: "Regional Economic Analysis Agent (REA) v9.1: SDK, CLI, and Web Console for Multi-Scenario Regional Economic Analytics"
   authors:
     - family-names: "Maintainers"
       given-names: "Regional Economic Analysis Team"

@@ -1,7 +1,7 @@
 # OpenSSF Scorecard 验证报告
 
-> **生成时间**: 2026-06-02
-> **项目**: Regional Economic Analysis Platform v4.0.0
+> **生成时间**: 2026-06-05
+> **项目**: Regional Economic Analysis Agent (REA) v9.1.0
 > **目标**: OpenSSF Scorecard ≥ 9.5/10（所有"待定"项全部解决）
 
 ---

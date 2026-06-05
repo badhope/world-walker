@@ -1,11 +1,12 @@
 {
   "_comment": "Reference for the GitHub repository 'About' panel. GitHub topics cannot be set from a file — copy these values into Settings → General → About on github.com. See docs/REPOSITORY_METADATA.md for details.",
   "name": "regional-economic-analysis",
-  "description": "Production-grade analytics platform for regional economic comparison, retail site selection, sales forecasting and government industry-policy evaluation \u2014 10 cities, 70+ APIs, zero-build UI.",
+  "description": "Regional Economic Analysis Agent (REA) v9.1 \u2014 production-grade multi-scenario analytics platform with Python SDK + Typer CLI and Web Console. 10 cities, 9 analytics tools, AI chat assistant, zero-build UI.",
   "homepage": "https://github.com/badhope/national_stats",
   "topics": [
     "regional-economy",
     "economic-analysis",
+    "agent",
     "city-comparison",
     "industry-analysis",
     "retail-location",
@@ -18,6 +19,10 @@
     "echarts",
     "data-science",
     "machine-learning",
+    "python-sdk",
+    "typer-cli",
+    "ai-chat-assistant",
+    "litellm",
     "python"
   ]
 }

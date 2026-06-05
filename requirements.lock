@@ -2,7 +2,7 @@
 # Usage:  pip install -r requirements.lock
 # This file is the single source of truth for exact versions used in CI.
 # Regenerate with:  pip freeze > requirements.lock
-# Last regenerated: 2026-06-02
+# Last regenerated: 2026-06-05
 # Python: 3.11+ (see pyproject.toml)
 annotated-doc==0.0.4
 annotated-types==0.7.0

@@ -151,8 +151,8 @@ docker build -t rea-backend:latest .
 ### 推送至镜像仓库
 
 ```bash
-docker tag rea-backend:latest your-registry.example.com/rea-backend:v4.0.0
-docker push your-registry.example.com/rea-backend:v4.0.0
+docker tag rea-backend:latest your-registry.example.com/rea-backend:v9.1.0
+docker push your-registry.example.com/rea-backend:v9.1.0
 ```
 
 ### 投资级镜像(v6.1+)— statsforecast / arch / pmdarima 预装

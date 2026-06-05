@@ -3,6 +3,28 @@
 A few things I want to remember for next time, or explain to whoever
 reads this repo. Not exhaustive.
 
+## 2026-06-05 — v9.1.0 Web Console + v9.0 SDK/CLI 收尾
+
+### 关键决策
+- **v9.0 Python SDK + Typer CLI**:`rca` 命令组,11 个子命令(forecast / diagnostics / backtest / risk / scenarios / monte-carlo / data-provenance / macro-data / list-cities / chat / config),3 种输出格式(rich / plain / json)。`RCAClient` 是同等的 Python API,签名跟 CLI 一一对应。
+- **v9.1 Web Console**:13 HTML 页 + 4 JS helper + 1 CSS。FastAPI `app.mount("/console", StaticFiles(...))` 直接 serve,后端新增 8 个 `/api/v1/admin/*` 端点管理配置 + 历史 + 反馈。
+- **HistoryStore / ConfigStore**:线程安全(`threading.Lock`)+ 滚动窗口(`deque(maxlen=1000)`)。AIConfig 用 frozen dataclass 复制-on-swap 避免 race。
+- **SSE 流式 chat**:不用 EventSource,直接 `fetch` + `reader.read()` 按 `\n\n` 分事件,后端 `StreamingResponse(media_type="text/event-stream")`。
+- **ECharts 5.6**:7 个 helper(forecast / backtest / risk / scenarios / monte-carlo / diagnostics / sparkline),`testsAsArray()` 处理后端 dict-of-records → 数组。
+
+### 实施细节
+- 审计发现 4 处字段不匹配漏洞(diagnostics.tests / ensemble CI / backtest.metrics / monte_carlo.quantiles),全部修复 + 加测试。
+- chat.html `thinking` event 在状态栏显示"思考中…",用户能看到 LLM 走 tool-calling 的过程。
+- `requirements.txt` 加 `typer / rich / shellingham` v9.0 段;`.github/repository-metadata.json` 描述改成"v9.1 SDK + CLI + Console"。
+- 全仓库版本号统一:pyproject / rca/__init__ / VERSION / setup.py / CITATION.cff / config/settings.py / backend/__init__.py / scripts/__init__.py / SUPPORT.md / NOTES.md / docs/CONFIG_GUIDE.md / API.md / DEPLOYMENT.md / OPENSSF_SCORECARD_REPORT.md / SECURITY_AUDIT_REPORT.md / AUTHORS / .env.example。
+
+### 验证
+- 452 测试通过(pre-existing 5 fail + 2 skip + 2 error 来自 sandbox 缺 openpyxl/matplotlib/hypothesis,非 v9.1 引入)。
+- 4 处 ECharts 字段漏洞全部加测试。
+- `git push origin main` 成功(commit `12bcc22` 收尾 SDK/CLI/Console + 描述配置 v9.1.0 同步)。
+
+---
+
 ## 2026-06-04 — v6.1.0 Docker 投资级引擎栈
 
 ### 关键决策

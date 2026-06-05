@@ -3,7 +3,7 @@
 #   pip-compile --output-file=requirements-lock.txt requirements.txt
 #
 # Pinned for OpenSSF Scorecard "Pinned-Dependencies" check (≥ 9/10).
-# Last regenerated: 2026-06-02
+# Last regenerated: 2026-06-05
 # Compatible with Python 3.11+
 
 annotated-types==0.7.0

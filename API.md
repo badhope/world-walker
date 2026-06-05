@@ -392,7 +392,7 @@ curl -s http://localhost:8000/health | jq
   },
   "primary_arima_backend": "statsforecast",
   "primary_vol_backend": "arch-garch",
-  "version": "6.1.0"
+  "version": "9.1.0"
 }
 ```
 

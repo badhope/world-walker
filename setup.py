@@ -24,13 +24,15 @@ if requirements_file.exists():
 
 setup(
     name="regional-economic-analysis",
-    version="4.0.0",
+    version="9.1.0",
     author="Regional Economic Analysis Team",
     author_email="contact@example.com",
     description=(
-        "Regional Industrial Economic Analysis Platform: a production-grade "
-        "multi-scenario analytics system for city comparison, retail site "
-        "selection, sales forecasting and government policy evaluation."
+        "Regional Economic Analysis Agent (REA): a production-grade "
+        "multi-scenario analytics platform with v9.0 Python SDK + Typer CLI "
+        "and v9.1 Web Console. Covers city comparison, retail site selection, "
+        "sales forecasting, government policy evaluation, AI chat assistant, "
+        "and 9 analytics tools over 10 Chinese cities."
     ),
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -98,6 +100,7 @@ setup(
     keywords=[
         "regional-economy",
         "economic-analysis",
+        "agent",
         "city-comparison",
         "industry-analysis",
         "retail-location",
@@ -110,6 +113,10 @@ setup(
         "echarts",
         "data-science",
         "machine-learning",
+        "python-sdk",
+        "typer-cli",
+        "ai-chat-assistant",
+        "litellm",
     ],
     project_urls={
         "Bug Reports": "https://github.com/badhope/national_stats/issues",
@@ -117,5 +124,8 @@ setup(
         "Documentation": "https://github.com/badhope/national_stats/blob/main/README.md",
         "Changelog": "https://github.com/badhope/national_stats/blob/main/CHANGELOG.md",
         "Examples": "https://github.com/badhope/national_stats/tree/main/examples",
+        "Web Console": "https://github.com/badhope/national_stats/tree/main/frontend/console",
+        "SDK/CLI Guide": "https://github.com/badhope/national_stats/blob/main/docs/SDK_CLI_GUIDE.md",
+        "Console Guide": "https://github.com/badhope/national_stats/blob/main/docs/CONSOLE_GUIDE.md",
     },
 )

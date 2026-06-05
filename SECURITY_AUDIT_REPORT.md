@@ -350,4 +350,6 @@ def test_path_traversal_import_filename(client):
 ---
 
 **报告作者**: MiniMax-M3 (Trae)
+**报告生成时间**: 2026-06-05
 **下次复审建议**: 修复 C-01 / H-01 / H-02 后,或下个版本发布前
+**当前项目版本**: v9.1.0 (Regional Economic Analysis Agent)

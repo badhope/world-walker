@@ -96,5 +96,5 @@ We are a community-driven project. Maintainers volunteer their time. Please be p
 
 ---
 
-**Last updated**: 2026-06-02
-**Project version**: v4.0.0
+**Last updated**: 2026-06-05
+**Project version**: v9.1.0 (Regional Economic Analysis Agent)

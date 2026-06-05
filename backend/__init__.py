@@ -42,8 +42,8 @@ from .ml import (
     save_result,
 )
 
-__version__ = "2.0.0"
-__author__ = "Data Analyst"
+__version__ = "9.1.0"
+__author__ = "Regional Economic Analysis Team"
 
 __all__ = [
     # Core

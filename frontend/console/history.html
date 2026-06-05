@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>History · RCA Console</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/console.css">
+</head>
+<body>
+  <div class="console-layout">
+    <aside class="console-sidebar" id="sidebar"></aside>
+    <main class="console-main">
+      <header class="console-page-header">
+        <h1>History <span class="console-card--tool__zh">历史</span></h1>
+        <p class="console-page-header__desc">
+          最多 1000 条最近 query(内存 ring buffer)。可按 tool 过滤 / 清空 / 点击查看摘要。
+        </p>
+      </header>
+
+      <div class="console-card">
+        <div class="console-flex console-flex--between">
+          <h3 class="console-card__title">最近 <span id="count" class="console-text-mono">0</span> 条</h3>
+          <div>
+            <select id="filter-tool" class="console-select" style="min-width:140px">
+              <option value="">全部 tool</option>
+            </select>
+            <button class="console-button console-button--ghost" id="reload-btn">Reload</button>
+            <button class="console-button console-button--err" id="clear-btn">Clear · 清空</button>
+          </div>
+        </div>
+        <div id="result-error"></div>
+      </div>
+
+      <div id="history-list" class="console-card-stack"></div>
+    </main>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/form-helpers.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script>
+  function fmtTs(ts) {
+    if (!ts) return "—";
+    return new Date(ts * 1000).toLocaleString();
+  }
+
+  async function load() {
+    RCA.form.clearError("result-error");
+    const tool = document.getElementById("filter-tool").value;
+    const r = await RCA.api.listHistory(tool ? { tool: tool } : { limit: 200 });
+    if (!r.ok) {
+      RCA.form.showError("result-error", r.error);
+      return;
+    }
+    const items = r.data.items || [];
+    document.getElementById("count").textContent = items.length;
+    const list = document.getElementById("history-list");
+    list.innerHTML = "";
+    if (!items.length) {
+      list.innerHTML = '<div class="console-card"><p class="console-text-muted">还没有历史记录 — 去跑个 tool 试试</p></div>';
+      return;
+    }
+    // 填 tool filter 下拉
+    const sel = document.getElementById("filter-tool");
+    const seen = new Set(Array.from(sel.options).map((o) => o.value));
+    items.forEach((it) => { if (!seen.has(it.tool)) {
+      const opt = document.createElement("option");
+      opt.value = it.tool;
+      opt.textContent = it.tool;
+      sel.appendChild(opt);
+      seen.add(it.tool);
+    }});
+
+    items.forEach((it) => {
+      const card = document.createElement("div");
+      card.className = "console-card";
+      const badgeClass = it.status === "ok" ? "ok" : "err";
+      const summary = it.result_summary || {};
+      const summaryStr = Object.entries(summary).slice(0, 4)
+        .map(([k, v]) => k + "=" + (typeof v === "object" ? JSON.stringify(v) : v))
+        .join(" · ");
+      card.innerHTML =
+        '<div class="console-flex console-flex--between">' +
+          '<div class="console-history-meta">' +
+            '<span class="console-history-meta__time">' + RCA.form.escapeHtml(fmtTs(it.ts)) + "</span>" +
+            '<span class="console-history-meta__tool console-text-mono">' + RCA.form.escapeHtml(it.tool) + "</span>" +
+            '<span class="console-history-meta__duration">' + (it.duration_ms ?? "—") + " ms</span>" +
+            '<span class="console-history-meta__id console-text-muted">' + RCA.form.escapeHtml(it.id) + "</span>" +
+          "</div>" +
+          '<span class="console-badge console-badge--' + badgeClass + '">' + RCA.form.escapeHtml(it.status) + "</span>" +
+        "</div>" +
+        '<div class="console-history-params">' + RCA.form.escapeHtml(JSON.stringify(it.params || {})) + "</div>" +
+        (summaryStr ? '<div class="console-history-summary console-text-small console-text-muted">' + RCA.form.escapeHtml(summaryStr) + "</div>" : "") +
+        (it.error ? '<div class="console-error console-text-small">' + RCA.form.escapeHtml(it.error) + "</div>" : "");
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById("reload-btn").onclick = load;
+  document.getElementById("filter-tool").onchange = load;
+  document.getElementById("clear-btn").onclick = async () => {
+    if (!confirm("确定清空所有历史?")) return;
+    const r = await RCA.api.clearHistory();
+    if (!r.ok) {
+      RCA.form.showError("result-error", r.error);
+      return;
+    }
+    RCA.form.toast("已清空", "ok");
+    load();
+  };
+
+  load();
+  </script>
+</body>
+</html>

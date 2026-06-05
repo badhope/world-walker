@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings · RCA Console</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/console.css">
+</head>
+<body>
+  <div class="console-layout">
+    <aside class="console-sidebar" id="sidebar"></aside>
+    <main class="console-main">
+      <header class="console-page-header">
+        <h1>Settings <span class="console-card--tool__zh">LLM 设置</span></h1>
+        <p class="console-page-header__desc">
+          在线改 LLM 配置 — model / base_url / temperature / max_tokens / max_tool_rounds / timeout。
+          改动立即生效(in-memory),重启后端后回到环境变量。
+        </p>
+      </header>
+
+      <div class="console-card">
+        <div class="console-flex console-flex--between">
+          <h3 class="console-card__title">当前配置</h3>
+          <button class="console-button console-button--ghost" id="reload-btn">Reload · 重新加载</button>
+        </div>
+        <div id="result-error"></div>
+        <form id="form" class="console-form">
+          <div class="console-form__row">
+            <div class="console-field">
+              <label class="console-field__label">Model</label>
+              <input name="model" class="console-input" id="f-model" required>
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Base URL</label>
+              <input name="base_url" class="console-input" id="f-base-url" placeholder="https://api.openai.com/v1">
+            </div>
+          </div>
+          <div class="console-form__row">
+            <div class="console-field">
+              <label class="console-field__label">Temperature · 0 ~ 2</label>
+              <input name="temperature" type="number" step="0.05" min="0" max="2" class="console-input" id="f-temperature">
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Max Tokens · 64 ~ 32000</label>
+              <input name="max_tokens" type="number" min="64" max="32000" class="console-input" id="f-max-tokens">
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Max Tool Rounds · 1 ~ 20</label>
+              <input name="max_tool_rounds" type="number" min="1" max="20" class="console-input" id="f-max-rounds">
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Timeout (秒) · 5 ~ 600</label>
+              <input name="timeout_sec" type="number" min="5" max="600" class="console-input" id="f-timeout">
+            </div>
+          </div>
+          <div class="console-flex">
+            <button type="submit" class="console-button" id="save-btn">Save · 保存</button>
+            <span id="status" class="console-text-muted console-text-small"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="console-card">
+        <h3 class="console-card__title">后端信息(只读)</h3>
+        <table class="console-table" id="info-table">
+          <tbody>
+            <tr><th style="width:160px;text-align:left">Default Backend</th><td id="i-default-backend">—</td></tr>
+            <tr><th style="text-align:left">Active Backend</th><td id="i-active-backend">—</td></tr>
+            <tr><th style="text-align:left">Available Backends</th><td id="i-available-backends">—</td></tr>
+            <tr><th style="text-align:left">Fallback Chain</th><td id="i-fallback">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/form-helpers.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script>
+  function setStatus(text) { document.getElementById("status").textContent = text; }
+
+  async function load() {
+    RCA.form.clearError("result-error");
+    setStatus("加载中…");
+    const r = await RCA.api.getConfig();
+    if (!r.ok) {
+      RCA.form.showError("result-error", r.error);
+      setStatus("加载失败");
+      return;
+    }
+    const c = r.data;
+    document.getElementById("f-model").value = c.model || "";
+    document.getElementById("f-base-url").value = c.base_url || "";
+    document.getElementById("f-temperature").value = c.temperature ?? 0.7;
+    document.getElementById("f-max-tokens").value = c.max_tokens ?? 2048;
+    document.getElementById("f-max-rounds").value = c.max_tool_rounds ?? 5;
+    document.getElementById("f-timeout").value = c.timeout_sec ?? 60;
+    document.getElementById("i-default-backend").textContent = c.default_backend || "—";
+    document.getElementById("i-active-backend").textContent = c.active_backend || "—";
+    document.getElementById("i-available-backends").textContent = (c.available_backends || []).join(", ") || "—";
+    document.getElementById("i-fallback").textContent = (c.fallback_chain || []).join(" → ") || "—";
+    setStatus("已加载 " + new Date().toLocaleTimeString());
+  }
+
+  document.getElementById("reload-btn").onclick = load;
+  document.getElementById("form").onsubmit = async (e) => {
+    e.preventDefault();
+    RCA.form.clearError("result-error");
+    const patch = {};
+    const f = e.target;
+    if (f.model.value) patch.model = f.model.value;
+    if (f.base_url.value) patch.base_url = f.base_url.value;
+    patch.temperature = Number(f.temperature.value);
+    patch.max_tokens = Number(f["max_tokens"].value);
+    patch.max_tool_rounds = Number(f["max_tool_rounds"].value);
+    patch.timeout_sec = Number(f["timeout_sec"].value);
+    setStatus("保存中…");
+    const r = await RCA.api.updateConfig(patch);
+    if (!r.ok) {
+      RCA.form.showError("result-error", r.error);
+      setStatus("保存失败");
+      return;
+    }
+    RCA.form.toast("配置已更新", "ok");
+    setStatus("已保存 " + new Date().toLocaleTimeString());
+    load();
+  };
+
+  load();
+  </script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scenarios · RCA Console</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/console.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div class="console-layout">
+    <aside class="console-sidebar" id="sidebar"></aside>
+    <main class="console-main">
+      <header class="console-page-header">
+        <h1>Scenarios <span class="console-card--tool__zh">情景</span></h1>
+        <p class="console-page-header__desc">
+          4 档情景对比:基线(按历史趋势)/ 乐观 +10% / 悲观 -10% / 衰退 -25%。
+          给同一 baseline 预测施加冲击,看末年值差异。
+        </p>
+      </header>
+
+      <div class="console-card">
+        <form id="form" class="console-form">
+          <div class="console-form__row">
+            <div class="console-field">
+              <label class="console-field__label">Scope · 范围</label>
+              <select name="scope" class="console-select">
+                <option value="city">city</option>
+                <option value="province">province</option>
+              </select>
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Name</label>
+              <input name="name" class="console-input" list="city-list" required>
+              <datalist id="city-list"></datalist>
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Indicator</label>
+              <select name="indicator" class="console-select" id="indicator"></select>
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Years · 预测年数</label>
+              <input name="years" type="number" class="console-input" min="1" max="20" value="5">
+            </div>
+          </div>
+          <button type="submit" class="console-button" id="run-btn">Run · 情景</button>
+        </form>
+      </div>
+
+      <div id="result-error"></div>
+
+      <div id="result-section" class="console-hidden">
+        <div class="console-card">
+          <h3 class="console-card__title">4 档情景对比</h3>
+          <div id="scenarios-chart" class="console-chart"></div>
+        </div>
+
+        <div class="console-card">
+          <h3 class="console-card__title">末年值与回撤</h3>
+          <table class="console-table" id="scenarios-table">
+            <thead><tr><th>情景</th><th>说明</th><th>末年值</th><th>变化%</th><th>最大回撤%</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/form-helpers.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script src="../js/chart.js"></script>
+  <script>
+  (async function () {
+    await RCA.form.populateCityDatalist("city-list");
+    await RCA.form.populateIndicatorSelect("indicator");
+
+    document.getElementById("form").onsubmit = async (e) => {
+      e.preventDefault();
+      RCA.form.clearError("result-error");
+      const params = RCA.form.formToDict(e.target);
+      const r = await RCA.api.runTool("get_scenarios", params);
+      if (!r.ok) { RCA.form.showError("result-error", r.error); return; }
+      const data = r.data.data;
+      const scenarios = data.scenarios || {};
+      document.getElementById("result-section").classList.remove("console-hidden");
+
+      RCA.chart.renderScenariosChart("scenarios-chart", scenarios);
+
+      const tbody = document.querySelector("#scenarios-table tbody");
+      tbody.innerHTML = "";
+      Object.entries(scenarios).forEach(([sid, s]) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + RCA.form.escapeHtml(s.name || sid) + "</td>" +
+          "<td class='console-text-small'>" + RCA.form.escapeHtml(s.description || "—") + "</td>" +
+          "<td class='console-text-mono'>" + (s.final_value != null ? s.final_value.toFixed(2) : "—") + "</td>" +
+          "<td class='console-text-mono'>" + (s.final_change_pct != null ? s.final_change_pct.toFixed(2) + "%" : "—") + "</td>" +
+          "<td class='console-text-mono'>" + (s.max_drawdown_pct != null ? s.max_drawdown_pct.toFixed(2) + "%" : "—") + "</td>";
+        tbody.appendChild(tr);
+      });
+    };
+  })();
+  </script>
+</body>
+</html>

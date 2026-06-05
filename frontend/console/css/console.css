@@ -436,6 +436,7 @@ pre {
 }
 .console-chart--tall { height: 520px; }
 .console-chart--small { height: 240px; }
+.console-chart--mini { height: 80px; margin: 8px 0; }
 
 /* ============================================================
    Table
@@ -561,6 +562,13 @@ pre {
   margin: 8px 0;
   overflow-x: auto;
 }
+.console-history-summary {
+  font-family: var(--font-mono);
+  color: var(--ink-700);
+  margin-top: 4px;
+}
+.console-history-meta__id { font-size: 10px; }
+.console-card-stack > .console-card + .console-card { margin-top: 0; }
 
 /* ============================================================
    Lineage tree(data-provenance)
@@ -600,6 +608,74 @@ pre {
   margin-left: 8px;
 }
 .console-lineage__estimated { color: var(--warning); font-weight: 600; }
+
+/* Data-provenance 列表 */
+.console-lineage-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+.console-lineage-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--sand-200);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.console-lineage-item:last-child { border-bottom: none; }
+.console-lineage-item__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--stone-700);
+  font-weight: 600;
+}
+.console-lineage-item__url {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--copper-600);
+  word-break: break-all;
+}
+
+/* Chat message(独立样式,跟 console-chat-bubble 不一样 — 这个更紧凑)*/
+.console-msg {
+  margin: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 80%;
+}
+.console-msg--user { align-self: flex-end; }
+.console-msg--assistant { align-self: flex-start; }
+.console-msg--error { align-self: center; }
+.console-msg__role {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--stone-700);
+  font-weight: 700;
+}
+.console-msg__content {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--paper-100);
+  border: 1px solid var(--sand-200);
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
+}
+.console-msg--user .console-msg__content {
+  background: var(--copper-500);
+  color: var(--paper-50);
+  border-color: var(--copper-600);
+}
+.console-msg--error .console-msg__content {
+  background: rgba(183, 62, 62, 0.06);
+  color: var(--danger);
+  border-color: var(--danger);
+}
 
 /* ============================================================
    Utility

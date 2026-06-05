@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monte Carlo · RCA Console</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/console.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div class="console-layout">
+    <aside class="console-sidebar" id="sidebar"></aside>
+    <main class="console-main">
+      <header class="console-page-header">
+        <h1>Monte Carlo <span class="console-card--tool__zh">蒙特卡洛</span></h1>
+        <p class="console-page-header__desc">
+          500 次残差 bootstrap 模拟。每年输出 P5 / P50 / P95 三个分位数
+          — 给出概率分布而不是单点预测。
+        </p>
+      </header>
+
+      <div class="console-card">
+        <form id="form" class="console-form">
+          <div class="console-form__row">
+            <div class="console-field">
+              <label class="console-field__label">Scope · 范围</label>
+              <select name="scope" class="console-select">
+                <option value="city">city</option>
+                <option value="province">province</option>
+              </select>
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Name</label>
+              <input name="name" class="console-input" list="city-list" required>
+              <datalist id="city-list"></datalist>
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Indicator</label>
+              <select name="indicator" class="console-select" id="indicator"></select>
+            </div>
+            <div class="console-field">
+              <label class="console-field__label">Years · 预测年数</label>
+              <input name="years" type="number" class="console-input" min="1" max="20" value="5">
+            </div>
+          </div>
+          <button type="submit" class="console-button" id="run-btn">Run · 蒙特卡洛</button>
+        </form>
+      </div>
+
+      <div id="result-error"></div>
+
+      <div id="result-section" class="console-hidden">
+        <div class="console-card">
+          <h3 class="console-card__title">P5 / P50 / P95 扇形带</h3>
+          <div id="mc-chart" class="console-chart"></div>
+        </div>
+
+        <div class="console-card-grid" id="metrics-cards"></div>
+
+        <div class="console-card">
+          <h3 class="console-card__title">逐年分位数</h3>
+          <table class="console-table" id="mc-table">
+            <thead><tr><th>年</th><th>P5</th><th>P50 (中位)</th><th>P95</th><th>区间宽</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/form-helpers.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script src="../js/chart.js"></script>
+  <script>
+  (async function () {
+    await RCA.form.populateCityDatalist("city-list");
+    await RCA.form.populateIndicatorSelect("indicator");
+
+    document.getElementById("form").onsubmit = async (e) => {
+      e.preventDefault();
+      RCA.form.clearError("result-error");
+      const params = RCA.form.formToDict(e.target);
+      const r = await RCA.api.runTool("get_monte_carlo", params);
+      if (!r.ok) { RCA.form.showError("result-error", r.error); return; }
+      const data = r.data.data;
+      document.getElementById("result-section").classList.remove("console-hidden");
+
+      RCA.chart.renderMonteCarloChart("mc-chart", data);
+
+      const q = data.quantiles || data.percentiles || {};
+      const p5 = q.p05 || q.p5 || [];
+      const p50 = q.p50 || [];
+      const p95 = q.p95 || [];
+      const years = data.years || [];
+      const nYears = p50.length;
+      const nSims = data.n_sims || 0;
+
+      const metrics = [
+        { label: "模拟次数", value: nSims || "—" },
+        { label: "预测年数", value: nYears || "—" },
+        { label: "中位末年(P50)", value: p50.length ? p50[p50.length - 1].toFixed(2) : "—" },
+        { label: "末年 90% 区间", value: (p5.length && p95.length) ? (p95[p95.length - 1] - p5[p5.length - 1]).toFixed(2) : "—" },
+      ];
+      const container = document.getElementById("metrics-cards");
+      container.innerHTML = "";
+      metrics.forEach((mm) => {
+        const div = document.createElement("div");
+        div.className = "console-card console-metric";
+        div.innerHTML = '<div class="console-metric__label">' + RCA.form.escapeHtml(mm.label) +
+          '</div><div class="console-metric__value">' + RCA.form.escapeHtml(String(mm.value)) + "</div>";
+        container.appendChild(div);
+      });
+
+      const tbody = document.querySelector("#mc-table tbody");
+      tbody.innerHTML = "";
+      for (let i = 0; i < nYears; i++) {
+        const w = (p95[i] - p5[i]).toFixed(2);
+        const yearLabel = years[i] || ("t+" + (i + 1));
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + RCA.form.escapeHtml(String(yearLabel)) + "</td>" +
+          "<td class='console-text-mono'>" + (p5[i] ?? "—").toFixed(2) + "</td>" +
+          "<td class='console-text-mono'>" + (p50[i] ?? "—").toFixed(2) + "</td>" +
+          "<td class='console-text-mono'>" + (p95[i] ?? "—").toFixed(2) + "</td>" +
+          "<td class='console-text-mono'>" + w + "</td>";
+        tbody.appendChild(tr);
+      }
+    };
+  })();
+  </script>
+</body>
+</html>

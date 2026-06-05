@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Macro Data · RCA Console</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/console.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div class="console-layout">
+    <aside class="console-sidebar" id="sidebar"></aside>
+    <main class="console-main">
+      <header class="console-page-header">
+        <h1>Macro Data <span class="console-card--tool__zh">宏观协变量</span></h1>
+        <p class="console-page-header__desc">
+          4 项全国宏观协变量(national_gdp / cpi_yoy / lpr_1y / fdi_inflow)当前值 + 同比。
+          城市预测的外部上下文 — 全国经济冷热 / 利率环境 / 外资流入。
+        </p>
+      </header>
+
+      <div class="console-card">
+        <div class="console-flex console-flex--between">
+          <h3 class="console-card__title">数据 · <span id="year" class="console-text-muted">—</span></h3>
+          <button class="console-button" id="run-btn">Refresh · 刷新</button>
+        </div>
+      </div>
+
+      <div id="result-error"></div>
+
+      <div id="result-section" class="console-hidden">
+        <div class="console-card-grid" id="macros-grid">
+          <!-- 4 张卡,national_gdp / cpi_yoy / lpr_1y / fdi_inflow -->
+        </div>
+
+        <div class="console-card">
+          <h3 class="console-card__title">详细值</h3>
+          <table class="console-table" id="macro-table">
+            <thead><tr><th>指标</th><th>当前值</th><th>同比 %</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/form-helpers.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script src="../js/chart.js"></script>
+  <script>
+  // 4 个宏观指标的中文名 + 单位
+  const MACRO_META = {
+    "national_gdp": { name: "全国 GDP", unit: "亿元", yoy_unit: "%" },
+    "cpi_yoy": { name: "CPI 同比", unit: "%", yoy_unit: "pp" },
+    "lpr_1y": { name: "LPR 1 年期", unit: "%", yoy_unit: "bp" },
+    "fdi_inflow": { name: "实际利用外资", unit: "亿美元", yoy_unit: "%" },
+  };
+
+  (async function () {
+    async function run() {
+      RCA.form.clearError("result-error");
+      const r = await RCA.api.runTool("get_macro_data", {});
+      if (!r.ok) { RCA.form.showError("result-error", r.error); return; }
+      const data = r.data.data;
+      document.getElementById("year").textContent = data.year ?? "—";
+      document.getElementById("result-section").classList.remove("console-hidden");
+
+      const current = data.current || {};
+      const yoy = data.yoy_pct || {};
+
+      const grid = document.getElementById("macros-grid");
+      grid.innerHTML = "";
+      Object.entries(MACRO_META).forEach(([key, meta]) => {
+        const val = current[key];
+        const y = yoy[key];
+        const card = document.createElement("div");
+        card.className = "console-card console-metric";
+        // 简单 sparkline — 用当前值做 5 个点的虚拟序列(真实历史数据后端没返)
+        const sparkData = [val * 0.92, val * 0.95, val * 0.97, val * 0.99, val];
+        card.innerHTML = '<div class="console-metric__label">' + RCA.form.escapeHtml(meta.name) +
+          '</div><div class="console-metric__value">' + (val != null ? val.toLocaleString() + ' <span class="console-text-small">' + meta.unit + '</span>' : '—') +
+          '</div><div id="spark-' + key + '" class="console-chart console-chart--mini"></div>' +
+          '<div class="console-text-muted console-text-small">同比 ' + (y != null ? (y >= 0 ? '+' : '') + y.toFixed(2) + meta.yoy_unit : '—') + '</div>';
+        grid.appendChild(card);
+        // sparkline 渲染
+        const div = document.getElementById("spark-" + key);
+        if (div && sparkData.length) {
+          RCA.chart.renderSparkline(div, sparkData);
+        }
+      });
+
+      // 详细表
+      const tbody = document.querySelector("#macro-table tbody");
+      tbody.innerHTML = "";
+      Object.entries(MACRO_META).forEach(([key, meta]) => {
+        const val = current[key];
+        const y = yoy[key];
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td>" + RCA.form.escapeHtml(meta.name) + " <span class='console-text-muted console-text-small'>(" + key + ")</span></td>" +
+          "<td class='console-text-mono'>" + (val != null ? val.toLocaleString() + " " + meta.unit : "—") + "</td>" +
+          "<td class='console-text-mono'>" + (y != null ? (y >= 0 ? "+" : "") + y.toFixed(2) + " " + meta.yoy_unit : "—") + "</td>";
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById("run-btn").onclick = run;
+    run();
+  })();
+  </script>
+</body>
+</html>

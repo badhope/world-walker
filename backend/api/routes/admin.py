@@ -371,7 +371,10 @@ def _summarize(tool_name: str, result: Any) -> dict[str, Any]:
         summary["verdict"] = data["verdict"]
     elif tool_name == "get_backtest" and "metrics" in data:
         m = data["metrics"]
-        summary["mape"] = m.get("mape")
+        # 后端字段: MAPE_pct / RMSE / MASE / sMAPE_pct / Coverage_pct
+        summary["mape_pct"] = m.get("MAPE_pct")
+        summary["rmse"] = m.get("RMSE")
+        summary["n_test"] = data.get("n_test")
     elif tool_name == "get_risk" and "var_95" in data:
         summary["var_95_pct"] = data["var_95"].get("var_pct")
     elif tool_name == "get_list_cities" and "n_cities" in data:

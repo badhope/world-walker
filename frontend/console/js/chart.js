@@ -56,8 +56,9 @@
   function renderForecastChart(divOrId, ensemble) {
     const echart = _init(divOrId);
     const years = (ensemble.predictions || []).map((_, i) => 2024 + i);
-    const ci_lower = ensemble.ci_lower || [];
-    const ci_upper = ensemble.ci_upper || [];
+    // 后端字段: lower_ci / upper_ci
+    const ci_lower = ensemble.lower_ci || ensemble.ci_lower || [];
+    const ci_upper = ensemble.upper_ci || ensemble.ci_upper || [];
     echart.setOption({
       tooltip: { ...TOOLTIP, formatter: function (params) {
         let s = params[0].name + "<br/>";
@@ -176,9 +177,11 @@
   // ------------------------------------------------------------------------- //
   function renderMonteCarloChart(divOrId, data) {
     const echart = _init(divOrId);
-    const p5 = data.percentiles?.p5 || [];
-    const p50 = data.percentiles?.p50 || [];
-    const p95 = data.percentiles?.p95 || [];
+    // 后端字段: quantiles.p05 / p50 / p95 (兼容旧字段 percentiles.p5/p50/p95)
+    const q = data.quantiles || data.percentiles || {};
+    const p5 = q.p05 || q.p5 || [];
+    const p50 = q.p50 || [];
+    const p95 = q.p95 || [];
     const n_years = p5.length;
     const years = Array.from({ length: n_years }, (_, j) => 2024 + j);
     echart.setOption({
@@ -196,12 +199,40 @@
     });
   }
 
+  /**
+   * 把后端返回的 tests dict → array (前端用)
+   * - dict 形如 {"adf": {...}, "kpss": {...}, "ljung_box": {...}, ...}
+   * - array 形如 [{name: "adf", statistic: ..., pvalue: ..., conclusion: ..., passed: bool}, ...]
+   * - 已是 array 时原样返回(兼容)
+   */
+  function testsAsArray(diag) {
+    const tests = (diag && diag.tests) || {};
+    if (Array.isArray(tests)) return tests;
+    return Object.entries(tests).map(([name, t]) => {
+      // 用 boolean 字段判定通过(后端在 run_diagnostics 已统一转 python bool)
+      const passKey = (t.stationary !== undefined) ? "stationary"
+        : (t.no_autocorrelation !== undefined) ? "no_autocorrelation"
+        : (t.normal !== undefined) ? "normal"
+        : (t.homoscedastic !== undefined) ? "homoscedastic"
+        : null;
+      const passed = passKey ? (t[passKey] === true) : true;
+      return {
+        name: name,
+        statistic: t.statistic,
+        pvalue: t.pvalue,
+        conclusion: t.conclusion,
+        error: t.error,
+        passed: passed,
+      };
+    });
+  }
+
   // ------------------------------------------------------------------------- //
-  // 6. Diagnostics chart — 5 指标 bar
+  // 6. Diagnostics chart — 5 指标 bar (接受 dict 或 array)
   // ------------------------------------------------------------------------- //
   function renderDiagnosticsChart(divOrId, diag) {
     const echart = _init(divOrId);
-    const tests = diag.tests || [];
+    const tests = testsAsArray(diag);
     const labels = tests.map(t => t.name);
     const pvalues = tests.map(t => t.pvalue ?? t.statistic ?? 0);
     echart.setOption({
@@ -249,5 +280,6 @@
     renderMonteCarloChart,
     renderDiagnosticsChart,
     renderSparkline,
+    testsAsArray,
   };
 })();

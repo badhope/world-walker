@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>List Cities · RCA Console</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/console.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div class="console-layout">
+    <aside class="console-sidebar" id="sidebar"></aside>
+    <main class="console-main">
+      <header class="console-page-header">
+        <h1>List Cities <span class="console-card--tool__zh">城市列表</span></h1>
+        <p class="console-page-header__desc">
+          列出系统支持的所有城市和省份,以及可用指标。可用作其他 tool 的输入参考。
+        </p>
+      </header>
+
+      <div class="console-card">
+        <div class="console-flex console-flex--between">
+          <h3 class="console-card__title">支持范围</h3>
+          <button class="console-button" id="run-btn">Run · 重新加载</button>
+        </div>
+        <div id="result-error"></div>
+        <div id="result-summary" class="console-text-muted">尚未运行</div>
+      </div>
+
+      <div id="result-detail" class="console-hidden">
+        <div class="console-card">
+          <h3 class="console-card__title">搜索 / 过滤</h3>
+          <input type="text" id="filter-input" class="console-input" placeholder="输入城市拼音 / 省份名过滤...">
+        </div>
+
+        <div class="console-card-grid" id="cards-container"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/form-helpers.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+  (async function () {
+    RCA.form.populateCityDatalist("dummy");  // 预热缓存
+    let lastData = null;
+
+    async function run() {
+      RCA.form.clearError("result-error");
+      document.getElementById("result-summary").textContent = "正在调用...";
+      const r = await RCA.api.runTool("get_list_cities", {});
+      if (!r.ok) {
+        RCA.form.showError("result-error", r.error);
+        document.getElementById("result-summary").textContent = "调用失败";
+        return;
+      }
+      lastData = r.data.data;
+      render(lastData);
+    }
+
+    function render(data) {
+      document.getElementById("result-detail").classList.remove("console-hidden");
+      const n_cities = data.n_cities || (data.cities_pinyin || []).length;
+      const n_provinces = (data.provinces || []).length;
+      const n_indicators = (data.indicators || []).length;
+      document.getElementById("result-summary").innerHTML =
+        "<b>" + n_cities + "</b> 城市 · <b>" + n_provinces + "</b> 省份 · <b>" +
+        n_indicators + "</b> 指标";
+
+      // 渲染卡片
+      const container = document.getElementById("cards-container");
+      container.innerHTML = "";
+
+      // 城市块
+      const cityCard = document.createElement("div");
+      cityCard.className = "console-card";
+      cityCard.innerHTML = '<h3>城市 · Cities</h3><div id="city-chips" class="console-text-mono console-text-small"></div>';
+      container.appendChild(cityCard);
+
+      // 省份块
+      const provCard = document.createElement("div");
+      provCard.className = "console-card";
+      provCard.innerHTML = '<h3>省份 · Provinces</h3><div id="prov-chips" class="console-text-mono console-text-small"></div>';
+      container.appendChild(provCard);
+
+      // 指标块
+      const indCard = document.createElement("div");
+      indCard.className = "console-card";
+      indCard.innerHTML = '<h3>指标 · Indicators</h3><div id="ind-chips" class="console-text-mono console-text-small"></div>';
+      container.appendChild(indCard);
+
+      // 填 chips
+      const cityChips = document.getElementById("city-chips");
+      (data.cities_pinyin || data.cities || []).forEach((c) => {
+        const chip = document.createElement("span");
+        chip.className = "console-badge console-badge--info console-mr-1";
+        chip.style.margin = "2px 4px 2px 0";
+        chip.style.display = "inline-block";
+        chip.textContent = c;
+        cityChips.appendChild(chip);
+      });
+      const provChips = document.getElementById("prov-chips");
+      (data.provinces || []).forEach((p) => {
+        const chip = document.createElement("span");
+        chip.className = "console-badge console-badge--info";
+        chip.style.margin = "2px 4px 2px 0";
+        chip.style.display = "inline-block";
+        chip.textContent = p;
+        provChips.appendChild(chip);
+      });
+      const indChips = document.getElementById("ind-chips");
+      (data.indicators || []).forEach((i) => {
+        const chip = document.createElement("span");
+        chip.className = "console-badge console-badge--info";
+        chip.style.margin = "2px 4px 2px 0";
+        chip.style.display = "inline-block";
+        chip.textContent = i;
+        indChips.appendChild(chip);
+      });
+
+      // 过滤
+      document.getElementById("filter-input").oninput = (e) => {
+        const q = e.target.value.toLowerCase();
+        const allChips = cityChips.querySelectorAll("span");
+        allChips.forEach((c) => {
+          c.style.display = c.textContent.toLowerCase().includes(q) ? "inline-block" : "none";
+        });
+      };
+    }
+
+    document.getElementById("run-btn").onclick = run;
+    run();
+  })();
+  </script>
+</body>
+</html>

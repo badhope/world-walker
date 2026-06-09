@@ -47,7 +47,7 @@ pillow==10.3.0
 pydantic==2.7.3
 pydantic-core==2.18.4
 pydantic-settings==2.2.1
-pymdown-extensions==10.0.1
+pymdown-extensions==10.21.3
 pyparsing==3.1.2
 python-dateutil==2.9.0
 python-dotenv==1.0.1

@@ -43,7 +43,7 @@ openpyxl==3.1.4
 packaging==24.0
 pandas==2.2.2
 passlib==1.7.4
-pillow==10.3.0
+pillow==12.2.0
 pydantic==2.7.3
 pydantic-core==2.18.4
 pydantic-settings==2.2.1

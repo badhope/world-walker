@@ -1,123 +1,64 @@
-# Dependabot configuration — extended with auto-merge, security updates,
-# grouped version bumps and GitHub Actions SHA pinning.
-#
-# Reference: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
-
 version: 2
-enable-beta-ecosystems: true
 
-# ============================================
-# Python: pip
-# ============================================
+# Dependabot configuration
+# - Single weekly schedule
+# - Auto-rebase to keep PRs current
+# - Production/development groups for clean batched PRs
+
 updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-      time: "09:00"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
       - "python"
-      - "auto-merge"
     commit-message:
-      prefix: "deps"
-      prefix-development: "deps(dev)"
+      prefix: "chore(deps)"
       include: "scope"
+    rebase-strategy: "auto"
     groups:
-      fastapi:
-        patterns:
-          - "fastapi"
-          - "uvicorn"
-          - "starlette"
-          - "pydantic"
-          - "pydantic-settings"
-      data-science:
-        patterns:
-          - "pandas"
-          - "numpy"
-          - "scipy"
-          - "scikit-learn"
-          - "statsmodels"
-          - "joblib"
-      dev-tools:
-        patterns:
-          - "pytest"
-          - "black"
-          - "ruff"
-          - "isort"
-          - "mypy"
-          - "coverage"
-          - "hypothesis"
-      security:
-        patterns:
-          - "cryptography"
-          - "pyjwt"
-          - "jinja2"
-        applies-to: version-updates
-    # Skip major version bumps
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-    # Reviewer assignment
-    reviewers:
-      - "your-org/maintainers"
-    assignees:
-      - "your-org/maintainers"
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
 
-# ============================================
-# GitHub Actions
-# ============================================
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "tuesday"
-      time: "10:00"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 3
-    labels:
-      - "dependencies"
-      - "github-actions"
-      - "auto-merge"
-    commit-message:
-      prefix: "ci"
-    groups:
-      actions:
-        patterns:
-          - "*"
-    reviewers:
-      - "your-org/maintainers"
-
-# ============================================
-# Docker
-# ============================================
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 2
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
       - "docker"
     commit-message:
-      prefix: "docker"
-    ignore:
-      - dependency-name: "python"
-        update-types: ["version-update:semver-major"]
+      prefix: "chore(deps)"
+      include: "scope"
+    rebase-strategy: "auto"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
 
-# ============================================
-# Pre-commit (git-hooks ecosystem)
-# ============================================
-  - package-ecosystem: "gitsubmodule"
+  - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 2
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
     labels:
       - "dependencies"
-      - "submodules"
+      - "ci"
     commit-message:
-      prefix: "submodules"
+      prefix: "ci"
+      include: "scope"
+    rebase-strategy: "auto"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"

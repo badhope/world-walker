@@ -3,7 +3,7 @@
 
 # Testing
 pytest==9.0.3
-pytest-cov==5.0.0
+pytest-cov==7.1.0
 pytest-mock==3.14.0
 pytest-asyncio==0.23.7
 pytest-benchmark==4.0.0
@@ -47,4 +47,4 @@ pip-tools==7.4.1
 # Misc dev tools
 ipython==8.24.0
 ipdb==0.13.13
-watchfiles==0.21.0
+watchfiles==1.2.0

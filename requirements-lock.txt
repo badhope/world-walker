@@ -54,7 +54,7 @@ python-dotenv==1.2.2
 python-engineio==4.9.1
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.27
-python-socketio==5.11.2
+python-socketio==5.14.0
 pytz==2024.1
 pyyaml==6.0.1
 referencing==0.35.1

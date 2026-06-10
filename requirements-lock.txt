@@ -75,7 +75,7 @@ typer==0.12.3
 typing-extensions==4.12.1
 tzdata==2024.1
 ujson==5.10.0
-urllib3==2.2.2
+urllib3==2.7.0
 uvicorn[standard]==0.32.0
 watchfiles==0.22.0
 websockets==12.0

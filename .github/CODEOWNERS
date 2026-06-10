@@ -1,37 +1,22 @@
-# Code owners auto-assigns reviewers for pull requests.
-# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# CODEOWNERS — default review ownership
+# badhope is the sole owner; replace with team handles in a
+# multi-maintainer setup.
 
-# Default owners for everything in the repo
-*       @your-org/maintainers
+# Default: everything
+*       @badhope
 
-# Backend (Python / FastAPI)
-/backend/        @your-org/backend-reviewers
-/backend/api/    @your-org/api-reviewers
-/backend/analysis/  @your-org/analysis-reviewers
-/config/         @your-org/backend-reviewers
-
-# Frontend (HTML / static assets)
-/frontend/       @your-org/frontend-reviewers
-
-# Tests
-/tests/          @your-org/qa-reviewers
-/full_diagnose.py  @your-org/qa-reviewers
-
-# Infrastructure
-/Dockerfile      @your-org/devops-reviewers
-/docker-compose.yml  @your-org/devops-reviewers
-/.github/        @your-org/devops-reviewers
-/Makefile        @your-org/devops-reviewers
-/scripts/        @your-org/devops-reviewers
+# GitHub configuration
+/.github/        @badhope
 
 # Documentation
-/docs/           @your-org/docs-reviewers
-/README.md       @your-org/docs-reviewers
-/CHANGELOG.md    @your-org/docs-reviewers
-/ARCHITECTURE.md @your-org/architect-reviewers
+/docs/           @badhope
+/README.md       @badhope
+/CHANGELOG.md    @badhope
 
-# Security-sensitive files
-/backend/api/routes/auth.py  @your-org/security-reviewers
-/backend/security/  @your-org/security-reviewers
-/.env.example    @your-org/security-reviewers
-/SECURITY.md     @your-org/security-reviewers
+# Build / release config
+/package.json    @badhope
+/uv.lock         @badhope
+/package-lock.json @badhope
+/pnpm-lock.yaml  @badhope
+/Cargo.toml      @badhope
+/Cargo.lock      @badhope

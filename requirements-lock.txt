@@ -50,7 +50,7 @@ pydantic-settings==2.2.1
 pymdown-extensions==10.21.3
 pyparsing==3.1.2
 python-dateutil==2.9.0
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 python-engineio==4.9.1
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.9

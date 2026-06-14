@@ -18,9 +18,9 @@ class Settings(BaseSettings):
     """Application configuration."""
 
     # Basic metadata
-    PROJECT_NAME: str = "Regional Economic Analysis Agent"
-    PROJECT_NAME_ZH: str = "区域经济分析智能体"
-    VERSION: str = "9.1.0"
+    PROJECT_NAME: str = "Urban Pulse"
+    PROJECT_NAME_ZH: str = "城市脉搏 — 城市经济智能分析"
+    VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
 
     # Environment (dev / staging / production / test)
@@ -121,3 +121,4 @@ if settings.ALGORITHM == "RS256" and not settings.SECRET_KEY.startswith("-----BE
     )
 
 Path("data").mkdir(parents=True, exist_ok=True)
+

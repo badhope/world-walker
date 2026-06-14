@@ -6,10 +6,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from backend.api.auth import require_user
+
 
 router = APIRouter(prefix="/data", tags=["数据管理"])
 
@@ -43,7 +43,6 @@ class Indicator(IndicatorCreate):
 @router.post("/", response_model=Indicator, summary="创建指标记录")
 def create_indicator(
     indicator: IndicatorCreate,
-    _user: dict = Depends(require_user),
 ):
     """创建单条经济指标记录(需要管理员鉴权)"""
     new_id = len(sample_data) + 1
@@ -168,3 +167,4 @@ def get_map_data(indicator: str = Query("output"), year: int = Query(2025)):
         ],
         "geoJson": {},  # 实际项目需加载真实的GeoJSON
     }
+

@@ -44,8 +44,8 @@ class TestAnalysisAPI:
 
     def test_api_routes_exist(self):
         """测试 API 路由模块存在"""
-        from backend.api.routes import analysis, data, inference
+        from backend.api.routes import analysis, data
 
         assert data is not None
         assert analysis is not None
-        assert inference is not None
+

@@ -3,127 +3,74 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "regional-economic-analysis"
-version = "9.1.0"
-description = "Regional Economic Analysis Agent: a production-grade multi-scenario analytics system with self-developed LLM agent, 3 entry points (Web Dashboard / Python SDK / CLI / Web Console) for city comparison, retail site selection, sales forecasting and government industry policy evaluation."
+name = "urban-pulse"
+version = "1.0.0"
+description = "City economic intelligence platform — 10 Chinese cities, 16 years of real public data. FastAPI time-series forecasting, ECharts dashboards, data pipeline."
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
 requires-python = ">=3.11"
 authors = [
-    {name = "Regional Economic Analysis Team"}
+    {name = "badhope"}
 ]
 keywords = [
-    "regional-economy",
+    "urban-economy",
     "economic-analysis",
     "city-comparison",
-    "industry-analysis",
-    "retail-location",
-    "sales-forecast",
-    "site-selection",
-    "policy-evaluation",
     "time-series-forecasting",
     "data-visualization",
     "fastapi",
     "echarts",
     "data-science",
-    "machine-learning",
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "Intended Audience :: Financial and Insurance Industry",
-    "Intended Audience :: Government",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3 :: Only",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Information Analysis",
-    "Topic :: Office/Business :: Financial :: Investment",
-    "Topic :: Sociology",
-    "Operating System :: OS Independent",
-    "Natural Language :: English",
-    "Natural Language :: Chinese (Simplified)",
+    "Topic :: Office/Business :: Financial",
 ]
 
 [project.urls]
-Homepage = "https://github.com/badhope/national_stats"
-Repository = "https://github.com/badhope/national_stats"
-Issues = "https://github.com/badhope/national_stats/issues"
-Documentation = "https://github.com/badhope/national_stats/blob/main/README.md"
-Changelog = "https://github.com/badhope/national_stats/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/badhope/urban-pulse"
+Source = "https://github.com/badhope/urban-pulse"
+Documentation = "https://github.com/badhope/urban-pulse"
+Issues = "https://github.com/badhope/urban-pulse/issues"
+
+[tool.setuptools.packages.find]
+include = ["backend*", "config*"]
 
 [project.scripts]
-# `rca` command → cli.main Typer app
-rca = "cli.main:app"
+urban-pulse = "backend.api.main:run"
+
+[project.optional-dependencies]
+data = [
+    "akshare>=1.14",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+]
+forecast = [
+    "statsforecast>=1.7",
+    "arch>=7.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "httpx>=0.27",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "-v --tb=short"
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::FutureWarning",
-    "ignore::RuntimeWarning",
-]
+filterwarnings = ["ignore::DeprecationWarning"]
 
-[tool.ruff]
-line-length = 120
-target-version = "py311"
-extend-exclude = [
-    "models/*.pkl",
-    "models/SHA256SUMS",
-    "frontend",
-    "docs",
-    "data/cities",
-    "screenshots",
-    ".github",
-    ".screens",
-    "*.log",
-    "build",
-    "dist",
-    ".venv",
-    "venv",
-    "node_modules",
-]
+[tool.coverage.run]
+source = ["backend"]
+omit = ["*/tests/*"]
 
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP"]
-# Rules intentionally disabled across the project:
-# - N803/N806: ML/DL convention uses uppercase variable names for tensors
-#   (X, X_train, X_test, Q1, Q3, IQR, etc.). Renaming would break domain idiom
-#   without security or correctness benefit.
-# - E501: Long lines are stylistic; covered by formatter for the common case.
-# - E402: Module-level imports placed after sys.path manipulation are
-#   required by many test/example entry-points.
-# - W291/W293: Trailing/blank-line whitespace is cosmetic; ruff format handles
-#   the bulk of whitespace issues, and the remaining occurrences are
-#   non-functional.
-ignore = [
-    "N803",
-    "N806",
-    "E501",
-    "E402",
-    "W291",
-    "W293",
-]
-
-[tool.ruff.lint.per-file-ignores]
-# Examples and legacy scripts keep their original style; they're not part of
-# the supported test surface.
-"examples/**" = ["F401", "F841", "E722", "E741", "UP038"]
-"scripts/legacy/**" = ["F401", "F841", "E722", "E741", "UP038"]
-"notebooks/**" = ["F401", "F841", "E402", "E501", "E722", "E741", "N803", "N806", "UP038"]
-"tests/**" = ["F401", "F841", "E402", "N803", "N806", "UP038"]
-
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true
-
-[tool.black]
-line-length = 120
-target-version = ["py311"]
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}

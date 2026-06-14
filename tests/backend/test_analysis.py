@@ -5,7 +5,7 @@
 import pytest
 
 
-@pytest.mark.unit
+
 class TestIndicatorRegistry:
     """指标注册系统测试"""
 
@@ -43,7 +43,7 @@ class TestIndicatorRegistry:
         assert len(indicators) > 0  # 应该有默认注册的指标
 
 
-@pytest.mark.unit
+
 class TestCustomIndicators:
     """自定义指标计算引擎测试"""
 
@@ -54,7 +54,7 @@ class TestCustomIndicators:
         assert custom_indicators is not None
 
 
-@pytest.mark.unit
+
 class TestDimensionAnalysis:
     """维度分析框架测试"""
 
@@ -65,7 +65,7 @@ class TestDimensionAnalysis:
         assert dimension_analysis is not None
 
 
-@pytest.mark.unit
+
 class TestEnterpriseAnalyzer:
     """企业分析器测试"""
 
@@ -107,7 +107,7 @@ class TestEnterpriseAnalyzer:
         assert "policy_benefits" in report
 
 
-@pytest.mark.unit
+
 class TestGovernmentAnalyzer:
     """政府分析器测试"""
 
@@ -150,7 +150,7 @@ class TestGovernmentAnalyzer:
         assert "industry_chain" in report
 
 
-@pytest.mark.unit
+
 class TestEconomicModels:
     """经济模型测试"""
 
@@ -159,3 +159,4 @@ class TestEconomicModels:
         from backend.analysis import economic_models
 
         assert economic_models is not None
+

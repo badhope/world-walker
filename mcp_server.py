@@ -53,7 +53,7 @@ from game_engine.rules.social import resolve_social_event
 from game_engine.rules.social_extended import merit_quality
 from game_engine.rules.world_dynamics import event_information
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
-from game_engine.state_schema import entity_key, load_state, log_event, save_state
+from game_engine.state_schema import entity_key, load_state, log_event, save_state, seed_rng
 from game_engine.viz_series import record_sample
 
 from pydantic import BaseModel, Field
@@ -352,22 +352,8 @@ def _finish(state: dict, result: dict) -> dict:
 
 
 def _seed_rng(state: dict) -> None:
-    """带种子可复现：同一 state、同一计数器、同一行动 → 同一结果。
-
-    计数器随每次结算递增并落盘，保证同一回合内的多次行动不会复用同一段随机序列。
-    """
-    seed = state.get("rng_seed")
-    if seed is None:
-        return
-    counter = int(state.get("rng_counter", 0)) + 1
-    state["rng_counter"] = counter
-    mixed = (int(seed) * 1000003 + int(state.get("tick", 0)) * 7919 + counter) % (2 ** 32)
-    random.seed(mixed)
-    try:
-        import numpy as np
-        np.random.seed(mixed)
-    except Exception:
-        pass
+    """确定性种子委托：见 state_schema.seed_rng（CLI 与 MCP 共用同一实现）。"""
+    seed_rng(state)
 
 
 def _codex(state: dict) -> dict:

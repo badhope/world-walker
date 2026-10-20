@@ -1,7 +1,9 @@
 """
 扩展社交系统 (Social Extended)
 
-基于: PSYCHOLOGY_EXTENDED.md + MORAL_PSYCHOLOGY.md + KNOWLEDGE_SYSTEMS.md
+基于: 道德心理学与社会心理学文献（Haidt 道德基础 / Tajfel 社会认同 /
+      Opotow 道德排除 / Lerner 正义动机 / Bandura 道德推脱 /
+      Milgram 服从 / Cialdini 影响力原则）
 包含: 六维道德基础(Haidt), 社会认同(Tajfel), 道德排除(Opotow), 
       正义动机(Lerner), 道德推脱(Bandura), 群体服从(Milgram),
       影响力原则(Cialdini), 社会网络分析, 责任扩散
@@ -9,6 +11,8 @@
 
 import math, random
 from typing import List, Dict, Tuple
+
+from game_engine.rules.models import basic_reproduction
 
 # ============================================================
 # 1. 道德基础理论 (Moral Foundations Theory, Haidt 2001)
@@ -155,8 +159,8 @@ def ws_characteristic_path_length(N: int, K: int) -> float:
     return math.log(N) / math.log(K)
 
 def basic_reproduction_number(infection_rate: float, recovery_rate: float) -> float:
-    """R_0 = β/γ — 信息传播阈值"""
-    return infection_rate / recovery_rate if recovery_rate > 0 else float('inf')
+    """R_0 = β/γ — 信息传播阈值（与模型层 models.basic_reproduction 同式，转调保单一实现）"""
+    return basic_reproduction(infection_rate, recovery_rate)
 
 def modularity(adjacency: List[List[int]], communities: List[int]) -> float:
     """模块度 Q — 派系自动检测"""

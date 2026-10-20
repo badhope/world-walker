@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-15 ｜ 文档版本：v1.0
+> 最后更新：2026-10-19 ｜ 文档版本：v1.1
 
 ## 1. 概述与目标
 
@@ -206,6 +206,7 @@ view_model = {
 | 2026-10-15 | 品牌与帮助打磨：品牌可配置（ui.brand/tagline + DEFAULT_BRAND 单一信源 + BRAND.md）+ meta 暴露数据路径 + 帮助弹窗（术语表/图表读法/键盘/数据隐私/皮肤）+ `?` 快捷键 + 首访引导条 + 大数千分位 | §7.2、§9 T10、新增 BRAND.md | T10 | verify_panel 48/48 + 品牌冒烟 20/20 + viz 冒烟 14/14 + 回归 48/48 & 41/41 |
 | 2026-10-15 | 上传准备（v0.8.0）：wheel 资源完整性修复（panel.*/assets/settings 进包）、MANIFEST.in、服务端版本对齐 0.7.0→0.8.0、文档断言计数与结构清单对齐、残留运行文件清理 | §4、§5、§9 T11 | T11 | wheel 36 条目含全部资源 + pip --target 安装后面板 5 端点 200 + 全量回归绿 |
 | 2026-10-15 | 交付物完善：dist 发行包实打落盘（sdist + wheel）+ 面板截图入仓（docs/screenshots 六张，2000 回合存档现场重截、截图前 35 项断言）+ 双 README 界面预览区 + 截图与来源说明随 sdist/wheel 分发（package-data/MANIFEST 纳入 docs） | §4、§5、§9 T12 | T12 | 见 .aqg/code-construction/screenshots-and-dist.md 验证日志 |
+| 2026-10-19 | 依赖澄清与确定性修复（v1.1）：移除 rules 对 numpy 的隐性硬依赖（world_dynamics/cultural_evolution 共 4 个矩阵函数改纯 Python，与 numpy 对拍 200 组最大偏差 3.6e-15；ndarray 入参仍兼容），§2「仅标准库」约束自此真实成立；`seed_rng` 下沉 state_schema 供 CLI 与 MCP 共用，CLI 补齐种子确定性（修复前同状态两次 combat 伤害 19/16 不等）；engine.py 只读命令不再重写状态文件（dirty flag）；panel.py 清除被 shadow 的死代码（旧 skin_for_world + SKIN_ACCENTS）；rules 各模块 docstring 的理论引用改文献出处（原引用的 .md 不在仓库）；social_extended.basic_reproduction_number 转调模型层保单一实现；demo_state.json 按现行引擎重生（补 rng_seed、因果中文标签） | §2、§4、§5 | — | 本机复跑：无 numpy 环境 verify_panel 48/48 + CLI 确定性 A=B；venv（numpy+mcp）verify_panel 48/48、verify_mcp_stdio 48/48、user_playtest 41/41、stress 300/300 零违规 |
 
 ### ADR-004：长局可视化的三个取舍
 - **状态**：已采纳 ｜ **日期**：2026-10-15

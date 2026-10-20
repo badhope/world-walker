@@ -20,7 +20,7 @@ if "game_engine" not in sys.modules:
     _pkg.__path__ = [_SCRIPT_DIR]
     sys.modules["game_engine"] = _pkg
 
-from game_engine.state_schema import load_state, save_state, log_event
+from game_engine.state_schema import load_state, save_state, log_event, seed_rng
 from game_engine.rules.combat import resolve_combat
 from game_engine.rules.economy import resolve_trade, tick_market
 from game_engine.rules.social import resolve_social_event
@@ -113,24 +113,29 @@ def main():
         sys.exit(1)
     
     state = load_state(args.state)
+    seed_rng(state)   # 与 MCP 共用：同一 state + 同一行动 → 同一结果
     result = {"action": args.action}
-    
+    dirty = False      # 只有变更状态的分支才落盘；只读命令不得改写状态文件
+
     if args.action == "combat":
         skill = json.loads(args.skill) if args.skill else None
         r = resolve_combat(state, args.attacker, args.defender, args.action_type, skill)
         result.update(r)
         for e in r.get("events", []): log_event(state, "combat", e)
-    
+        dirty = True
+
     elif args.action == "trade":
         r = resolve_trade(state, args.location, args.item, args.quantity, args.direction=="buy", args.entity)
         result.update(r)
         for e in r.get("events", []): log_event(state, "trade", e)
-    
+        dirty = True
+
     elif args.action == "social":
         r = resolve_social_event(state, args.actor, args.target, args.event, args.intensity)
         result.update(r)
         for e in r.get("events", []): log_event(state, "social", e)
-    
+        dirty = True
+
     elif args.action == "karma":
         r = resolve_karma(state, args.actor, args.victim, args.karma_type)
         result.update(r)
@@ -138,12 +143,14 @@ def main():
         cons = get_karma_consequence(state, args.actor)
         if cons["triggered"]:
             result["karma_consequence"] = cons
-    
+        dirty = True
+
     elif args.action == "tick":
         tick_market(state)
         state["tick"] += 1
         log_event(state, "tick", f"回合{state['tick']}结束")
         result["events"] = [f"回合{state['tick']}结束"]
+        dirty = True
     
     elif args.action == "flow":
         r = flow_channel_status(state)
@@ -189,7 +196,8 @@ def main():
     elif args.action == "info_weight":
         result = {"info_weight": event_information(args.probability)}
     
-    save_state(state, args.state)
+    if dirty:
+        save_state(state, args.state)
     result["_tick"] = state["tick"]
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

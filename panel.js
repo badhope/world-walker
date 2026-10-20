@@ -776,7 +776,9 @@
     }
     const lbl = document.createElement("span");
     lbl.className = "lbl";
-    lbl.textContent = (p.level || "—") + (p.mind_scars ? " · 心伤 " + p.mind_scars : "");
+    lbl.textContent = (p.level || "—")
+      + (p.mind_scars ? " · 心伤 " + p.mind_scars : "")
+      + (p.near_death_count ? " · 濒死 " + p.near_death_count : "");
     box.appendChild(lbl);
   }
 

@@ -30,6 +30,7 @@ TARGETS = [
     'scripts/verify_cli.py',
     'scripts/verify_panel.py',
     'scripts/verify_mcp_stdio.py',
+    'scripts/verify_near_death.py',
     'scripts/user_playtest.py',
     'scripts/stress_freeplay.py',
 ]

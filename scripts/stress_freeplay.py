@@ -332,11 +332,11 @@ async def run(turns: int, quiet: bool = False):
                     else:
                         await call('narrative_weight', {'probability': 0}, allow_error=True)
 
-                # 死亡：续命
+                # 濒死：引擎保证玩家气血 >= 1 并自动记账（不再靠本地改内存假装复活）
                 p = player.state.get('entities', {}).get('player', {})
                 if p.get('hp', 0) <= 0:
-                    p['hp'] = int(p.get('hp_max', 50))
-                    await call('write_summary', {'text': '（玩家在第%d回合倒下又醒来，记忆延续）' % turn})
+                    invariant_fail.append({'note': '玩家气血归零（濒死保护失效）', 'turn': turn,
+                                           'detail': 'hp=%s' % p.get('hp')})
 
                 r = await call('tick', {})
                 if r is None and turn == 1:

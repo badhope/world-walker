@@ -224,6 +224,9 @@ def main():
         check("数值字段仍是数值（千分位只在展示层）",
               isinstance(vm.get("player", {}).get("gold"), int)
               and isinstance(vm.get("tick"), int))
+        check("濒死次数随玩家下发（0 也要有，前端才能显示）",
+              isinstance(vm.get("player", {}).get("near_death_count"), int),
+              "near_death_count=%s" % (vm.get("player", {}) or {}).get("near_death_count"))
 
         # 2. 静态资源白名单与安全
         st, ct, body = http_get(base + "/")

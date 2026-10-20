@@ -232,6 +232,7 @@ def view_model(state_path):
             "stage": int(player.get("stage", 0) or 0),
             "stage_max": int((s.get("config") or {}).get("stage_max", 20) or 20),
             "mind_scars": int(player.get("mind_scars", 0) or 0),
+            "near_death_count": int(player.get("near_death_count", 0) or 0),
             "hp": player.get("hp", 0), "hp_max": player.get("hp_max", 1),
             "mp": player.get("mp", 0), "mp_max": player.get("mp_max", 0),
             "gold": player.get("gold", 0), "location": loc,

@@ -472,7 +472,7 @@ def world_schema() -> dict:
             "karma_ledger": "因果债流水（引擎维护）",
             "world_flags": "已触发的世界事件标记（字符串数组）",
             "ui": "面板皮肤与品牌（可选）{skin: xuanshu|neutral|ink|neon, accent: '#rrggbb', motif: 文案, brand: 字标, tagline: 标语}",
-            "event_log": "最近事件（引擎维护，最多 50 条）",
+            "event_log": "最近事件（引擎维护，保留量见 config.event_log_keep，默认 200；溢出自动归档）",
         },
         "entity_shape": {
             "name": "显示名（必填）",

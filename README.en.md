@@ -84,8 +84,9 @@ the engine's JSON into prose — it must never invent numbers.
 - Travel & codex: `travel` is the only tool that moves the player; first arrival enters the codex
 - Deterministic undo: `snapshot` / `restore`
 - End-to-end self-check: `python scripts/verify_mcp_stdio.py` (49 assertions, including ecosystem / codex / panel / settings / long game / model layer / determinism)
-- Panel contract self-check: `python scripts/verify_panel.py` (48 assertions: view-model contract / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
-- CLI channel self-check: `python scripts/verify_cli.py` (18 assertions: read-only commands never rewrite the save / all five write paths persist with bounded fields / same seed + same action reproduces)
+- Panel contract self-check: `python scripts/verify_panel.py` (52 assertions: view-model contract / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
+- CLI channel self-check: `python scripts/verify_cli.py` (19 assertions: read-only commands never rewrite the save / all five write paths persist with bounded fields / same seed + same action reproduces)
+- Test-integrity audit: `python scripts/verify_tests.py` (statically audits every self-check assertion and rejects tautologies / always-false / weak checks — no more "all green but nothing tested")
 - User-perspective playtest: `python scripts/user_playtest.py` (41 checks a real player would raise — money-minting exploits, boundary inputs, readable refusals)
 - Field-tested: opencode (GLM-5.2) builds a world from the setting and settles three actions in a row;
   its narration matches the engine's state file item by item
@@ -135,8 +136,9 @@ game_engine/                      # the repo root IS the game_engine package (an
 ├── BRAND.md                      # brand spec (name / tagline / palette / configurability; single source)
 ├── ARCHITECTURE.md               # architecture doc (single source of truth: view-model contract / invariants / ADRs)
 ├── scripts/verify_mcp_stdio.py   # MCP end-to-end self-check (49 assertions, including ecosystem compat / codex / panel / model layer / determinism)
-├── scripts/verify_panel.py       # panel contract self-check (48 assertions: view model / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
-├── scripts/verify_cli.py         # CLI channel self-check (18 assertions: read-only invariants / write persistence / determinism)
+├── scripts/verify_panel.py       # panel contract self-check (52 assertions: view model / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
+├── scripts/verify_cli.py         # CLI channel self-check (19 assertions: read-only invariants / write persistence / determinism)
+├── scripts/verify_tests.py       # test-integrity audit (AST-level: rejects tautologies / always-false / weak checks)
 ├── scripts/user_playtest.py      # user-perspective playtest (41 "would a player complain?" checks: exploits / edges / error readability)
 ├── scripts/stress_freeplay.py    # free-player stress test (default 2000 turns, real MCP stdio channel)
 ├── docs/screenshots/             # README preview shots (real renders + assertions; provenance in that folder's README)

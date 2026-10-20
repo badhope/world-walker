@@ -65,16 +65,22 @@ READONLY = [
 
 def verify_readonly(tmp):
     base_counter = json.load(open(DEMO_STATE, encoding='utf-8')).get('rng_counter', 0)
+    # 同一份副本连跑 9 条只读命令：既验单次哈希，也验累计后 rng_counter 未被推进
+    p = fresh_copy(tmp, 'ro_all.json')
+    hash_before_all = sha256(p)
     for cmd, extra in READONLY:
-        p = fresh_copy(tmp, 'ro_%s.json' % cmd)
         before = sha256(p)
         r = run_cli(p, cmd, *extra)
         ok = (r.returncode == 0 and sha256(p) == before)
         check('只读 %s 落盘哈希不变' % cmd, ok,
               '' if ok else 'exit=%s hash_changed=%s' % (r.returncode, sha256(p) != before))
-    s = json.load(open(fresh_copy(tmp, 'ro_probe.json'), encoding='utf-8'))
-    check('只读命令不推进 rng_counter（仅内存自增）',
-          json.load(open(fresh_copy(tmp, 'ro_probe2.json'), encoding='utf-8')).get('rng_counter') == base_counter)
+    s = json.load(open(p, encoding='utf-8'))
+    check('只读命令不推进 rng_counter（9 条连跑后复核落盘值）',
+          s.get('rng_counter') == base_counter,
+          'base=%s after=%s' % (base_counter, s.get('rng_counter')))
+    check('只读命令累计执行后状态文件逐字节不变',
+          sha256(p) == hash_before_all,
+          '' if sha256(p) == hash_before_all else 'hash changed')
 
 
 # ---------------------------------------------------------------- 2. 写通道全覆盖

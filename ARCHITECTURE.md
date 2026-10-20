@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-20 ｜ 文档版本：v1.2
+> 最后更新：2026-10-20 ｜ 文档版本：v1.3
 
 ## 1. 概述与目标
 
@@ -73,7 +73,7 @@ world-walker/                      # 仓库根即 game_engine 包
 ├── panel.js                       # 数据层 + 状态层 + 渲染/反馈层
 ├── rules/                         # 规则内核（含 models.py 命名闭式模型层）
 ├── settings/                      # 设定包（玄枢界等）
-└── scripts/                       # verify_mcp_stdio / verify_panel / verify_cli / user_playtest / stress_freeplay
+└── scripts/                       # verify_mcp_stdio / verify_panel / verify_cli / verify_tests / user_playtest / stress_freeplay
 ```
 
 ## 6. 核心数据模型
@@ -198,6 +198,7 @@ view_model = {
 - [x] T11 上传前置：打包完整性（package-data/MANIFEST.in，v0.8.0）+ 安装包真机验证 + 版本/文档对齐 + 残留清理 — 验证：wheel 内资源齐全 + 从安装包启动面板 5 端点全 200
 - [x] T12 交付物完善：dist 发行包实打（sdist + wheel 落盘）+ 面板截图入仓（docs/screenshots，2000 回合存档现场重截、断言先行）+ 双 README 预览区 + 截图随 sdist/wheel 分发 — 验证：截图断言 35/35 + 产物条目核对 + 安装包冒烟 + 回归全绿
 - [x] T13 确定性契约固化：新增 scripts/verify_cli.py（18 项）覆盖 CLI 只读写不变量/写通道落盘/双通道确定性；verify_mcp_stdio.py 增快照点重放断言（49 项）— 验证：verify_cli 18/18 + verify_mcp_stdio 49/49 + 全量回归绿
+- [x] T14 测试可信度治理：修复 5 处恒真/无效断言（verify_cli 只读探针比较两份副本、verify_panel 侧写 `or True`、皮肤循环 for/else 硬编码 True、stress 归档与回退断言恒真）；新增 scripts/verify_tests.py 做 AST 级断言审计（R1 恒真/R2 常量/R3 恒真下界/R4 弱断言）；修正 world_schema event_log 错误陈述（50→config.event_log_keep 默认 200）— 验证：verify_tests 0 可疑 + 三处变异测试均能被抓出
 
 ## 10. 变更日志（Changelog）
 
@@ -211,6 +212,7 @@ view_model = {
 | 2026-10-15 | 交付物完善：dist 发行包实打落盘（sdist + wheel）+ 面板截图入仓（docs/screenshots 六张，2000 回合存档现场重截、截图前 35 项断言）+ 双 README 界面预览区 + 截图与来源说明随 sdist/wheel 分发（package-data/MANIFEST 纳入 docs） | §4、§5、§9 T12 | T12 | 见 .aqg/code-construction/screenshots-and-dist.md 验证日志 |
 | 2026-10-19 | 依赖澄清与确定性修复（v1.1）：移除 rules 对 numpy 的隐性硬依赖（world_dynamics/cultural_evolution 共 4 个矩阵函数改纯 Python，与 numpy 对拍 200 组最大偏差 3.6e-15；ndarray 入参仍兼容），§2「仅标准库」约束自此真实成立；`seed_rng` 下沉 state_schema 供 CLI 与 MCP 共用，CLI 补齐种子确定性（修复前同状态两次 combat 伤害 19/16 不等）；engine.py 只读命令不再重写状态文件（dirty flag）；panel.py 清除被 shadow 的死代码（旧 skin_for_world + SKIN_ACCENTS）；rules 各模块 docstring 的理论引用改文献出处（原引用的 .md 不在仓库）；social_extended.basic_reproduction_number 转调模型层保单一实现；demo_state.json 按现行引擎重生（补 rng_seed、因果中文标签） | §2、§4、§5 | — | 本机复跑：无 numpy 环境 verify_panel 48/48 + CLI 确定性 A=B；venv（numpy+mcp）verify_panel 48/48、verify_mcp_stdio 48/48、user_playtest 41/41、stress 300/300 零违规 |
 | 2026-10-20 | 确定性契约固化（v1.2）：新增 `scripts/verify_cli.py`（18 项）把 CLI 通道的三类性质变成常驻断言——9 条只读命令前后状态文件 sha256 不变且不推进 `rng_counter`、combat/trade/social/karma/tick 五条 dirty 分支全部落盘且字段有界、三副本同行动与双副本 12 步混合动作终态逐字节一致；`verify_mcp_stdio.py` 增 1 项快照点重放断言（49 项），覆盖 `rng_counter` 随快照回退后的确定性语义；§6.2 新增 INV-E3/E4；文档断言计数与结构清单同步 | §4、§6.2、§9 T13 | T13 | verify_cli 18/18 + verify_mcp_stdio 49/49 + verify_panel 48/48 + user_playtest 41/41 + stress 2000/2000 零违规 |
+| 2026-10-20 | 测试可信度治理（v1.3）：逐条审计四套自检共 160+ 断言，修掉 5 处假测试——① verify_cli 只读探针比较两份 demo 副本而非被测命令结果；② verify_panel 侧写断言 `os.path.exists(...) or True` 恒真；③ 皮肤调色板循环用 for/else 把结论硬编码成 True；④ stress `失败回退后 stage 保持` 只判 tick>=0；⑤ stress `archived_events 与归档行数一致` 只判文件存在。新增 `scripts/verify_tests.py`（AST 级审计 R1-R4，拒绝恒真/常量/恒真下界/弱断言），并以三处代码变异反向验证其有效性；修正 world_schema `event_log 最多 50 条` 与默认 keep=200 不符的错误陈述。断言数：verify_cli 18→19、verify_panel 48→52 | §4、§9 T14 | T14 | verify_tests 0 可疑 + verify_cli 19/19 + verify_panel 52/52 + verify_mcp_stdio 49/49 + user_playtest 41/41 + stress 2000/2000 零违规 |
 
 ### ADR-004：长局可视化的三个取舍
 - **状态**：已采纳 ｜ **日期**：2026-10-15

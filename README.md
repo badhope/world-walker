@@ -77,8 +77,9 @@ pip install -e ".[mcp]"
 - 错误体验：状态缺档/损坏时给可读横幅 + 重试按钮，面板不清屏也不崩
 - 移动与图鉴：`travel` 是唯一能改玩家位置的工具，首次到达自动进图鉴（地点/人物/物品/已触发设定）
 - 回合可回退：`snapshot` / `restore`（引擎状态确定性，回退后重放同种子一致）
-- 端到端自检：`python scripts/verify_mcp_stdio.py`（48 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
+- 端到端自检：`python scripts/verify_mcp_stdio.py`（49 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
 - 面板契约自检：`python scripts/verify_panel.py`（48 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
+- CLI 通道自检：`python scripts/verify_cli.py`（18 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
 - 用户视角试玩：`python scripts/user_playtest.py`（41 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）
 - 实测：opencode（GLM-5.2）接入后按设定建局、连续结算三个行动，叙事数值与引擎状态文件逐项一致
 - 可复现：开局带 `seed`；每次结算的随机数由状态里的 `rng_seed` 与 `rng_counter` 共同决定，并随状态落盘
@@ -125,8 +126,9 @@ game_engine/                      # 仓库根即 game_engine 包（导入别名�
 ├── assets/echarts.min.js         # 离线图表库（Apache-2.0，随包分发，无 CDN 依赖）
 ├── BRAND.md                      # 品牌规范（名号/标语/配色/可配置化，单一信源）
 ├── ARCHITECTURE.md               # 架构文档（唯一真理源：视图模型契约/不变量/ADR）
-├── scripts/verify_mcp_stdio.py   # MCP 端到端自检（48 项断言，含酒馆生态兼容/图鉴/面板/模型层与确定性）
+├── scripts/verify_mcp_stdio.py   # MCP 端到端自检（49 项断言，含酒馆生态兼容/图鉴/面板/模型层与确定性）
 ├── scripts/verify_panel.py       # 面板契约自检（48 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
+├── scripts/verify_cli.py         # CLI 通道自检（18 项断言：只读不变量/写命令落盘/确定性）
 ├── scripts/user_playtest.py      # 用户视角试玩（41 项"玩家会不会投诉"检查：钻空子/边界/报错可读性）
 ├── scripts/stress_freeplay.py    # 自由玩家压力测试（默认 2000 回合，走真实 MCP stdio 通道）
 ├── docs/screenshots/             # README 预览截图（真实渲染 + 断言；来源说明见该目录 README）

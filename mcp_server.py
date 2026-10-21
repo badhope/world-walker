@@ -395,6 +395,21 @@ def _archive_path() -> str:
     return _state_path() + ".log.jsonl"
 
 
+def _all_archive_files() -> list:
+    """当前局的全部分代归档文件（`<state>.log.jsonl` + `<state>.log.<gen>.jsonl`）。
+
+    按世代分文件后，回退旧快照不会删除任何历史；recall 要能跨世代回捞。
+    """
+    base = _state_path()
+    out = []
+    legacy = base + ".log.jsonl"
+    if os.path.exists(legacy):
+        out.append(legacy)
+    import glob as _glob
+    out.extend(sorted(_glob.glob(base + ".log.*.jsonl")))
+    return out
+
+
 def _milestone(state: dict, kind: str, desc: str) -> None:
     """记一条大事记（recap 与面板都用它；长局里"记住发生了什么"靠这个）。"""
     ms = state.setdefault("milestones", [])
@@ -977,8 +992,8 @@ def recall(query: str, limit: int = 8) -> dict:
     state = _load()
     from collections import deque
     tail = deque(maxlen=int(limit))
-    path = _archive_path()
-    if os.path.exists(path):
+    archives = _all_archive_files()
+    for path in archives:
         with open(path, encoding="utf-8") as f:
             for line in f:
                 try:
@@ -993,7 +1008,7 @@ def recall(query: str, limit: int = 8) -> dict:
             hits.append(e)
     hits = sorted(hits, key=lambda x: int(x.get("tick", 0)), reverse=True)[:int(limit)]
     return {"query": q, "matches": hits, "archived_events": int(state.get("archived_events", 0)),
-            "archive_file": path}
+            "archive_file": _archive_path(), "archive_files": archives}
 
 
 @server.tool()
@@ -1244,9 +1259,24 @@ def restore(snapshot_path: str) -> dict:
     if not os.path.exists(snapshot_path):
         raise ValueError("快照不存在: %s" % snapshot_path)
     state = load_state(snapshot_path)
+    # 回退到一个分叉点：后续归档写进新世代文件，不覆盖也不删除既有归档。
+    # 同时把 archived_events 校正为"所有世代归档文件的实际行数之和"——
+    # 归档是只增不减的总账，回退分支不该让它变小。
+    current = _load()
+    gen = max(int(state.get("archive_generation", 0) or 0),
+              int(current.get("archive_generation", 0) or 0)) + 1
+    state["archive_generation"] = gen
+    total = 0
+    for af in _all_archive_files():
+        try:
+            total += sum(1 for _ in open(af, encoding="utf-8"))
+        except OSError:
+            pass
+    state["archived_events"] = max(int(state.get("archived_events", 0) or 0), total)
     save_state(state, _state_path())
     return {"restored": snapshot_path, "tick": state.get("tick", 0),
-            "entities": sorted(state.get("entities", {}))}
+            "entities": sorted(state.get("entities", {})),
+            "archive_generation": state["archive_generation"]}
 
 
 def main() -> None:

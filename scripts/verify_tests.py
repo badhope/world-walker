@@ -39,13 +39,14 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 期望的断言数量下限（低于此值视为"断言被删除/清空"）
+# 静态 check() 调用点数的精确基线：少一条就报 R6（删除断言/整段检查都拦得住）
 EXPECTED = {
-    'scripts/verify_cli.py': 5,
-    'scripts/verify_panel.py': 40,
-    'scripts/verify_mcp_stdio.py': 40,
+    'scripts/verify_cli.py': 7,
+    'scripts/verify_panel.py': 47,
+    'scripts/verify_mcp_stdio.py': 53,
     'scripts/verify_near_death.py': 7,
-    'scripts/user_playtest.py': 30,
-    'scripts/stress_freeplay.py': 8,
+    'scripts/user_playtest.py': 44,
+    'scripts/stress_freeplay.py': 10,
 }
 CHECK_FUNCS = {'check', 'ux'}
 FINDINGS = []
@@ -74,6 +75,34 @@ def name_index(func_name):
     return 0
 
 
+def _kw(node, *names):
+    """取关键字参数的值（防 `check(name='x', ok=True)` 绕过）。"""
+    for k in node.keywords:
+        if k.arg in names:
+            return k.value
+    return None
+
+
+def get_cond(func_name, node):
+    """取条件表达式（含关键字传参形式）。"""
+    kw = _kw(node, 'ok', 'cond', 'condition')
+    if kw is not None:
+        return kw
+    ci = cond_index(func_name, node)
+    return node.args[ci] if len(node.args) > ci else None
+
+
+def get_name(func_name, node):
+    """取断言名称表达式（含关键字传参形式；兼容 stress 的 (state, note, ok) 签名）。"""
+    kw = _kw(node, 'name', 'note')
+    if kw is not None:
+        return kw
+    # stress 签名：check(state_dict, 'note', cond) —— 第二个位置参数才是名字
+    if func_name == 'check' and len(node.args) >= 3             and isinstance(node.args[1], ast.Constant) and isinstance(node.args[1].value, str):
+        return node.args[1]
+    return node.args[name_index(func_name)] if len(node.args) > name_index(func_name) else None
+
+
 def is_constant_expr(node):
     """整条表达式只由字面量构成（含 True if X else True / not False / len([])==0）。"""
     # IfExp 两支都为 True → 恒真；都为 False → 恒假
@@ -82,6 +111,16 @@ def is_constant_expr(node):
             return node.body.value == node.orelse.value
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not)             and isinstance(node.operand, ast.Constant):
         return True
+    # bool(<常量比较>) / (<常量比较>) is True|False
+    # 注意：内层 1==1 由 is_self_identity 判定，这里要一并认
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)             and node.func.id == 'bool' and len(node.args) == 1:
+        inner = node.args[0]
+        if is_constant_expr(inner) or is_self_identity(inner):
+            return True
+    if isinstance(node, ast.Compare) and len(node.ops) == 1             and isinstance(node.ops[0], (ast.Is, ast.IsNot))             and isinstance(node.comparators[0], ast.Constant)             and isinstance(node.comparators[0].value, bool):
+        inner = node.left
+        if is_constant_expr(inner) or is_self_identity(inner):
+            return True
     # 常量容器比较：len(<字面量容器>) == 常量
     if isinstance(node, ast.Compare) and len(node.ops) == 1             and isinstance(node.comparators[0], ast.Constant):
         left = node.left
@@ -165,15 +204,20 @@ def has_name_claim(node):
         k in node.value for k in ('保持', '不变', '一致', '相等', '同一', '逐字节'))
 
 
+def _is_falsey_const(expr):
+    if isinstance(expr, ast.Constant):
+        return not expr.value
+    return False
+
+
 def in_dead_branch(node, parents):
-    """调用是否位于 `if False:` / `while False:` 分支内。"""
+    """调用是否位于永不执行的分支内（`if False:` / `if 0:` / `while False:`）。"""
+    body_owner = None
     for p in parents:
-        if isinstance(p, ast.If) and is_const_bool(p.test) and p.test.value is False:
-            if any(n is node for n in ast.walk(p)):
-                # 只在 body 里算死分支
-                for stmt in p.body:
-                    if any(n is node for n in ast.walk(stmt)):
-                        return True
+        if isinstance(p, (ast.If, ast.While)) and _is_falsey_const(p.test):
+            for stmt in p.body:
+                if any(n is node for n in ast.walk(stmt)):
+                    return True
     return False
 
 
@@ -209,11 +253,10 @@ def audit_file(rel):
         if fname not in CHECK_FUNCS:
             continue
         calls += 1
-        ci = cond_index(fname, node)
-        if len(node.args) <= ci:
+        cond = get_cond(fname, node)
+        if cond is None:
             continue
-        cond = node.args[ci]
-        name_node = node.args[name_index(fname)] if node.args else None
+        name_node = get_name(fname, node)
         snippet = ast.get_source_segment(src, node) or ''
         parents = parents_of(node)
 
@@ -235,8 +278,17 @@ def audit_file(rel):
             elif not in_except(node, parents):
                 add(rel, node.lineno, 'R5', '条件恒为 False（且不在 except 内）', snippet)
 
-        if is_trivial_lower_bound(cond):
-            add(rel, node.lineno, 'R3', '条件为恒真下界（>= 0 等）', snippet)
+        # R3：顶层或 BoolOp 里出现恒真下界（`x >= 0 and y >= 0` 同样要抓）
+        lb_targets = [cond]
+        for sub in ast.walk(cond):
+            if isinstance(sub, ast.BoolOp):
+                lb_targets.extend(sub.values)
+        _is_invariant = isinstance(name_node, ast.Constant) and isinstance(name_node.value, str)             and any(k in name_node.value for k in ('非负', '不变量', '有界', '不超', '夹在', '上限', '不为小数'))
+        if any(is_trivial_lower_bound(t) for t in lb_targets) and not _is_invariant:
+            add(rel, node.lineno, 'R3', '条件含恒真下界（>= 0 等）', snippet)
+
+        if isinstance(cond, ast.Constant) and not isinstance(cond.value, bool):
+            add(rel, node.lineno, 'R2', '条件为裸常量（非布尔值恒真）', snippet)
 
         if is_constant_expr(cond):
             add(rel, node.lineno, 'R2', '条件只由字面量构成（恒真/恒假）', snippet)

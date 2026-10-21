@@ -84,7 +84,7 @@ the engine's JSON into prose — it must never invent numbers.
 - Travel & codex: `travel` is the only tool that moves the player; first arrival enters the codex
 - Deterministic undo: `snapshot` / `restore`
 - Near-death protection: the player never truly dies — hitting zero HP becomes "severe injury retreat" with 1 HP floor, costing 30% of gold and +1 mind scar (panel shows the count); NPC deaths are unaffected
-- End-to-end self-check: `python scripts/verify_mcp_stdio.py` (53 assertions, including ecosystem / codex / panel / settings / long game / model layer / determinism)
+- End-to-end self-check: `python scripts/verify_mcp_stdio.py` (55 assertions, including ecosystem / codex / panel / settings / long game / model layer / determinism)
 - Panel contract self-check: `python scripts/verify_panel.py` (53 assertions: view-model contract / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
 - CLI channel self-check: `python scripts/verify_cli.py` (19 assertions: read-only commands never rewrite the save / all five write paths persist with bounded fields / same seed + same action reproduces)
 - Near-death self-check: `python scripts/verify_near_death.py` (7 assertions: 1-HP floor / costs persisted / NPC death semantics unchanged)
@@ -137,7 +137,7 @@ game_engine/                      # the repo root IS the game_engine package (an
 ├── assets/echarts.min.js         # offline chart library (Apache-2.0, shipped with the package, no CDN)
 ├── BRAND.md                      # brand spec (name / tagline / palette / configurability; single source)
 ├── ARCHITECTURE.md               # architecture doc (single source of truth: view-model contract / invariants / ADRs)
-├── scripts/verify_mcp_stdio.py   # MCP end-to-end self-check (53 assertions, including ecosystem compat / codex / panel / model layer / determinism)
+├── scripts/verify_mcp_stdio.py   # MCP end-to-end self-check (55 assertions, including ecosystem compat / codex / panel / model layer / determinism)
 ├── scripts/verify_panel.py       # panel contract self-check (53 assertions: view model / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
 ├── scripts/verify_cli.py         # CLI channel self-check (19 assertions: read-only invariants / write persistence / determinism)
 ├── scripts/verify_tests.py       # test-integrity audit (AST-level: rejects tautologies / always-false / weak checks)

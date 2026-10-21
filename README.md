@@ -78,7 +78,7 @@ pip install -e ".[mcp]"
 - 移动与图鉴：`travel` 是唯一能改玩家位置的工具，首次到达自动进图鉴（地点/人物/物品/已触发设定）
 - 回合可回退：`snapshot` / `restore`（引擎状态确定性，回退后重放同种子一致）
 - 濒死保护：玩家不会真正死亡——气血见底改判"重伤退场"，保底 1 点气血，代价是散落 30% 钱财、心伤 +1（面板显示濒死次数）；NPC 死亡不受影响
-- 端到端自检：`python scripts/verify_mcp_stdio.py`（53 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
+- 端到端自检：`python scripts/verify_mcp_stdio.py`（55 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
 - 面板契约自检：`python scripts/verify_panel.py`（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
 - 濒死保护自检：`python scripts/verify_near_death.py`（7 项断言：气血保底 1 / 代价落盘 / NPC 死亡语义不变）
 - CLI 通道自检：`python scripts/verify_cli.py`（19 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
@@ -129,7 +129,7 @@ game_engine/                      # 仓库根即 game_engine 包（导入别名�
 ├── assets/echarts.min.js         # 离线图表库（Apache-2.0，随包分发，无 CDN 依赖）
 ├── BRAND.md                      # 品牌规范（名号/标语/配色/可配置化，单一信源）
 ├── ARCHITECTURE.md               # 架构文档（唯一真理源：视图模型契约/不变量/ADR）
-├── scripts/verify_mcp_stdio.py   # MCP 端到端自检（53 项断言，含酒馆生态兼容/图鉴/面板/模型层与确定性）
+├── scripts/verify_mcp_stdio.py   # MCP 端到端自检（55 项断言，含酒馆生态兼容/图鉴/面板/模型层与确定性）
 ├── scripts/verify_panel.py       # 面板契约自检（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
 ├── scripts/verify_cli.py         # CLI 通道自检（19 项断言：只读不变量/写命令落盘/确定性）
 ├── scripts/verify_tests.py       # 测试可信度审计（AST 级：拒绝恒真/恒假/弱断言）

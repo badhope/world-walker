@@ -58,6 +58,18 @@ def load_state(path):
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+def _archive_file(path, state):
+    """按归档世代选择归档文件：`<path>.log.jsonl` 或 `<path>.log.<gen>.jsonl`。
+
+    为什么按世代分文件：快照回退会让状态里的 archived_events 退到旧值，而归档是
+    追加写的。若强行把共享文件截断到旧计数，会把"未来分支已经写下、但仍属用户
+    历史"的事件物理删除（这是不可接受的数据丢失）。按世代隔离后，回退只需切回
+    该世代的文件，任何分支的归档都完整保留。
+    """
+    gen = int(state.get("archive_generation", 0) or 0)
+    return path + ".log.jsonl" if gen == 0 else "%s.log.%d.jsonl" % (path, gen)
+
+
 def save_state(state, path):
     """保存状态 JSON 到路径。
 
@@ -65,9 +77,9 @@ def save_state(state, path):
     保留量见 state.config.event_log_keep（默认 200）。这样状态文件与上下文都不会被历史撑爆，
     旧事仍可按关键词用 recall 回捞。
 
-    归档文件与 `archived_events` 计数保持一致：快照回退会让状态的计数退到旧值，
-    而归档文件是追加式的、已写下的行不会自动消失。若不截断，计数与文件行数会永久漂移
-    （实测 300 轮回退场景下差 2 行）。这里在计数小于文件行数时把文件截回计数行。
+    回退安全：归档按 archive_generation 分文件（见 _archive_file）。快照回退时
+    状态的 generation 与 archived_events 一起退到旧值，因此只会切回旧世代文件，
+    不会截断/删除任何已写下的归档。已有归档永久只增不减。
     """
     cfg = state.get("config") or {}
     keep = int(cfg.get("event_log_keep", 200))
@@ -75,22 +87,14 @@ def save_state(state, path):
     if len(log) > keep:
         overflow, state["event_log"] = log[:-keep], log[-keep:]
         if cfg.get("archive", True):
-            with open(path + ".log.jsonl", "a", encoding="utf-8") as f:
+            with open(_archive_file(path, state), "a", encoding="utf-8") as f:
                 for e in overflow:
                     f.write(json.dumps(e, ensure_ascii=False) + "\n")
-        state["archived_events"] = int(state.get("archived_events", 0)) + len(overflow)
-    archive_file = path + ".log.jsonl"
-    if os.path.exists(archive_file):
-        keep_lines = int(state.get("archived_events", 0))
-        try:
-            with open(archive_file, "rb") as f:
-                raw = f.read()
-            if raw.count(b"\n") > keep_lines:
-                lines = raw.splitlines(keepends=True)[:keep_lines]
-                with open(archive_file, "wb") as f:
-                    f.writelines(lines)
-        except OSError:
+        else:
+            # 不落文件的归档不计入计数，否则计数与归档行数从第一天起就不一致
             pass
+        if cfg.get("archive", True):
+            state["archived_events"] = int(state.get("archived_events", 0)) + len(overflow)
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 

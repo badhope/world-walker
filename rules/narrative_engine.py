@@ -6,7 +6,7 @@
 提供涌现故事的结构化元数据。Agent 用这些元数据生成文字描写。
 """
 
-import math, random, json
+import math, json
 from typing import List, Dict
 
 def player_identity_vector(state: Dict) -> Dict:

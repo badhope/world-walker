@@ -77,7 +77,7 @@ def resolve_social_event(state, actor_id, target_id, event_type, intensity=1):
     if respect_delta != 0:
         direction = "上升" if respect_delta > 0 else "下降"
         result["events"].append(
-            f"{target_name}对{state['entities'].get(actor_id, {}).get('name', actor_id)}的敬重{respect_delta}"
+            f"{target_name}对{state['entities'].get(actor_id, {}).get('name', actor_id)}的敬重{direction}{abs(respect_delta)}"
         )
     
     return result

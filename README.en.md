@@ -88,6 +88,7 @@ the engine's JSON into prose — it must never invent numbers.
 - Panel contract self-check: `python scripts/verify_panel.py` (53 assertions: view-model contract / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
 - CLI channel self-check: `python scripts/verify_cli.py` (20 assertions: read-only commands never rewrite the save / all five write paths persist with bounded fields / same seed + same action reproduces)
 - Near-death self-check: `python scripts/verify_near_death.py` (7 assertions: 1-HP floor / costs persisted / NPC death semantics unchanged)
+- Formula cross-check: `python scripts/verify_formulas.py` (76 assertions: re-derives 79 formulas independently from their documented math and compares)
 - Test-integrity audit: `python scripts/verify_tests.py` (statically audits every self-check assertion and rejects tautologies / always-false / weak checks — no more "all green but nothing tested")
 - User-perspective playtest: `python scripts/user_playtest.py` (47 checks a real player would raise — money-minting exploits, boundary inputs, readable refusals)
 - Field-tested: opencode (GLM-5.2) builds a world from the setting and settles three actions in a row;
@@ -142,6 +143,7 @@ game_engine/                      # the repo root IS the game_engine package (an
 ├── scripts/verify_cli.py         # CLI channel self-check (20 assertions: read-only invariants / write persistence / determinism)
 ├── scripts/verify_tests.py       # test-integrity audit (AST-level: rejects tautologies / always-false / weak checks)
 ├── scripts/verify_near_death.py  # near-death self-check (HP floor / persisted costs / NPC death unchanged)
+├── scripts/verify_formulas.py    # formula cross-check (independent re-derivation of 79 formulas)
 ├── scripts/user_playtest.py      # user-perspective playtest (47 "would a player complain?" checks: exploits / edges / error readability)
 ├── scripts/stress_freeplay.py    # free-player stress test (default 2000 turns, real MCP stdio channel)
 ├── docs/screenshots/             # README preview shots (real renders + assertions; provenance in that folder's README)

@@ -47,6 +47,9 @@ jobs:
       - name: 濒死保护自检
         run: python scripts/verify_near_death.py
 
+      - name: 规则内核公式对拍
+        run: python scripts/verify_formulas.py
+
       - name: 引擎纯函数烟测（无 numpy 环境）
         run: |
           python engine.py --help > /dev/null

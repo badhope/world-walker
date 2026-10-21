@@ -11,7 +11,7 @@
 """
 
 import math, random
-from typing import List, Dict
+from typing import List
 
 # ============================================================
 # 1. 双重继承理论 (Boyd & Richerson 1985)

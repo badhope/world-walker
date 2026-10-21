@@ -62,7 +62,7 @@ def cultivation_stability(r: float) -> Dict:
 
 def price_equation(group_fitnesses: List[float], trait_means: List[float],
                    delta_traits: List[float]) -> float:
-    """Δz̄ = Cov(w_i/z_i, z_i) + E(w_i · Δz_i) — 选择 + 传输
+    """Δz̄ = Cov(w_i/w̄, z_i) + E((w_i/w̄) · Δz_i) — 选择 + 传输
 
     纯 Python 实现（总体协方差，语义等价 np.cov(bias=True)）；
     空输入或适应度均值为 0 时返回 0（不抛、不发散）。

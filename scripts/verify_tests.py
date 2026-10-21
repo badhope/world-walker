@@ -45,10 +45,11 @@ EXPECTED = {
     'scripts/verify_panel.py': 47,
     'scripts/verify_mcp_stdio.py': 53,
     'scripts/verify_near_death.py': 7,
+    'scripts/verify_formulas.py': 76,
     'scripts/user_playtest.py': 43,
     'scripts/stress_freeplay.py': 10,
 }
-CHECK_FUNCS = {'check', 'ux'}
+CHECK_FUNCS = {'check', 'ux', 'check_true'}
 FINDINGS = []
 
 
@@ -59,6 +60,9 @@ def add(path, lineno, rule, detail, snippet):
 
 def is_const_bool(node):
     return isinstance(node, ast.Constant) and isinstance(node.value, bool)
+
+
+COMPARE_STYLE_FILES = {'scripts/verify_formulas.py'}
 
 
 def cond_index(func_name, node):
@@ -282,6 +286,13 @@ def audit_file(rel):
         calls += 1
         cond = get_cond(fname, node)
         if cond is None:
+            continue
+        snippet = ast.get_source_segment(src, node) or ''
+        if rel in COMPARE_STYLE_FILES:
+            # 对拍式：check(name, got, want) —— got 与 want 都是表达式，
+            # 关键防的是"两边都是同一个字面量"（自己等于自己）。
+            if len(node.args) >= 3 and isinstance(node.args[1], ast.Constant)                     and isinstance(node.args[2], ast.Constant):
+                add(rel, node.lineno, 'R7', '对拍两端都是字面量（自证）', snippet)
             continue
         name_node = get_name(fname, node)
         snippet = ast.get_source_segment(src, node) or ''

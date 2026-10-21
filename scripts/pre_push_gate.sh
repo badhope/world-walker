@@ -39,6 +39,7 @@ step "断言审计（拒绝恒真/恒假/弱断言）" "$PY" scripts/verify_test
 step "CLI 通道自检" "$PY" scripts/verify_cli.py
 step "面板契约自检" "$PY" scripts/verify_panel.py
 step "濒死保护自检" "$PY" scripts/verify_near_death.py
+step "规则内核公式对拍（129 个公式的闭式复算）" "$PY" scripts/verify_formulas.py
 
 # MCP 相关：只有装了 mcp SDK 才跑（与 CI 的 mcp 作业对应）
 if "$PY" -c "import mcp" >/dev/null 2>&1; then

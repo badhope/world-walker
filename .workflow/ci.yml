@@ -52,6 +52,11 @@ stages:
         displayName: 濒死保护自检
         script: |
           python scripts/verify_near_death.py
+      - step: formulas
+        name: verify-formulas
+        displayName: 规则内核公式对拍
+        script: |
+          python scripts/verify_formulas.py
       - step: smoke
         name: engine-smoke
         displayName: 引擎烟测

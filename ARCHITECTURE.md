@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-21 ｜ 文档版本：v1.8
+> 最后更新：2026-10-21 ｜ 文档版本：v1.9
 
 ## 1. 概述与目标
 
@@ -204,6 +204,7 @@ view_model = {
 - [x] T17 归档安全与断言精确化（第三轮独立复验后）：回滚上一版"按计数截断归档文件"的错误修复（那会静默删除用户历史），改为按 archive_generation 分世代归档——回退只切文件、不删任何已有归档，recall 跨世代回捞；restore 时 archived_events 取历史总和（只增不减）；verify_tests 补齐关键字传参/裸常量/bool(常量比较)/(常量) is True/if 0 死分支/BoolOp 内恒真下界等 7 类绕过路径，EXPECTED 改为精确静态基数；verify_cli 四条写命令改为精确等式（伤害=扣血、扣款=total_cost、affinity/respect 固定增量、账本 amount/type/from/to）；verify_mcp 增"回退后旧归档逐条仍可召回"硬断言 — 验证：verify_tests 0/168 + 7 类绕过全抓 + 5 类变异全 FAIL + stress 2000/2000
 - [x] T18 技术债清理（第四轮）：修 Python 3.10 的 BaseExceptionGroup NameError（stress 异常路径会崩）；verify_cli 12 步循环逐步校验 tick/rng_counter/combat 结算；user_playtest 的 OU 回归改为三组初值×3 步收敛并暴露整数取整在 |Δ|≤1 时卡边的已知局限；verify_tests 增数据流追踪（ok = True; check(x, ok)）并收窄不变式豁免；新增 scripts/compile_all.py 取代 compileall -x（后者在 Windows 上因反斜杠+shell 转义双重问题实测失效）；新增 scripts/check_wheel.py 供 CI 与门禁共用（消除两套判据漂移）；pre-push 门禁补齐 500 轮压测与打包校验 — 验证：门禁 9 项全绿 + 打包缺陷变异被拦（exit=1）+ 全部自检绿
 - [x] T19 第五轮复验修复：修真 bug——死目标可继续攻击（hp=0 仍结算伤害并重复记击杀），rules/combat.py 加守卫；verify_cli 的 12 步 combat 校验从"有返回"改为"命中必有伤害、未中必零伤、血量不越界、至少命中 3 次"（原版 damage=0 与"只在满血命中"变异均漏网）；user_playtest 的 OU 死区修正为实测的 |Δ|<=3（原写 <=1 失实），第三组改到死区外，"死区内冻结"变异现可抓；verify_tests 的常量表改为按函数作用域，并补 AnnAssign/NamedExpr/二次赋值三种绕过；Gitee .workflow/ci.yml 对齐共用脚本；门禁在缺 mcp 时判失败（防"没跑却全绿"）；清理 scripts/ 与 state_schema/init_game 的 8 处死代码 — 验证：门禁 10 项全绿 + 死目标/满血命中/死区冻结三变异全 FAIL
+- [x] T20 公式对拍与死代码清零（第六轮）：新增 scripts/verify_formulas.py——按 docstring 写的数学式**独立重算** 79 个公式再与返回值比对（模型层 OU/Lerner/Cobb-Douglas/Lotka-Volterra/SIR/泊松/热力学、认知前景理论/权重函数/幂律学习、社会扩展、系统论、世界动力学 Lyapunov/复利动力学、文化进化矩阵乘、因果记账），填补 rules/ 129 个公式此前零独立验证的空白；变异验证（Lerner ε±1、认知 α 0.88→0.99、记忆检索权重 0.33→0.44）均被抓；修 engine.py cognition 分支硬传 realm_level=0（任何实体得到同一认知预算，与 MCP status 的 int//5 不一致）及未用变量 spirit；全仓 pyflakes 清零（engine/rules/scripts 共 37 处未用导入与局部变量）— 验证：门禁 11 项全绿 + 公式变异 3/3 FAIL + verify_tests 0/246
 - [x] T14 测试可信度治理：修复 5 处恒真/无效断言（verify_cli 只读探针比较两份副本、verify_panel 侧写 `or True`、皮肤循环 for/else 硬编码 True、stress 归档与回退断言恒真）；新增 scripts/verify_tests.py 做 AST 级断言审计（R1 恒真/R2 常量/R3 恒真下界/R4 弱断言）；修正 world_schema event_log 错误陈述（50→config.event_log_keep 默认 200）— 验证：verify_tests 0 可疑 + 三处变异测试均能被抓出
 
 ## 10. 变更日志（Changelog）

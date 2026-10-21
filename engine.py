@@ -26,29 +26,12 @@ from game_engine.rules.economy import resolve_trade, tick_market
 from game_engine.rules.social import resolve_social_event
 from game_engine.rules.karma import resolve_karma, get_karma_consequence
 
-from game_engine.rules.cognition import (
-    daily_cognitive_budget, should_use_system2, value_function,
-    probability_weighting, decision_utility, realm_dampening, flow_state,
-    adjust_difficulty, intrinsic_motivation, maslow_dominant_need
-)
-from game_engine.rules.world_dynamics import (
-    predictability_horizon, logistic_map, cultivation_stability,
-    hamilton_rule, hawk_dove_ess_frequency, shannon_entropy, event_information,
-    memory_retrieval_score, PIDController
-)
-from game_engine.rules.social_extended import (
-    moral_resonance, moral_vector_update, justice_response, bjw_collapse,
-    disengagement_probability, merit_quality, milgram_obedience
-)
-from game_engine.rules.cultural_evolution import (
-    meme_fitness, method_transmission, ratchet_product, sect_cultural_fitness
-)
-from game_engine.rules.systems_feedback import (
-    leverage_effectiveness, TightlyCoupledSystem, autopoiesis_stability
-)
+from game_engine.rules.cognition import daily_cognitive_budget, should_use_system2
+from game_engine.rules.world_dynamics import event_information
+from game_engine.rules.social_extended import merit_quality
 from game_engine.rules.narrative_engine import (
     flow_channel_status, player_identity_vector, check_world_emergent_events,
-    update_player_moral_identity, panarchy_phase_check, narrative_event_weight
+    update_player_moral_identity, panarchy_phase_check
 )
 
 def main():
@@ -182,10 +165,12 @@ def main():
     elif args.action == "cognition":
         ent = state["entities"].get(args.entity, {})
         attrs = ent.get("attrs", {})
-        spirit = attrs.get("int", 10) / 20 + 0.5
-        budget = daily_cognitive_budget(0, "正常")
+        # 境界等级由悟性推导，与 mcp_server.status 一致（此前硬传 0，任何实体都得到同一个预算）
+        realm_level = int(attrs.get("int", 10) // 5)
+        budget = daily_cognitive_budget(realm_level, "正常")
         result = {
             "entity": args.entity,
+            "realm_level": realm_level,
             "cognitive_budget": budget,
             "system2_likely": should_use_system2(budget, 0.7),
         }

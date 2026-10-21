@@ -9,8 +9,8 @@
       影响力原则(Cialdini), 社会网络分析, 责任扩散
 """
 
-import math, random
-from typing import List, Dict, Tuple
+import math
+from typing import List, Dict
 
 from game_engine.rules.models import basic_reproduction
 

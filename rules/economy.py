@@ -8,7 +8,6 @@
 卖出须先持有（ent.items）——卖自己没有的东西等于印钱，挡在结算之前。
 """
 
-import math
 
 from game_engine.rules.models import ou_price_reverted
 

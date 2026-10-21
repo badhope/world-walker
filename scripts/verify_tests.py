@@ -45,7 +45,7 @@ EXPECTED = {
     'scripts/verify_panel.py': 47,
     'scripts/verify_mcp_stdio.py': 53,
     'scripts/verify_near_death.py': 7,
-    'scripts/verify_formulas.py': 76,
+    'scripts/verify_formulas.py': 119,
     'scripts/user_playtest.py': 43,
     'scripts/stress_freeplay.py': 10,
 }
@@ -289,11 +289,29 @@ def audit_file(rel):
             continue
         snippet = ast.get_source_segment(src, node) or ''
         if rel in COMPARE_STYLE_FILES:
-            # 对拍式：check(name, got, want) —— got 与 want 都是表达式，
-            # 关键防的是"两边都是同一个字面量"（自己等于自己）。
-            if len(node.args) >= 3 and isinstance(node.args[1], ast.Constant)                     and isinstance(node.args[2], ast.Constant):
-                add(rel, node.lineno, 'R7', '对拍两端都是字面量（自证）', snippet)
-            continue
+            # 对拍式：check(name, got, want)。这里只做"对拍特有"的检查，
+            # 但**不能 continue**——否则 R2 恒真、R9 死分支等通用规则会全部失效，
+            # 等于给审计器开后门。（上一版正是这样漏掉 check_true('x', True)。）
+            got_expr = node.args[1] if len(node.args) > 1 else None
+            want_expr = node.args[2] if len(node.args) > 2 else None
+            if got_expr is not None and want_expr is not None:
+                # 自证：两边是同一表达式（x, x）或同一字面量（1.0, 1.0）
+                try:
+                    if ast.dump(got_expr) == ast.dump(want_expr):
+                        add(rel, node.lineno, 'R7',
+                            '对拍两端是同一表达式（自证，永远相等）', snippet)
+                except Exception:
+                    pass
+                # 期望值是"调用被测模块"取来的 → 等价于抄实现输出
+                for e in (want_expr,):
+                    for sub in ast.walk(e):
+                        if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute):
+                            base = sub.func.value
+                            if isinstance(base, ast.Name) and base.id in ('M', 'C', 'SE', 'SF', 'WD', 'CE', 'SO', 'KA'):
+                                add(rel, node.lineno, 'R7',
+                                    '期望值调用被测实现（自证）', snippet)
+                                break
+            # 注意：不 continue —— 继续走下面的通用规则（含 R2 常量、R9 死分支）
         name_node = get_name(fname, node)
         snippet = ast.get_source_segment(src, node) or ''
         parents = parents_of(node)
@@ -349,7 +367,7 @@ def audit_file(rel):
         if is_self_identity(cond):
             add(rel, node.lineno, 'R7', '自反恒等式（x == x）', snippet)
 
-        if has_name_claim(name_node) and not has_value_comparison(cond):
+        if rel not in COMPARE_STYLE_FILES and has_name_claim(name_node) and not has_value_comparison(cond):
             add(rel, node.lineno, 'R4', '名称声称保持/一致，但条件无值比较', snippet)
 
         if is_shape_only(cond, name_node):

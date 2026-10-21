@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""
+CLI 通道端到端验证 (verify_cli.py)
+
+对 engine.py 的全部子命令做三层验证：
+  1. 只读不变量：9 条只读命令不改写状态文件（sha256 前后逐字节一致）
+  2. 写通道全覆盖：combat/trade/social/karma/tick 五条 dirty 分支全部落盘，
+     且落盘结果可解析、字段有界（rng_counter 恰好 +1、relations 钳位、tick 单调）
+  3. 确定性：同种子同行动 → 同结果（三副本 combat 终态哈希一致；
+     双副本 12 步混合动作最终状态逐字节相同）
+
+用法:  python scripts/verify_cli.py
+退出码: 0 = 全绿；1 = 有失败项
+"""
+
+import hashlib
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ENGINE = os.path.join(ROOT, 'engine.py')
+DEMO_STATE = os.path.join(ROOT, 'demo_state.json')
+
+RESULTS = []
+
+
+def check(name, ok, note=''):
+    RESULTS.append(bool(ok))
+    print('%s  %-52s %s' % ('PASS' if ok else 'FAIL', name, note))
+
+
+def sha256(path):
+    with open(path, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def fresh_copy(tmp, name):
+    """demo_state 的字节级副本（工作区零污染）。"""
+    dst = os.path.join(tmp, name)
+    shutil.copyfile(DEMO_STATE, dst)
+    return dst
+
+
+def run_cli(state_path, *args):
+    """在系统临时目录里跑 CLI（顺带持续验证「任意工作目录可运行」）。"""
+    env = dict(os.environ, PYTHONIOENCODING='utf-8')
+    return subprocess.run([sys.executable, ENGINE, *args, '--state', state_path],
+                          capture_output=True, text=True, encoding='utf-8',
+                          errors='replace', cwd=tempfile.gettempdir(), env=env)
+
+
+# ---------------------------------------------------------------- 1. 只读不变量
+READONLY = [
+    ('flow', ()), ('identity', ()), ('narrative', ()), ('world_state', ()),
+    ('panarchy', ()), ('moral_update', ()),
+    ('cognition', ('--entity', 'player')),
+    ('merit', ('--aid', '0.5', '--sincerity', '0.5')),
+    ('info_weight', ('--probability', '0.5')),
+]
+
+
+def verify_readonly(tmp):
+    base_counter = json.load(open(DEMO_STATE, encoding='utf-8')).get('rng_counter', 0)
+    # 同一份副本连跑 9 条只读命令：既验单次哈希，也验累计后 rng_counter 未被推进
+    p = fresh_copy(tmp, 'ro_all.json')
+    hash_before_all = sha256(p)
+    for cmd, extra in READONLY:
+        before = sha256(p)
+        r = run_cli(p, cmd, *extra)
+        ok = (r.returncode == 0 and sha256(p) == before)
+        check('只读 %s 落盘哈希不变' % cmd, ok,
+              '' if ok else 'exit=%s hash_changed=%s' % (r.returncode, sha256(p) != before))
+    s = json.load(open(p, encoding='utf-8'))
+    check('只读命令不推进 rng_counter（9 条连跑后复核落盘值）',
+          s.get('rng_counter') == base_counter,
+          'base=%s after=%s' % (base_counter, s.get('rng_counter')))
+    check('只读命令累计执行后状态文件逐字节不变',
+          sha256(p) == hash_before_all,
+          '' if sha256(p) == hash_before_all else 'hash changed')
+
+
+# ---------------------------------------------------------------- 2. 写通道全覆盖
+WRITE = [
+    ('combat', ('combat', '--attacker', 'player', '--defender', 'goblin')),
+    ('trade', ('trade', '--location', 'bamboo_tea_booth', '--item', 'coarse_tea',
+               '--direction', 'buy', '--entity', 'player')),
+    ('social', ('social', '--actor', 'player', '--target', 'old_chen', '--event', 'help')),
+    ('karma', ('karma', '--actor', 'player', '--karma_type', 'theft', '--victim', 'old_chen')),
+    ('tick', ('tick',)),
+]
+
+
+def verify_write(tmp):
+    base = json.load(open(DEMO_STATE, encoding='utf-8'))
+    base_counter, base_tick = base.get('rng_counter', 0), base.get('tick', 0)
+    for name, args in WRITE:
+        p = fresh_copy(tmp, 'w_%s.json' % name)
+        r = run_cli(p, *args)
+        ok, notes = r.returncode == 0, []
+        try:
+            s = json.load(open(p, encoding='utf-8'))
+            notes.append('rng_counter %s->%s' % (base_counter, s.get('rng_counter')))
+            ok = ok and s.get('rng_counter') == base_counter + 1
+            for rel in s.get('relations', {}).values():
+                if not (-100 <= rel.get('affinity', 0) <= 100 and -100 <= rel.get('respect', 0) <= 100):
+                    ok, notes = False, notes + ['relations 越界']
+                    break
+            if name == 'tick':
+                ok = ok and s.get('tick') == base_tick + 1
+                notes.append('tick %s->%s' % (base_tick, s.get('tick')))
+            else:
+                ok = ok and s.get('tick') == base_tick
+        except Exception as e:
+            ok, notes = False, notes + ['状态不可解析: %s' % e]
+        check('写命令 %s 落盘且字段有界' % name, ok,
+              ' · '.join(notes) if ok else 'exit=%s %s' % (r.returncode, ' '.join(notes)))
+
+
+# ---------------------------------------------------------------- 3. 确定性
+def verify_determinism(tmp):
+    # 3a. 三副本同行动 → 终态逐字节一致
+    hashes = set()
+    for i in range(3):
+        p = fresh_copy(tmp, 'det%d.json' % i)
+        r = run_cli(p, 'combat', '--attacker', 'player', '--defender', 'goblin')
+        if r.returncode != 0:
+            hashes.add('ERR')
+            break
+        hashes.add(sha256(p))
+    check('三副本同 combat 终态哈希一致', len(hashes) == 1, '%d 种终态' % len(hashes))
+
+    # 3b. 双副本 12 步混合动作（combat/tick 交替）→ 终态逐字节一致
+    finals, last_counter = set(), None
+    for i in range(2):
+        p = fresh_copy(tmp, 'mix%d.json' % i)
+        for _ in range(6):
+            run_cli(p, 'combat', '--attacker', 'player', '--defender', 'goblin')
+            run_cli(p, 'tick')
+        s = json.load(open(p, encoding='utf-8'))
+        last_counter = s.get('rng_counter')
+        finals.add(sha256(p))
+    check('双副本 12 步混合动作终态哈希一致（rng_counter 持久化）',
+          len(finals) == 1, '%d 种终态' % len(finals))
+    if len(finals) == 1:
+        base_counter = json.load(open(DEMO_STATE, encoding='utf-8')).get('rng_counter', 0)
+        check('混合动作后 rng_counter 累计 +12 并落盘',
+              last_counter == base_counter + 12,
+              '%s -> %s' % (base_counter, last_counter))
+
+
+def main():
+    tmp = tempfile.mkdtemp(prefix='ww-verify-cli-')
+    try:
+        verify_readonly(tmp)
+        verify_write(tmp)
+        verify_determinism(tmp)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    n_pass, n_all = sum(RESULTS), len(RESULTS)
+    print('\n%d/%d passed' % (n_pass, n_all))
+    sys.exit(0 if n_pass == n_all else 1)
+
+
+if __name__ == '__main__':
+    main()

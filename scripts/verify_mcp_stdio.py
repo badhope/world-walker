@@ -350,6 +350,17 @@ async def main():
                   after == rs['tick'] + 1 and 'bailu' in rs.get('entities', []),
                   'tick %s -> %s' % (rs['tick'], after))
 
+            # 16. 确定性显式契约：同一快照点重放同一行动 → 结果逐字段相等
+            #     （覆盖 rng_counter 随快照回退后的确定性语义，此前仅有 world_init 级覆盖）
+            c_first = data(await session.call_tool('combat', {'attacker': 'player',
+                                                              'defender': 'scout', 'action_type': 'attack'}))
+            await session.call_tool('restore', {'snapshot_path': snap['snapshot']})
+            c_replay = data(await session.call_tool('combat', {'attacker': 'player',
+                                                               'defender': 'scout', 'action_type': 'attack'}))
+            check('确定性契约：快照点重放同行动结果逐字段相等',
+                  c_first == c_replay and c_first.get('hit'),
+                  'damage %s vs %s' % (c_first.get('damage'), c_replay.get('damage')))
+
             # 17. 设定包一键开局（仓库自带的玄枢界）
             sp = os.path.join(ROOT, 'settings', '玄枢界.setting.json')
             await session.call_tool('load_setting', {'path': sp,

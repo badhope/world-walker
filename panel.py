@@ -58,8 +58,6 @@ EVENT_LABELS = {
     "tick": ("回合", "回"),
 }
 
-SKIN_ACCENTS = {"xuanshu": "#e8b04b", "neutral": "#8aa6c8"}
-
 
 def classify_event(ev, milestone_ticks=()):
     """把一条 event_log 映射成前端可直接渲染的条目（kind/severity/title/icon 全在此决定）。"""
@@ -179,16 +177,6 @@ def build_relations(state, player_id="player"):
     return out
 
 
-def skin_for_world(state):
-    """世界皮肤：玄枢界放行专属皮肤，其余世界回退中性皮肤。"""
-    world = state.get("world_info", {}) or {}
-    flags = state.get("world_flags") or []
-    text = ("%s %s" % (world.get("name", ""), " ".join(str(f) for f in flags))).lower()
-    if "xuanshu" in text or "玄枢" in text:
-        return {"id": "xuanshu", "accent": SKIN_ACCENTS["xuanshu"]}
-    return {"id": "neutral", "accent": SKIN_ACCENTS["neutral"]}
-
-
 def view_model(state_path):
     """把状态文件转成面板要用的视图模型（只读，不改状态）。"""
     s = load_state(state_path)
@@ -244,6 +232,7 @@ def view_model(state_path):
             "stage": int(player.get("stage", 0) or 0),
             "stage_max": int((s.get("config") or {}).get("stage_max", 20) or 20),
             "mind_scars": int(player.get("mind_scars", 0) or 0),
+            "near_death_count": int(player.get("near_death_count", 0) or 0),
             "hp": player.get("hp", 0), "hp_max": player.get("hp_max", 1),
             "mp": player.get("mp", 0), "mp_max": player.get("mp_max", 0),
             "gold": player.get("gold", 0), "location": loc,

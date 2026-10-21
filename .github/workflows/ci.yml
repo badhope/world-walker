@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 第一层：零依赖核心（只要 Python 标准库）────────────────────────────
+  # 这条作业证明 README 宣称的"仅标准库"是真的：不装 mcp、不装 numpy。
+  core:
+    name: core (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: 确认没有第三方依赖被装上
+        run: |
+          python -c "import numpy" 2>/dev/null && { echo "::error::numpy 存在，零依赖宣称不成立"; exit 1; } || echo "numpy 不存在：符合预期"
+          python -c "import mcp" 2>/dev/null && { echo "::error::mcp 存在，应留到 mcp 作业"; exit 1; } || echo "mcp 不存在：符合预期"
+
+      - name: 编译全部 Python 源
+        run: python -m compileall -q . -x '/(\.git|__pycache__|dist|build)/'
+
+      - name: 断言审计（拒绝恒真/恒假/弱断言）
+        run: python scripts/verify_tests.py
+
+      - name: CLI 通道自检
+        run: python scripts/verify_cli.py
+
+      - name: 面板契约自检
+        run: python scripts/verify_panel.py
+
+      - name: 濒死保护自检
+        run: python scripts/verify_near_death.py
+
+      - name: 引擎纯函数烟测（无 numpy 环境）
+        run: |
+          python engine.py --help > /dev/null
+          python init_game.py "$RUNNER_TEMP/smoke.json"
+          python engine.py world_state --state "$RUNNER_TEMP/smoke.json" > /dev/null
+          python engine.py combat --state "$RUNNER_TEMP/smoke.json" \
+            --attacker player --defender goblin > /dev/null
+          echo "CLI 在无第三方依赖环境下可运行"
+
+  # ── 第二层：MCP 端到端（需要 mcp SDK）──────────────────────────────────
+  mcp:
+    name: mcp e2e (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: 安装 MCP 可选依赖
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[mcp]"
+
+      - name: MCP 端到端自检
+        run: python scripts/verify_mcp_stdio.py
+
+      - name: 玩家视角试玩
+        run: python scripts/user_playtest.py
+
+      - name: 长局压力测试（500 轮，CI 提速版）
+        run: python scripts/stress_freeplay.py 500
+
+  # ── 第三层：打包完整性（wheel / sdist 真的能装能跑）────────────────────
+  package:
+    name: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 构建 sdist + wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: 校验 wheel 内含全部运行时资源
+        run: |
+          python - <<'PY'
+          import glob, sys, zipfile
+          whl = glob.glob('dist/*.whl')[0]
+          names = zipfile.ZipFile(whl).namelist()
+          required = ['panel.html', 'panel.css', 'panel.js',
+                      'assets/echarts.min.js', 'settings/玄枢界.setting.json',
+                      'ARCHITECTURE.md', 'BRAND.md']
+          missing = [r for r in required if not any(n.endswith(r) for n in names)]
+          if missing:
+              print('::error::wheel 缺少资源: %s' % missing)
+              sys.exit(1)
+          print('wheel 资源完整（%d 条目）' % len(names))
+          PY
+
+      - name: 从 wheel 安装并跑起来（真机验证）
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --quiet dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/venv/bin/python" -c "
+          import game_engine, os
+          root = os.path.dirname(game_engine.__file__)
+          for f in ('panel.html','panel.css','panel.js','assets/echarts.min.js'):
+              p = os.path.join(root, f)
+              assert os.path.exists(p), 'missing ' + p
+          print('安装包资源齐全')
+          "
+          "$RUNNER_TEMP/venv/bin/world-walker" --help > /dev/null
+          echo "entry point 可用"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+          retention-days: 7
+
+  # ── 汇总门禁：三平台 CI 的单一判据 ────────────────────────────────────
+  gate:
+    name: CI gate
+    if: always()
+    needs: [core, mcp, package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 任一作业未成功则整体失败
+        run: |
+          echo "core=${{ needs.core.result }} mcp=${{ needs.mcp.result }} package=${{ needs.package.result }}"
+          if [ "${{ needs.core.result }}" != "success" ] || \
+             [ "${{ needs.mcp.result }}" != "success" ] || \
+             [ "${{ needs.package.result }}" != "success" ]; then
+            echo "::error::CI 门禁未通过"
+            exit 1
+          fi
+          echo "CI 全绿"

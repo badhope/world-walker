@@ -39,7 +39,7 @@
 }
 """
 
-import json, sys
+import json, random, sys
 
 def new_game():
     """返回一个初始状态"""
@@ -77,6 +77,27 @@ def save_state(state, path):
         state["archived_events"] = int(state.get("archived_events", 0)) + len(overflow)
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
+
+def seed_rng(state) -> None:
+    """按状态里的 rng_seed + rng_counter 重置全局随机源（带种子可复现）。
+
+    同一 state、同一计数器、同一行动 → 同一结果；计数器随每次结算递增并落盘，
+    保证同一回合内的多次行动不会复用同一段随机序列。CLI（engine.py）与
+    MCP（mcp_server.py）共用本函数，两条入口的确定性语义一致。
+    装有 numpy 时顺带重置其全局种子（可选，缺失则静默跳过）。
+    """
+    seed = state.get("rng_seed")
+    if seed is None:
+        return
+    counter = int(state.get("rng_counter", 0)) + 1
+    state["rng_counter"] = counter
+    mixed = (int(seed) * 1000003 + int(state.get("tick", 0)) * 7919 + counter) % (2 ** 32)
+    random.seed(mixed)
+    try:
+        import numpy as np
+        np.random.seed(mixed)
+    except ImportError:  # numpy 为可选依赖，缺失时仅跳过其全局种子重置
+        pass
 
 def entity_key(a, b):
     """生成关系键——保证对称性，始终按字母顺序"""

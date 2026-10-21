@@ -1,14 +1,16 @@
 """
 世界演化动力学 (World Dynamics)
 
-基于: CHAOS_NONLINEAR.md + COMPLEX_SYSTEMS.md + EVOLUTIONARY_DYNAMICS.md
+基于: 混沌/非线性动力学、复杂系统与进化动力学理论文献
 包含: 洛伦兹吸引子, Lyapunov指数, Logistic映射, 可预测窗口,
       Price方程, Hamilton规则, ESS, Hawk-Dove, 复制动力学,
       Panarchy适应性循环, 红皇后协同进化, 间断平衡
+
+依赖约束: 仅标准库（ARCHITECTURE.md §2）——矩阵运算用纯 Python 实现，
+调用方传 list / tuple / numpy.ndarray 均可（只按下标与迭代取用）。
 """
 
 import math, random
-import numpy as np
 from typing import List, Dict, Tuple
 
 # ============================================================
@@ -58,12 +60,27 @@ def cultivation_stability(r: float) -> Dict:
 # 2. Price 方程 (EVOLUTIONARY_DYNAMICS.md)
 # ============================================================
 
-def price_equation(group_fitnesses: np.ndarray, trait_means: np.ndarray,
-                   delta_traits: np.ndarray) -> float:
-    """Δz̄ = Cov(w_i/z_i, z_i) + E(w_i · Δz_i) — 选择 + 传输"""
-    rel_fitness = group_fitnesses / np.mean(group_fitnesses)
-    cov_term = np.cov(rel_fitness, trait_means, bias=True)[0, 1]
-    transmission = np.mean(rel_fitness * delta_traits)
+def price_equation(group_fitnesses: List[float], trait_means: List[float],
+                   delta_traits: List[float]) -> float:
+    """Δz̄ = Cov(w_i/z_i, z_i) + E(w_i · Δz_i) — 选择 + 传输
+
+    纯 Python 实现（总体协方差，语义等价 np.cov(bias=True)）；
+    空输入或适应度均值为 0 时返回 0（不抛、不发散）。
+    三个入参必须等长，不等长直接断言失败（与原 numpy 版抛错语义一致，不静默截断）。
+    """
+    n = len(group_fitnesses)
+    if n == 0:
+        return 0.0
+    assert len(trait_means) == n and len(delta_traits) == n, \
+        "price_equation: group_fitnesses/trait_means/delta_traits 长度不一致"
+    mean_fitness = sum(group_fitnesses) / n
+    if mean_fitness == 0:
+        return 0.0
+    rel_fitness = [w / mean_fitness for w in group_fitnesses]
+    mean_trait = sum(trait_means) / n
+    cov_term = sum((r - 1.0) * (z - mean_trait)
+                   for r, z in zip(rel_fitness, trait_means)) / n
+    transmission = sum(r * d for r, d in zip(rel_fitness, delta_traits)) / n
     return cov_term + transmission
 
 def multilevel_selection(group_means: List[float], group_fitnesses: List[float],
@@ -150,12 +167,13 @@ def hawk_dove_ess_frequency(V: float, C: float) -> Tuple[float, float]:
     p = min(1.0, max(0.0, V / C))
     return (p, 1.0 - p)
 
-def replicator_dynamics_step(strategy_props: np.ndarray, payoff_matrix: np.ndarray) -> np.ndarray:
-    """复制动力学一步 dx_i/dt = x_i[(Ax)_i - x·Ax]"""
-    avg_payoffs = payoff_matrix @ strategy_props
-    mean_payoff = np.dot(strategy_props, avg_payoffs)
-    derivatives = strategy_props * (avg_payoffs - mean_payoff)
-    return derivatives
+def replicator_dynamics_step(strategy_props: List[float],
+                             payoff_matrix: List[List[float]]) -> List[float]:
+    """复制动力学一步 dx_i/dt = x_i[(Ax)_i - x·Ax]（纯 Python 矩阵-向量乘）"""
+    n = len(strategy_props)
+    avg_payoffs = [sum(row[j] * strategy_props[j] for j in range(n)) for row in payoff_matrix]
+    mean_payoff = sum(p * a for p, a in zip(strategy_props, avg_payoffs))
+    return [p * (a - mean_payoff) for p, a in zip(strategy_props, avg_payoffs)]
 
 # ============================================================
 # 5. 间断平衡 (Punctuated Equilibrium, Eldredge & Gould)
@@ -183,9 +201,14 @@ def relative_advantage(speed_A: float, speed_B: float, tech_gap: float, lam: flo
     """相对优势 = [A优势] — λ·Δtech_gap（被追赶拉回）"""
     return (speed_A - speed_B) - lam * tech_gap
 
-def red_queen_field(competition_coeffs: np.ndarray, opponent_states: np.ndarray) -> float:
-    """F_i(A) = Σ_j C(A,j) · σ(j) — 聚合所有对手的竞争压力"""
-    return float(np.dot(competition_coeffs, opponent_states))
+def red_queen_field(competition_coeffs: List[float], opponent_states: List[float]) -> float:
+    """F_i(A) = Σ_j C(A,j) · σ(j) — 聚合所有对手的竞争压力
+
+    两入参必须等长，不等长直接断言失败（不静默截断）。
+    """
+    assert len(competition_coeffs) == len(opponent_states), \
+        "red_queen_field: competition_coeffs/opponent_states 长度不一致"
+    return float(sum(c * s for c, s in zip(competition_coeffs, opponent_states)))
 
 # ============================================================
 # 7. Panarchy 适应性循环 (Holling 1986, COMPLEX_SYSTEMS.md)

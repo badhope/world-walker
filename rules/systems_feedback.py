@@ -1,7 +1,8 @@
 """
 系统反馈 / 控制论规则 (Systems & Cybernetics)
 
-基于: TECH_REFERENCE.md 控制论部分 + COMPLEX_SYSTEMS.md Panarchy
+基于: 控制论与复杂系统文献（Meadows 杠杆点 / Maturana 自创生 /
+      Perrow 正常事故理论 / Latour 行动者网络 / Panarchy 适应性循环）
 包含: 负反馈环, 二阶控制论, 杠杆点 (Meadows 12),
        系统动力学, 全局稳定性
 """

@@ -224,6 +224,9 @@ def main():
         check("数值字段仍是数值（千分位只在展示层）",
               isinstance(vm.get("player", {}).get("gold"), int)
               and isinstance(vm.get("tick"), int))
+        check("濒死次数随玩家下发（0 也要有，前端才能显示）",
+              isinstance(vm.get("player", {}).get("near_death_count"), int),
+              "near_death_count=%s" % (vm.get("player", {}) or {}).get("near_death_count"))
 
         # 2. 静态资源白名单与安全
         st, ct, body = http_get(base + "/")
@@ -291,9 +294,25 @@ def main():
                   and {"line", "area", "bar", "grid", "text"} <= set(series["palette"]))
         check("面板只读（/series 后状态字节仍不变）",
               hashlib.sha256(open(rich_path, "rb").read()).hexdigest() == rich_hash)
-        check("采样边车不写状态文件名（viz.jsonl 独立）",
-              os.path.exists(rich_path + ".viz.jsonl") or True,
-              "sidecar=%s.viz.jsonl" % os.path.basename(rich_path))
+        sidecar = rich_path + ".viz.jsonl"
+        sidecar_ok = False
+        sidecar_note = "absent"
+        if os.path.exists(sidecar):
+            try:
+                with open(sidecar, encoding="utf-8") as sf:
+                    rows = [json.loads(line) for line in sf if line.strip()]
+                sidecar_ok = (bool(rows) and all("tick" in r and "hp" in r for r in rows)
+                              and sidecar != rich_path)
+                sidecar_note = "%d 行" % len(rows)
+            except Exception as e:
+                sidecar_note = "unparsable: %s" % e
+        check("采样边车独立成文件（<state>.viz.jsonl 且为逐行 JSON）", sidecar_ok, sidecar_note)
+        with open(rich_path, "rb") as rf:
+            state_raw = rf.read()
+        check("状态文件未被写入侧写数据（仍是单个 JSON 文档）",
+              state_raw.lstrip()[:1] == b"{" and state_raw.rstrip()[-1:] == b"}"
+              and state_raw.count(b"\n{") == 0,
+              "%d bytes" % len(state_raw))
 
         # 4c. 本地图表资产（R8）
         st_a, ct_a, body_a = http_get(base + "/assets/echarts.min.js")
@@ -360,13 +379,11 @@ def main():
     check("皮肤：未知 id 回退 neutral 且调色板合法",
           bad["id"] == "neutral" and isinstance(bad.get("palette"), dict)
           and bad["palette"].get("line"), str(bad.get("id")))
+    need = {"line", "area", "bar", "grid", "text"}
     for sid in ("xuanshu", "neutral", "ink", "neon"):
         pal = _panel.SKINS[sid]["palette"]
-        if not ({"line", "area", "bar", "grid", "text"} <= set(pal)):
-            check("皮肤 %s 调色板字段齐全" % sid, False, str(sorted(pal)))
-            break
-    else:
-        check("四套皮肤调色板字段齐全（xuanshu/neutral/ink/neon）", True, "4/4")
+        check("皮肤 %s 调色板字段齐全" % sid, need <= set(pal),
+              "%d 色 · 缺 %s" % (len(pal), sorted(need - set(pal)) or "无"))
 
     # 8. 采样累积与升序（R6 场景补充，纯函数级）
     tmp2 = tempfile.mkdtemp(prefix="ww-series-")

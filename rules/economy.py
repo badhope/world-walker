@@ -1,9 +1,11 @@
 """
 经济结算规则 (Economy)
 
-价格 = base_price × (demand_base / supply_current) × market_events_multiplier
+成交价 = 当前价 × 与数量相关的供需乘数（买入推价 ≤1.5×，卖出压价 ≥0.5×）；
+每回合 tick_market 按 OU 均值回归（models.ou_price_reverted）把价格缓慢
+拉回 base_price，并缓慢补库存。
 
-大宗交易后价格回归: 每回合 base_price 缓慢复位
+卖出须先持有（ent.items）——卖自己没有的东西等于印钱，挡在结算之前。
 """
 
 import math

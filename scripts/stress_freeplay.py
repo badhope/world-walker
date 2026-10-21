@@ -225,7 +225,9 @@ async def run(turns: int, quiet: bool = False):
                                                      'hp': 80, 'gold': 50,
                                                      'location': loc,
                                                      'desc': '新来的散修'})
-                        check(r, 'spawn_npc 新人物入局', bool(r) and r.get('entity_id'))
+                        check(r, 'spawn_npc 新人物入局',
+                              bool(r) and r.get('entity_id') == 'npc_new_%d' % player.npc_seq,
+                              (r or {}).get('entity_id'))
                         npc_ids = player._alive_npcs()
                     if npc_ids:
                         target = rng.choice(npc_ids)
@@ -288,19 +290,24 @@ async def run(turns: int, quiet: bool = False):
                 elif player.phase == 'breakthrough':
                     player.stage_target += 1
                     snap_saved = await call('snapshot', {'label': 'before_bk%d' % turn})
-                    stage_before = (player.state.get('entities') or {}).get('player', {}).get('stage', 0)
+                    # stage 缺键即 0（引擎 advance 同样按 get("stage", 0) 起算）
+                    st_bk = await call('read_state', {})
+                    stage_before = int(((st_bk or {}).get('entities') or {}).get('player', {}).get('stage', 0) or 0)
                     adv = await call('advance', {'next_level': '引元境·初层' if player.stage_target == 1
                                                  else '引元境·中层', 'insight': rng.uniform(0.4, 0.95)})
                     if adv and adv.get('success'):
                         st_now = await call('read_state')
                         check(st_now, '突破成功则 stage 恰好 +1',
-                              st_now['entities']['player'].get('stage', 0) == stage_before + 1,
+                              int(st_now['entities']['player'].get('stage', 0) or 0) == stage_before + 1,
                               'stage %s -> %s' % (stage_before, st_now['entities']['player'].get('stage')))
                     elif snap_saved:
                         # 失败：老玩家习惯——回退存档点重来（stage 不应被失败污染）
                         rs = await call('restore', {'snapshot_path': snap_saved['snapshot']})
+                        st_rb = await call('read_state', {}) if rs else None
+                        stage_after = int(((st_rb or {}).get('entities') or {}).get('player', {}).get('stage', 0) or 0)
                         check(rs, '失败回退后 stage 保持',
-                              rs and (rs.get('tick', 0) >= 0))
+                              bool(rs) and stage_after == stage_before,
+                              'stage before=%s after=%s' % (stage_before, stage_after))
 
                 # 记忆维护：每 25 回合摘要、每 50 回合回顾
                 if turn % 25 == 0:
@@ -325,11 +332,11 @@ async def run(turns: int, quiet: bool = False):
                     else:
                         await call('narrative_weight', {'probability': 0}, allow_error=True)
 
-                # 死亡：续命
+                # 濒死：引擎保证玩家气血 >= 1 并自动记账（不再靠本地改内存假装复活）
                 p = player.state.get('entities', {}).get('player', {})
                 if p.get('hp', 0) <= 0:
-                    p['hp'] = int(p.get('hp_max', 50))
-                    await call('write_summary', {'text': '（玩家在第%d回合倒下又醒来，记忆延续）' % turn})
+                    invariant_fail.append({'note': '玩家气血归零（濒死保护失效）', 'turn': turn,
+                                           'detail': 'hp=%s' % p.get('hp')})
 
                 r = await call('tick', {})
                 if r is None and turn == 1:
@@ -344,12 +351,13 @@ async def run(turns: int, quiet: bool = False):
                 arch = int(st.get('archived_events', 0))
                 keep = int((st.get('config') or {}).get('event_log_keep', 200))
                 check(st, 'event_log 不超保留量', len(st.get('event_log', [])) <= keep)
-                check(st, 'archived_events 只增且与归档行数一致',
-                      arch >= 0 and os.path.exists(st and state_path + '.log.jsonl'))
+                archive_file = state_path + '.log.jsonl'
                 lines = 0
-                if os.path.exists(state_path + '.log.jsonl'):
-                    lines = sum(1 for _ in open(state_path + '.log.jsonl', encoding='utf-8'))
-                check(st, '归档行数 >= archived_events 计数', lines >= arch - 4)
+                if os.path.exists(archive_file):
+                    lines = sum(1 for _ in open(archive_file, encoding='utf-8'))
+                check(st, 'archived_events 与归档文件行数一致',
+                      arch >= 0 and lines >= arch,
+                      'archived_events=%d 归档行=%d' % (arch, lines))
 
             total_calls = sum(calls.values())
             real_errors = sum(errors.values())

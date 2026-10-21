@@ -1,14 +1,16 @@
 """
 文化进化规则 (Cultural Evolution)
 
-基于: CULTURAL_EVOLUTION.md
+基于: 文化进化理论文献（Boyd & Richerson 双重继承 / Dawkins 模因学 /
+      Tomasello-Henrich 累积文化 / Eerkens-Lipo 三维变异）
 包含: 双重继承(Boyd-Richerson), 模因学(Dawkins/Blackmore),
       文化群体选择, 累积文化(Tomasello/Henrich),
       三维变异(Eerkens-Lipo), 精神分析重构
+
+依赖约束: 仅标准库（ARCHITECTURE.md §2），矩阵运算纯 Python 实现。
 """
 
 import math, random
-import numpy as np
 from typing import List, Dict
 
 # ============================================================
@@ -32,9 +34,9 @@ def sect_cultural_fitness(Std_j: float, Coop_j: float, I_j: float,
     """宗门文化适应度 Φ_j"""
     return alpha * (1.0 / (Std_j + 1e-9)) + beta * Coop_j + gamma * (I_j / (I_region_mean + 1e-9))
 
-def cultural_transmission_update(p_t: np.ndarray, T: np.ndarray) -> np.ndarray:
-    """p_{t+1} = T · p_t"""
-    return T @ p_t
+def cultural_transmission_update(p_t: List[float], T: List[List[float]]) -> List[float]:
+    """p_{t+1} = T · p_t（纯 Python 矩阵-向量乘）"""
+    return [sum(row[j] * p_t[j] for j in range(len(p_t))) for row in T]
 
 def vertical_transmission_prob(both_parent: bool, one_parent: bool, mutant_prob: float) -> float:
     """血脉特质遗传概率"""

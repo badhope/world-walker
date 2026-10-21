@@ -129,7 +129,33 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     
     # 检查击杀
     if def_ent["hp"] <= 0:
-        result["defender_dead"] = True
-        result["events"].append(f"{def_ent['name']}被击败了")
+        if defender_id == "player":
+            # 玩家永不真正死亡：气血保底 1，代价是濒死（掉钱 / 心伤 / 留痕）
+            _apply_near_death(state, def_ent, result)
+        else:
+            result["defender_dead"] = True
+            result["events"].append(f"{def_ent['name']}被击败了")
     
     return result
+
+
+def _apply_near_death(state, player, result):
+    """濒死保护：玩家的气血归零改判为「重伤退场」——保底 1 点气血，但必须付真实代价。
+
+    为什么这样设计：让命可以随便丢，长局就失去重量；直接 game over 又会打断叙事。
+    折中为「永不死亡 + 明确代价」，且代价必须写进状态文件——此前 stress 测试靠直接
+    改内存 p['hp']=hp_max 假装复活，状态文件从未变化，属于假修复。
+    """
+    player["hp"] = 1
+    gold = int(player.get("gold", 0) or 0)
+    gold_lost = int(gold * 0.30)
+    player["gold"] = gold - gold_lost
+    player["mind_scars"] = int(player.get("mind_scars", 0) or 0) + 1
+    player["near_death_count"] = int(player.get("near_death_count", 0) or 0) + 1
+    result["near_death"] = True
+    result["near_death_cost"] = {"gold_lost": gold_lost, "mind_scars": 1,
+                                 "total": player["near_death_count"]}
+    result["defender_hp_after"] = player["hp"]
+    result["events"].append(
+        f"{player.get('name', '玩家')}气血耗尽，重伤退场："
+        f"散落 {gold_lost} 钱财，心伤 +1（第 {player['near_death_count']} 次濒死）")

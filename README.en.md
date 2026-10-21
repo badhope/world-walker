@@ -86,7 +86,7 @@ the engine's JSON into prose — it must never invent numbers.
 - Near-death protection: the player never truly dies — hitting zero HP becomes "severe injury retreat" with 1 HP floor, costing 30% of gold and +1 mind scar (panel shows the count); NPC deaths are unaffected
 - End-to-end self-check: `python scripts/verify_mcp_stdio.py` (55 assertions, including ecosystem / codex / panel / settings / long game / model layer / determinism)
 - Panel contract self-check: `python scripts/verify_panel.py` (53 assertions: view-model contract / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
-- CLI channel self-check: `python scripts/verify_cli.py` (19 assertions: read-only commands never rewrite the save / all five write paths persist with bounded fields / same seed + same action reproduces)
+- CLI channel self-check: `python scripts/verify_cli.py` (20 assertions: read-only commands never rewrite the save / all five write paths persist with bounded fields / same seed + same action reproduces)
 - Near-death self-check: `python scripts/verify_near_death.py` (7 assertions: 1-HP floor / costs persisted / NPC death semantics unchanged)
 - Test-integrity audit: `python scripts/verify_tests.py` (statically audits every self-check assertion and rejects tautologies / always-false / weak checks — no more "all green but nothing tested")
 - User-perspective playtest: `python scripts/user_playtest.py` (47 checks a real player would raise — money-minting exploits, boundary inputs, readable refusals)
@@ -139,7 +139,7 @@ game_engine/                      # the repo root IS the game_engine package (an
 ├── ARCHITECTURE.md               # architecture doc (single source of truth: view-model contract / invariants / ADRs)
 ├── scripts/verify_mcp_stdio.py   # MCP end-to-end self-check (55 assertions, including ecosystem compat / codex / panel / model layer / determinism)
 ├── scripts/verify_panel.py       # panel contract self-check (53 assertions: view model / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
-├── scripts/verify_cli.py         # CLI channel self-check (19 assertions: read-only invariants / write persistence / determinism)
+├── scripts/verify_cli.py         # CLI channel self-check (20 assertions: read-only invariants / write persistence / determinism)
 ├── scripts/verify_tests.py       # test-integrity audit (AST-level: rejects tautologies / always-false / weak checks)
 ├── scripts/verify_near_death.py  # near-death self-check (HP floor / persisted costs / NPC death unchanged)
 ├── scripts/user_playtest.py      # user-perspective playtest (47 "would a player complain?" checks: exploits / edges / error readability)

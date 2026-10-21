@@ -31,7 +31,7 @@ step() {
   fi
 }
 
-say "推送前门禁：与 GitHub Actions 同一套判据"
+say "推送前门禁：判据与 GitHub Actions 一致（含 500 轮压测 + 打包校验）"
 say "仓库：$ROOT"
 
 step "编译全部 Python 源" "$PY" scripts/compile_all.py
@@ -46,7 +46,10 @@ if "$PY" -c "import mcp" >/dev/null 2>&1; then
   step "玩家视角试玩" "$PY" scripts/user_playtest.py
   step "长局压力测试（500 轮，对齐 CI 的 mcp 作业）" "$PY" scripts/stress_freeplay.py 500
 else
-  say $'\n=== MCP 作业 ===\n  SKIP（未安装 mcp SDK，CI 里有独立作业覆盖）'
+  say $'\n=== MCP 作业 ===\n  SKIP（未安装 mcp SDK）'
+  say '  注意：MCP 端到端 / 试玩 / 压测本次未执行，绿灯不代表这三项通过。'
+  say '  安装后重跑：python -m pip install -e ".[mcp]"'
+  FAILED=1
 fi
 
 # 打包完整性：对齐 CI 的 package 作业（构建 + wheel 资源校验）

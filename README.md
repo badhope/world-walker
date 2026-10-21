@@ -81,7 +81,7 @@ pip install -e ".[mcp]"
 - 端到端自检：`python scripts/verify_mcp_stdio.py`（55 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
 - 面板契约自检：`python scripts/verify_panel.py`（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
 - 濒死保护自检：`python scripts/verify_near_death.py`（7 项断言：气血保底 1 / 代价落盘 / NPC 死亡语义不变）
-- CLI 通道自检：`python scripts/verify_cli.py`（19 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
+- CLI 通道自检：`python scripts/verify_cli.py`（20 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
 - 测试可信度审计：`python scripts/verify_tests.py`（静态审计全部自检断言，拒绝恒真/恒假/弱断言——防止"测试全绿但什么都没测"）
 - 用户视角试玩：`python scripts/user_playtest.py`（47 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）
 - 实测：opencode（GLM-5.2）接入后按设定建局、连续结算三个行动，叙事数值与引擎状态文件逐项一致
@@ -131,7 +131,7 @@ game_engine/                      # 仓库根即 game_engine 包（导入别名�
 ├── ARCHITECTURE.md               # 架构文档（唯一真理源：视图模型契约/不变量/ADR）
 ├── scripts/verify_mcp_stdio.py   # MCP 端到端自检（55 项断言，含酒馆生态兼容/图鉴/面板/模型层与确定性）
 ├── scripts/verify_panel.py       # 面板契约自检（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
-├── scripts/verify_cli.py         # CLI 通道自检（19 项断言：只读不变量/写命令落盘/确定性）
+├── scripts/verify_cli.py         # CLI 通道自检（20 项断言：只读不变量/写命令落盘/确定性）
 ├── scripts/verify_tests.py       # 测试可信度审计（AST 级：拒绝恒真/恒假/弱断言）
 ├── scripts/verify_near_death.py  # 濒死保护自检（气血保底/代价落盘/NPC 死亡不变）
 ├── scripts/user_playtest.py      # 用户视角试玩（47 项"玩家会不会投诉"检查：钻空子/边界/报错可读性）

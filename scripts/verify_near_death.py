@@ -17,7 +17,6 @@ stress_freeplay 靠直接改内存 p['hp']=hp_max 假装复活，状态文件从
 退出码: 0 = 全绿；1 = 有失败项
 """
 
-import json
 import os
 import sys
 import tempfile
@@ -106,7 +105,7 @@ def r2_cost_persisted(st, out):
 
 def r3_npc_dies():
     st = base_state()
-    out = force_hit(st, 'brute', 'player')
+    force_hit(st, 'brute', 'player')
     st2 = base_state()
     out2 = force_hit(st2, 'player', 'brute')
     check('R3 NPC 气血归零仍判死亡', out2.get('defender_dead') is True

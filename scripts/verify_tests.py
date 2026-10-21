@@ -212,7 +212,6 @@ def _is_falsey_const(expr):
 
 def in_dead_branch(node, parents):
     """调用是否位于永不执行的分支内（`if False:` / `if 0:` / `while False:`）。"""
-    body_owner = None
     for p in parents:
         if isinstance(p, (ast.If, ast.While)) and _is_falsey_const(p.test):
             for stmt in p.body:
@@ -247,14 +246,32 @@ def audit_file(rel):
         return out
 
     # 函数内的常量赋值表：变量名 -> 字面量表达式（用于抓 `ok = True; check(x, ok)`）
+    # 按"函数作用域"建常量表：变量名相同但分属不同函数时不能互相污染。
+    # 同时收录普通赋值 / 注解赋值 / 海象运算符，且"最后一次赋值"才算数
+    # （`ok = True; ok = False` 的真实值是 False，不能拿首次赋值判定）。
     const_assign, mutated = {}, set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign) and len(node.targets) == 1                 and isinstance(node.targets[0], ast.Name):
-            name, val = node.targets[0].id, node.value
+    for scope in ast.walk(tree):
+        if not isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Module)):
+            continue
+        assigns = {}
+        for node in ast.walk(scope):
+            targets = []
+            if isinstance(node, ast.Assign):
+                targets = [t for t in node.targets if isinstance(t, ast.Name)]
+                val = node.value
+            elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)                     and node.value is not None:
+                targets = [node.target]
+                val = node.value
+            elif isinstance(node, ast.NamedExpr) and isinstance(node.target, ast.Name):
+                targets = [node.target]
+                val = node.value
+            for t in targets:
+                assigns.setdefault(scope, {})[t.id] = val
+        for name, val in (assigns.get(scope) or {}).items():
             if isinstance(val, ast.Constant):
-                const_assign.setdefault(name, val)
+                const_assign[(id(scope), name)] = val
             else:
-                mutated.add(name)   # 后续被重新赋成非字面量 → 累积变量，不判恒真
+                mutated.add((id(scope), name))
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -298,8 +315,15 @@ def audit_file(rel):
             add(rel, node.lineno, 'R3', '条件含恒真下界（>= 0 等）', snippet)
 
         # 数据流：条件只是一个变量名，追到它的常量赋值
-        if isinstance(cond, ast.Name) and cond.id in const_assign and cond.id not in mutated:
-            cv = const_assign[cond.id]
+        _scope_id = None
+        for p_ in parents:
+            if isinstance(p_, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                _scope_id = id(p_)
+                break
+        if _scope_id is None:
+            _scope_id = id(tree)
+        if isinstance(cond, ast.Name) and (_scope_id, cond.id) in const_assign                 and (_scope_id, cond.id) not in mutated:
+            cv = const_assign[(_scope_id, cond.id)]
             if is_const_bool(cv) and cv.value is True:
                 add(rel, node.lineno, 'R2', '条件变量 %s 被赋为常量 True（恒真）' % cond.id, snippet)
             elif isinstance(cv.value, (int, float, str)) and not isinstance(cv.value, bool):

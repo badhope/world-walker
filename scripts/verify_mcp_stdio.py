@@ -178,18 +178,29 @@ async def main():
             await session.call_tool('world_open', {'state_path': state_a})
             live = data(await session.call_tool('read_state', {}))
 
-            # 6. 交易
+            # 6. 交易：扣款 + 入库 + 减库存 三件事都要验（只验扣款会让"物品不入包"漏网）
             check('trade 扣款并减库存',
                   out['trade'].get('success') and live['entities']['player']['gold'] == 200 - out['trade']['total_cost'],
                   'cost=%s gold=%s' % (out['trade'].get('total_cost'), live['entities']['player']['gold']))
+            inv = live['entities']['player'].get('items') or {}
+            check('trade 买入的物品真的进了背包（2 件金疮药）',
+                  int(inv.get('jinchuang_yao', 0)) == 2,
+                  'items=%s' % inv)
+            sup = live['market']['临江茶棚']['jinchuang_yao']['supply']
+            # 初始 10，买 2 → 8；但剧本中途 tick 过一次，tick_market 每回合给 supply<20 的货 +1 → 9
+            check('trade 买入后市场库存减少（10→9，含 1 点回合恢复）', sup == 9, 'supply=%s' % sup)
             bad = data(await session.call_tool('trade', {'location': '临江茶棚', 'item': '不存在的货',
                                                          'direction': 'buy'}))
             check('trade 错误商品返回 success=false 而非崩溃', bad.get('success') is False)
 
-            # 7. 社交 → 关系变化
+            # 7. 社交 → 关系变化（返回值 + 落盘两层都要验，防"只算不写"）
             check('social 提升亲密度（gift +8）',
                   out['social']['affinity_after'] == out['social']['affinity_before'] + 8,
                   '%s -> %s' % (out['social']['affinity_before'], out['social']['affinity_after']))
+            live_rel = data(await session.call_tool('read_state', {}))['relations']['player:vendor']
+            check('social 的关系变化真的写进状态（read_state 一致）',
+                  live_rel['affinity'] == out['social']['affinity_after'],
+                  'disk=%s 返回=%s' % (live_rel['affinity'], out['social']['affinity_after']))
 
             # 8. 因果债
             live = data(await session.call_tool('read_state', {}))
@@ -209,13 +220,17 @@ async def main():
             check('status 聚合心流/身份/道德/认知',
                   isinstance(st, dict) and {'flow', 'identity', 'moral_vector', 'cognition'} <= set(st))
 
-            # 11. 纯函数
+            # 11. 纯函数：按闭式公式断言精确值，不只看"有没有数"
             merit = data(await session.call_tool('merit', {'aid': 0.9, 'sincerity': 1.0}))
             weight = data(await session.call_tool('narrative_weight', {'probability': 0.01}))
-            check('merit / narrative_weight 纯函数可用',
-                  isinstance(merit, dict) and merit.get('merit_value') is not None
-                  and weight.get('info_weight', 0) > 0,
-                  'merit=%s info=%s' % (merit.get('merit_value'), round(weight.get('info_weight', 0), 2)))
+            # merit = aid × (0.4 + 0.6 × sincerity) = 0.9 × 1.0 = 0.9
+            check('merit 按闭式公式出数（0.9×1.0=0.9）',
+                  abs(float(merit.get('merit_value', -1)) - 0.9) < 1e-9,
+                  'merit=%s 期望 0.9' % merit.get('merit_value'))
+            # 信息量 = -log2(p)：p=0.01 → 6.6439 bit
+            check('narrative_weight 按 -log2(p) 出数（p=0.01 → 6.6439）',
+                  abs(float(weight.get('info_weight', 0)) - 6.6439) < 1e-3,
+                  'info=%s 期望 6.6439' % round(weight.get('info_weight', 0), 4))
 
             # 11b. 模型层：命名闭式公式直接算效果
             mlist = data(await session.call_tool('model_list', {}))

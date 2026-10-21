@@ -97,55 +97,98 @@ WRITE = [
 def verify_write(tmp):
     base = json.load(open(DEMO_STATE, encoding='utf-8'))
     base_counter, base_tick = base.get('rng_counter', 0), base.get('tick', 0)
+    bp = base['entities']['player']
     for name, args in WRITE:
         p = fresh_copy(tmp, 'w_%s.json' % name)
         r = run_cli(p, *args)
         ok, notes = r.returncode == 0, []
         try:
             s = json.load(open(p, encoding='utf-8'))
+            sp = s['entities']['player']
             notes.append('rng_counter %s->%s' % (base_counter, s.get('rng_counter')))
             ok = ok and s.get('rng_counter') == base_counter + 1
             for rel in s.get('relations', {}).values():
                 if not (-100 <= rel.get('affinity', 0) <= 100 and -100 <= rel.get('respect', 0) <= 100):
                     ok, notes = False, notes + ['relations 越界']
                     break
-            if name == 'tick':
+
+            # ── 业务效果：光验 rng_counter 只能证明"落了盘"，证明不了"做了事"。
+            #    每条写命令都必须产生自己的可见副作用，否则 resolve_* 整个 no-op 也会全绿。
+            if name == 'combat':
+                hp0 = base['entities']['goblin']['hp']
+                hp1 = s['entities']['goblin']['hp']
+                touched = (hp1 < hp0) or any('命中' in e.get('desc', '') or '闪避' in e.get('desc', '')
+                                             for e in s.get('event_log', [])[-3:])
+                ok = ok and touched
+                notes.append('goblin hp %s->%s' % (hp0, hp1))
+            elif name == 'trade':
+                item_key = 'coarse_tea'
+                qty0 = int((bp.get('items') or {}).get(item_key, 0))
+                qty1 = int((sp.get('items') or {}).get(item_key, 0))
+                sup0 = int(base['market']['bamboo_tea_booth'][item_key]['supply'])
+                sup1 = int(s['market']['bamboo_tea_booth'][item_key]['supply'])
+                gold0, gold1 = int(bp.get('gold', 0)), int(sp.get('gold', 0))
+                ok = ok and qty1 > qty0 and sup1 < sup0 and gold1 < gold0
+                notes.append('粗茶 %s->%s · 库存 %s->%s · 钱 %s->%s'
+                             % (qty0, qty1, sup0, sup1, gold0, gold1))
+            elif name == 'social':
+                key = 'old_chen:player'
+                a0 = (base.get('relations', {}).get(key) or {}).get('affinity', 0)
+                a1 = (s.get('relations', {}).get(key) or {}).get('affinity', 0)
+                ok = ok and a1 != a0
+                notes.append('%s affinity %s->%s' % (key, a0, a1))
+            elif name == 'karma':
+                l0 = len(base.get('karma_ledger') or [])
+                l1 = len(s.get('karma_ledger') or [])
+                ok = ok and l1 == l0 + 1
+                if l1 > l0:
+                    notes.append('账本 +1（%s）' % s['karma_ledger'][-1].get('type'))
+                else:
+                    notes.append('账本 %s->%s' % (l0, l1))
+            elif name == 'tick':
                 ok = ok and s.get('tick') == base_tick + 1
                 notes.append('tick %s->%s' % (base_tick, s.get('tick')))
-            else:
+            if name != 'tick':
                 ok = ok and s.get('tick') == base_tick
         except Exception as e:
             ok, notes = False, notes + ['状态不可解析: %s' % e]
-        check('写命令 %s 落盘且字段有界' % name, ok,
+        check('写命令 %s 落盘且业务效果可见' % name, ok,
               ' · '.join(notes) if ok else 'exit=%s %s' % (r.returncode, ' '.join(notes)))
 
 
 # ---------------------------------------------------------------- 3. 确定性
 def verify_determinism(tmp):
     # 3a. 三副本同行动 → 终态逐字节一致
-    hashes = set()
+    #     注意：三个副本都失败时也会得到"1 种终态"，那是假通过，必须显式排除。
+    hashes, fails = set(), []
     for i in range(3):
         p = fresh_copy(tmp, 'det%d.json' % i)
         r = run_cli(p, 'combat', '--attacker', 'player', '--defender', 'goblin')
         if r.returncode != 0:
-            hashes.add('ERR')
-            break
+            fails.append('副本%d exit=%s' % (i, r.returncode))
+            continue
         hashes.add(sha256(p))
-    check('三副本同 combat 终态哈希一致', len(hashes) == 1, '%d 种终态' % len(hashes))
+    check('三副本同 combat 终态哈希一致', not fails and len(hashes) == 1,
+          '%d 种终态' % len(hashes) if not fails else '执行失败: %s' % '; '.join(fails))
 
     # 3b. 双副本 12 步混合动作（combat/tick 交替）→ 终态逐字节一致
-    finals, last_counter = set(), None
+    finals, last_counter, step_fails = set(), None, []
     for i in range(2):
         p = fresh_copy(tmp, 'mix%d.json' % i)
-        for _ in range(6):
-            run_cli(p, 'combat', '--attacker', 'player', '--defender', 'goblin')
-            run_cli(p, 'tick')
+        for step in range(6):
+            rc1 = run_cli(p, 'combat', '--attacker', 'player', '--defender', 'goblin')
+            rc2 = run_cli(p, 'tick')
+            if rc1.returncode != 0 or rc2.returncode != 0:
+                step_fails.append('副本%d 第%d轮 combat=%s tick=%s'
+                                  % (i, step + 1, rc1.returncode, rc2.returncode))
+                break
         s = json.load(open(p, encoding='utf-8'))
         last_counter = s.get('rng_counter')
         finals.add(sha256(p))
     check('双副本 12 步混合动作终态哈希一致（rng_counter 持久化）',
-          len(finals) == 1, '%d 种终态' % len(finals))
-    if len(finals) == 1:
+          not step_fails and len(finals) == 1,
+          '%d 种终态' % len(finals) if not step_fails else '中途失败: %s' % '; '.join(step_fails))
+    if not step_fails and len(finals) == 1:
         base_counter = json.load(open(DEMO_STATE, encoding='utf-8')).get('rng_counter', 0)
         check('混合动作后 rng_counter 累计 +12 并落盘',
               last_counter == base_counter + 12,

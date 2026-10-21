@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-20 ｜ 文档版本：v1.4
+> 最后更新：2026-10-21 ｜ 文档版本：v1.5
 
 ## 1. 概述与目标
 
@@ -200,6 +200,7 @@ view_model = {
 - [x] T12 交付物完善：dist 发行包实打（sdist + wheel 落盘）+ 面板截图入仓（docs/screenshots，2000 回合存档现场重截、断言先行）+ 双 README 预览区 + 截图随 sdist/wheel 分发 — 验证：截图断言 35/35 + 产物条目核对 + 安装包冒烟 + 回归全绿
 - [x] T13 确定性契约固化：新增 scripts/verify_cli.py（18 项）覆盖 CLI 只读写不变量/写通道落盘/双通道确定性；verify_mcp_stdio.py 增快照点重放断言（49 项）— 验证：verify_cli 18/18 + verify_mcp_stdio 49/49 + 全量回归绿
 - [x] T15 濒死保护（玩家永不死亡 + 真实代价）：rules/combat.py 新增 _apply_near_death——玩家气血归零改判重伤退场，保底 1 血、掉 30% 钱财、心伤 +1、near_death_count 累加、事件与结算结果留痕；NPC 死亡语义不变；stress_freeplay 删除"改内存假装复活"的假修复，改为断言濒死保护未失效；面板显示濒死次数 — 验证：verify_near_death 7/7（含落盘复读）+ MCP 端到端实测 gold 100→70 且写盘
+- [x] T16 测试可信度第二轮（独立专家团审计后）：verify_tests.py 重写为 9 条规则（R0 解析失败/R1 短路恒真/R2 常量表达式/R3 恒真下界/R5 恒假/R6 断言数量下限/R7 自反恒等式/R8 纯度型弱断言/R9 死分支），并兼容 stress 的三参数 check 签名（此前整个文件不在审计范围）；修复 verify_cli 写命令只验 rng_counter 不验业务效果（trade no-op 曾 19/19 全绿）、三副本全失败假通过；user_playtest 价格自比恒真改为独立手算 OU 闭式解、突破零成功恒真；stress 归档计数与回退断言由恒真改为严格等式；verify_mcp 补 trade 入库/减库存、social 落盘、merit 精确值；state_schema.save_state 修快照回退后归档文件与计数漂移（真 bug）— 验证：verify_tests 0/168 可疑 + 7 种假写法全部被抓 + 清空断言被 R6 抓 + 五类代码变异（trade/social/karma no-op、价格回归失效、归档计数归零）全部 FAIL
 - [x] T14 测试可信度治理：修复 5 处恒真/无效断言（verify_cli 只读探针比较两份副本、verify_panel 侧写 `or True`、皮肤循环 for/else 硬编码 True、stress 归档与回退断言恒真）；新增 scripts/verify_tests.py 做 AST 级断言审计（R1 恒真/R2 常量/R3 恒真下界/R4 弱断言）；修正 world_schema event_log 错误陈述（50→config.event_log_keep 默认 200）— 验证：verify_tests 0 可疑 + 三处变异测试均能被抓出
 
 ## 10. 变更日志（Changelog）
@@ -216,6 +217,7 @@ view_model = {
 | 2026-10-20 | 确定性契约固化（v1.2）：新增 `scripts/verify_cli.py`（18 项）把 CLI 通道的三类性质变成常驻断言——9 条只读命令前后状态文件 sha256 不变且不推进 `rng_counter`、combat/trade/social/karma/tick 五条 dirty 分支全部落盘且字段有界、三副本同行动与双副本 12 步混合动作终态逐字节一致；`verify_mcp_stdio.py` 增 1 项快照点重放断言（49 项），覆盖 `rng_counter` 随快照回退后的确定性语义；§6.2 新增 INV-E3/E4；文档断言计数与结构清单同步 | §4、§6.2、§9 T13 | T13 | verify_cli 18/18 + verify_mcp_stdio 49/49 + verify_panel 48/48 + user_playtest 41/41 + stress 2000/2000 零违规 |
 | 2026-10-20 | 测试可信度治理（v1.3）：逐条审计四套自检共 160+ 断言，修掉 5 处假测试——① verify_cli 只读探针比较两份 demo 副本而非被测命令结果；② verify_panel 侧写断言 `os.path.exists(...) or True` 恒真；③ 皮肤调色板循环用 for/else 把结论硬编码成 True；④ stress `失败回退后 stage 保持` 只判 tick>=0；⑤ stress `archived_events 与归档行数一致` 只判文件存在。新增 `scripts/verify_tests.py`（AST 级审计 R1-R4，拒绝恒真/常量/恒真下界/弱断言），并以三处代码变异反向验证其有效性；修正 world_schema `event_log 最多 50 条` 与默认 keep=200 不符的错误陈述。断言数：verify_cli 18→19、verify_panel 48→52 | §4、§9 T14 | T14 | verify_tests 0 可疑 + verify_cli 19/19 + verify_panel 52/52 + verify_mcp_stdio 49/49 + user_playtest 41/41 + stress 2000/2000 零违规 |
 | 2026-10-20 | 濒死保护（v1.4）：玩家永不真正死亡——气血归零改判「重伤退场」，保底 1 气血，代价为掉 30% 钱财 + 心伤 +1 + near_death_count 累加 + 事件与结算结果留痕，全部写入状态文件；NPC 死亡语义不变。删除 stress_freeplay 中「直接改内存 p['hp']=hp_max 假装复活」的假修复（状态文件从未变化），改为断言濒死保护未失效；面板与视图模型新增 near_death_count。§6.2 新增 INV-E5 | §6.1、§6.2、§9 T15 | T15 | verify_near_death 7/7（含 save_state 后重读核验）+ MCP stdio 端到端 gold 100→70 且磁盘一致 + 全套自检绿 |
+| 2026-10-21 | 测试可信度第二轮（v1.5）：独立专家团审计发现上一轮 5 处修复中 1 处未真正修复（归档断言 `arch>=0` 仍恒真）、1 处只修一半（回退断言 no-op restore 仍过），且 verify_tests 只能抓 20+ 种假写法中的 3 种、stress 的 10 条断言因签名不同完全不在审计范围。本轮重写审计器为 9 条规则并兼容双签名；补齐 verify_cli 写通道业务断言（trade no-op 曾 19/19 全绿）、user_playtest 价格自比与突破零成功、stress 归档/回退严格断言、verify_mcp 的 trade 入库/social 落盘/merit 精确值；并修出真 bug：快照回退后归档文件行数与 archived_events 永久漂移（300 轮实测差 2 行），save_state 现按计数截断归档文件 | §6.2、§9 T16 | T16 | verify_tests 0/168 + 7 种假写法全抓 + 清空断言被 R6 抓 + 五类变异全 FAIL + 回归全绿 |
 
 ### ADR-004：长局可视化的三个取舍
 - **状态**：已采纳 ｜ **日期**：2026-10-15

@@ -362,8 +362,7 @@ async def main():
             after = data(await session.call_tool('read_state', {}))['tick']
             rs = data(await session.call_tool('restore', {'snapshot_path': snap['snapshot']}))
             check('快照/回退：状态回到存档点',
-                  after == rs['tick'] + 1 and 'bailu' in rs.get('entities', []),
-                  'tick %s -> %s' % (rs['tick'], after))
+                  after == rs['tick'] + 1 and 'bailu' in rs.get('entities', []),                  'tick %s -> %s' % (rs['tick'], after))
 
             # 16. 确定性显式契约：同一快照点重放同一行动 → 结果逐字段相等
             #     （覆盖 rng_counter 随快照回退后的确定性语义，此前仅有 world_init 级覆盖）
@@ -406,6 +405,29 @@ async def main():
             rc = data(await session.call_tool('recall', {'query': '巡视'}))
             check('长局：可按关键词回捞归档事件', len(rc.get('matches', [])) > 0,
                   '命中 %d 条' % len(rc.get('matches', [])))
+
+            # 18b. 回退不得删除归档（曾经为修正计数漂移而截断归档文件，导致历史被物理删除）
+            arch_before = data(await session.call_tool('read_state', {})).get('archived_events', 0)
+            rc_first = data(await session.call_tool('recall', {'query': '巡视0'}))
+            snap_arch = data(await session.call_tool('snapshot', {'label': 'arch'}))
+            for i in range(4):
+                await session.call_tool('travel', {'location': '听霄城' if i % 2 else '临川城',
+                                                   'note': '溢出%d' % i})
+            await session.call_tool('restore', {'snapshot_path': snap_arch['snapshot']})
+            st_after_rb = data(await session.call_tool('read_state', {}))
+            rc_after = data(await session.call_tool('recall', {'query': '巡视0'}))
+            # 硬判据：回退前能召回的那批归档事件，回退后必须一条不少地还能召回
+            # （只看 archived_events 数值会被"快照里本来就够大"掩盖，故直接比对召回集合）
+            set_before = {m.get('desc') for m in rc_first.get('matches', [])}
+            set_after = {m.get('desc') for m in rc_after.get('matches', [])}
+            missing = set_before - set_after
+            check('长局：回退后旧归档仍可逐条召回（不丢历史）',
+                  bool(set_before) and not missing,
+                  '回退前 %d 条 · 回退后 %d 条 · 丢失 %d 条 %s'
+                  % (len(set_before), len(set_after), len(missing), sorted(missing)[:2]))
+            check('长局：回退后 archived_events 不回退（归档只增不减）',
+                  st_after_rb.get('archived_events', 0) >= arch_before,
+                  'arch %s→%s' % (arch_before, st_after_rb.get('archived_events')))
             await session.call_tool('write_summary', {'text': '本段：买丹、结交、动身听霄城。'})
             rp = data(await session.call_tool('recap', {'budget_chars': 400}))
             check('长局：回顾包带摘要且遵守字符预算',

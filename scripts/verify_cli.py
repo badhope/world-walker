@@ -53,6 +53,22 @@ def run_cli(state_path, *args):
                           errors='replace', cwd=tempfile.gettempdir(), env=env)
 
 
+def _cli_json(stdout):
+    """从 CLI stdout 里取出结果 JSON（engine.py 打印的就是纯 JSON）。"""
+    try:
+        return json.loads(stdout)
+    except Exception:
+        return {}
+
+
+def _cli_damage(stdout):
+    return _cli_json(stdout).get('damage')
+
+
+def _cli_total_cost(stdout):
+    return _cli_json(stdout).get('total_cost')
+
+
 # ---------------------------------------------------------------- 1. 只读不变量
 READONLY = [
     ('flow', ()), ('identity', ()), ('narrative', ()), ('world_state', ()),
@@ -117,10 +133,13 @@ def verify_write(tmp):
             if name == 'combat':
                 hp0 = base['entities']['goblin']['hp']
                 hp1 = s['entities']['goblin']['hp']
-                touched = (hp1 < hp0) or any('命中' in e.get('desc', '') or '闪避' in e.get('desc', '')
-                                             for e in s.get('event_log', [])[-3:])
-                ok = ok and touched
-                notes.append('goblin hp %s->%s' % (hp0, hp1))
+                # 精确判据：伤害必须等于 hp 的实际减少量，且事件里报告的数字与之吻合。
+                # 只看"hp 变小了"或"有命中字样"会让 damage=0 / 少扣血 这类回归漏网。
+                dmg = int(r_damage or 0) if (r_damage := _cli_damage(r.stdout)) is not None else None
+                ok = ok and hp1 != hp0
+                if hp1 < hp0:
+                    ok = ok and dmg is not None and (hp0 - hp1) == dmg
+                notes.append('goblin hp %s->%s dmg=%s' % (hp0, hp1, dmg))
             elif name == 'trade':
                 item_key = 'coarse_tea'
                 qty0 = int((bp.get('items') or {}).get(item_key, 0))
@@ -128,23 +147,30 @@ def verify_write(tmp):
                 sup0 = int(base['market']['bamboo_tea_booth'][item_key]['supply'])
                 sup1 = int(s['market']['bamboo_tea_booth'][item_key]['supply'])
                 gold0, gold1 = int(bp.get('gold', 0)), int(sp.get('gold', 0))
-                ok = ok and qty1 > qty0 and sup1 < sup0 and gold1 < gold0
-                notes.append('粗茶 %s->%s · 库存 %s->%s · 钱 %s->%s'
-                             % (qty0, qty1, sup0, sup1, gold0, gold1))
+                cost = _cli_total_cost(r.stdout)
+                # 精确判据：入库恰 1 件、库存恰减 1、扣款恰等于结算总额
+                ok = (ok and qty1 == qty0 + 1 and sup0 - sup1 == 1
+                      and cost is not None and gold0 - gold1 == cost)
+                notes.append('粗茶 %s->%s · 库存 %s->%s · 钱 %s->%s (cost=%s)'
+                             % (qty0, qty1, sup0, sup1, gold0, gold1, cost))
             elif name == 'social':
                 key = 'old_chen:player'
-                a0 = (base.get('relations', {}).get(key) or {}).get('affinity', 0)
-                a1 = (s.get('relations', {}).get(key) or {}).get('affinity', 0)
-                ok = ok and a1 != a0
-                notes.append('%s affinity %s->%s' % (key, a0, a1))
+                r0 = (base.get('relations', {}).get(key) or {})
+                r1 = (s.get('relations', {}).get(key) or {})
+                a0, a1 = r0.get('affinity', 0), r1.get('affinity', 0)
+                p0, p1 = r0.get('respect', 0), r1.get('respect', 0)
+                # 精确判据：help 事件的固定增益是 affinity +5、respect +3（rules/social.py:40）
+                ok = ok and (a1 - a0) == 5 and (p1 - p0) == 3
+                notes.append('%s affinity %s->%s respect %s->%s' % (key, a0, a1, p0, p1))
             elif name == 'karma':
                 l0 = len(base.get('karma_ledger') or [])
                 l1 = len(s.get('karma_ledger') or [])
-                ok = ok and l1 == l0 + 1
-                if l1 > l0:
-                    notes.append('账本 +1（%s）' % s['karma_ledger'][-1].get('type'))
-                else:
-                    notes.append('账本 %s->%s' % (l0, l1))
+                entry = s['karma_ledger'][-1] if l1 > l0 else {}
+                # 精确判据：theft 记 15 业，且 from/to/type 都要对
+                ok = (ok and l1 == l0 + 1 and entry.get('amount') == 15
+                      and entry.get('type') == 'theft' and entry.get('from') == 'player'
+                      and entry.get('to') == 'old_chen')
+                notes.append('账本 %s->%s %s' % (l0, l1, entry.get('type')))
             elif name == 'tick':
                 ok = ok and s.get('tick') == base_tick + 1
                 notes.append('tick %s->%s' % (base_tick, s.get('tick')))

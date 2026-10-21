@@ -357,15 +357,19 @@ async def run(turns: int, quiet: bool = False):
                 keep = int((st.get('config') or {}).get('event_log_keep', 200))
                 check(st, 'event_log 不超保留量', len(st.get('event_log', [])) <= keep,
                       '%d/%d' % (len(st.get('event_log', [])), keep))
-                archive_file = state_path + '.log.jsonl'
+                # 归档按世代分文件（回退安全），所以"总归档行数"= 所有世代文件之和，
+                # 应与状态里累计的 archived_events 严格相等，且必须真的发生过归档。
+                import glob as _glob
+                arch_files = ([state_path + '.log.jsonl']
+                              + sorted(_glob.glob(state_path + '.log.*.jsonl')))
                 lines = 0
-                if os.path.exists(archive_file):
-                    lines = sum(1 for _ in open(archive_file, encoding='utf-8'))
-                # 归档必须真的发生过，且计数与文件行数严格相等。
-                # （旧写法 `arch >= 0 and lines >= arch` 在 arch 恒 0 时永远通过。）
-                check(st, 'archived_events 与归档文件行数严格相等且 > 0',
+                for af in arch_files:
+                    if os.path.exists(af):
+                        lines += sum(1 for _ in open(af, encoding='utf-8'))
+                check(st, 'archived_events 与全部世代归档行数之和严格相等且 > 0',
                       arch > 0 and lines == arch,
-                      'archived_events=%d 归档行=%d' % (arch, lines))
+                      'archived_events=%d 各世代行数合计=%d 文件数=%d'
+                      % (arch, lines, len([f for f in arch_files if os.path.exists(f)])))
 
             total_calls = sum(calls.values())
             real_errors = sum(errors.values())

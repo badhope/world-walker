@@ -175,15 +175,31 @@ async def main():
 
             print('── 市场：老玩家会先算再买（模型层当计算器）────')
             await call(session, 'travel', {'location': '临江城'})
-            st = await call(session, 'read_state', {})
-            tea = st['market']['临江城']['chun_cha']
-            pred = await call(session, 'model', {'name': 'ou_price_reverted',
-                                                 'params': {'price': tea['price'], 'base': tea['base_price']}})
+            # OU 均值回归要验的是"价被推离基准后怎么被拉回来"。
+            # 引擎现有交易对价格的推力极弱（买光全部库存只抬 1 点），
+            # 故这里直接用一个偏离基准的市场状态起局，专测回归公式本身。
+            import json as _json
+            st0 = await call(session, 'read_state', {})
+            b0 = int(st0['market']['临江城']['chun_cha']['base_price'])
+            p0 = b0 * 2
+            st0['market']['临江城']['chun_cha']['price'] = p0
+            _tmp_state = state_path + '.ou.json'
+            with open(_tmp_state, 'w', encoding='utf-8') as f:
+                _json.dump(st0, f, ensure_ascii=False)
+            await call(session, 'world_open', {'state_path': _tmp_state})
+            # 按 OU 闭式解独立手算一步（theta 默认 0.15，sigma=0）：x' = x - 0.15*(x-base)
+            # 不能拿 model('ou_price_reverted') 与 tick 比——两者是同一个函数，属自比恒真。
+            expected = max(0, int(round(p0 - 0.15 * (p0 - b0))))
             await call(session, 'tick', {})
             st2 = await call(session, 'read_state', {})
             actual = st2['market']['临江城']['chun_cha']['price']
-            ux('公式先算的价格回归 = 引擎实算', pred.get('value') == actual,
-               'predict=%s actual=%s' % (pred.get('value'), actual))
+            ux('价格被推离基准（前提成立，测试才有意义）', p0 != b0,
+               'price=%s base=%s' % (p0, b0))
+            ux('价格回归符合 OU 闭式解（独立手算 vs 引擎实算）', actual == expected,
+               'price %s→%s base=%s 手算=%s' % (p0, actual, b0, expected))
+            ux('价格确实向基准回归（不是原值原样返回）', actual != p0 and abs(actual - b0) < abs(p0 - b0),
+               'p0=%s actual=%s base=%s' % (p0, actual, b0))
+            await call(session, 'world_open', {'state_path': state_path})
             hag = await call(session, 'model', {'name': 'lerner_price', 'params': {'cogs': 30, 'elasticity': 3}})
             ux('砍价模型出数正确（30×3/2=45）', abs(float(hag.get('value', 0)) - 45.0) < 1e-9)
 
@@ -312,6 +328,10 @@ async def main():
                     fail += 1
             st = await call(session, 'read_state', {})
             p = st['entities']['player']
+            # 至少要成功一次——否则"成功次数与 stage 增量一致"在 0==0 时恒真，
+            # 引擎把 advance 做成永远失败也能全绿。
+            ux('12 次高洞察突破至少成功一次（验证成功路径真的可达）', succ > 0,
+               '成功%s 失败%s' % (succ, fail))
             ux('突破次数与 stage/心伤对得上',
                p.get('stage', 0) - before_stage == succ and p.get('mind_scars', 0) == fail,
                '成功%s 失败%s stage=%s 心伤=%s' % (succ, fail, p.get('stage'), p.get('mind_scars')))

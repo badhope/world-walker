@@ -167,7 +167,10 @@ async def run(turns: int, quiet: bool = False):
                 # 轮间用各工具自己的返回（它们都带 _tick 与最新数值），省 90% 的传输。
                 if turn % 10 == 1:
                     st = await call('read_state', {})
-                    check(st, 'read_state', isinstance(st, dict))
+                    check(st, 'read_state', isinstance(st, dict) and 'entities' in st
+                          and 'player' in st.get('entities', {})
+                          and isinstance(st.get('market'), dict) and bool(st.get('market')),
+                          'keys=%s' % (sorted(st)[:6] if isinstance(st, dict) else st))
                     player.state = st or {}
                 else:
                     player.state = player.state or {}
@@ -345,18 +348,23 @@ async def run(turns: int, quiet: bool = False):
 
             # ── 终局断言 ──
             st = await call('read_state', {})
-            check(st, '终局状态可解析', isinstance(st, dict))
+            check(st, '终局状态可解析', isinstance(st, dict) and 'entities' in st
+                  and 'player' in st.get('entities', {}),
+                  'keys=%s' % (sorted(st)[:6] if isinstance(st, dict) else st))
             if st:
                 player.state = st
                 arch = int(st.get('archived_events', 0))
                 keep = int((st.get('config') or {}).get('event_log_keep', 200))
-                check(st, 'event_log 不超保留量', len(st.get('event_log', [])) <= keep)
+                check(st, 'event_log 不超保留量', len(st.get('event_log', [])) <= keep,
+                      '%d/%d' % (len(st.get('event_log', [])), keep))
                 archive_file = state_path + '.log.jsonl'
                 lines = 0
                 if os.path.exists(archive_file):
                     lines = sum(1 for _ in open(archive_file, encoding='utf-8'))
-                check(st, 'archived_events 与归档文件行数一致',
-                      arch >= 0 and lines >= arch,
+                # 归档必须真的发生过，且计数与文件行数严格相等。
+                # （旧写法 `arch >= 0 and lines >= arch` 在 arch 恒 0 时永远通过。）
+                check(st, 'archived_events 与归档文件行数严格相等且 > 0',
+                      arch > 0 and lines == arch,
                       'archived_events=%d 归档行=%d' % (arch, lines))
 
             total_calls = sum(calls.values())

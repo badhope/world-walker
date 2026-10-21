@@ -39,7 +39,7 @@
 }
 """
 
-import json, random, sys
+import json, os, random, sys
 
 def new_game():
     """返回一个初始状态"""
@@ -64,6 +64,10 @@ def save_state(state, path):
     长局保护：写入前把超出保留量的旧事件归档到 `<path>.log.jsonl`（追加式），
     保留量见 state.config.event_log_keep（默认 200）。这样状态文件与上下文都不会被历史撑爆，
     旧事仍可按关键词用 recall 回捞。
+
+    归档文件与 `archived_events` 计数保持一致：快照回退会让状态的计数退到旧值，
+    而归档文件是追加式的、已写下的行不会自动消失。若不截断，计数与文件行数会永久漂移
+    （实测 300 轮回退场景下差 2 行）。这里在计数小于文件行数时把文件截回计数行。
     """
     cfg = state.get("config") or {}
     keep = int(cfg.get("event_log_keep", 200))
@@ -75,6 +79,18 @@ def save_state(state, path):
                 for e in overflow:
                     f.write(json.dumps(e, ensure_ascii=False) + "\n")
         state["archived_events"] = int(state.get("archived_events", 0)) + len(overflow)
+    archive_file = path + ".log.jsonl"
+    if os.path.exists(archive_file):
+        keep_lines = int(state.get("archived_events", 0))
+        try:
+            with open(archive_file, "rb") as f:
+                raw = f.read()
+            if raw.count(b"\n") > keep_lines:
+                lines = raw.splitlines(keepends=True)[:keep_lines]
+                with open(archive_file, "wb") as f:
+                    f.writelines(lines)
+        except OSError:
+            pass
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 

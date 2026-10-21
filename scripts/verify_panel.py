@@ -224,8 +224,8 @@ def main():
         check("数值字段仍是数值（千分位只在展示层）",
               isinstance(vm.get("player", {}).get("gold"), int)
               and isinstance(vm.get("tick"), int))
-        check("濒死次数随玩家下发（0 也要有，前端才能显示）",
-              isinstance(vm.get("player", {}).get("near_death_count"), int),
+        check("濒死次数随玩家下发（rich_state 未设该字段 → 默认 0）",
+              vm.get("player", {}).get("near_death_count") == 0,
               "near_death_count=%s" % (vm.get("player", {}) or {}).get("near_death_count"))
 
         # 2. 静态资源白名单与安全
@@ -288,7 +288,10 @@ def main():
             check("/series 样本按 tick 升序且不重复",
                   ticks == sorted(ticks) and len(ticks) == len(set(ticks)), str(ticks[:6]))
             pi = series["samples"][-1]["price_index"]
-            check("price_index 定义合理（0.2~5，1.0=基准）", 0.2 <= pi <= 5.0, "index=%.3f" % pi)
+            # rich_state 里只有两个商品：安神丹 55/50=1.1、飞剑 300/300=1.0 → 均值 1.05
+            # 用精确值而不是 0.2~5 的宽区间：后者连"常量 1.0"都能通过。
+            check("price_index 精确等于样本均价（(1.1+1.0)/2=1.05）",
+                  abs(float(pi) - 1.05) < 1e-4, "index=%s 期望 1.05" % pi)
             check("skin 调色板随 /state 下发（图表配色用）",
                   isinstance(series.get("palette"), dict)
                   and {"line", "area", "bar", "grid", "text"} <= set(series["palette"]))

@@ -1,0 +1,115 @@
+name: CI
+
+# Gitee Go 流水线（与 .github/workflows/ci.yml 等价）
+# Gitee 不执行 GitHub Actions 语法，这里用 Gitee Go 的 stage/step 声明同一套检查。
+# 三个平台跑同一批测试，任一平台红即视为交付失败。
+
+trigger:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+stages:
+  - name: core
+    displayName: 零依赖核心
+    steps:
+      - step: setup
+        name: setup-python
+        displayName: 准备 Python
+        script: |
+          python --version
+      - step: deps-check
+        name: assert-no-third-party
+        displayName: 确认零第三方依赖
+        script: |
+          python -c "import numpy" 2>/dev/null && { echo "numpy 存在，零依赖宣称不成立"; exit 1; } || echo "OK: no numpy"
+          python -c "import mcp" 2>/dev/null && { echo "mcp 应为可选依赖"; exit 1; } || echo "OK: no mcp"
+      - step: compile
+        name: compileall
+        displayName: 编译全部 Python 源
+        script: |
+          python -m compileall -q . -x '/(\.git|__pycache__|dist|build)/'
+      - step: audit
+        name: verify-tests
+        displayName: 断言审计
+        script: |
+          python scripts/verify_tests.py
+      - step: cli
+        name: verify-cli
+        displayName: CLI 通道自检
+        script: |
+          python scripts/verify_cli.py
+      - step: panel
+        name: verify-panel
+        displayName: 面板契约自检
+        script: |
+          python scripts/verify_panel.py
+      - step: neardeath
+        name: verify-near-death
+        displayName: 濒死保护自检
+        script: |
+          python scripts/verify_near_death.py
+      - step: smoke
+        name: engine-smoke
+        displayName: 引擎烟测
+        script: |
+          python engine.py --help > /dev/null
+          python init_game.py "$PWD/smoke.json"
+          python engine.py world_state --state "$PWD/smoke.json" > /dev/null
+          python engine.py combat --state "$PWD/smoke.json" --attacker player --defender goblin > /dev/null
+          echo "CLI OK"
+
+  - name: mcp
+    displayName: MCP 端到端
+    steps:
+      - step: install
+        name: install-mcp
+        displayName: 安装 MCP 依赖
+        script: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[mcp]"
+      - step: e2e
+        name: verify-mcp
+        displayName: MCP 端到端自检
+        script: |
+          python scripts/verify_mcp_stdio.py
+      - step: playtest
+        name: user-playtest
+        displayName: 玩家视角试玩
+        script: |
+          python scripts/user_playtest.py
+      - step: stress
+        name: stress
+        displayName: 长局压力测试
+        script: |
+          python scripts/stress_freeplay.py 500
+
+  - name: package
+    displayName: 打包完整性
+    steps:
+      - step: build
+        name: build-dist
+        displayName: 构建 sdist + wheel
+        script: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - step: verify-wheel
+        name: verify-wheel
+        displayName: 校验 wheel 资源
+        script: |
+          python - <<'PY'
+          import glob, sys, zipfile
+          whl = glob.glob('dist/*.whl')[0]
+          names = zipfile.ZipFile(whl).namelist()
+          required = ['panel.html', 'panel.css', 'panel.js',
+                      'assets/echarts.min.js', 'settings/玄枢界.setting.json',
+                      'ARCHITECTURE.md', 'BRAND.md']
+          missing = [r for r in required if not any(n.endswith(r) for n in names)]
+          if missing:
+              print('wheel 缺少资源: %s' % missing)
+              sys.exit(1)
+          print('wheel 资源完整（%d 条目）' % len(names))
+          PY

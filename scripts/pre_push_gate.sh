@@ -34,7 +34,7 @@ step() {
 say "推送前门禁：与 GitHub Actions 同一套判据"
 say "仓库：$ROOT"
 
-step "编译全部 Python 源" "$PY" -m compileall -q . -x '/(\.git|__pycache__|dist|build)/'
+step "编译全部 Python 源" "$PY" scripts/compile_all.py
 step "断言审计（拒绝恒真/恒假/弱断言）" "$PY" scripts/verify_tests.py
 step "CLI 通道自检" "$PY" scripts/verify_cli.py
 step "面板契约自检" "$PY" scripts/verify_panel.py
@@ -44,9 +44,16 @@ step "濒死保护自检" "$PY" scripts/verify_near_death.py
 if "$PY" -c "import mcp" >/dev/null 2>&1; then
   step "MCP 端到端自检" "$PY" scripts/verify_mcp_stdio.py
   step "玩家视角试玩" "$PY" scripts/user_playtest.py
+  step "长局压力测试（500 轮，对齐 CI 的 mcp 作业）" "$PY" scripts/stress_freeplay.py 500
 else
   say $'\n=== MCP 作业 ===\n  SKIP（未安装 mcp SDK，CI 里有独立作业覆盖）'
 fi
+
+# 打包完整性：对齐 CI 的 package 作业（构建 + wheel 资源校验）
+# 本机可能无外网 PyPI，构建时不做隔离环境（CI 上有网，用默认隔离即可）
+step "构建 sdist + wheel" "$PY" -m build --no-isolation --outdir "$ROOT/.gate-dist"
+step "校验 wheel 运行时资源齐全" "$PY" scripts/check_wheel.py "$ROOT/.gate-dist"
+rm -rf "$ROOT/.gate-dist"
 
 if [ "$FAILED" -ne 0 ]; then
   say $'\n推送被门禁拦下：请先修复上面的失败项。'

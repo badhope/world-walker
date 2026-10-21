@@ -175,30 +175,40 @@ async def main():
 
             print('── 市场：老玩家会先算再买（模型层当计算器）────')
             await call(session, 'travel', {'location': '临江城'})
-            # OU 均值回归要验的是"价被推离基准后怎么被拉回来"。
-            # 引擎现有交易对价格的推力极弱（买光全部库存只抬 1 点），
-            # 故这里直接用一个偏离基准的市场状态起局，专测回归公式本身。
+            # OU 均值回归：多点 + 多步收敛。
+            # 只测一个点（40→37）会被 `if price==40: return 37` 这种特例硬编码绕过；
+            # 这里用"高于基准 / 低于基准 / 接近基准"三组初值，各连跑 3 步，
+            # 每步都按闭式解 x' = x - theta*(x-base) 独立手算后比对。
             import json as _json
             st0 = await call(session, 'read_state', {})
             b0 = int(st0['market']['临江城']['chun_cha']['base_price'])
-            p0 = b0 * 2
-            st0['market']['临江城']['chun_cha']['price'] = p0
-            _tmp_state = state_path + '.ou.json'
-            with open(_tmp_state, 'w', encoding='utf-8') as f:
-                _json.dump(st0, f, ensure_ascii=False)
-            await call(session, 'world_open', {'state_path': _tmp_state})
-            # 按 OU 闭式解独立手算一步（theta 默认 0.15，sigma=0）：x' = x - 0.15*(x-base)
-            # 不能拿 model('ou_price_reverted') 与 tick 比——两者是同一个函数，属自比恒真。
-            expected = max(0, int(round(p0 - 0.15 * (p0 - b0))))
-            await call(session, 'tick', {})
-            st2 = await call(session, 'read_state', {})
-            actual = st2['market']['临江城']['chun_cha']['price']
-            ux('价格被推离基准（前提成立，测试才有意义）', p0 != b0,
-               'price=%s base=%s' % (p0, b0))
-            ux('价格回归符合 OU 闭式解（独立手算 vs 引擎实算）', actual == expected,
-               'price %s→%s base=%s 手算=%s' % (p0, actual, b0, expected))
-            ux('价格确实向基准回归（不是原值原样返回）', actual != p0 and abs(actual - b0) < abs(p0 - b0),
-               'p0=%s actual=%s base=%s' % (p0, actual, b0))
+            theta = 0.15
+            cases = [b0 * 2, max(1, b0 // 2), b0 + 1]
+            for ci, p_init in enumerate(cases):
+                st_c = _json.loads(_json.dumps(st0))
+                st_c['market']['临江城']['chun_cha']['price'] = p_init
+                tmp_c = '%s.ou%d.json' % (state_path, ci)
+                with open(tmp_c, 'w', encoding='utf-8') as f:
+                    _json.dump(st_c, f, ensure_ascii=False)
+                await call(session, 'world_open', {'state_path': tmp_c})
+                cur = p_init
+                ok_steps, trace = True, [cur]
+                for _ in range(3):
+                    cur = max(0, int(round(cur - theta * (cur - b0))))
+                    await call(session, 'tick', {})
+                    got = (await call(session, 'read_state', {}))['market']['临江城']['chun_cha']['price']
+                    trace.append(got)
+                    if got != cur:
+                        ok_steps = False
+                        break
+                ux('OU 回归多点第%d组（初值 %s）3 步逐步吻合闭式解' % (ci + 1, p_init),
+                   ok_steps, '轨迹 %s' % trace)
+                # 整数化后当 |price-base| <= 1 时 round() 会卡在边界无法再收敛，
+                # 这是实现已知的取整局限（不是回归），故小差值组只要求不远离基准。
+                near = abs(p_init - b0) <= 1
+                ux('OU 回归第%d组逼近基准（差值>1 须严格收敛）' % (ci + 1),
+                   (abs(trace[-1] - b0) <= 1) if near else (abs(trace[-1] - b0) < abs(p_init - b0)),
+                   'init=%s final=%s base=%s' % (p_init, trace[-1], b0))
             await call(session, 'world_open', {'state_path': state_path})
             hag = await call(session, 'model', {'name': 'lerner_price', 'params': {'cogs': 30, 'elasticity': 3}})
             ux('砍价模型出数正确（30×3/2=45）', abs(float(hag.get('value', 0)) - 45.0) < 1e-9)

@@ -198,7 +198,11 @@ def verify_determinism(tmp):
           '%d 种终态' % len(hashes) if not fails else '执行失败: %s' % '; '.join(fails))
 
     # 3b. 双副本 12 步混合动作（combat/tick 交替）→ 终态逐字节一致
+    #     每一步都要验业务结果，不能只看 returncode：否则"每步都成功但什么都没做"
+    #     的回归（combat 全 miss、tick 不推进）照样能通过一致性断言。
     finals, last_counter, step_fails = set(), None, []
+    base0 = json.load(open(DEMO_STATE, encoding='utf-8'))
+    base_tick0, base_rc0 = base0.get('tick', 0), base0.get('rng_counter', 0)
     for i in range(2):
         p = fresh_copy(tmp, 'mix%d.json' % i)
         for step in range(6):
@@ -207,6 +211,26 @@ def verify_determinism(tmp):
             if rc1.returncode != 0 or rc2.returncode != 0:
                 step_fails.append('副本%d 第%d轮 combat=%s tick=%s'
                                   % (i, step + 1, rc1.returncode, rc2.returncode))
+                break
+            mid = json.load(open(p, encoding='utf-8'))
+            want_tick = base_tick0 + step + 1
+            want_rc = base_rc0 + (step + 1) * 2   # 每轮 combat + tick 各推进一次
+            if mid.get('tick') != want_tick:
+                step_fails.append('副本%d 第%d轮 tick 未推进（%s != %s）'
+                                  % (i, step + 1, mid.get('tick'), want_tick))
+                break
+            if mid.get('rng_counter') != want_rc:
+                step_fails.append('副本%d 第%d轮 rng_counter 未按步推进（%s != %s）'
+                                  % (i, step + 1, mid.get('rng_counter'), want_rc))
+                break
+            # 每步的 combat 必须真的产生结算（命中掉血，或明确闪避），不能静默空转
+            dmg_step = _cli_damage(rc1.stdout)
+            hp_step = mid['entities']['goblin']['hp']
+            if dmg_step is None:
+                step_fails.append('副本%d 第%d轮 combat 无结算结果' % (i, step + 1))
+                break
+            if hp_step > mid['entities']['goblin'].get('hp_max', 45):
+                step_fails.append('副本%d 第%d轮 敌方血量异常' % (i, step + 1))
                 break
         s = json.load(open(p, encoding='utf-8'))
         last_counter = s.get('rng_counter')

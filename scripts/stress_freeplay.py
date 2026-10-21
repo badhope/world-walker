@@ -24,6 +24,7 @@
 """
 
 import asyncio
+import builtins
 import json
 import os
 import random
@@ -126,7 +127,10 @@ async def run(turns: int, quiet: bool = False):
                 except Exception as e:  # aqg: top-level boundary —— 工具报错计入 errors 统计，继续跑满轮次
                     errors[tool] = errors.get(tool, 0) + 1
                     msg = str(e)
-                    if isinstance(e, BaseExceptionGroup):
+                    # BaseExceptionGroup 是 3.11+ 的内置名；3.10 上直接引用会 NameError，
+                    # 把"工具报错"变成"压测崩掉"，掩盖真实错误率。
+                    _BEG = getattr(builtins, 'BaseExceptionGroup', None)
+                    if _BEG is not None and isinstance(e, _BEG):
                         sub = list(e.exceptions)
                         msg = 'ExceptionGroup(%d): %s' % (len(sub),
                                                           '; '.join(str(x)[:120] for x in sub[:3]))
@@ -182,12 +186,19 @@ async def run(turns: int, quiet: bool = False):
                           p.get('hp', 0) >= 0 and p.get('gold', 0) >= 0
                           and all(e.get('hp', 0) >= 0 and e.get('gold', 0) >= 0
                                   for e in player.state.get('entities', {}).values()))
-                    market_ok = True
-                    for items in (player.state.get('market') or {}).values():
+                    mkts = (player.state.get('market') or {})
+                    checked = 0
+                    for items in mkts.values():
                         for it in items.values():
                             base, price = int(it.get('base_price', 0)), int(it.get('price', 0))
-                            market_ok = market_ok and base > 0 and 0 <= price <= base * 3 + 1
-                    check(player.state, '市场价格不崩（0<=price<=3*base 且 base 恒正）', market_ok)
+                            if not (base > 0 and 0 <= price <= base * 3 + 1):
+                                checked = -1
+                            elif checked >= 0:
+                                checked += 1
+                    # 市场必须存在且有商品可检——空集合会让"全称命题"恒真
+                    check(player.state, '市场价格有界（市场非空 且 0<=price<=3*base）',
+                          bool(mkts) and checked > 0,
+                          '市场 %d 个 · 合格商品 %d' % (len(mkts), max(checked, 0)))
 
                 p = (player.state.get('entities') or {}).get('player', {})
                 player.plan(turn)

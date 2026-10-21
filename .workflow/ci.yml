@@ -31,7 +31,7 @@ stages:
         name: compileall
         displayName: 编译全部 Python 源
         script: |
-          python -m compileall -q . -x '/(\.git|__pycache__|dist|build)/'
+          python scripts/compile_all.py
       - step: audit
         name: verify-tests
         displayName: 断言审计
@@ -100,16 +100,5 @@ stages:
         name: verify-wheel
         displayName: 校验 wheel 资源
         script: |
-          python - <<'PY'
-          import glob, sys, zipfile
-          whl = glob.glob('dist/*.whl')[0]
-          names = zipfile.ZipFile(whl).namelist()
-          required = ['panel.html', 'panel.css', 'panel.js',
-                      'assets/echarts.min.js', 'settings/玄枢界.setting.json',
-                      'ARCHITECTURE.md', 'BRAND.md']
-          missing = [r for r in required if not any(n.endswith(r) for n in names)]
-          if missing:
-              print('wheel 缺少资源: %s' % missing)
-              sys.exit(1)
-          print('wheel 资源完整（%d 条目）' % len(names))
-          PY
+          python scripts/check_wheel.py dist
+

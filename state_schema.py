@@ -39,7 +39,7 @@
 }
 """
 
-import json, os, random, sys
+import json, random
 
 def new_game():
     """返回一个初始状态"""

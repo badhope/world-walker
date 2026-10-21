@@ -183,7 +183,8 @@ async def main():
             st0 = await call(session, 'read_state', {})
             b0 = int(st0['market']['临江城']['chun_cha']['base_price'])
             theta = 0.15
-            cases = [b0 * 2, max(1, b0 // 2), b0 + 1]
+            # 第三组必须落在死区外（死区实测为 |Δ|<=3，见下方说明），否则等于断言常量
+            cases = [b0 * 2, max(1, b0 // 2), b0 + 5]
             for ci, p_init in enumerate(cases):
                 st_c = _json.loads(_json.dumps(st0))
                 st_c['market']['临江城']['chun_cha']['price'] = p_init
@@ -206,7 +207,7 @@ async def main():
                 # 整数化后当 |price-base| <= 1 时 round() 会卡在边界无法再收敛，
                 # 这是实现已知的取整局限（不是回归），故小差值组只要求不远离基准。
                 near = abs(p_init - b0) <= 1
-                ux('OU 回归第%d组逼近基准（差值>1 须严格收敛）' % (ci + 1),
+                ux('OU 回归第%d组逼近基准（死区外须严格收敛）' % (ci + 1),
                    (abs(trace[-1] - b0) <= 1) if near else (abs(trace[-1] - b0) < abs(p_init - b0)),
                    'init=%s final=%s base=%s' % (p_init, trace[-1], b0))
             await call(session, 'world_open', {'state_path': state_path})
@@ -296,7 +297,7 @@ async def main():
             st = await call(session, 'read_state', {})
             p = st['entities']['player']
             need_heal = p['hp'] < p['hp_max']
-            own = await call(session, 'trade', {'location': '临江城', 'item': 'hui_ling',
+            await call(session, 'trade', {'location': '临江城', 'item': 'hui_ling',
                                                 'direction': 'buy', 'quantity': 2})
             st = await call(session, 'read_state', {})
             gold_after_buy = st['entities']['player']['gold']
@@ -356,7 +357,7 @@ async def main():
             e = await refuse(session, 'spawn_npc', {'id': 'ahua', 'name': '阿花二号'})
             ux('重名 NPC 被拒', e is not None and '已存在' in e)
             await call(session, 'social', {'actor': 'player', 'target': 'ahua', 'event': 'help'})
-            ws = await call(session, 'write_summary', {'text': '阿吉在雾隐山城落脚，与老王交好，杀了独眼狼，'
+            await call(session, 'write_summary', {'text': '阿吉在雾隐山城落脚，与老王交好，杀了独眼狼，'
                                                              '在临江、黑风、观星三地都留了脚印。'})
             rc = await call(session, 'recap', {'recent': 8})
             ux('recap 带出摘要与大事记', bool(rc.get('summary')) and len(rc.get('milestones', [])) > 0,

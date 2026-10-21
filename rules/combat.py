@@ -52,6 +52,14 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     
     atk_attrs = atk_ent.get("attrs", {})
     def_attrs = def_ent.get("attrs", {})
+
+    # 死目标守卫：气血已归零的实体不再参与结算。
+    # 否则可以对尸体继续攻击、继续造成伤害、继续触发 defender_dead，
+    # 进而重复记"击杀"里程碑（玩家可感知的行为错误，不只是数据瑕疵）。
+    if int(def_ent.get("hp", 0) or 0) <= 0:
+        result["events"].append(f"{def_ent.get('name', defender_id)}已经没有还手之力")
+        result["target_already_dead"] = True
+        return result
     
     # 计算命中
     atk_power = atk_attrs.get("str", 10) + atk_attrs.get("dex", 10) * 0.5

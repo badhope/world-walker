@@ -1,5 +1,5 @@
 """初始化游戏状态"""
-import json, os, sys
+import json, sys
 
 # 默认写当前目录的 game_state.json；可用 `python init_game.py [路径]` 指定（CI 与多局并存用）
 STATE_FILE = sys.argv[1] if len(sys.argv) > 1 else "game_state.json"

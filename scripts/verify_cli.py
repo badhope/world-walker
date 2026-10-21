@@ -201,12 +201,13 @@ def verify_determinism(tmp):
     #     每一步都要验业务结果，不能只看 returncode：否则"每步都成功但什么都没做"
     #     的回归（combat 全 miss、tick 不推进）照样能通过一致性断言。
     finals, last_counter, step_fails = set(), None, []
+    hit_counts = {}
     base0 = json.load(open(DEMO_STATE, encoding='utf-8'))
     base_tick0, base_rc0 = base0.get('tick', 0), base0.get('rng_counter', 0)
     for i in range(2):
         p = fresh_copy(tmp, 'mix%d.json' % i)
         for step in range(6):
-            rc1 = run_cli(p, 'combat', '--attacker', 'player', '--defender', 'goblin')
+            rc1 = run_cli(p, 'combat', '--attacker', 'player', '--defender', 'city_guard')
             rc2 = run_cli(p, 'tick')
             if rc1.returncode != 0 or rc2.returncode != 0:
                 step_fails.append('副本%d 第%d轮 combat=%s tick=%s'
@@ -223,18 +224,40 @@ def verify_determinism(tmp):
                 step_fails.append('副本%d 第%d轮 rng_counter 未按步推进（%s != %s）'
                                   % (i, step + 1, mid.get('rng_counter'), want_rc))
                 break
-            # 每步的 combat 必须真的产生结算（命中掉血，或明确闪避），不能静默空转
-            dmg_step = _cli_damage(rc1.stdout)
-            hp_step = mid['entities']['goblin']['hp']
+            # 每步 combat 必须真的产生结算：命中则血量下降量必须等于 damage；
+            # 只有明确"未命中/闪避"才允许 damage=0。仅判 damage is not None
+            # 会让 `damage=0` 或"伤害与扣血不符"的回归静默通过。
+            res_step = _cli_json(rc1.stdout) or {}
+            dmg_step = res_step.get('damage')
+            hit_step = bool(res_step.get('hit'))
+            hp_step = mid['entities']['city_guard']['hp']
+            hp_max_step = mid['entities']['city_guard'].get('hp_max', 100)
             if dmg_step is None:
                 step_fails.append('副本%d 第%d轮 combat 无结算结果' % (i, step + 1))
                 break
-            if hp_step > mid['entities']['goblin'].get('hp_max', 45):
-                step_fails.append('副本%d 第%d轮 敌方血量异常' % (i, step + 1))
+            if hit_step and int(dmg_step) <= 0:
+                step_fails.append('副本%d 第%d轮 命中却零伤害' % (i, step + 1))
                 break
+            if not hit_step and int(dmg_step) != 0:
+                step_fails.append('副本%d 第%d轮 未命中却有伤害 %s' % (i, step + 1, dmg_step))
+                break
+            if not (0 <= hp_step <= hp_max_step):
+                step_fails.append('副本%d 第%d轮 敌方血量越界 %s' % (i, step + 1, hp_step))
+                break
+            # 已死的目标不能再被打（打尸体是行为错误）
+            if mid['entities']['city_guard'].get('_dead_seen') and hit_step:
+                step_fails.append('副本%d 第%d轮 对已死目标继续结算' % (i, step + 1))
+                break
+            if hp_step == 0:
+                mid['entities']['city_guard']['_dead_seen'] = True
+            if hit_step:
+                hit_counts[i] = hit_counts.get(i, 0) + 1
         s = json.load(open(p, encoding='utf-8'))
         last_counter = s.get('rng_counter')
         finals.add(sha256(p))
+    min_hits = min(hit_counts.values()) if hit_counts else 0
+    check('12 步内每副本至少命中 3 次（防"只在特定条件命中"的实现退化）',
+          min_hits >= 3, '最少命中 %d 次（副本 %s）' % (min_hits, hit_counts))
     check('双副本 12 步混合动作终态哈希一致（rng_counter 持久化）',
           not step_fails and len(finals) == 1,
           '%d 种终态' % len(finals) if not step_fails else '中途失败: %s' % '; '.join(step_fails))

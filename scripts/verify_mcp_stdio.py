@@ -110,7 +110,6 @@ async def scenario(session, state_path, seed):
 async def main():
     tmp = tempfile.mkdtemp(prefix='ww-verify-')
     state_a = os.path.join(tmp, 'a.save.json')
-    state_b = os.path.join(tmp, 'b.save.json')
 
     params = StdioServerParameters(command=sys.executable, args=[SERVER], cwd=ROOT)
     async with stdio_client(params) as (read, write):

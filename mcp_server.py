@@ -1255,7 +1255,6 @@ def snapshot(label: str = "") -> dict:
 @server.tool()
 def restore(snapshot_path: str) -> dict:
     """从快照恢复状态（Chinese: 回退到某个存档点）。Restore state from a snapshot."""
-    import shutil
     if not os.path.exists(snapshot_path):
         raise ValueError("快照不存在: %s" % snapshot_path)
     state = load_state(snapshot_path)

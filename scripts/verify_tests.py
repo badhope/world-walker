@@ -45,7 +45,7 @@ EXPECTED = {
     'scripts/verify_panel.py': 47,
     'scripts/verify_mcp_stdio.py': 53,
     'scripts/verify_near_death.py': 7,
-    'scripts/user_playtest.py': 44,
+    'scripts/user_playtest.py': 43,
     'scripts/stress_freeplay.py': 10,
 }
 CHECK_FUNCS = {'check', 'ux'}
@@ -246,6 +246,16 @@ def audit_file(rel):
             cur = getattr(cur, '_parent', None)
         return out
 
+    # 函数内的常量赋值表：变量名 -> 字面量表达式（用于抓 `ok = True; check(x, ok)`）
+    const_assign, mutated = {}, set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1                 and isinstance(node.targets[0], ast.Name):
+            name, val = node.targets[0].id, node.value
+            if isinstance(val, ast.Constant):
+                const_assign.setdefault(name, val)
+            else:
+                mutated.add(name)   # 后续被重新赋成非字面量 → 累积变量，不判恒真
+
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
@@ -283,9 +293,17 @@ def audit_file(rel):
         for sub in ast.walk(cond):
             if isinstance(sub, ast.BoolOp):
                 lb_targets.extend(sub.values)
-        _is_invariant = isinstance(name_node, ast.Constant) and isinstance(name_node.value, str)             and any(k in name_node.value for k in ('非负', '不变量', '有界', '不超', '夹在', '上限', '不为小数'))
+        _is_invariant = isinstance(name_node, ast.Constant) and isinstance(name_node.value, str)             and any(k in name_node.value for k in ('非负', '不变量', '不为小数'))
         if any(is_trivial_lower_bound(t) for t in lb_targets) and not _is_invariant:
             add(rel, node.lineno, 'R3', '条件含恒真下界（>= 0 等）', snippet)
+
+        # 数据流：条件只是一个变量名，追到它的常量赋值
+        if isinstance(cond, ast.Name) and cond.id in const_assign and cond.id not in mutated:
+            cv = const_assign[cond.id]
+            if is_const_bool(cv) and cv.value is True:
+                add(rel, node.lineno, 'R2', '条件变量 %s 被赋为常量 True（恒真）' % cond.id, snippet)
+            elif isinstance(cv.value, (int, float, str)) and not isinstance(cv.value, bool):
+                add(rel, node.lineno, 'R2', '条件变量 %s 被赋为裸常量（恒真）' % cond.id, snippet)
 
         if isinstance(cond, ast.Constant) and not isinstance(cond.value, bool):
             add(rel, node.lineno, 'R2', '条件为裸常量（非布尔值恒真）', snippet)

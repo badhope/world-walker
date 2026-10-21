@@ -33,7 +33,7 @@ jobs:
           python -c "import mcp" 2>/dev/null && { echo "::error::mcp 存在，应留到 mcp 作业"; exit 1; } || echo "mcp 不存在：符合预期"
 
       - name: 编译全部 Python 源
-        run: python -m compileall -q . -x '/(\.git|__pycache__|dist|build)/'
+        run: python scripts/compile_all.py
 
       - name: 断言审计（拒绝恒真/恒假/弱断言）
         run: python scripts/verify_tests.py
@@ -98,20 +98,7 @@ jobs:
           python -m build
 
       - name: 校验 wheel 内含全部运行时资源
-        run: |
-          python - <<'PY'
-          import glob, sys, zipfile
-          whl = glob.glob('dist/*.whl')[0]
-          names = zipfile.ZipFile(whl).namelist()
-          required = ['panel.html', 'panel.css', 'panel.js',
-                      'assets/echarts.min.js', 'settings/玄枢界.setting.json',
-                      'ARCHITECTURE.md', 'BRAND.md']
-          missing = [r for r in required if not any(n.endswith(r) for n in names)]
-          if missing:
-              print('::error::wheel 缺少资源: %s' % missing)
-              sys.exit(1)
-          print('wheel 资源完整（%d 条目）' % len(names))
-          PY
+        run: python scripts/check_wheel.py dist
 
       - name: 从 wheel 安装并跑起来（真机验证）
         run: |

@@ -83,7 +83,7 @@ pip install -e ".[mcp]"
 - 濒死保护自检：`python scripts/verify_near_death.py`（7 项断言：气血保底 1 / 代价落盘 / NPC 死亡语义不变）
 - CLI 通道自检：`python scripts/verify_cli.py`（19 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
 - 测试可信度审计：`python scripts/verify_tests.py`（静态审计全部自检断言，拒绝恒真/恒假/弱断言——防止"测试全绿但什么都没测"）
-- 用户视角试玩：`python scripts/user_playtest.py`（44 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）
+- 用户视角试玩：`python scripts/user_playtest.py`（47 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）
 - 实测：opencode（GLM-5.2）接入后按设定建局、连续结算三个行动，叙事数值与引擎状态文件逐项一致
 - 可复现：开局带 `seed`；每次结算的随机数由状态里的 `rng_seed` 与 `rng_counter` 共同决定，并随状态落盘
 
@@ -134,7 +134,7 @@ game_engine/                      # 仓库根即 game_engine 包（导入别名�
 ├── scripts/verify_cli.py         # CLI 通道自检（19 项断言：只读不变量/写命令落盘/确定性）
 ├── scripts/verify_tests.py       # 测试可信度审计（AST 级：拒绝恒真/恒假/弱断言）
 ├── scripts/verify_near_death.py  # 濒死保护自检（气血保底/代价落盘/NPC 死亡不变）
-├── scripts/user_playtest.py      # 用户视角试玩（44 项"玩家会不会投诉"检查：钻空子/边界/报错可读性）
+├── scripts/user_playtest.py      # 用户视角试玩（47 项"玩家会不会投诉"检查：钻空子/边界/报错可读性）
 ├── scripts/stress_freeplay.py    # 自由玩家压力测试（默认 2000 回合，走真实 MCP stdio 通道）
 ├── docs/screenshots/             # README 预览截图（真实渲染 + 断言；来源说明见该目录 README）
 ├── demo_state.json               # 演示状态

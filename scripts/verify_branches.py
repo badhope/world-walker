@@ -570,6 +570,38 @@ def remaining_formulas():
           CG2.moral_bias_by_distance('unknown'), 1.0)
 
 
+
+# ───────────────────── 状态文件原子写入 ─────────────────────
+def atomic_write():
+    """F-001：状态文件必须原子写入，且保留 .bak 可回退。
+
+    为什么重要：直接 open(path,'w') 若在写入中途被杀，会留下半截 JSON，
+    下一次 load_state 直接 JSONDecodeError——存档不可恢复。
+    """
+    import json as _json
+    import tempfile as _tf
+    from game_engine.state_schema import save_state, load_state
+
+    tmp = _tf.mkdtemp(prefix='ww-atomic-')
+    p = os.path.join(tmp, 's.json')
+
+    save_state({'tick': 1, 'entities': {}}, p)
+    save_state({'tick': 2, 'entities': {}}, p)
+    check('原子写：第二次保存后主文件可读且为新值', load_state(p)['tick'], 2)
+    check_true('原子写：保留 .bak 且为上一版',
+               os.path.exists(p + '.bak') and load_state(p + '.bak')['tick'] == 1,
+               'bak=%s' % (load_state(p + '.bak')['tick'] if os.path.exists(p + '.bak') else None))
+    check_true('原子写：不残留临时文件',
+               not any(f.endswith('.tmp') for f in os.listdir(tmp)),
+               str([f for f in os.listdir(tmp) if f.endswith('.tmp')]))
+
+    # 模拟"主文件被截断"：.bak 必须仍可恢复
+    with open(p, 'w', encoding='utf-8') as f:
+        f.write('{"tick": ')
+    check_true('主文件损坏时 .bak 仍可完整读出',
+               load_state(p + '.bak')['tick'] == 1)
+
+
 def main():
     print('── systems_feedback ──')
     systems()
@@ -583,6 +615,8 @@ def main():
     economy()
     print('\n── 剩余公式补测 ──')
     remaining_formulas()
+    print('\n── 状态文件原子写入 ──')
+    atomic_write()
 
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))

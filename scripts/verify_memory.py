@@ -16,7 +16,6 @@
 退出码: 0 = 内存稳定；1 = 疑似泄漏；2 = 缺 psutil
 """
 
-import json
 import os
 import sys
 

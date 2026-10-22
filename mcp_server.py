@@ -1117,7 +1117,8 @@ def recap(recent: int = 12, budget_chars: int = 0) -> dict:
 @server.tool()
 def configure(event_log_keep: int | None = None, recap_budget_chars: int | None = None,
               summary_keep: int | None = None, milestone_keep: int | None = None,
-              panel_port: int | None = None, currency: str | None = None) -> dict:
+              panel_port: int | None = None, currency: str | None = None,
+              market_jitter: bool | None = None) -> dict:
     """查看/修改对局配置（Chinese: 留空的项不改；返回当前全量配置。长局的存档/归档行为都在这里调）。
     View or update per-game config."""
     state = _load()
@@ -1129,6 +1130,10 @@ def configure(event_log_keep: int | None = None, recap_budget_chars: int | None 
             cfg[key] = int(val)
     if currency:
         state["currency"] = str(currency)
+    if market_jitter is not None:
+        # 每回合的市场扰动开关。关掉后价格严格按 OU 闭式解演化（可精确预测），
+        # 适合需要逐点复算的场景；默认开，否则物价指数图永远是 1.0 平线。
+        cfg["market_jitter"] = bool(market_jitter)
     return _finish(state, cfg)
 
 

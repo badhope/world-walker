@@ -53,6 +53,11 @@ jobs:
       - name: 模块分支补测
         run: python scripts/verify_branches.py
 
+      - name: 长局内存稳定性
+        run: |
+          python -m pip install --quiet psutil
+          python scripts/verify_memory.py 300
+
       - name: 覆盖率门禁（核心域 ≥70%）
         run: |
           python -m pip install --quiet coverage
@@ -95,6 +100,9 @@ jobs:
 
       - name: 提示词注入防护
         run: python scripts/verify_injection.py
+
+      - name: 变异测试（已知错误必须被杀死）
+        run: python scripts/verify_mutation.py
 
       - name: 玩家视角试玩
         run: python scripts/user_playtest.py

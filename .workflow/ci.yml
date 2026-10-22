@@ -62,6 +62,12 @@ stages:
         displayName: 模块分支补测
         script: |
           python scripts/verify_branches.py
+      - step: memory
+        name: verify-memory
+        displayName: 长局内存稳定性
+        script: |
+          python -m pip install --quiet psutil
+          python scripts/verify_memory.py 300
       - step: smoke
         name: engine-smoke
         displayName: 引擎烟测
@@ -91,6 +97,11 @@ stages:
         displayName: 提示词注入防护
         script: |
           python scripts/verify_injection.py
+      - step: mutation
+        name: verify-mutation
+        displayName: 变异测试
+        script: |
+          python scripts/verify_mutation.py
       - step: playtest
         name: user-playtest
         displayName: 玩家视角试玩

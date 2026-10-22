@@ -41,6 +41,7 @@ step "面板契约自检" "$PY" scripts/verify_panel.py
 step "濒死保护自检" "$PY" scripts/verify_near_death.py
 step "规则内核公式对拍（77 个函数的闭式复算）" "$PY" scripts/verify_formulas.py
 step "模块分支补测（systems/narrative/cognition/economy）" "$PY" scripts/verify_branches.py
+step "长局内存稳定性（三段对照，查泄漏）" "$PY" scripts/verify_memory.py 300
 
 # 覆盖率门禁：核心域 ≥70%（当前 81%）。装了 coverage 才跑。
 if "$PY" -c "import coverage" >/dev/null 2>&1; then
@@ -93,6 +94,9 @@ else
 === 界面巡检 ===
   SKIP（未安装 playwright）'
 fi
+
+# 真变异测试：把实现改坏，确认测试会红（静态审计之外的唯一硬证据）
+step "变异测试（已知错误必须被测试杀死）" "$PY" scripts/verify_mutation.py
 
 # 打包完整性：对齐 CI 的 package 作业（构建 + wheel 资源校验）
 # 本机可能无外网 PyPI，构建时不做隔离环境（CI 上有网，用默认隔离即可）

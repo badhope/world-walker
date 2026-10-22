@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-22 ｜ 文档版本：v1.10
+> 最后更新：2026-10-22 ｜ 文档版本：v1.11
 
 ## 1. 概述与目标
 
@@ -208,6 +208,8 @@ view_model = {
 - [x] T14 测试可信度治理：修复 5 处恒真/无效断言（verify_cli 只读探针比较两份副本、verify_panel 侧写 `or True`、皮肤循环 for/else 硬编码 True、stress 归档与回退断言恒真）；新增 scripts/verify_tests.py 做 AST 级断言审计（R1 恒真/R2 常量/R3 恒真下界/R4 弱断言）；修正 world_schema event_log 错误陈述（50→config.event_log_keep 默认 200）— 验证：verify_tests 0 可疑 + 三处变异测试均能被抓出
 
 - [x] T23 审查遗留清零（第七轮）：U-001 MCP 覆盖率可测（scripts/coverage_mcp.py，sitecustomize 子进程插桩，实测 mcp_server 行 34%/分支 37 部分）；U-002 依赖 CVE 用 OSV.dev 逐包查（10 包全 0）；F-008 新增 requirements-mcp.lock.txt + mcp>=2.3,<3；F-015 提示词注入防护（9 条特征扫描 + untrusted/content_policy 标记，标记而非删除保叙事）；F-014 补齐 24 个剩余纯公式（公式覆盖 105→127/129）；覆盖率 81%→87% — 验证：verify_injection 21/21（含 2 个变异）+ verify_branches 155/155 + 门禁 15 项全绿
+
+- [x] T24 审查最后三项清零：F-002 用**真变异测试**替代静态审计的信任缺口——scripts/verify_mutation.py 内置 19 个已知错误变异（濒死/经济/社交/公式/归档/注入/面板），逐一应用到源码、跑验证脚本、期望变红，存活率红线 0%；首轮跑出 2 个存活（归档计数漂移、重复事件合并未被断言），补断言后 19/19 全杀。U-003 新增 scripts/verify_memory.py 三段对照测泄漏：实测 1500 轮 RSS 增量 -0.4MB（无泄漏），状态文件稳 7KB、侧写封顶 600 条；F-009 判定不适用（本地单机工具无 SRE 指标体系）；F-011 判定承认差距 — 验证：门禁 17 项全绿 + 变异 19/19 + 内存 7/7 + 覆盖率 88%
 
 ## 10. 变更日志（Changelog）
 

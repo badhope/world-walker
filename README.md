@@ -103,7 +103,9 @@ pip install -e ".[mcp]"
 - 模块分支补测：`python scripts/verify_branches.py`（155 项断言：systems_feedback / narrative_engine / cognition / social_extended / economy 的异常路径与状态分支，并补齐 24 个剩余纯公式）
 - 界面巡检：`python scripts/smoke_ui.py`（13 项：真实 Edge 渲染 + 抽屉可展开 + 满血不误报 + 三档视口无溢出 + 零 JS 错误）
 - 注入防护自检：`python scripts/verify_injection.py`（9 组断言：正常文本不误判 / 8 类注入特征被识别 / 输出带 untrusted 标记）
-- 推送门禁：`bash scripts/pre_push_gate.sh`（15 项：编译 / 断言审计 / 六套自检 / 覆盖率 ≥70% / 压测 / 打包 / 界面）
+- 内存稳定性：`python scripts/verify_memory.py`（7 项：三段对照查泄漏 + 状态/侧写/归档三重有界）
+- 变异测试：`python scripts/verify_mutation.py`（19 个已知错误必须被测试杀死，存活率红线 0%）
+- 推送门禁：`bash scripts/pre_push_gate.sh`（17 项：编译 / 断言审计 / 八套自检 / 覆盖率 ≥70% / 压测 / 变异 / 打包 / 界面）
 - CLI 通道自检：`python scripts/verify_cli.py`（20 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
 - 测试可信度审计：`python scripts/verify_tests.py`（静态审计全部自检断言，拒绝恒真/恒假/弱断言——防止"测试全绿但什么都没测"）
 - 用户视角试玩：`python scripts/user_playtest.py`（47 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）

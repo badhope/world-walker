@@ -424,6 +424,18 @@ async def main():
                   bool(set_before) and not missing,
                   '回退前 %d 条 · 回退后 %d 条 · 丢失 %d 条 %s'
                   % (len(set_before), len(set_after), len(missing), sorted(missing)[:2]))
+            # 硬判据：回退后计数必须等于**所有世代归档文件的实际行数**
+            # （只判"不回退"会漏掉"计数不变但文件行数更多"的漂移）
+            import glob as _g
+            _cur = os.path.join(tmp, 'xs.save.json')
+            _arch_files = ([_cur + '.log.jsonl'] + sorted(_g.glob(_cur + '.log.*.jsonl')))
+            _lines = 0
+            for _af in _arch_files:
+                if os.path.exists(_af):
+                    _lines += sum(1 for _ in open(_af, encoding='utf-8'))
+            check('长局：回退后 archived_events 与归档文件行数严格相等',
+                  st_after_rb.get('archived_events', 0) == _lines,
+                  'counter=%s file_lines=%s' % (st_after_rb.get('archived_events'), _lines))
             check('长局：回退后 archived_events 不回退（归档只增不减）',
                   st_after_rb.get('archived_events', 0) >= arch_before,
                   'arch %s→%s' % (arch_before, st_after_rb.get('archived_events')))

@@ -48,6 +48,7 @@ EXPECTED = {
     'scripts/verify_formulas.py': 119,
     'scripts/verify_branches.py': 143,
     'scripts/verify_injection.py': 9,
+    'scripts/verify_memory.py': 6,
     'scripts/user_playtest.py': 43,
     'scripts/stress_freeplay.py': 10,
 }

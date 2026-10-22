@@ -63,11 +63,19 @@ def main():
               page.eval_on_selector('body', 'e => e.dataset.skin'))
         shot(page, '01-stage')
 
-        # 2. HUD 数值
+        # 2. HUD 数值：从 /state 读取真实值再断言渲染（不硬编码存档数字，
+        #    否则换一份存档就会假失败——本脚本上一版正是这样）
+        import urllib.request as _ur
+        vm0 = json.load(_ur.urlopen(args.url.rstrip('/') + '/state', timeout=8))
         body_text = page.inner_text('body')
-        check('回合号已渲染', '500' in body_text, '含 500')
-        check('主角名已渲染', '沈砚' in body_text)
-        check('气血数值渲染', '56' in body_text)
+        tick_str = '{:,}'.format(int(vm0.get('tick', 0)))
+        check('回合号已渲染（与 /state 一致）', tick_str in body_text,
+              'tick=%s' % tick_str)
+        check('主角名已渲染（与 /state 一致）',
+              str(vm0.get('player', {}).get('name', '')) in body_text,
+              vm0.get('player', {}).get('name'))
+        hp_v = vm0.get('player', {}).get('hp')
+        check('气血数值渲染（与 /state 一致）', str(hp_v) in body_text, 'hp=%s' % hp_v)
 
         # 3. 图表 canvas 实际绘制（非零尺寸 + 有像素）
         sized = page.evaluate('''() => Array.from(document.querySelectorAll('canvas'))

@@ -93,6 +93,9 @@ jobs:
       - name: MCP 端到端自检
         run: python scripts/verify_mcp_stdio.py
 
+      - name: 提示词注入防护
+        run: python scripts/verify_injection.py
+
       - name: 玩家视角试玩
         run: python scripts/user_playtest.py
 

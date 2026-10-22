@@ -86,6 +86,11 @@ stages:
         displayName: MCP 端到端自检
         script: |
           python scripts/verify_mcp_stdio.py
+      - step: injection
+        name: verify-injection
+        displayName: 提示词注入防护
+        script: |
+          python scripts/verify_injection.py
       - step: playtest
         name: user-playtest
         displayName: 玩家视角试玩

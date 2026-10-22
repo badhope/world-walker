@@ -36,3 +36,10 @@ err*.log
 .coverage
 .cov-gate
 scripts/_ui_shots/
+.cov-mcp
+.covdata*
+.covsite
+.covrc
+scripts/_verify_mcp_cov_tmp.py
+.cov-mcp.*
+.coverage.*

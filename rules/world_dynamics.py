@@ -71,8 +71,10 @@ def price_equation(group_fitnesses: List[float], trait_means: List[float],
     n = len(group_fitnesses)
     if n == 0:
         return 0.0
-    assert len(trait_means) == n and len(delta_traits) == n, \
-        "price_equation: group_fitnesses/trait_means/delta_traits 长度不一致"
+    # 用 raise 而不是 assert：assert 在 python -O 下会被剥离，
+    # 那样长度不一致会退化成静默截断（正是本校验要防的行为）。
+    if len(trait_means) != n or len(delta_traits) != n:
+        raise ValueError("price_equation: group_fitnesses/trait_means/delta_traits 长度不一致")
     mean_fitness = sum(group_fitnesses) / n
     if mean_fitness == 0:
         return 0.0
@@ -186,7 +188,7 @@ def ou_process(z: float, theta: float, alpha: float, sigma: float, dt: float) ->
 
 def extinction_check(hazard_rate: float, dt: float = 1.0) -> bool:
     """灭绝为泊松过程，风险率恒定"""
-    return random.random() < hazard_rate * dt
+    return random.random() < hazard_rate * dt  # nosec B311 —— 游戏骰子，非密码学用途
 
 # ============================================================
 # 6. 红皇后 (Red Queen Hypothesis, Van Valen 1973)
@@ -204,10 +206,10 @@ def relative_advantage(speed_A: float, speed_B: float, tech_gap: float, lam: flo
 def red_queen_field(competition_coeffs: List[float], opponent_states: List[float]) -> float:
     """F_i(A) = Σ_j C(A,j) · σ(j) — 聚合所有对手的竞争压力
 
-    两入参必须等长，不等长直接断言失败（不静默截断）。
+    两入参必须等长，不等长直接抛 ValueError（不静默截断）。
     """
-    assert len(competition_coeffs) == len(opponent_states), \
-        "red_queen_field: competition_coeffs/opponent_states 长度不一致"
+    if len(competition_coeffs) != len(opponent_states):
+        raise ValueError("red_queen_field: competition_coeffs/opponent_states 长度不一致")
     return float(sum(c * s for c, s in zip(competition_coeffs, opponent_states)))
 
 # ============================================================

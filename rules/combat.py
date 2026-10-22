@@ -71,7 +71,7 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     if action == "heavy":
         hit_chance = max(0.1, hit_chance * 0.7)
 
-    if random.random() > hit_chance:
+    if random.random() > hit_chance:  # nosec B311 —— 游戏骰子，非密码学用途
         result["events"].append(f"{atk_ent['name']}的攻击被{def_ent['name']}闪避")
         return result
 
@@ -86,7 +86,7 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     elif action == "flee":
         result["events"].append(f"{atk_ent['name']}尝试逃跑")
         flee_chance = atk_attrs.get("dex", 10) / (atk_attrs.get("dex", 10) + def_attrs.get("dex", 10))
-        if random.random() < flee_chance:
+        if random.random() < flee_chance:  # nosec B311 —— 游戏骰子，非密码学用途
             result["events"].append("逃跑成功!")
             result["fled"] = True
         else:
@@ -112,12 +112,12 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     damage = max(1, base_damage - defense)
     
     # 浮动 0.8 ~ 1.2
-    damage *= random.uniform(0.8, 1.2)
+    damage *= random.uniform(0.8, 1.2)  # nosec B311 —— 游戏骰子，非密码学用途
     
     # 暴击判定
     dex_diff = atk_attrs.get("dex", 10) - def_attrs.get("dex", 10)
     crit_chance = max(0, min(0.3, dex_diff * 0.05))
-    if random.random() < crit_chance:
+    if random.random() < crit_chance:  # nosec B311 —— 游戏骰子，非密码学用途
         damage *= 1.5
         result["crit"] = True
     

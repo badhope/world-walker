@@ -365,7 +365,8 @@
     }
     const d = document.createElement("span");
     d.className = "d";
-    d.textContent = e.desc;
+    // 合并过的重复事件标出次数，玩家才知道"连打 4 回合都被闪"而不是只发生一次
+    d.textContent = e.desc + (e.repeat > 1 ? "（×" + e.repeat + "）" : "");
     li.appendChild(t);
     li.appendChild(y);
     li.appendChild(d);
@@ -804,6 +805,19 @@
     if ((vm.player || {}).stage >= ((vm.player || {}).stage_max || 20)) add("warn", "已到修行上限");
   }
 
+  /* 抽屉位于页面底部；展开时把它滚进视口，否则用户点了"图鉴"却看不到内容。
+     键盘/读屏用户同理：焦点跟随滚动，不然展开等于没展开。 */
+  function wireDrawers() {
+    document.querySelectorAll('details.drawer').forEach((d) => {
+      d.addEventListener('toggle', () => {
+        if (!d.open) return;
+        requestAnimationFrame(() => {
+          d.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+      });
+    });
+  }
+
   function render(v) {
     if (!v || typeof v !== "object") return;
     document.body.dataset.skin = (v.skin && v.skin.id) || "neutral";
@@ -946,6 +960,7 @@
   }
 
   function boot() {
+    wireDrawers();
     fetchState();
 
     if (window.EventSource) {

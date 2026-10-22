@@ -50,6 +50,20 @@ jobs:
       - name: 规则内核公式对拍
         run: python scripts/verify_formulas.py
 
+      - name: 模块分支补测
+        run: python scripts/verify_branches.py
+
+      - name: 覆盖率门禁（核心域 ≥70%）
+        run: |
+          python -m pip install --quiet coverage
+          rm -f .coverage
+          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death; do
+            python -m coverage run --append --source=rules,panel,state_schema "scripts/$suite.py"
+          done
+          python -m coverage report | tee /tmp/cov.txt
+          PCT=$(awk '/^TOTAL/ {gsub("%","",$NF); print $NF}' /tmp/cov.txt)
+          python -c "import sys; sys.exit(0 if float('$PCT') >= 70 else 1)"             || { echo "::error::覆盖率 ${PCT}% 低于 70% 红线"; exit 1; }
+
       - name: 引擎纯函数烟测（无 numpy 环境）
         run: |
           python engine.py --help > /dev/null

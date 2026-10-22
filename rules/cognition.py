@@ -14,7 +14,7 @@ from typing import List, Dict, Tuple, Callable, Any
 # ============================================================
 
 def inhibition_ability(spirituality: float, mental_clarity: float, training_in_reasoning: float) -> float:
-    """System 2 抑制 System 1 的能力。返回值需与 random.random() 比较判定成功"""
+    """System 2 抑制 System 1 的能力。返回值需与 random.random() 比较判定成功"""  # nosec B311 —— 游戏骰子，非密码学用途
     return (spirituality * 1.0 + mental_clarity * 0.8 + training_in_reasoning * 0.5) / 2.3
 
 def daily_cognitive_budget(realm_level: int, mental_state: str) -> float:
@@ -25,7 +25,7 @@ def daily_cognitive_budget(realm_level: int, mental_state: str) -> float:
 def should_use_system2(inhibition_budget: float, mental_clarity: float, noise: float = 0.0) -> bool:
     """判定当前是否启用 System 2（慢思考）"""
     ability = inhibition_ability(mental_clarity, mental_clarity * 0.8, 0.3)
-    return (random.random() + noise) < (ability / (ability + 1.0))
+    return (random.random() + noise) < (ability / (ability + 1.0))  # nosec B311 —— 游戏骰子，非密码学用途
 
 # ============================================================
 # 2. 前景理论 (Prospect Theory, Kahneman & Tversky 1979)
@@ -130,7 +130,7 @@ def satisficing_choice(options: List[Any], eval_func: Callable, aspiration: floa
                        max_explore: int = 100) -> Dict:
     """Simon 满意化：找到够好的就停"""
     opts = list(options)  # 复制，避免修改调用方数据
-    random.shuffle(opts)
+    random.shuffle(opts)  # nosec B311 —— 游戏骰子，非密码学用途
     explored = 0
     best_seen = None
     best_val = -float('inf')

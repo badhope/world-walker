@@ -13,18 +13,36 @@
 ## 界面预览
 
 实况主舞台（`open_panel` 打开）——只读、离线可用；世界观皮肤、长局曲线与事件反馈都在这一页里。
-以下均为**真实渲染截图**（2000 回合演示存档，非设计稿）：
+以下均为**真实渲染截图**（500 回合演示存档，非设计稿，由 `scripts/audit_ui.py` 断言 18 项后入库）：
 
-| 玄枢界（默认皮肤） | 水墨皮肤 | 霓虹皮肤 |
+**玄枢界（默认皮肤）**
+
+![玄枢界主舞台](docs/screenshots/stage-xuanshu.png)
+
+| 水墨皮肤 | 霓虹皮肤 |
+|---|---|
+| ![水墨](docs/screenshots/stage-ink.png) | ![霓虹](docs/screenshots/stage-neon.png) |
+
+**抽屉：图鉴 / 市场 / 大事记**（展开时自动滚入视口）
+
+| 探索图鉴 | 市场行情 | 大事记 |
 |---|---|---|
-| ![玄枢界](docs/screenshots/stage-xuanshu.png) | ![水墨](docs/screenshots/stage-ink.png) | ![霓虹](docs/screenshots/stage-neon.png) |
+| ![图鉴](docs/screenshots/drawer-codex.png) | ![市场](docs/screenshots/drawer-market.png) | ![大事记](docs/screenshots/drawer-milestones.png) |
 
-| 320px 窄屏 | 帮助与术语表 | 首次访问引导 |
+**响应式与帮助**
+
+| 768px 平板 | 320px 窄屏 | 帮助与术语表 |
 |---|---|---|
-| ![窄屏](docs/screenshots/stage-320.png) | ![帮助](docs/screenshots/help.png) | ![首访引导](docs/screenshots/first-visit.png) |
+| ![平板](docs/screenshots/stage-768.png) | ![窄屏](docs/screenshots/stage-320.png) | ![帮助](docs/screenshots/help.png) |
 
-> 截图取自 `scripts/stress_freeplay.py 2000` 的自由玩家存档（侧写 600 条采样）；每张图截取前都逐项断言过
-> 品牌字标 / 皮肤 / 图表渲染 / 时间线。来源与再生方式见 [`docs/screenshots/README.md`](docs/screenshots/README.md)。
+首次访问会有一条一次性引导（`localStorage` 记忆，关闭后不再出现）：
+
+![首访引导](docs/screenshots/first-visit.png)
+
+> 截图取自 `scripts/stress_freeplay.py` 的自由玩家存档（回合 500 / 事件 120 / 大事记 12 / 归档 1318）。
+> 每张截图前逐项断言：品牌字标、`data-skin` 与请求皮肤一致、回合号与主角名渲染、图表 canvas 尺寸有效、
+> 时间线有事件、三个抽屉可展开、帮助含术语表与状态文件路径、三档视口无横向溢出、零 JS 错误、零失败请求。
+> 来源与再生方式见 [`docs/screenshots/README.md`](docs/screenshots/README.md)。
 
 ---
 
@@ -81,7 +99,10 @@ pip install -e ".[mcp]"
 - 端到端自检：`python scripts/verify_mcp_stdio.py`（55 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
 - 面板契约自检：`python scripts/verify_panel.py`（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
 - 濒死保护自检：`python scripts/verify_near_death.py`（7 项断言：气血保底 1 / 代价落盘 / NPC 死亡语义不变）
-- 公式对拍：`python scripts/verify_formulas.py`（121 项断言：按 docstring 的数学式独立重算 77 个函数并比对，覆盖模型层/认知/社会/系统/世界动力学/文化进化，含默认参数、边界分支与状态式不变量）
+- 公式对拍：`python scripts/verify_formulas.py`（122 项断言：按 docstring 的数学式独立重算 77 个函数并比对，含默认参数与边界分支）
+- 模块分支补测：`python scripts/verify_branches.py`（111 项断言：systems_feedback / narrative_engine / cognition / social_extended / economy 的异常路径与状态分支）
+- 界面巡检：`python scripts/smoke_ui.py`（13 项：真实 Edge 渲染 + 抽屉可展开 + 满血不误报 + 三档视口无溢出 + 零 JS 错误）
+- 推送门禁：`bash scripts/pre_push_gate.sh`（14 项：编译 / 断言审计 / 五套自检 / 覆盖率 ≥70% / 压测 / 打包 / 界面）
 - CLI 通道自检：`python scripts/verify_cli.py`（20 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
 - 测试可信度审计：`python scripts/verify_tests.py`（静态审计全部自检断言，拒绝恒真/恒假/弱断言——防止"测试全绿但什么都没测"）
 - 用户视角试玩：`python scripts/user_playtest.py`（47 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）
@@ -136,9 +157,16 @@ game_engine/                      # 仓库根即 game_engine 包（导入别名�
 ├── scripts/verify_tests.py       # 测试可信度审计（AST 级：拒绝恒真/恒假/弱断言）
 ├── scripts/verify_near_death.py  # 濒死保护自检（气血保底/代价落盘/NPC 死亡不变）
 ├── scripts/verify_formulas.py    # 公式对拍（按数学式独立重算并比对 77 个函数）
+├── scripts/verify_branches.py    # 模块分支补测（111 项，低覆盖模块的异常路径）
+├── scripts/smoke_ui.py           # 界面巡检（真实浏览器渲染 + 交互断言）
+├── scripts/audit_ui.py           # 界面截图与逐项断言（生成 docs/screenshots）
+├── scripts/pre_push_gate.sh      # 推送门禁（14 项，与 CI 判据一致）
+├── scripts/compile_all.py        # 跨平台全仓编译检查
+├── scripts/check_wheel.py        # wheel 运行时资源校验（CI 与门禁共用）
 ├── scripts/user_playtest.py      # 用户视角试玩（47 项"玩家会不会投诉"检查：钻空子/边界/报错可读性）
 ├── scripts/stress_freeplay.py    # 自由玩家压力测试（默认 2000 回合，走真实 MCP stdio 通道）
 ├── docs/screenshots/             # README 预览截图（真实渲染 + 断言；来源说明见该目录 README）
+├── docs/PROJECT_AUDIT_2026-10-22.md  # 全维度审查与对标报告
 ├── demo_state.json               # 演示状态
 ├── GAME_MASTER_PROTOCOL.md       # AI Agent 调用协议
 └── rules/                        # 85+ 学术公式（Python 实现）

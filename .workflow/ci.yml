@@ -57,6 +57,11 @@ stages:
         displayName: 规则内核公式对拍
         script: |
           python scripts/verify_formulas.py
+      - step: branches
+        name: verify-branches
+        displayName: 模块分支补测
+        script: |
+          python scripts/verify_branches.py
       - step: smoke
         name: engine-smoke
         displayName: 引擎烟测

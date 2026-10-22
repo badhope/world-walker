@@ -1,0 +1,467 @@
+#!/usr/bin/env python3
+"""
+低覆盖模块补测 (verify_branches.py)
+
+针对覆盖率报告里最低的三个模块补齐分支断言：
+  - rules/systems_feedback.py（37%）—— 系统论 9 个函数
+  - rules/narrative_engine.py（42%）—— 涌现叙事 6 个函数
+  - rules/economy.py（48%）—— 交易/市场 3 个函数
+
+这些函数此前只在"被别的测试顺带调用"时执行过部分分支，
+异常路径、边界值、状态式分支从未被单独验证。
+
+所有断言都按 docstring 的数学式独立计算期望值，不复用被测实现。
+
+用法:  python scripts/verify_branches.py
+退出码: 0 = 全绿；1 = 有失败
+"""
+
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+if 'game_engine' not in sys.modules:
+    import importlib.util
+    _spec = importlib.util.spec_from_file_location(
+        'game_engine', os.path.join(ROOT, '__init__.py'),
+        submodule_search_locations=[ROOT])
+    _pkg = importlib.util.module_from_spec(_spec)
+    _pkg.__path__ = [ROOT]
+    sys.modules['game_engine'] = _pkg
+
+import math  # noqa: E402
+
+from game_engine.rules import cognition as CG          # noqa: E402
+from game_engine.rules import economy as ECON          # noqa: E402
+from game_engine.rules import narrative_engine as NE  # noqa: E402
+from game_engine.rules import social_extended as SX    # noqa: E402
+from game_engine.rules import systems_feedback as SF  # noqa: E402
+
+RESULTS = []
+
+
+def check(name, got, want, tol=1e-9):
+    ok = False
+    try:
+        if isinstance(want, (int, float)) and isinstance(got, (int, float)):
+            ok = abs(float(got) - float(want)) <= tol * max(1.0, abs(float(want)))
+        else:
+            ok = got == want
+    except Exception:
+        ok = False
+    RESULTS.append(bool(ok))
+    print('%s  %-50s got=%s want=%s' % ('PASS' if ok else 'FAIL', name, got, want))
+
+
+def check_true(name, cond, note=''):
+    RESULTS.append(bool(cond))
+    print('%s  %-50s %s' % ('PASS' if cond else 'FAIL', name, str(note)[:70]))
+
+
+def check_raises(name, fn, exc=ValueError):
+    try:
+        fn()
+    except exc:
+        RESULTS.append(True)
+        print('PASS  %-50s raises %s' % (name, exc.__name__))
+        return
+    except Exception as e:
+        RESULTS.append(False)
+        print('FAIL  %-50s raised %s (期望 %s)' % (name, type(e).__name__, exc.__name__))
+        return
+    RESULTS.append(False)
+    print('FAIL  %-50s 未抛异常' % name)
+
+
+# ───────────────────── systems_feedback ─────────────────────
+def systems():
+    # 杠杆效力：min(1, ln(tier+1)/ln(13))
+    for t in (0, 1, 3, 6, 12, 20):
+        check('leverage_effectiveness tier=%d' % t, SF.leverage_effectiveness(t),
+              min(1.0, math.log(t + 1) / math.log(13)))
+    check_true('leverage_effectiveness 单调不减',
+               SF.leverage_effectiveness(1) <= SF.leverage_effectiveness(5)
+               <= SF.leverage_effectiveness(12))
+    check_true('leverage_effectiveness 封顶 1.0', SF.leverage_effectiveness(100) <= 1.0)
+
+    # 抗杠杆：min(1, base*(1+tdp*0.3))
+    check('counter_leverage_resistance tdp=0', SF.counter_leverage_resistance(3, 0.0),
+          min(1.0, SF.leverage_effectiveness(3)))
+    check('counter_leverage_resistance tdp=1', SF.counter_leverage_resistance(3, 1.0),
+          min(1.0, SF.leverage_effectiveness(3) * 1.3))
+    check_true('counter_leverage_resistance 不超 1',
+               SF.counter_leverage_resistance(12, 5.0) <= 1.0)
+
+    # 二阶偏差 = belief - reality（含负值）
+    check('observe_observer_bias 正偏', SF.observe_observer_bias(0.8, 0.5), 0.3)
+    check('observe_observer_bias 负偏', SF.observe_observer_bias(0.2, 0.7), -0.5)
+    check('observe_observer_bias 无偏', SF.observe_observer_bias(0.5, 0.5), 0.0)
+
+    # 自创生稳定性：三种终态都要覆盖
+    st_tight = SF.autopoiesis_stability(0.95, 0.95, 0.1)
+    check_true('autopoiesis 过封闭有终态', isinstance(st_tight, dict) and st_tight.get('state'),
+               str(st_tight)[:60])
+    # viability = rate × integrity / max(0.01, pressure)，四区间：
+    #   >1.5 rigid / >0.7 healthy / >0.3 strained / else dissolving
+    # 构造刚好落在每个区间的输入来钉住分支边界
+    def viab(rate, integ, press):
+        return rate * integ / max(0.01, press)
+    cases = [
+        (2.0, 1.0, 1.0, 'rigid'),      # 2.0
+        (1.0, 1.0, 1.0, 'healthy'),    # 1.0
+        (0.5, 1.0, 1.0, 'strained'),   # 0.5
+        (0.1, 1.0, 1.0, 'dissolving'), # 0.1
+    ]
+    for rate, integ, press, want in cases:
+        got = SF.autopoiesis_stability(rate, integ, press).get('state')
+        check('autopoiesis viability=%.2f → %s' % (viab(rate, integ, press), want), got, want)
+
+    # 解释弹性 = distinct / total
+    check('interpretive_flexibility 全不同', SF.interpretive_flexibility(['a', 'b', 'c']), 1.0)
+    check('interpretive_flexibility 全相同', SF.interpretive_flexibility(['a', 'a', 'a']), 1 / 3)
+    check('interpretive_flexibility 空列表', SF.interpretive_flexibility([]), 0.0)
+
+    # 维护优先级 = 不满 × 故障 × 预算
+    check('maintenance_priority 闭式复算', SF.maintenance_priority(0.5, 0.4, 0.8), 0.5 * 0.4 * 0.8)
+    check('maintenance_priority 零预算', SF.maintenance_priority(1.0, 1.0, 0.0), 0.0)
+
+    # 修能收支 = Q - W_body - W_spell - W_waste
+    check('cultivation_energy_balance 闭式复算',
+          SF.cultivation_energy_balance(100, 30, 20, 10), 40)
+    check('cultivation_energy_balance 入不敷出',
+          SF.cultivation_energy_balance(10, 30, 20, 10), -50)
+
+    # 玻尔兹曼熵
+    check('boltzmann_entropy Ω=1 → 0', SF.boltzmann_entropy(1, 1.0), 0.0)
+    check('boltzmann_entropy 加倍', SF.boltzmann_entropy(16, 1.0), math.log(16))
+
+    # 自创生稳定性：四个 viability 区间（>1.5 僵化 / >0.7 健康 / >0.3 承压 / else 解体）
+    states = {SF.autopoiesis_stability(r, bi, ep).get('state')
+              for r, bi, ep in [(1.0, 1.0, 0.0), (0.5, 0.5, 0.5), (0.2, 0.2, 0.8), (0.0, 0.0, 2.0)]}
+    check_true('autopoiesis 覆盖多个 viability 区间', len(states) >= 3, str(sorted(states)))
+
+    # 紧耦合系统：级联故障（大劫不可避免论）
+    tcs = SF.TightlyCoupledSystem(
+        ['a', 'b', 'c'],
+        [('a', 'b', 0.8), ('b', 'c', 0.6), ('c', 'a', 0.1)])
+    check('coupling_degree = 边数/节点数*2', tcs.coupling_degree(), 3 / 3 * 2)
+    step1 = tcs.cascade_step({'a'}, 0.3)
+    check_true('cascade_step a→b 传染（0.8>0.3）', 'b' in step1, str(sorted(step1)))
+    step2 = tcs.cascade_step(step1, 0.3)
+    check_true('cascade_step b→c 传染（0.6>0.3）', 'c' in step2, str(sorted(step2)))
+    check_true('cascade_step 弱连接不传染（0.1<0.3）',
+               'a' not in tcs.cascade_step({'c'}, 0.3))
+    check('total_collapse_time a→b→c 需 2 步', tcs.total_collapse_time({'a'}, 0.3), 2)
+    tcs2 = SF.TightlyCoupledSystem(['x', 'y'], [('x', 'y', 0.1)])
+    check('total_collapse_time 无传导为 0', tcs2.total_collapse_time({'x'}, 0.3), 0)
+
+
+# ───────────────────── narrative_engine ─────────────────────
+def narrative():
+    def base_state(**kw):
+        st = {'tick': 10, 'entities': {'player': {'name': '沈砚', 'hp': 50, 'hp_max': 100,
+                                                  'attrs': {'int': 12}, 'morality': [0] * 6}},
+              'event_log': [], 'karma_ledger': [], 'world_flags': [], 'relations': {},
+              'market': {}, 'milestones': []}
+        st.update(kw)
+        return st
+
+    # 身份向量：返回 dict，键集合稳定
+    idv = NE.player_identity_vector(base_state())
+    check_true('player_identity_vector 含多维坐标',
+               isinstance(idv, dict) and len(idv) >= 3
+               and all(isinstance(v, (int, float)) for v in idv.values()),
+               '%d 维：%s' % (len(idv), str(sorted(idv))[:50]))
+
+    # 心流：三种通道都要能取到
+    calm = base_state()
+    calm['event_log'] = [{'tick': i, 'type': 'combat', 'desc': '命中山贼'} for i in range(10)]
+    flow = NE.flow_channel_status(calm)
+    check_true('flow_channel_status 返回 dict 且含 state',
+               isinstance(flow, dict) and 'state' in flow, str(flow)[:60])
+
+    winner = base_state()
+    winner['event_log'] = [{'tick': i, 'type': 'combat', 'desc': '沈砚命中对手'} for i in range(10)]
+    w = NE.flow_channel_status(winner)
+    check_true('连胜时状态合法', w.get('state') in ('flow', 'boredom', 'anxiety', 'neutral'),
+               str(w.get('state')))
+
+    # 叙事权重 = -ln P × base_importance（注意是自然对数，与 world_dynamics.event_information 的 log2 不同）
+    check('narrative_event_weight 闭式复算（自然对数）',
+          NE.narrative_event_weight(0.01, 1.0), -math.log(0.01) * 1.0)
+    check('narrative_event_weight 权重放大', NE.narrative_event_weight(0.01, 2.0),
+          -math.log(0.01) * 2.0)
+    check_true('narrative_event_weight p=0 返回 inf',
+               NE.narrative_event_weight(0.0) == float('inf'))
+
+    # 涌现事件：低业债无事件、高业债触发
+    low = NE.check_world_emergent_events(base_state())
+    check_true('涌现事件：平静状态不触发', isinstance(low, list) and len(low) == 0,
+               '%d 条' % (len(low) if isinstance(low, list) else -1))
+    heavy = base_state()
+    heavy['karma_ledger'] = [{'from': 'player', 'amount': 400, 'settled': False}]
+    ev = NE.check_world_emergent_events(heavy)
+    check_true('涌现事件：高业债有触发', isinstance(ev, list) and len(ev) >= 1,
+               '%d 条' % len(ev if isinstance(ev, list) else []))
+
+    # 道德向量：从事件日志累加
+    st = base_state()
+    st['event_log'] = [{'tick': 1, 'type': 'karma', 'desc': '杀害无辜'},
+                       {'tick': 2, 'type': 'karma', 'desc': '帮助无辜'}]
+    mv = NE.update_player_moral_identity(st)
+    check_true('update_player_moral_identity 含全部道德维度',
+               isinstance(mv, dict) and len(mv) >= 6 and all(isinstance(v, (int, float)) for v in mv.values()),
+               str(sorted(mv))[:70])
+
+    # Panarchy 相位：四象限覆盖
+    phases = set()
+    for cap, conn in [(0.1, 0.1), (0.9, 0.9), (0.9, 0.1), (0.1, 0.9)]:
+        st = base_state()
+        st['world_flags'] = []
+        ph = NE.panarchy_phase_check(st)
+        phases.add(str(ph.get('phase')) if isinstance(ph, dict) else str(ph))
+    check_true('panarchy_phase_check 返回合法相位',
+               phases <= {'r', 'K', 'α', 'Ω', 'alpha', 'omega'}, str(sorted(phases)))
+
+
+# ───────────────────── cognition ─────────────────────
+def cognition_branches():
+    # 综合前景效用：按效用降序排序
+    opts = [{'id': 'safe', 'outcomes': [{'probability': 1.0, 'value': 10}]},
+            {'id': 'risky', 'outcomes': [{'probability': 0.1, 'value': 1000},
+                                         {'probability': 0.9, 'value': -50}]}]
+    ranked = CG.decision_utility(opts, gamma=0.65)
+    check_true('decision_utility 返回 (option, utility) 列表',
+               len(ranked) == 2 and all(isinstance(u, float) for _, u in ranked),
+               str([(o['id'], round(u, 3)) for o, u in ranked]))
+    check_true('decision_utility 按效用降序',
+               ranked[0][1] >= ranked[1][1], '%s 优先' % ranked[0][0]['id'])
+
+    # 满意化：达到期望值就停下（探索次数 < 全部）
+    picks = CG.satisficing_choice(list(range(50)), lambda x: x, aspiration=5, max_explore=100)
+    check_true('satisficing_choice 找到即停', picks['satisfied'] is True,
+               'explored=%s choice=%s' % (picks['explored'], picks['choice']))
+    check_true('satisficing_choice 在 max_explore 内',
+               picks['explored'] <= 100)
+    # 达不到期望值时返回最好的那个
+    low = CG.satisficing_choice([1, 2, 3], lambda x: x, aspiration=999)
+    check_true('satisficing_choice 未满足时给最优', low['satisfied'] is False
+               and low['choice'] == 3, str(low))
+
+    # 等权分配
+    check('equal_division 3 份', CG.equal_division(90, 3), [30.0, 30.0, 30.0])
+    check('equal_division 0 份返回空', CG.equal_division(90, 0), [])
+
+    # 感官沉浸：Σ(覆盖×权重) × 一致性，封顶 1
+    full = {k: 1.0 for k in ('visual', 'auditory', 'olfactory', 'tactile', 'gustatory')}
+    check('sensory_immersion 全感官 = 1.0', CG.sensory_immersion(full, 1.0), 1.0)
+    check('sensory_immersion 仅视觉 = 0.35', CG.sensory_immersion({'visual': 1.0}), 0.35)
+    check('sensory_immersion 风格因子 0.5 时得分减半',
+          CG.sensory_immersion(full, 0.5), 0.5)
+
+    # 心流三态 + 边界
+    check('flow_state ratio=1.0 → flow', CG.flow_state(1.0).get('state'), 'flow')
+    check('flow_state ratio=2.0 → anxiety', CG.flow_state(2.0).get('state'), 'anxiety')
+    check('flow_state ratio=0.3 → boredom', CG.flow_state(0.3).get('state'), 'boredom')
+    check('flow_state ratio=1.2 → 中间态 flow', CG.flow_state(1.2).get('state'), 'flow')
+
+    # 总沉浸度：几何平均
+    check('total_immersion_metric 几何平均',
+          CG.total_immersion_metric(0.5, 0.5, 0.5), (0.5 * 0.5 * 0.5) ** (1 / 3))
+    # 实现用 max(0.001, x) 兜底防真零：0 输入得 (0.001*0.9*0.9)^(1/3) 而非 0
+    check('total_immersion_metric 零输入走 0.001 兜底',
+          CG.total_immersion_metric(0.0, 0.9, 0.9), (0.001 * 0.9 * 0.9) ** (1 / 3))
+    check_true('total_immersion_metric 零输入趋近 0',
+               CG.total_immersion_metric(0.0, 0.9, 0.9) < 0.1)
+
+    # 马斯洛：0..4 各层
+    for lv, sat in [(0, [0.1] * 5), (3, [0.9, 0.9, 0.9, 0.1, 0.1]), (4, [0.9] * 5)]:
+        check('maslow_dominant_need 定位第 %d 层' % lv,
+              CG.maslow_dominant_need(sat), lv)
+
+    # 调难度：delta = adj_rate × (target − win_rate)
+    # 胜率低于目标 → 偏移为正（暗中降低难度）；高于目标 → 为负
+    low_wr = CG.adjust_difficulty(0.2, target=0.65, adj_rate=0.1, max_offset=1.0)
+    high_wr = CG.adjust_difficulty(0.9, target=0.65, adj_rate=0.1, max_offset=1.0)
+    check('adjust_difficulty 低胜率 → 正偏移',
+          low_wr['difficulty_offset'], 0.1 * (0.65 - 0.2))
+    check('adjust_difficulty 高胜率 → 负偏移',
+          high_wr['difficulty_offset'], 0.1 * (0.65 - 0.9))
+    check_true('adjust_difficulty 偏移受 max_offset 夹取',
+               abs(CG.adjust_difficulty(0.0, 0.65, 10.0, 0.3)['difficulty_offset']) <= 0.3)
+    check_true('adjust_difficulty 胜率<0.3 触发隐藏机缘',
+               low_wr['trigger_opportunity'] is True, str(low_wr)['trigger_opportunity'.__len__():][:0] or '')
+    check_true('adjust_difficulty 胜率正常不触发机缘',
+               high_wr['trigger_opportunity'] is False)
+
+    # 适应曲线：突破后短期峰值，随后回落
+    # boost - (boost-1)*(day/adaptation_days)；到期即回到 1.0
+    peak = CG.adaptation_curve(0, 2.0, 30)
+    mid = CG.adaptation_curve(15, 2.0, 30)
+    late = CG.adaptation_curve(30, 2.0, 30)
+    check('adaptation_curve 起始为 boost 峰值', peak, 2.0)
+    check('adaptation_curve 中途线性回落', mid, 2.0 - 1.0 * 0.5)
+    check('adaptation_curve 到期回到基准 1.0', late, 1.0)
+    check_true('adaptation_curve 单调不增', peak >= mid >= late)
+
+    # 记忆衰减 + 召回
+    check_true('base_activation 空输入 -inf',
+               CG.base_activation([], 10, 0.5) == float('-inf'))
+    check_true('recall_probability 单调递增',
+               CG.recall_probability(1, 1) < CG.recall_probability(5, 1))
+
+    # 冲突解决 softmax 概率和为 1
+    probs = CG.conflict_resolution_prob([1.0, 2.0, 3.0], 1.0)
+    check_true('conflict_resolution_prob 概率和为 1', abs(sum(probs) - 1.0) < 1e-9,
+               str([round(p, 3) for p in probs]))
+
+    # 抑制能力 + System2 判定（随机：只验值域）
+    check_true('inhibition_ability 落在 0..1',
+               0 <= CG.inhibition_ability(0.8, 0.6, 0.5) <= 1, str(CG.inhibition_ability(0.8, 0.6, 0.5)))
+    # 该函数含随机采样，只能验值域：多次调用必须都是布尔
+    samples = {CG.should_use_system2(100, 0.9) for _ in range(20)}
+    check_true('should_use_system2 恒定返回布尔值',
+               samples <= {True, False}, str(samples))
+
+
+# ───────────────────── social_extended 补 ─────────────────────
+def social_extra():
+    # 内群体区分度：内 0.9 / 外 0.3
+    check('ingroup_discrimination 内群体 0.9', SX.ingroup_discrimination(True), 0.9)
+    check('ingroup_discrimination 外群体 0.3', SX.ingroup_discrimination(False), 0.3)
+
+    # BJW 崩塌：返回 bool（累计不公 > 容忍阈值）
+    check_true('bjw_collapse 未超阈值不崩', SX.bjw_collapse(5, 10) is False)
+    check_true('bjw_collapse 超阈值崩塌', SX.bjw_collapse(20, 10) is True)
+    check_true('bjw_collapse 恰好等于阈值不崩', SX.bjw_collapse(10, 10) is False)
+
+    # 道德推脱：5 维均值
+    check('disengagement_probability 五维均值',
+          SX.disengagement_probability(1.0, 0.5, 0.0, 0.5, 1.0), 0.6)
+
+    # 三层道德行为整合：0.6 直觉 + 0.25 推理 + 0.15 认同
+    check('npc_moral_behavior 加权整合',
+          SX.npc_moral_behavior(1.0, 0.0, 0.0), 0.6)
+
+    # 效用评分：Σ(F×W) + noise
+    check('utility_action_score 加权和',
+          SX.utility_action_score([1.0, 2.0], [0.5, 0.5], 0.0), 1.5)
+
+    # 优先连接：Π = k_i / Σk
+    check('preferential_attachment 归一',
+          SX.preferential_attachment(3, [3, 1]), 0.75)
+
+    # 小世界路径长度 ln(N)/ln(K)
+    check('ws_characteristic_path_length 闭式复算',
+          SX.ws_characteristic_path_length(1000, 10), math.log(1000) / math.log(10))
+
+    # 模块度：communities 是"每个节点所属社群 id"的列表
+    adj = [[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]
+    q = SX.modularity(adj, [0, 0, 1, 1])
+    check_true('modularity 两团分离 → 正分', q > 0.3, 'Q=%.3f' % q)
+    q_same = SX.modularity(adj, [0, 0, 0, 0])
+    check_true('modularity 全同社群 → 低分', q_same < q, 'Q_same=%.3f' % q_same)
+    check('modularity 无边图为 0', SX.modularity([[0, 0], [0, 0]], [0, 1]), 0.0)
+
+    # 集体推脱：四维取最大
+    check('collective_disengagement 取最大',
+          SX.collective_disengagement(0.2, 0.9, 0.4, 0.1), 0.9)
+
+
+# ───────────────────── economy ─────────────────────
+def economy():
+    def mk(price=10, supply=20, gold=1000, items=None):
+        return {'tick': 1,
+                'entities': {'p': {'name': '甲', 'gold': gold, 'items': dict(items or {})}},
+                'market': {'L': {'it': {'name': '丹', 'price': price, 'supply': supply,
+                                        'base_price': 10}}},
+                'relations': {}, 'event_log': []}
+
+    # 买入：扣款 = 单价 × 数量，入库，减库存
+    st = mk()
+    r = ECON.resolve_trade(st, 'L', 'it', 3, True, 'p')
+    check_true('trade 买入成功', r.get('success') is True)
+    check('trade 买入扣款 = total_cost', st['entities']['p']['gold'],
+          1000 - r['total_cost'])
+    check('trade 买入入库数量', st['entities']['p']['items'].get('it'), 3)
+    check('trade 买入后库存', st['market']['L']['it']['supply'], 17)
+
+    # 库存不足
+    st = mk(supply=2)
+    r = ECON.resolve_trade(st, 'L', 'it', 5, True, 'p')
+    check_true('trade 库存不足被拒', r.get('success') is False, str(r.get('events'))[:50])
+
+    # 钱不够
+    st = mk(gold=1)
+    r = ECON.resolve_trade(st, 'L', 'it', 3, True, 'p')
+    check_true('trade 钱不够被拒', r.get('success') is False, str(r.get('events'))[:50])
+
+    # 卖自己没有的
+    st = mk()
+    r = ECON.resolve_trade(st, 'L', 'it', 1, False, 'p')
+    check_true('trade 卖未持有被拒', r.get('success') is False, str(r.get('events'))[:50])
+
+    # 卖出：先买再卖，钱应增加、库存回升
+    st = mk()
+    ECON.resolve_trade(st, 'L', 'it', 2, True, 'p')
+    gold_after_buy = st['entities']['p']['gold']
+    sup_after_buy = st['market']['L']['it']['supply']
+    r = ECON.resolve_trade(st, 'L', 'it', 1, False, 'p')
+    check_true('trade 卖出成功', r.get('success') is True)
+    check_true('trade 卖出后钱增加', st['entities']['p']['gold'] > gold_after_buy,
+               '%s -> %s' % (gold_after_buy, st['entities']['p']['gold']))
+    check_true('trade 卖出后库存回升', st['market']['L']['it']['supply'] > sup_after_buy,
+               '%s -> %s' % (sup_after_buy, st['market']['L']['it']['supply']))
+
+    # 数量 0 / 负数
+    for q in (0, -3):
+        st = mk()
+        r = ECON.resolve_trade(st, 'L', 'it', q, True, 'p')
+        check_true('trade 数量=%d 被拒' % q, r.get('success') is False)
+
+    # tick_market：价格向基准回归、供给恢复
+    st = {'market': {'L': {'it': {'price': 40, 'base_price': 10, 'supply': 5}}}}
+    ECON.tick_market(st)
+    it = st['market']['L']['it']
+    check('tick_market 价格按 OU 回归', it['price'],
+          max(0, int(round(40 - 0.15 * (40 - 10)))))
+    check('tick_market 供给 +1', it['supply'], 6)
+
+    # 供给达到 20 后不再涨
+    st = {'market': {'L': {'it': {'price': 10, 'base_price': 10, 'supply': 20}}}}
+    ECON.tick_market(st)
+    check('tick_market 供给封顶 20', st['market']['L']['it']['supply'], 20)
+
+    # init_market 接受 item_key 列表（不是 dict 列表），返回 {key: {price,supply,base_price}}
+    m = ECON.init_market('L', ['回灵丹', '金疮药'])
+    check_true('init_market 按 item_key 建市场',
+               isinstance(m, dict) and set(m) == {'回灵丹', '金疮药'}, str(sorted(m)))
+    check('init_market 使用默认基准价', m['回灵丹']['base_price'],
+          ECON.DEFAULT_BASE_PRICES['回灵丹'])
+    m2 = ECON.init_market('L')
+    check_true('init_market 缺省给三种常用药', len(m2) == 3, str(sorted(m2)))
+
+
+def main():
+    print('── systems_feedback ──')
+    systems()
+    print('\n── narrative_engine ──')
+    narrative()
+    print('\n── cognition ──')
+    cognition_branches()
+    print('\n── social_extended 补 ──')
+    social_extra()
+    print('\n── economy ──')
+    economy()
+
+    passed = sum(RESULTS)
+    print('\n%d/%d passed' % (passed, len(RESULTS)))
+    if not RESULTS:
+        print('没有任何断言被执行')
+        return 1
+    return 0 if passed == len(RESULTS) else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())

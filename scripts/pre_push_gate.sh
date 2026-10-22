@@ -40,6 +40,31 @@ step "CLI 通道自检" "$PY" scripts/verify_cli.py
 step "面板契约自检" "$PY" scripts/verify_panel.py
 step "濒死保护自检" "$PY" scripts/verify_near_death.py
 step "规则内核公式对拍（77 个函数的闭式复算）" "$PY" scripts/verify_formulas.py
+step "模块分支补测（systems/narrative/cognition/economy）" "$PY" scripts/verify_branches.py
+
+# 覆盖率门禁：核心域 ≥70%（当前 81%）。装了 coverage 才跑。
+if "$PY" -c "import coverage" >/dev/null 2>&1; then
+  say $'
+=== 覆盖率门禁（核心域 ≥70%）==='
+  rm -rf "$ROOT/.cov-gate"
+  COV_OK=1
+  for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death; do
+    "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema "$ROOT/scripts/$suite.py" >/dev/null 2>&1 || COV_OK=0
+  done
+  PCT=$("$PY" -m coverage report --data-file="$ROOT/.cov-gate" 2>/dev/null         | awk '/^TOTAL/ {gsub("%","",$NF); print $NF}')
+  rm -rf "$ROOT/.cov-gate"
+  # 用 Python 比较（bc 在 Git Bash 里通常不存在）
+  if [ -n "$PCT" ] && "$PY" -c "import sys; sys.exit(0 if float('$PCT') >= 70 else 1)"; then
+    say "  PASS（${PCT}%）"
+  else
+    say "  FAIL（覆盖率 ${PCT:-未知}% < 70%）"
+    FAILED=1
+  fi
+else
+  say $'
+=== 覆盖率门禁 ===
+  SKIP（未安装 coverage）'
+fi
 
 # MCP 相关：只有装了 mcp SDK 才跑（与 CI 的 mcp 作业对应）
 if "$PY" -c "import mcp" >/dev/null 2>&1; then
@@ -51,6 +76,21 @@ else
   say '  注意：MCP 端到端 / 试玩 / 压测本次未执行，绿灯不代表这三项通过。'
   say '  安装后重跑：python -m pip install -e ".[mcp]"'
   FAILED=1
+fi
+
+# 界面巡检：需要 Playwright + 浏览器；装了才跑（未装时跳过但明确提示，不算绿）
+if "$PY" -c "import playwright" >/dev/null 2>&1; then
+  say $'
+=== 界面巡检 ==='
+  STEP_RC=0
+  "$PY" scripts/smoke_ui.py > /tmp/ww-ui.log 2>&1 || STEP_RC=$?
+  if [ "$STEP_RC" -eq 0 ]; then say "  PASS"; else
+    say "  FAIL（输出尾 20 行）"; tail -20 /tmp/ww-ui.log | sed 's/^/    /'; FAILED=1
+  fi
+else
+  say $'
+=== 界面巡检 ===
+  SKIP（未安装 playwright）'
 fi
 
 # 打包完整性：对齐 CI 的 package 作业（构建 + wheel 资源校验）

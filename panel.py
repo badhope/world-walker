@@ -526,13 +526,25 @@ class Handler(BaseHTTPRequestHandler):
             return
 
 
+class _PanelServer(ThreadingHTTPServer):
+    """面板 HTTP 服务。
+
+    allow_reuse_address 必须是 False：Python 的 HTTPServer 默认把它设为 1
+    （SO_REUSEADDR）。在 Windows 上这允许**两个进程同时绑定同一端口**，
+    结果是请求被别的进程抢走、面板返回 404 而自己毫无察觉
+    （实测被一个无关的 `python -m http.server 8791` 抢过）。
+    关掉它，端口冲突就会正常抛 OSError，从而走下面的顺延逻辑。
+    """
+    allow_reuse_address = False
+
+
 def start(state_path, port=8765, host="127.0.0.1"):
     """启动面板服务（后台线程），返回 (server, 实际端口)。端口被占则自动顺延。"""
     Handler.state_path = os.path.abspath(state_path)
     srv = None
     for p in range(int(port), int(port) + 10):
         try:
-            srv = ThreadingHTTPServer((host, p), Handler)
+            srv = _PanelServer((host, p), Handler)
             break
         except OSError:
             continue

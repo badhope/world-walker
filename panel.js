@@ -543,22 +543,65 @@
         const hpPct = samples.map((s) => Math.round(s.hp * 100 / Math.max(1, s.hp_max)));
         const mpPct = samples.map((s) => Math.round(s.mp * 100 / Math.max(1, s.mp_max || 1)));
         const gold = samples.map((s) => s.gold);
+        // 图鉴累计（地点/人物/物品/词条）：长局里唯一"只增不减"的成长指标，
+        // 气血常因突破回满而看不出变化，用它才能看出"这局到底走了多远"。
+        const codex = samples.map((s) => s.codex_total || 0);
+        const codexGrows = codex.length && (codex[codex.length - 1] - codex[0]) > 0;
+        // 自适应纵轴：长局里气血常年在 76–100% 之间，固定 0–100 会把它压成一条
+        // 贴着顶边的直线，玩家看不出任何起伏。这里按实际范围外扩一点，
+        // 但如果跨度本身就很大（>60），仍回到 0–100 以免夸大小波动。
+        const spanOf = (arr) => {
+          const lo = Math.min.apply(null, arr), hi = Math.max.apply(null, arr);
+          return { lo, hi, span: hi - lo };
+        };
+        const hpSpan = spanOf(hpPct), mpSpan = spanOf(mpPct);
+        // 全程无波动的序列在图上就是一条贴边的直线，读者会以为是渲染故障。
+        // 在系列名里标注"恒定 N%"，让"没变化"本身成为可读信息。
+        // "看起来是平线"的两种情形：跨度极小（<5 点），或绝大多数点挤在同一值
+        // （长局里玩家靠突破回满，600 回合里可能只有 1 次受伤）。
+        const dominantShare = (arr) => {
+          const c = {}; arr.forEach(v => { c[v] = (c[v] || 0) + 1; });
+          const top = Object.keys(c).reduce((a, b) => (c[a] >= c[b] ? a : b));
+          return c[top] / Math.max(1, arr.length);
+        };
+        const flatLabel = (name, sp, arr, unit) => {
+          if (sp.span === 0) return name + "（恒定 " + sp.hi + unit + "）";
+          if (sp.span < 5) return name + "（几乎恒定 " + sp.hi + unit + "）";
+          const share = dominantShare(arr);
+          if (share >= 0.9) {
+            return name + "（" + Math.round(share * 100) + "% 回合为 " + sp.hi + unit + "）";
+          }
+          return name;
+        };
+        const pctAxis = () => {
+          const lo = Math.min(hpSpan.lo, mpSpan.lo);
+          const hi = Math.max(hpSpan.hi, mpSpan.hi);
+          if (hi - lo > 60) return { min: 0, max: 100 };
+          const pad = Math.max(4, Math.round((hi - lo) * 0.25));
+          return { min: Math.max(0, lo - pad), max: Math.min(100, hi + pad) };
+        };
         const opt = Object.assign(chartBase(pal, 58), {
           xAxis: Object.assign(chartBase(pal).xAxis, { data: ticks }),
           yAxis: [
-            Object.assign(chartBase(pal).yAxis, { name: "%", max: 100, nameTextStyle: { color: pal.text } }),
+            Object.assign(chartBase(pal).yAxis, Object.assign(
+              { name: "%", nameTextStyle: { color: pal.text } }, pctAxis())),
             { type: "value", splitLine: { show: false }, axisLabel: { color: pal.text },
               name: "钱财", nameTextStyle: { color: pal.text, fontSize: 10 } },
-          ],
+          ].concat(codexGrows ? [
+            { type: "value", splitLine: { show: false }, show: false, name: "图鉴" },
+          ] : []),
           series: [
-            { name: "气血%", type: "line", smooth: true, showSymbol: false, data: hpPct,
+            { name: flatLabel("气血%", hpSpan, hpPct, "%"), type: "line", smooth: true, showSymbol: false, data: hpPct,
               lineStyle: { color: pal.hp, width: 2 }, itemStyle: { color: pal.hp },
               areaStyle: { color: pal.hp, opacity: .10 } },
-            { name: "内力%", type: "line", smooth: true, showSymbol: false, data: mpPct,
+            { name: flatLabel("内力%", mpSpan, mpPct, "%"), type: "line", smooth: true, showSymbol: false, data: mpPct,
               lineStyle: { color: pal.mp, width: 2 }, itemStyle: { color: pal.mp } },
             { name: "钱财", type: "line", smooth: true, showSymbol: false, yAxisIndex: 1, data: gold,
               lineStyle: { color: pal.line, width: 2, type: "dashed" }, itemStyle: { color: pal.line } },
-          ],
+          ].concat(codexGrows ? [
+            { name: "图鉴累计", type: "line", smooth: true, showSymbol: false, yAxisIndex: 2, data: codex,
+              lineStyle: { color: pal.bar, width: 1.8, type: "dotted" }, itemStyle: { color: pal.bar } },
+          ] : []),
         });
         c1.setOption(opt, { notMerge: true });
       }

@@ -421,7 +421,9 @@ def economy():
         check_true('trade 数量=%d 被拒' % q, r.get('success') is False)
 
     # tick_market：价格向基准回归、供给恢复
-    st = {'market': {'L': {'it': {'price': 40, 'base_price': 10, 'supply': 5}}}}
+    # 关掉市场扰动：本用例验证的是 OU 回归公式本身（扰动是产品特性，另有覆盖）
+    st = {'tick': 0, 'rng_seed': 0, 'config': {'market_jitter': False},
+          'market': {'L': {'it': {'price': 40, 'base_price': 10, 'supply': 5}}}}
     ECON.tick_market(st)
     it = st['market']['L']['it']
     check('tick_market 价格按 OU 回归', it['price'],
@@ -429,7 +431,8 @@ def economy():
     check('tick_market 供给 +1', it['supply'], 6)
 
     # 供给达到 20 后不再涨
-    st = {'market': {'L': {'it': {'price': 10, 'base_price': 10, 'supply': 20}}}}
+    st = {'tick': 0, 'rng_seed': 0, 'config': {'market_jitter': False},
+          'market': {'L': {'it': {'price': 10, 'base_price': 10, 'supply': 20}}}}
     ECON.tick_market(st)
     check('tick_market 供给封顶 20', st['market']['L']['it']['supply'], 20)
 

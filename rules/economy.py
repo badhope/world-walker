@@ -9,7 +9,6 @@
 """
 
 
-from game_engine.rules.models import ou_price_reverted
 
 DEFAULT_BASE_PRICES = {
     "回灵丹": 50,
@@ -161,10 +160,33 @@ def resolve_trade(state, location_id, item, quantity, is_buyer, entity_id):
     return result
 
 def tick_market(state):
-    """每回合结束时价格缓慢回归 base_price"""
+    """每回合：价格向 base_price 均值回归 + 小幅市场扰动，供给缓慢恢复。
+
+    为什么要有扰动：纯确定性 OU（sigma=0）在价格等于基准时**永远不动**，
+    于是"物价指数"图表永远是一条 1.0 的平线——玩家看不到任何市场动态，
+    面板三张图里有一张等于废图。
+
+    扰动必须仍是**确定性**的（本项目核心不变量：同种子同结果）：
+    用 state 里的 rng_seed/tick/商品键 派生一个 [-1,1] 的伪随机量，
+    不调用 random 模块，因此不会消耗 rng_counter，也不破坏回放一致性。
+    """
+    import hashlib as _hl
+
+    seed = state.get("rng_seed") or 0
+    tick = int(state.get("tick", 0) or 0)
     for loc_id, loc_market in state.get("market", {}).items():
         for item, data in loc_market.items():
-            data["price"] = ou_price_reverted(int(data.get("price", 0)), int(data.get("base_price", data.get("price", 0))))
+            base = int(data.get("base_price", data.get("price", 0)) or 0)
+            cur = int(data.get("price", 0) or 0)
+            # 派生 [-1, 1]：sha256(seed|tick|loc|item) 取前 8 字节归一
+            key = ("%s|%s|%s|%s" % (seed, tick, loc_id, item)).encode("utf-8")
+            h = int.from_bytes(_hl.sha256(key).digest()[:8], "big")
+            jitter = (h / float(1 << 64)) * 2.0 - 1.0
+            # 扰动幅度：基准价的 4%。config.market_jitter=False 时关闭，
+            # 供"价格必须严格等于 OU 闭式解"的预测类用例使用（见 upload_test）。
+            jitter_on = (state.get("config") or {}).get("market_jitter", True)
+            noise = (jitter * max(1.0, base * 0.04)) if jitter_on else 0.0
+            data["price"] = max(1, int(round(cur + (-0.15 * (cur - base)) + noise)))
             # 供给缓慢恢复
             if data["supply"] < 20:
                 data["supply"] += 1

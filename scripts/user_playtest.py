@@ -188,6 +188,9 @@ async def main():
             for ci, p_init in enumerate(cases):
                 st_c = _json.loads(_json.dumps(st0))
                 st_c['market']['临江城']['chun_cha']['price'] = p_init
+                # 关闭市场扰动：本组验证的是 OU 回归公式能否逐点复算，
+                # 叠加随机扰动就无法用手算值比对（扰动是产品特性，用配置关掉）。
+                st_c.setdefault('config', {})['market_jitter'] = False
                 tmp_c = '%s.ou%d.json' % (state_path, ci)
                 with open(tmp_c, 'w', encoding='utf-8') as f:
                     _json.dump(st_c, f, ensure_ascii=False)

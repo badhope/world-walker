@@ -137,6 +137,14 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     
     # 检查击杀
     if def_ent["hp"] <= 0:
+        # 战利品：击败目标后接管其随身钱财。没有这条，玩家打怪毫无经济回报，
+        # 只能坐吃山空（实测 600 回合后 gold=0、买不起药、长期残血）。
+        loot = int(def_ent.get("gold", 0) or 0)
+        if defender_id != "player" and loot > 0:
+            atk_ent["gold"] = int(atk_ent.get("gold", 0) or 0) + loot
+            def_ent["gold"] = 0
+            result["loot_gold"] = loot
+            result["events"].append(f"{atk_ent.get('name', attacker_id)}从{def_ent.get('name', defender_id)}身上取得{loot}钱财")
         if defender_id == "player":
             # 玩家永不真正死亡：气血保底 1，代价是濒死（掉钱 / 心伤 / 留痕）
             _apply_near_death(state, def_ent, result)

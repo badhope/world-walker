@@ -578,7 +578,6 @@ def atomic_write():
     为什么重要：直接 open(path,'w') 若在写入中途被杀，会留下半截 JSON，
     下一次 load_state 直接 JSONDecodeError——存档不可恢复。
     """
-    import json as _json
     import tempfile as _tf
     from game_engine.state_schema import save_state, load_state
 

@@ -169,30 +169,33 @@ def main():
               and scene.get("mood") in ("neutral", "danger", "trade", "social", "growth", "discovery"),
               "mood=%s loc=%s" % (scene.get("mood"), scene.get("location")))
         events = vm.get("events")
-        ok_events = isinstance(events, list) and len(events) == 10
+        ok_events = isinstance(events, list) and len(events) == 9
         if ok_events:
             for e in events:
                 if not all(k in e for k in FIELD_NAMES_EVENT) or e["severity"] not in SEVERITIES:
                     ok_events = False
                     break
-        check("events 契约（9 字段 + severity 合法，10 条全在）", ok_events,
+        # fixture 的 10 条事件里有 1 条 tick 心跳；视图模型按设计把它过滤掉 → 9 条
+        check("events 契约（9 字段 + severity 合法，tick 心跳已滤除 → 9 条）", ok_events,
               "%d 条" % (len(events) if isinstance(events, list) else -1))
+        check("时间线不含 tick 心跳（回合结束只是心跳，不该占时间线）",
+              isinstance(events, list) and not any(e["type"] == "tick" for e in events),
+              "tick 条数=%d" % sum(1 for e in events if e.get("type") == "tick"))
         if isinstance(events, list) and events:
             ids = [e["id"] for e in events]
             check("events.id 稳定（tick:type:短哈希，无重复）",
                   len(set(ids)) == len(ids) and all(len(i.split(":")) == 3 for i in ids),
                   ids[0])
             kinds = {e["type"]: e["kind"] for e in events}
-            check("事件分级覆盖引擎类型（combat/trade/social/karma/breakthrough/travel/emergent/use_item/system/tick）",
+            check("事件分级覆盖引擎类型（tick 除外，共 9 类）",
                   set(kinds) == {"system", "travel", "trade", "social", "karma", "combat",
-                                 "breakthrough", "use_item", "emergent", "tick"}
+                                 "breakthrough", "use_item", "emergent"}
                   and all(kinds.values()),
                   str(sorted(set(kinds.values()))))
             sev = {e["type"]: e["severity"] for e in events}
-            check("严重度映射合理（击杀=danger，突破成功=success，tick=info）",
-                  sev.get("combat") == "danger" and sev.get("breakthrough") == "success"
-                  and sev.get("tick") == "info",
-                  "combat=%s breakthrough=%s tick=%s" % (sev.get("combat"), sev.get("breakthrough"), sev.get("tick")))
+            check("严重度映射合理（击杀=danger，突破成功=success）",
+                  sev.get("combat") == "danger" and sev.get("breakthrough") == "success",
+                  "combat=%s breakthrough=%s" % (sev.get("combat"), sev.get("breakthrough")))
         inv = vm.get("player", {}).get("inventory")
         ok_inv = (isinstance(inv, list) and len(inv) == 2
                   and {i["key"] for i in inv} == {"an_shen_dan", "fei_jian"}

@@ -237,7 +237,7 @@ def _read_png_card(path):
             if key.decode("latin-1", "ignore").strip() in _CARD_PNG_KEYS:
                 try:
                     return json.loads(base64.b64decode(value.strip()).decode("utf-8"))
-                except Exception:
+                except Exception:  # nosec B110 —— 角色卡 tEXt 块可能是任意内容，解析失败就试下一个块
                     pass
         pos += 12 + length
     return None
@@ -345,7 +345,7 @@ def _finish(state: dict, result: dict) -> dict:
     save_state(state, _state_path())
     try:
         record_sample(_state_path(), state)   # 长局态势侧写（写 <state>.viz.jsonl，不碰状态文件）
-    except Exception:  # aqg: top-level boundary —— 侧写是观测数据，任何异常都不许影响对局结算
+    except Exception:  # nosec B110; aqg: top-level boundary —— 侧写是观测数据，任何异常都不许影响对局结算
         pass
     result["_tick"] = state.get("tick", 0)
     return result
@@ -954,7 +954,7 @@ def advance(next_level: str, insight: float = 0.0) -> dict:
     base = 0.45 + 0.25 * max(0.0, min(1.0, float(insight))) + 0.15 * (hp_ratio - 0.5)
     base += 0.10 if flow == "flow" else (-0.10 if flow in ("anxiety", "boredom") else 0.0)
     chance = max(0.05, min(0.95, base - penalty))
-    ok = random.random() < chance
+    ok = random.random() < chance  # nosec B311 —— 游戏骰子，非密码学用途
     if ok:
         player["hp_max"] = int(hp_max * 1.12)
         player["hp"] = player["hp_max"]
@@ -998,7 +998,7 @@ def recall(query: str, limit: int = 8) -> dict:
             for line in f:
                 try:
                     e = json.loads(line)
-                except Exception:
+                except Exception:  # nosec B112 —— 归档文件可能有半行（进程被杀），跳过坏行继续
                     continue
                 if any(t in str(e.get("desc", "")).lower() for t in terms):
                     tail.append(e)

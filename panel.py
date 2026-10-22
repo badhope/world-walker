@@ -92,10 +92,13 @@ def classify_event(ev, milestone_ticks=()):
         kind, severity = "涌现", "warning"
     elif etype == "system":
         kind = "入局"
-    digest = hashlib.sha1(desc.encode("utf-8")).hexdigest()[:8]
+    # 事件 id 只是去重键，不用于任何安全用途（bandit B324 的 High 是误报，
+    # 显式声明 usedforsecurity=False 让扫描器与读者都清楚这一点）
+    digest = hashlib.sha1(desc.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
     return {"id": "%d:%s:%s" % (tick, etype, digest), "tick": tick, "type": etype,
             "kind": kind, "severity": severity, "title": title, "desc": desc,
-            "icon": icon, "milestone": tick in set(milestone_ticks or ())}
+            "icon": icon, "milestone": tick in set(milestone_ticks or ()),
+            "repeat": int(ev.get("repeat", 1) or 1)}
 
 
 def build_scene(state, events, player):
@@ -177,31 +180,34 @@ def build_relations(state, player_id="player"):
     return out
 
 
-def view_model(state_path):
-    """把状态文件转成面板要用的视图模型（只读，不改状态）。"""
-    s = load_state(state_path)
-    record_sample(state_path, s)   # 侧写：态势采样（写的是 <state>.viz.jsonl，不碰状态文件）
-    player = s.get("entities", {}).get("player", {})
-    loc = player.get("location", "")
-    try:
-        insights = {
-            "flow": flow_channel_status(s),
-            "phase": panarchy_phase_check(s),
-            "identity": player_identity_vector(s),
-        }
-    except Exception as e:
-        insights = {"error": str(e)[:120]}
+def _merge_adjacent(events):
+    """把连续相同描述的事件合并为一条，并记 repeat 次数（缺省 1）。
 
-    milestone_ticks = {int(m.get("tick", 0) or 0) for m in (s.get("milestones") or [])}
-    events = [classify_event(e, milestone_ticks)
-              for e in (s.get("event_log") or [])[-EVENTS_CAP:]]
-    karma = sum(e.get("amount", 0) for e in s.get("karma_ledger", [])
-                if e.get("from") == "player" and not e.get("settled"))
+    长局里战斗常连续多回合都是"攻击被闪避"，逐条铺开会让时间线失去信息量。
+    只合并"紧邻且描述完全一致"的条目——不跨类型聚合，不改变事件先后顺序，
+    因此既不掩盖真实叙事节奏，也不会把不同对象的事件混在一起。
+    """
+    out = []
+    for e in events:
+        desc = str(e.get("desc", ""))
+        if out and str(out[-1].get("desc", "")) == desc:
+            out[-1]["repeat"] = int(out[-1].get("repeat", 1)) + 1
+            continue
+        item = dict(e)
+        item["repeat"] = 1
+        out.append(item)
+    return out
 
-    market = []
-    for mLoc, items in sorted(s.get("market", {}).items()):
+
+def _build_market(state):
+    """market: [{location, items:[{key,name,price,base_price,supply,delta,type}]}]。
+
+    按 location / item_key 排序，保证同一状态每次渲染顺序一致（面板每次刷新不该跳）。
+    """
+    out = []
+    for loc, items in sorted((state.get("market") or {}).items()):
         rows = []
-        for key, it in sorted(items.items()):
+        for key, it in sorted((items or {}).items()):
             base = it.get("base_price") or it.get("price") or 0
             price = it.get("price", 0)
             rows.append({
@@ -209,65 +215,139 @@ def view_model(state_path):
                 "base_price": base, "supply": it.get("supply", 0),
                 "delta": price - base, "type": it.get("type", ""),
             })
-        market.append({"location": mLoc, "items": rows})
+        out.append({"location": loc, "items": rows})
+    return out
 
-    codex = s.get("codex", {})
+
+def _build_events(state):
+    """时间线事件：滤掉 tick 心跳、合并相邻重复、再分类。
+
+    返回 (events, milestone_ticks)。里程碑集合要给 classify_event 打标用，
+    因此一并返回，避免调用方重复遍历。
+    """
+    milestone_ticks = {int(m.get("tick", 0) or 0) for m in (state.get("milestones") or [])}
+    raw = [e for e in (state.get("event_log") or []) if e.get("type") != "tick"]
+    events = [classify_event(e, milestone_ticks)
+              for e in _merge_adjacent(raw)[-EVENTS_CAP:]]
+    return events, milestone_ticks
+
+
+def _build_player(state, player, loc, karma):
+    """HUD 用的玩家切片：所有数值保持为数字，格式化留给前端（千分位/百分比）。"""
+    return {
+        "name": player.get("name", "玩家"), "level": player.get("level", ""),
+        "stage": int(player.get("stage", 0) or 0),
+        "stage_max": int((state.get("config") or {}).get("stage_max", 20) or 20),
+        "mind_scars": int(player.get("mind_scars", 0) or 0),
+        "near_death_count": int(player.get("near_death_count", 0) or 0),
+        "hp": player.get("hp", 0), "hp_max": player.get("hp_max", 1),
+        "mp": player.get("mp", 0), "mp_max": player.get("mp_max", 0),
+        "gold": player.get("gold", 0), "location": loc,
+        "currency": str(state.get("currency", "灵石")),
+        "karma": karma,
+        "attrs": player.get("attrs", {}),
+        "inventory": build_inventory(state, player),
+    }
+
+
+def _build_cast(state, loc):
+    """在场 / 别处两类 NPC 切片（面板右栏用）。"""
+    present, others = [], []
+    for eid, ent in (state.get("entities") or {}).items():
+        if eid == "player":
+            continue
+        if not loc or ent.get("location") == loc:
+            present.append({"id": eid, "name": ent.get("name", eid),
+                            "level": ent.get("level", ""),
+                            "hp": ent.get("hp"), "hp_max": ent.get("hp_max"),
+                            "desc": (ent.get("desc") or "")[:90]})
+        else:
+            others.append({"id": eid, "name": ent.get("name", eid),
+                           "location": ent.get("location", "")})
+    return present, others
+
+
+def _build_insights(state):
+    """引擎推导块（心流/相位/身份）。任一计算失败只降级这一块，不让整页崩。"""
+    try:
+        return {
+            "flow": flow_channel_status(state),
+            "phase": panarchy_phase_check(state),
+            "identity": player_identity_vector(state),
+        }
+    except Exception as e:  # aqg: top-level boundary —— 推导失败降级为错误字段，面板仍可用
+        return {"error": str(e)[:120]}
+
+
+def _build_codex(state):
+    """探索图鉴四类（地点/人物/物品/设定词条）。"""
+    c = state.get("codex") or {}
+    return {"locations": c.get("locations", []), "people": c.get("people", []),
+            "items": c.get("items", []), "lore": c.get("lore", [])}
+
+
+def _unsettled_karma(state):
+    return sum(e.get("amount", 0) for e in (state.get("karma_ledger") or [])
+               if e.get("from") == "player" and not e.get("settled"))
+
+
+def _chronicle(state):
+    """编年史：同样是"滤心跳 + 合并重复"，只取最近 24 条并倒序（最新在上）。"""
+    raw = [e for e in (state.get("event_log") or []) if e.get("type") != "tick"]
+    return _merge_adjacent(raw)[-24:][::-1]
+
+
+def _milestones(state):
+    return ["第%d回合·%s" % (m.get("tick", 0), m.get("desc", ""))
+            for m in (state.get("milestones") or [])[-10:]][::-1]
+
+
+def view_model(state_path):
+    """把状态文件转成面板要用的视图模型（只读，不改状态）。
+
+    本函数只做"取数 + 组装"：每个子块由一个 `_build_*` 负责，
+    因此单函数复杂度保持低位，也让每块能独立测试。
+    """
+    state = load_state(state_path)
+    record_sample(state_path, state)   # 侧写：态势采样（写 <state>.viz.jsonl，不碰状态文件）
+    player = (state.get("entities") or {}).get("player") or {}
+    loc = player.get("location", "")
+    karma = _unsettled_karma(state)
+    events, _ = _build_events(state)
+    present, others = _build_cast(state, loc)
+
     return {
         "updated_at": time.strftime("%H:%M:%S"),
-        "world": s.get("world_info", {}) or {},
-        "tick": s.get("tick", 0),
-        "seed": s.get("rng_seed"),
-        "skin": skin_for_world(s),
+        "world": state.get("world_info", {}) or {},
+        "tick": state.get("tick", 0),
+        "seed": state.get("rng_seed"),
+        "skin": skin_for_world(state),
         "meta": {
             "state_path": os.path.abspath(state_path),
             "sidecar": os.path.abspath(series_path(state_path)),
             "read_only": True,
             "panel": "万界·行者 实况主舞台（只读）",
         },
-        "scene": build_scene(s, events, player),
+        "scene": build_scene(state, events, player),
         "events": events,
-        "relations": build_relations(s),
-        "player": {
-            "name": player.get("name", "玩家"), "level": player.get("level", ""),
-            "stage": int(player.get("stage", 0) or 0),
-            "stage_max": int((s.get("config") or {}).get("stage_max", 20) or 20),
-            "mind_scars": int(player.get("mind_scars", 0) or 0),
-            "near_death_count": int(player.get("near_death_count", 0) or 0),
-            "hp": player.get("hp", 0), "hp_max": player.get("hp_max", 1),
-            "mp": player.get("mp", 0), "mp_max": player.get("mp_max", 0),
-            "gold": player.get("gold", 0), "location": loc,
-            "currency": str(s.get("currency", "灵石")),
-            "karma": karma,
-            "attrs": player.get("attrs", {}),
-            "inventory": build_inventory(s, player),
-        },
-        "insights": insights,
+        "relations": build_relations(state),
+        "player": _build_player(state, player, loc, karma),
+        "insights": _build_insights(state),
         "moral": {
             "dims": MORAL_DIMS,
             "values": (player.get("morality") or [0, 0, 0, 0, 0, 0])[:6],
         },
         "karma": karma,
-        "present": [{"id": k, "name": e.get("name", k), "level": e.get("level", ""),
-                     "hp": e.get("hp"), "hp_max": e.get("hp_max"),
-                     "desc": (e.get("desc") or "")[:90]}
-                    for k, e in s.get("entities", {}).items()
-                    if k != "player" and (not loc or e.get("location") == loc)],
-        "others": [{"id": k, "name": e.get("name", k), "location": e.get("location", "")}
-                   for k, e in s.get("entities", {}).items() if k != "player" and e.get("location") != loc],
-        "codex": {
-            "locations": codex.get("locations", []),
-            "people": codex.get("people", []),
-            "items": codex.get("items", []),
-            "lore": codex.get("lore", []),
-        },
-        "lore_total": len(s.get("lore", [])),
-        "market": market,
-        "chronicle": [e for e in s.get("event_log", [])[-24:]][::-1],
-        "milestones": ["第%d回合·%s" % (m.get("tick", 0), m.get("desc", ""))
-                       for m in s.get("milestones", [])[-10:]][::-1],
-        "summaries": len(s.get("summaries", [])),
-        "archived_events": int(s.get("archived_events", 0)),
-        "flags": s.get("world_flags", []),
+        "present": present,
+        "others": others,
+        "codex": _build_codex(state),
+        "lore_total": len(state.get("lore", [])),
+        "market": _build_market(state),
+        "chronicle": _chronicle(state),
+        "milestones": _milestones(state),
+        "summaries": len(state.get("summaries") or []),
+        "archived_events": int(state.get("archived_events", 0)),
+        "flags": state.get("world_flags", []),
     }
 
 

@@ -30,3 +30,9 @@ scripts/_shots/
 scripts/last_stress_report.json
 err*.log
 .aqg/
+
+# Coverage
+.cov
+.coverage
+.cov-gate
+scripts/_ui_shots/

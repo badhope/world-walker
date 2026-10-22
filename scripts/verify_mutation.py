@@ -111,6 +111,20 @@ MUTATIONS = [
 ]
 
 
+def purge_pycache(target_path):
+    """删掉目标文件所在的 __pycache__。
+
+    为什么必须做：变异→跑测试→还原通常在同一个 mtime 秒内完成，
+    Python 的 pyc 失效判断基于 (mtime, size)。还原后 size 与 mtime 都可能
+    与变异前一致，导致后续运行**继续使用变异版的字节码**——
+    表现为"源码正确但函数返回错误值"（本轮就因此让 CI 挂掉）。
+    """
+    import shutil as _sh
+    d = os.path.join(os.path.dirname(target_path), '__pycache__')
+    if os.path.isdir(d):
+        _sh.rmtree(d, ignore_errors=True)
+
+
 def run_script(rel):
     """跑一个验证脚本，返回是否通过（exit 0）。"""
     r = subprocess.run([sys.executable, os.path.join(ROOT, rel)],
@@ -147,6 +161,7 @@ def main():
         try:
             with open(path, 'w', encoding='utf-8', newline='') as f:
                 f.write(src.replace(old, new, 1))
+            purge_pycache(path)          # 变异前清缓存，确保跑到变异版
             passed, tail = run_script(script)
             if passed:
                 survivors.append((mid, desc, script))
@@ -157,6 +172,7 @@ def main():
         finally:
             with open(path, 'w', encoding='utf-8', newline='') as f:
                 f.write(src)
+            purge_pycache(path)          # 还原后清缓存，避免残留变异字节码
 
     print('\n变异：%d 个 · 杀死 %d · 存活 %d' % (total, killed, len(survivors)))
     if total and survivors:

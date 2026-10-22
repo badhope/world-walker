@@ -99,10 +99,11 @@ pip install -e ".[mcp]"
 - 端到端自检：`python scripts/verify_mcp_stdio.py`（55 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
 - 面板契约自检：`python scripts/verify_panel.py`（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
 - 濒死保护自检：`python scripts/verify_near_death.py`（7 项断言：气血保底 1 / 代价落盘 / NPC 死亡语义不变）
-- 公式对拍：`python scripts/verify_formulas.py`（122 项断言：按 docstring 的数学式独立重算 77 个函数并比对，含默认参数与边界分支）
-- 模块分支补测：`python scripts/verify_branches.py`（111 项断言：systems_feedback / narrative_engine / cognition / social_extended / economy 的异常路径与状态分支）
+- 公式对拍：`python scripts/verify_formulas.py`（122 项断言：按 docstring 的数学式独立重算 77 个函数并比对；与 verify_branches 合计覆盖 127/129 个公开函数）
+- 模块分支补测：`python scripts/verify_branches.py`（155 项断言：systems_feedback / narrative_engine / cognition / social_extended / economy 的异常路径与状态分支，并补齐 24 个剩余纯公式）
 - 界面巡检：`python scripts/smoke_ui.py`（13 项：真实 Edge 渲染 + 抽屉可展开 + 满血不误报 + 三档视口无溢出 + 零 JS 错误）
-- 推送门禁：`bash scripts/pre_push_gate.sh`（14 项：编译 / 断言审计 / 五套自检 / 覆盖率 ≥70% / 压测 / 打包 / 界面）
+- 注入防护自检：`python scripts/verify_injection.py`（9 组断言：正常文本不误判 / 8 类注入特征被识别 / 输出带 untrusted 标记）
+- 推送门禁：`bash scripts/pre_push_gate.sh`（15 项：编译 / 断言审计 / 六套自检 / 覆盖率 ≥70% / 压测 / 打包 / 界面）
 - CLI 通道自检：`python scripts/verify_cli.py`（20 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
 - 测试可信度审计：`python scripts/verify_tests.py`（静态审计全部自检断言，拒绝恒真/恒假/弱断言——防止"测试全绿但什么都没测"）
 - 用户视角试玩：`python scripts/user_playtest.py`（47 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）

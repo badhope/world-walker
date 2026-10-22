@@ -18,7 +18,8 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-mcp = ["mcp>=2.0"]
+# 锁定版本见 requirements-mcp.lock.txt（经 OSV 扫描无已知漏洞）
+mcp = ["mcp>=2.3,<3"]
 
 [project.scripts]
 world-walker = "game_engine.engine:main"

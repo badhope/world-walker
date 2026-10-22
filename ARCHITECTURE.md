@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-21 ｜ 文档版本：v1.9
+> 最后更新：2026-10-22 ｜ 文档版本：v1.10
 
 ## 1. 概述与目标
 
@@ -206,6 +206,8 @@ view_model = {
 - [x] T19 第五轮复验修复：修真 bug——死目标可继续攻击（hp=0 仍结算伤害并重复记击杀），rules/combat.py 加守卫；verify_cli 的 12 步 combat 校验从"有返回"改为"命中必有伤害、未中必零伤、血量不越界、至少命中 3 次"（原版 damage=0 与"只在满血命中"变异均漏网）；user_playtest 的 OU 死区修正为实测的 |Δ|<=3（原写 <=1 失实），第三组改到死区外，"死区内冻结"变异现可抓；verify_tests 的常量表改为按函数作用域，并补 AnnAssign/NamedExpr/二次赋值三种绕过；Gitee .workflow/ci.yml 对齐共用脚本；门禁在缺 mcp 时判失败（防"没跑却全绿"）；清理 scripts/ 与 state_schema/init_game 的 8 处死代码 — 验证：门禁 10 项全绿 + 死目标/满血命中/死区冻结三变异全 FAIL
 - [x] T20 公式对拍与死代码清零（第六轮）：新增 scripts/verify_formulas.py——按 docstring 写的数学式**独立重算** 77 个函数再与返回值比对（模型层 OU/Lerner/Cobb-Douglas/Lotka-Volterra/SIR/泊松/热力学、认知前景理论/权重函数/幂律学习、社会扩展、系统论、世界动力学 Lyapunov/复利动力学、文化进化矩阵乘、因果记账），填补 rules/ 129 个公式此前零独立验证的空白；变异验证（Lerner ε±1、认知 α 0.88→0.99、记忆检索权重 0.33→0.44）均被抓；修 engine.py cognition 分支硬传 realm_level=0（任何实体得到同一认知预算，与 MCP status 的 int//5 不一致）及未用变量 spirit；全仓 pyflakes 清零（engine/rules/scripts 共 37 处未用导入与局部变量）— 验证：门禁 11 项全绿 + 公式变异 3/3 FAIL + verify_tests 0/246
 - [x] T14 测试可信度治理：修复 5 处恒真/无效断言（verify_cli 只读探针比较两份副本、verify_panel 侧写 `or True`、皮肤循环 for/else 硬编码 True、stress 归档与回退断言恒真）；新增 scripts/verify_tests.py 做 AST 级断言审计（R1 恒真/R2 常量/R3 恒真下界/R4 弱断言）；修正 world_schema event_log 错误陈述（50→config.event_log_keep 默认 200）— 验证：verify_tests 0 可疑 + 三处变异测试均能被抓出
+
+- [x] T23 审查遗留清零（第七轮）：U-001 MCP 覆盖率可测（scripts/coverage_mcp.py，sitecustomize 子进程插桩，实测 mcp_server 行 34%/分支 37 部分）；U-002 依赖 CVE 用 OSV.dev 逐包查（10 包全 0）；F-008 新增 requirements-mcp.lock.txt + mcp>=2.3,<3；F-015 提示词注入防护（9 条特征扫描 + untrusted/content_policy 标记，标记而非删除保叙事）；F-014 补齐 24 个剩余纯公式（公式覆盖 105→127/129）；覆盖率 81%→87% — 验证：verify_injection 21/21（含 2 个变异）+ verify_branches 155/155 + 门禁 15 项全绿
 
 ## 10. 变更日志（Changelog）
 

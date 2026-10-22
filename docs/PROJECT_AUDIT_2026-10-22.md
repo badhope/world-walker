@@ -89,7 +89,7 @@
 | F-005 | Medium | 高 | 体验（已修） | `panel.html:146` | 三个抽屉在 `<main>` 之后，位于页面底部 1584px 处；点击「图鉴」后内容不在视口内 | Playwright 实测：展开后 `rect.top=1584`，视口高 950 | 已加 `wireDrawers()` 展开时 `scrollIntoView` | 承认差距：NovelAI 的 Lorebook 是侧边栏常驻，本项目是底部折叠，属简化取舍 |
 | F-006 | Medium | 高 | 体验（已修） | `panel.py:221` | 编年史 32% 是「回合N结束」心跳，且连续多条「攻击被闪避」重复，真实事件被挤出 | 实测 500 回合存档：tick 事件 38/120 = 32%；连续 4 条相同描述 | 已过滤 tick + 相邻相同合并显示 `×N` | 关闭差距 |
 | F-007 | Medium | 高 | 安全 | `rules/world_dynamics.py:74,211` | 用 `assert` 做入参长度校验，`python -O` 下会被剥离 → 静默截断 | bandit `B101`；实测 `-O` 模式下不报错直接截断 | 已改为 `raise ValueError` | 关闭差距 |
-| F-008 | Medium | 高 | 供应链 | 仓库根 | 无依赖锁文件（`requirements.lock` / `uv.lock` / `poetry.lock` 均无）；`mcp>=2.0` 是开区间 | `ls *.lock` → 无；`pyproject.toml:21` | 加锁文件或改用 `mcp~=2.3` 等收紧范围 | 承认差距：零依赖是核心设计，`mcp` 是唯一可选依赖，风险面窄 |
+| F-008 | ~~Medium~~ **已修复** | 高 | 供应链 | `requirements-mcp.lock.txt` | 曾无锁文件、`mcp>=2.0` 开区间 | 已新增 `requirements-mcp.lock.txt`（10 个包精确版本，附 OSV 扫描记录）；`pyproject.toml` 收紧为 `mcp>=2.3,<3` | 关闭差距 |
 | F-009 | Medium | 中 | 可观测性 | 全仓 | 无结构化日志、无指标、无 trace。排查只能靠 stdout 打印的 JSON | `grep -rn "logging" --include=*.py` → 0 命中 | 引入 `logging` + 结构化字段（至少 tick/action/结果） | 不适用：本地单机工具，SRE 指标体系不成立（见 §3.3） |
 
 ### Low
@@ -100,14 +100,15 @@
 | F-011 | Low | 高 | 可维护性 | `mcp_server.py` 1287 行 | 单文件承载 31 个 MCP 工具，超千行 | `wc -l` | 按工具组拆分（建局/行动/长局/生态） |
 | F-012 | Low | 高 | 测试 | `scripts/*.py` | 测试文件不叫 `test_*.py`，`pytest` 收集 0 项；无法用生态工具（coverage/pytest-xdist/mutmut） | `pytest` → `collected 0 items` | 在 `pyproject.toml` 加 `[tool.pytest.ini_options] python_files` 或重命名 |
 | F-013 | Low | 高 | 体验 | `panel.py:249` | 时间线里「无名客对沈砚的敬重2.0」文案缺「上升/下降」方向词（敬重已修，亲密未修） | `rules/social.py:72` 的 `direction` 仅在 respect 分支使用 | 亲密文案同样加方向词 |
+| F-015 | ~~High~~ **已修复** | 高 | 安全（AI 应用） | `mcp_server.py:262-300` | 角色卡/世界书是外部文件，内容经 `narration_context` 进入 Agent 上下文，此前无任何注入防护 | 构造含「忽略之前的所有指令」的恶意世界书条目，注入前 `narration_context` 原样返回、无标记 | 新增 `_scan_injection()`（9 条特征）+ 输出侧 `untrusted` 标记与 `content_policy`；**标记而非删除**（保留叙事，data/instruction 分离） | 关闭差距：AI Dungeon/NovelAI 有过滤，此前本项目是短板 |
 | F-014 | Low | 中 | 文档 | `README.md:84` | 声称"77 个函数"，实测 `verify_formulas` 覆盖 77 个（本轮已校准）；但 129 个公开函数中 52 个仍无对拍 | 静态提取比对 | 在 README 明示"未覆盖 52 个"或继续补 |
 
 ### [未确认] 项
 
 | ID | 维度 | 待确认内容 | 需要什么证据 |
 |---|---|---|---|
-| U-001 | 覆盖率 | MCP 服务端（`mcp_server.py` 1287 行）的真实行覆盖率 | 需要 `coverage` 的子进程跟踪（`sitecustomize` 注入）或 `COVERAGE_PROCESS_START` 在 MCP 子进程中生效；本机实测未成功传导 |
-| U-002 | 供应链 | `mcp>=2.0` 及其传递依赖（anyio/httpx/pydantic）是否有已知 CVE | `pip-audit` 连不上 PyPI 漏洞库（`Could not connect to PyPI's vulnerability feed`），需联网环境重跑 |
+| ~~U-001~~ ✅ | 覆盖率 | MCP 服务端真实覆盖率 | **已解决**：新增 `scripts/coverage_mcp.py`，用 `sitecustomize` 在子进程静默挂 coverage（不能用 `coverage run` 包一层——它往 stdout 写告警会打断 MCP 的 JSON-RPC）。实测：**行 34% / 分支 37 个部分覆盖**；`rules` 侧在 MCP 路径下 34%，与零依赖路径的 81% 合并后为 **85%** |
+| ~~U-002~~ ✅ | 供应链 | 依赖 CVE | **已解决**：`pip-audit` 连不上 PyPI，改用 **OSV.dev API** 逐包查询（10 个包：mcp 2.3.0 / anyio 4.15.1 / httpx 0.28.1 / pydantic 2.14.1 / pydantic-core 2.50.1 / starlette 1.8.0 / sse-starlette 3.5.0 / uvicorn 0.54.0 / pydantic-settings 2.16.0 / httpx-sse 0.4.3）→ **已知漏洞 0 条** |
 | U-003 | 性能 | 2000 回合的真实内存峰值 | 未测 RSS；只测了壁钟时间 110–150 秒 |
 | U-004 | 兼容性 | Python 3.10 上的完整 MCP 路径 | 3.10 环境无网装不上 `mcp`；仅验证了零依赖套件全绿与 `BaseExceptionGroup` 不会 NameError |
 
@@ -186,9 +187,9 @@
 
 | 指标 | 红线 | 当前值 | 判定 | 测量方式 |
 |---|---|---|---|---|
-| 行覆盖率（全仓） | ≥90% | **81%**（原 66%） | ⚠️ 未达 90%，但已过硬门禁 70% | `coverage run` 合并五套件（新增 `verify_branches`），`--source=rules,panel,state_schema` |
-| 行覆盖率（MCP 服务端） | ≥80% | `[未确认]` | ⚠️ 未确认 | 子进程覆盖率未传导（U-001） |
-| 分支覆盖率 | ≥85% | `[未确认]` | ⚠️ 未确认 | 未启用 `--branch`；需重跑 |
+| 行覆盖率（全仓） | ≥90% | **87%**（原 66%） | ⚠️ 未达 90%，已过硬门禁 70% | `coverage run` 合并五套件（新增 `verify_branches`），`--source=rules,panel,state_schema` |
+| 行覆盖率（MCP 服务端） | ≥80% | **34%（仅 MCP 路径）** | ⚠️ 未达 80%，但已实测 | `scripts/coverage_mcp.py`（sitecustomize 子进程插桩） |
+| 分支覆盖率 | ≥85% | **MCP 路径：282 分支中 37 个部分覆盖** | ⚠️ 未达 85% | `coverage run --branch`（见 coverage_mcp.py） |
 | 变异分数 | ≥80% | **~75%（估）** | ⚠️ 近似 | 本轮手工执行 20+ 个变异，17 个被抓（见 §6.1）；无自动化变异工具 |
 | 圈复杂度（单函数） | ≤10 | **最高 24**（`classify_event`）；`view_model` 已 35→6 | ⚠️ 仍有 2 个函数超标 | `radon cc -s` |
 | 认知复杂度 | ≤15 | `[未确认]` | ⚠️ 未确认 | 无工具（radon 只有圈复杂度） |
@@ -234,9 +235,9 @@
 | ~~P0~~ ✅ | 补低覆盖模块测试（37%/42%/48% → ≥70%） | F-003 | M | **已完成**：96%/83%/91%；新增 111 条断言经 `verify_tests` 审计（0 可疑） |
 | P1 | 引入自动变异测试 | F-002 | L | 变异分数 ≥80%；CI 中作为独立 job 运行 |
 | P1 | 世界书 GUI 编辑器 | 对标差距 | L | 能在面板内增删改词条并落盘；有 e2e 断言 |
-| P1 | 提示词注入防护（角色卡/世界书内容消毒） | 4.2 设计缺口 | M | 构造恶意卡测试用例被拦截；`verify_mcp_stdio` 增加对应断言 |
-| P2 | 加依赖锁文件 / 收紧 `mcp` 版本 | F-008 | S | `uv.lock` 或 `mcp~=2.3`；CI 用锁文件安装 |
-| P2 | 补齐剩余 52 个函数的公式对拍 | F-014 | M | `verify_formulas` 覆盖 ≥100 个函数 |
+| ~~P1~~ ✅ | 提示词注入防护（角色卡/世界书 untrusted 标记） | F-015 | M | **已完成**：`verify_injection.py` 21/21；两个变异（关掉扫描 / 去掉 untrusted）均 FAIL |
+| ~~P2~~ ✅ | 加依赖锁文件 / 收紧 `mcp` 版本 | F-008 | S | **已完成**：`requirements-mcp.lock.txt` + `mcp>=2.3,<3` |
+| ~~P2~~ ✅ | 补齐剩余函数的公式对拍 | F-014 | M | **已完成**：127/129 个公开函数（98%）；剩 `resolve_combat`/`should_use_system2` 分别在 verify_near_death 与随机测试中覆盖 |
 | P3 | 拆分 `mcp_server.py`（1287 行） | F-011 | M | 按工具组拆成 3–4 个模块，`verify_mcp_stdio` 55/55 不降 |
 | P3 | 亲密文案加方向词 | F-013 | S | `rules/social.py` 亲密分支输出「亲密上升5」；有断言 |
 

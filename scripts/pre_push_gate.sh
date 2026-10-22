@@ -69,6 +69,7 @@ fi
 # MCP 相关：只有装了 mcp SDK 才跑（与 CI 的 mcp 作业对应）
 if "$PY" -c "import mcp" >/dev/null 2>&1; then
   step "MCP 端到端自检" "$PY" scripts/verify_mcp_stdio.py
+  step "提示词注入防护（角色卡/世界书 untrusted 标记）" "$PY" scripts/verify_injection.py
   step "玩家视角试玩" "$PY" scripts/user_playtest.py
   step "长局压力测试（500 轮，对齐 CI 的 mcp 作业）" "$PY" scripts/stress_freeplay.py 500
 else

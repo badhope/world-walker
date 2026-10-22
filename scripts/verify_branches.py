@@ -443,6 +443,130 @@ def economy():
     check_true('init_market 缺省给三种常用药', len(m2) == 3, str(sorted(m2)))
 
 
+
+# ───────────────────── 剩余公式补测 ─────────────────────
+def remaining_formulas():
+    """补齐 verify_formulas 未覆盖、但属于纯公式的函数（不依赖 state）。"""
+    from game_engine.rules import world_dynamics as W
+
+    # --- 进化动力学：Hamilton 家族（判定式，返回 bool）---
+    # kin_selection: r > c/b
+    check_true('kin_selection r>c/b 为真', W.kin_selection(0.6, 2.0, 10.0) is True)
+    check_true('kin_selection r<c/b 为假', W.kin_selection(0.1, 2.0, 10.0) is False)
+    check_true('kin_selection benefit=0 返回 False', W.kin_selection(0.9, 1.0, 0.0) is False)
+
+    # direct_reciprocity: w > c/b
+    check_true('direct_reciprocity w>c/b 为真', W.direct_reciprocity(0.8, 2.0, 10.0) is True)
+    check_true('direct_reciprocity w<c/b 为假', W.direct_reciprocity(0.1, 2.0, 10.0) is False)
+
+    # network_selection: b/c > k
+    check_true('network_selection b/c>k 为真', W.network_selection(10.0, 1.0, 5) is True)
+    check_true('network_selection b/c<k 为假', W.network_selection(10.0, 1.0, 50) is False)
+    check_true('network_selection cost=0 返回 True', W.network_selection(10.0, 0.0, 5) is True)
+
+    # inclusive_fitness: IF = d + Σr·b − Σr·c
+    check('inclusive_fitness 闭式复算',
+          W.inclusive_fitness(1.0, [5.0, 3.0], [1.0, 2.0], [0.5, 0.25]),
+          1.0 + (0.5 * 5.0 + 0.25 * 3.0) - (0.5 * 1.0 + 0.25 * 2.0))
+
+    # hawk_dove_payoff 四象限
+    V, C = 4.0, 10.0
+    check('hawk_dove H vs H = (V-C)/2', W.hawk_dove_payoff('H', 'H', V, C), (V - C) / 2)
+    check('hawk_dove H vs D = V', W.hawk_dove_payoff('H', 'D', V, C), V)
+    check('hawk_dove D vs H = 0', W.hawk_dove_payoff('D', 'H', V, C), 0.0)
+    check('hawk_dove D vs D = V/2', W.hawk_dove_payoff('D', 'D', V, C), V / 2)
+
+    # is_ess：对角线高时是 ESS
+    payoff = [[2.0, 3.0], [1.0, 0.0]]
+    check_true('is_ess 策略0（对角占优）为 ESS', W.is_ess(payoff, 0) is True)
+    check_true('is_ess 策略1 非 ESS', W.is_ess(payoff, 1) is False)
+
+    # multilevel_selection：返回 (between, within)
+    betw, with_ = W.multilevel_selection([1.0, 3.0], [1.0, 1.0], [10, 10], [0.1, 0.1])
+    check_true('multilevel_selection 返回二元组', isinstance(betw, float) and isinstance(with_, float),
+               'between=%s within=%s' % (round(betw, 4), round(with_, 4)))
+    check('multilevel_selection 等适应度时组间为 0', betw, 0.0)
+    check('multilevel_selection 空组返回 (0,0)', W.multilevel_selection([], [], [], []), (0.0, 0.0))
+
+    # red_queen_field：点积 + 长度校验
+    check('red_queen_field 点积', W.red_queen_field([0.5, 2.0], [4.0, 3.0]), 0.5 * 4.0 + 2.0 * 3.0)
+    check_raises('red_queen_field 不等长抛 ValueError',
+                 lambda: W.red_queen_field([1.0], [1.0, 2.0]))
+
+    # panarchy_tick：三支路径
+    jump = W.panarchy_tick(0.7, 0.5, event_impact=0.8)
+    check('panarchy_tick 大冲击 → Ω', jump.get('phase'), 'Ω')
+    collapse = W.panarchy_tick(0.9, 0.9, event_impact=0.0)
+    check('panarchy_tick 过僵化 → Ω', collapse.get('phase'), 'Ω')
+    normal = W.panarchy_tick(0.3, 0.3, event_impact=0.0)
+    check('panarchy_tick 正常推进', normal.get('phase'), 'progress')
+
+    # ou_process / extinction_check：含随机，只验值域与边界
+    z = W.ou_process(1.0, 0.0, 0.5, 0.0, 1.0)
+    check('ou_process sigma=0 无随机项', z, 0.5)   # z + (-0.5*(1-0)*1) = 0.5
+    check_true('extinction_check 返回布尔',
+               W.extinction_check(0.5) in (True, False))
+    check_true('extinction_check hazard=0 永不灭绝',
+               all(W.extinction_check(0.0) is False for _ in range(20)))
+    check_true('extinction_check hazard=1 必然灭绝',
+               all(W.extinction_check(1.0) is True for _ in range(20)))
+
+    # --- 文化进化 ---
+    from game_engine.rules import cultural_evolution as CE2
+    # adopt_probability = g_c · p^α · π^β · s^γ
+    check('adopt_probability 闭式复算',
+          CE2.adopt_probability(1.0, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0), 0.125)
+    # body_without_organs = ω − Σ约束 + Σ解域
+    check('body_without_organs 闭式复算',
+          CE2.body_without_organs(10.0, [2.0, 3.0], [1.0]), 6.0)
+    # sect_cultural_fitness = α·(1/Std) + β·Coop + γ·(I/I_mean)
+    check('sect_cultural_fitness 闭式复算',
+          CE2.sect_cultural_fitness(2.0, 0.5, 3.0, 1.5, 0.33, 0.33, 0.34),
+          0.33 * (1 / 2.0) + 0.33 * 0.5 + 0.34 * (3.0 / 1.5))
+    # vertical_transmission_prob 三分支
+    check('vertical_transmission 双亲', CE2.vertical_transmission_prob(True, False, 0.1), 0.9)
+    check('vertical_transmission 单亲', CE2.vertical_transmission_prob(False, True, 0.1), 0.45)
+    check('vertical_transmission 无亲', CE2.vertical_transmission_prob(False, False, 0.1), 0.1)
+    # method_transmission 含高斯随机：只验均值的合理范围
+    vals = [CE2.method_transmission(10.0, 100.0, 0.0) for _ in range(5)]
+    check_true('method_transmission sigma=0 无扰动', all(abs(v - 10.0) < 1e-9 for v in vals),
+               str([round(v, 6) for v in vals[:3]]))
+
+    # --- 社会扩展补 ---
+    from game_engine.rules import social_extended as SX2
+    # cross_identity_tension：<2 个身份返回 0
+    check('cross_identity_tension 单身份为 0', SX2.cross_identity_tension([{'a': 1}], {}), 0.0)
+    # 身份字典的键是 group；冲突矩阵按 (group_i, group_j) 取，取不到按 0
+    check('cross_identity_tension 两身份冲突值',
+          SX2.cross_identity_tension(
+              [{'group': 'a'}, {'group': 'b'}], {('a', 'b'): 1.0}), 1.0)
+    check('cross_identity_tension 无冲突记录为 0',
+          SX2.cross_identity_tension([{'group': 'a'}, {'group': 'b'}], {}), 0.0)
+    # justice_response 四路径
+    paths = {SX2.justice_response(b, t, e) for b, t, e in
+             [(1.0, 1.0, 0.0), (0.5, 0.5, 0.5), (0.1, 0.1, 0.9), (0.3, 0.3, 0.5)]}
+    check_true('justice_response 覆盖多个路径', len(paths) >= 2, str(sorted(paths)))
+    # moral_circle_penetration
+    check('moral_circle_penetration 闭式复算',
+          SX2.moral_circle_penetration(1.0, [0.1, 0.2], [0.05], 1.0), 1.0 * 1.3 * 0.95)
+    # moral_vector_update：指数衰减
+    upd = SX2.moral_vector_update([1.0, 0.0], [0.0, 1.0], 90, tau=90.0)
+    g = math.exp(-1.0)
+    check_true('moral_vector_update 指数衰减',
+               abs(upd[0] - 1.0 * g) < 1e-9 and abs(upd[1] - (1 - g)) < 1e-9,
+               str([round(v, 4) for v in upd]))
+    # npc_influence_on_player：点积
+    check('npc_influence_on_player 点积',
+          SX2.npc_influence_on_player([0.5, 0.8], [2.0, 1.0]), 1.8)
+
+    # --- 认知补 ---
+    from game_engine.rules import cognition as CG2
+    check('moral_bias_by_distance 近亲 2.5', CG2.moral_bias_by_distance('close_victim'), 2.5)
+    check('moral_bias_by_distance 统计口径 0.3', CG2.moral_bias_by_distance('statistical_victim'), 0.3)
+    check('moral_bias_by_distance 未知输入回退为 1.0（中性）',
+          CG2.moral_bias_by_distance('unknown'), 1.0)
+
+
 def main():
     print('── systems_feedback ──')
     systems()
@@ -454,6 +578,8 @@ def main():
     social_extra()
     print('\n── economy ──')
     economy()
+    print('\n── 剩余公式补测 ──')
+    remaining_formulas()
 
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))

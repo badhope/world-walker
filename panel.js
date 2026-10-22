@@ -370,6 +370,17 @@
     li.appendChild(t);
     li.appendChild(y);
     li.appendChild(d);
+    // 条目可点开详情：时间线只给一行摘要，玩家常需要看完整事件
+    // （时间/类型/是否大事记/重复次数）。复用事件弹窗，不新造一层 UI。
+    li.tabIndex = 0;
+    li.setAttribute("role", "button");
+    li.style.cursor = "pointer";
+    li.title = "点击查看事件详情";
+    const openIt = (ev) => { ev.preventDefault(); openDialog(e, li); };
+    li.addEventListener("click", openIt);
+    li.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") openIt(ev);
+    });
     return li;
   }
 

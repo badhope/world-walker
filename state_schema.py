@@ -39,7 +39,8 @@
 }
 """
 
-import json, random
+import json, os, random
+import shutil as _shutil
 
 def new_game():
     """返回一个初始状态"""
@@ -95,8 +96,30 @@ def save_state(state, path):
             pass
         if cfg.get("archive", True):
             state["archived_events"] = int(state.get("archived_events", 0)) + len(overflow)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(state, f, ensure_ascii=False, indent=2)
+    # 原子写入：先写同目录临时文件，再 os.replace 覆盖。
+    # 直接 open(path,'w') 的话，进程在任何时刻被杀都会留下半截 JSON，
+    # 下一次 load_state 直接 JSONDecodeError —— 存档不可恢复（已用截断文件验证）。
+    # 同时保留一份 .bak：即便原子替换本身失败，也还有上一版可回退。
+    import tempfile as _tf
+    d = os.path.dirname(os.path.abspath(path)) or "."
+    fd, tmp = _tf.mkstemp(prefix=".ww_state_", suffix=".tmp", dir=d)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        if os.path.exists(path):
+            try:
+                _shutil.copyfile(path, path + ".bak")
+            except OSError:  # aqg: top-level boundary —— 备份失败不该阻断本次保存
+                pass
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 def seed_rng(state) -> None:
     """按状态里的 rng_seed + rng_counter 重置全局随机源（带种子可复现）。

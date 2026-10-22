@@ -116,6 +116,9 @@ def rich_state():
             {"tick": 4, "type": "social", "desc": "老王对阿吉好感提升"},
             {"tick": 5, "type": "karma", "desc": "阿吉(偷窃) 欠 老王 15"},
             {"tick": 6, "type": "combat", "desc": "独眼狼被击败了"},
+            {"tick": 6, "type": "combat", "desc": "阿吉的攻击被独眼狼闪避"},
+            {"tick": 6, "type": "combat", "desc": "阿吉的攻击被独眼狼闪避"},
+            {"tick": 6, "type": "combat", "desc": "阿吉的攻击被独眼狼闪避"},
             {"tick": 7, "type": "breakthrough", "desc": "突破至 练气四层"},
             {"tick": 8, "type": "use_item", "desc": "使用安神丹×1（自备（买入时已付））：回复10气血"},
             {"tick": 9, "type": "emergent", "desc": "山雨欲来：商路收紧"},
@@ -169,18 +172,25 @@ def main():
               and scene.get("mood") in ("neutral", "danger", "trade", "social", "growth", "discovery"),
               "mood=%s loc=%s" % (scene.get("mood"), scene.get("location")))
         events = vm.get("events")
-        ok_events = isinstance(events, list) and len(events) == 9
+        ok_events = isinstance(events, list) and len(events) == 10
         if ok_events:
             for e in events:
                 if not all(k in e for k in FIELD_NAMES_EVENT) or e["severity"] not in SEVERITIES:
                     ok_events = False
                     break
         # fixture 的 10 条事件里有 1 条 tick 心跳；视图模型按设计把它过滤掉 → 9 条
-        check("events 契约（9 字段 + severity 合法，tick 心跳已滤除 → 9 条）", ok_events,
+        check("events 契约（9 字段 + severity 合法，tick 滤除且重复合并后 10 条）", ok_events,
               "%d 条" % (len(events) if isinstance(events, list) else -1))
         check("时间线不含 tick 心跳（回合结束只是心跳，不该占时间线）",
               isinstance(events, list) and not any(e["type"] == "tick" for e in events),
               "tick 条数=%d" % sum(1 for e in events if e.get("type") == "tick"))
+        # 相邻重复合并：fixture 里有 3 条连续的"攻击被闪避"，合并后应剩 1 条且 repeat=3
+        _dups = [e for e in (events or []) if e.get("repeat", 1) > 1]
+        _adjacent_same = sum(1 for a, b in zip(events or [], (events or [])[1:])
+                             if a.get("desc") == b.get("desc"))
+        check("相邻重复事件已合并（repeat 计数生效）",
+              bool(_dups) and _adjacent_same == 0,
+              "合并 %d 组 · 相邻相同残留 %d" % (len(_dups), _adjacent_same))
         if isinstance(events, list) and events:
             ids = [e["id"] for e in events]
             check("events.id 稳定（tick:type:短哈希，无重复）",
@@ -192,10 +202,10 @@ def main():
                                  "breakthrough", "use_item", "emergent"}
                   and all(kinds.values()),
                   str(sorted(set(kinds.values()))))
-            sev = {e["type"]: e["severity"] for e in events}
+            sev_pairs = {(e["type"], e["severity"]) for e in events}
             check("严重度映射合理（击杀=danger，突破成功=success）",
-                  sev.get("combat") == "danger" and sev.get("breakthrough") == "success",
-                  "combat=%s breakthrough=%s" % (sev.get("combat"), sev.get("breakthrough")))
+                  ("combat", "danger") in sev_pairs and ("breakthrough", "success") in sev_pairs,
+                  str(sorted(sev_pairs)))
         inv = vm.get("player", {}).get("inventory")
         ok_inv = (isinstance(inv, list) and len(inv) == 2
                   and {i["key"] for i in inv} == {"an_shen_dan", "fei_jian"}

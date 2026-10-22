@@ -386,6 +386,14 @@ async def run(turns: int, quiet: bool = False):
             real_errors = sum(errors.values())
             state_size = os.path.getsize(state_path) if os.path.exists(state_path) else 0
 
+            # 内存占用：长局最怕"跑几百轮后 RSS 一路涨"。用 psutil 取本进程 RSS；
+            # 没有 psutil 时退化为 None（不阻断压测）。
+            try:
+                import psutil
+                rss_mb = round(psutil.Process(os.getpid()).memory_info().rss / 1048576, 1)
+            except Exception:  # aqg: top-level boundary —— 可选依赖缺失不该影响压测结论
+                rss_mb = None
+
             report = {
                 'turns_requested': turns,
                 'turns_completed': turn,
@@ -398,6 +406,7 @@ async def run(turns: int, quiet: bool = False):
                 'breakthroughs_attempted': player.stage_target,
                 'new_locations': sorted(new_locs_seen),
                 'state_file_bytes': state_size,
+                'rss_mb': rss_mb,
                 'invariant_failures': invariant_fail[:50],
                 'invariant_fail_count': len(invariant_fail),
                 'tmp': tmp,

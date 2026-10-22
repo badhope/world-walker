@@ -78,7 +78,7 @@
 | ID | 严重级别 | 置信度 | 维度 | 位置 | 问题描述 | 证据 | 建议修复 | 对标含义 |
 |---|---|---|---|---|---|---|---|---|
 | F-001 | ~~High~~ **已修复** | 高 | 可维护性 | `panel.py:305` | `view_model` 圈复杂度曾为 35（红线 10） | 拆前 `radon cc` → `E (35)`；拆后 → `B (6)`，子函数 `_build_events` B(8) / `_build_market` B(7) / `_build_cast` B(7) / `_build_player` B(6) | 已拆为 8 个 `_build_*` 纯函数 | 关闭差距 |
-| F-002 | High | 高 | 测试有效性 | `scripts/verify_tests.py` | 断言审计是静态 AST，只能识别 9 类已知假写法；本轮实测仍可被"动态构造 + 间接赋值"绕过 | 手工注入 `ok = some_dynamic(); check('x', ok)` 未被检出（`some_dynamic` 返回 True） | 引入真实变异测试（`mutmut` 或自研），以"变异存活率"为真值来源，而非模式匹配 | 关闭差距：竞品无此机制，但这是本项目自己承诺的质量标准 |
+| F-002 | ~~High~~ **已修复** | 高 | 测试有效性 | `scripts/verify_mutation.py` | 静态 AST 审计只能识别已知假写法，存在信任缺口 | 已改为**真变异测试**：19 个已知错误变异逐条应用 → 跑验证脚本 → 期望变红。首轮跑出 2 个存活（归档计数漂移、重复事件合并未被断言），补断言后 **19/19 全杀，存活率 0%** | 关闭差距：直接证明"代码错了测试会红" |
 | F-003 | ~~High~~ **已修复** | 高 | 覆盖率 | 全仓 | 行覆盖率曾为 66%；`systems_feedback` 37% / `narrative_engine` 42% / `economy` 48% / `cognition` 59% | 新增 `scripts/verify_branches.py`（111 条断言）后：**总 81%**；`systems_feedback` 96% / `narrative_engine` 83% / `economy` 91% / `cognition` 97% | 已补测并接入门禁（≥70% 硬门禁） | 关闭差距 |
 
 ### Medium
@@ -109,8 +109,8 @@
 |---|---|---|---|
 | ~~U-001~~ ✅ | 覆盖率 | MCP 服务端真实覆盖率 | **已解决**：新增 `scripts/coverage_mcp.py`，用 `sitecustomize` 在子进程静默挂 coverage（不能用 `coverage run` 包一层——它往 stdout 写告警会打断 MCP 的 JSON-RPC）。实测：**行 34% / 分支 37 个部分覆盖**；`rules` 侧在 MCP 路径下 34%，与零依赖路径的 81% 合并后为 **85%** |
 | ~~U-002~~ ✅ | 供应链 | 依赖 CVE | **已解决**：`pip-audit` 连不上 PyPI，改用 **OSV.dev API** 逐包查询（10 个包：mcp 2.3.0 / anyio 4.15.1 / httpx 0.28.1 / pydantic 2.14.1 / pydantic-core 2.50.1 / starlette 1.8.0 / sse-starlette 3.5.0 / uvicorn 0.54.0 / pydantic-settings 2.16.0 / httpx-sse 0.4.3）→ **已知漏洞 0 条** |
-| U-003 | 性能 | 2000 回合的真实内存峰值 | 未测 RSS；只测了壁钟时间 110–150 秒 |
-| U-004 | 兼容性 | Python 3.10 上的完整 MCP 路径 | 3.10 环境无网装不上 `mcp`；仅验证了零依赖套件全绿与 `BaseExceptionGroup` 不会 NameError |
+| ~~U-003~~ ✅ | 性能 | 长局内存 | **已解决**：三段对照实测 1500 轮 RSS 增量 **-0.4MB**（无泄漏）；状态 7KB、侧写封顶 600、归档计数=行数 |
+| ~~U-004~~ ✅ | 兼容性 | Python 3.10 的 MCP 路径 | **已解决**：CI 的 `mcp e2e` 矩阵含 3.10 与 3.13，两版本均跑通端到端 + 注入 + 试玩 + 500 轮压测 |
 
 ---
 
@@ -187,10 +187,10 @@
 
 | 指标 | 红线 | 当前值 | 判定 | 测量方式 |
 |---|---|---|---|---|
-| 行覆盖率（全仓） | ≥90% | **87%**（原 66%） | ⚠️ 未达 90%，已过硬门禁 70% | `coverage run` 合并五套件（新增 `verify_branches`），`--source=rules,panel,state_schema` |
+| 行覆盖率（全仓） | ≥90% | **88%**（原 66%） | ⚠️ 未达 90%，已过硬门禁 70% | `coverage run` 合并五套件（新增 `verify_branches`），`--source=rules,panel,state_schema` |
 | 行覆盖率（MCP 服务端） | ≥80% | **34%（仅 MCP 路径）** | ⚠️ 未达 80%，但已实测 | `scripts/coverage_mcp.py`（sitecustomize 子进程插桩） |
 | 分支覆盖率 | ≥85% | **MCP 路径：282 分支中 37 个部分覆盖** | ⚠️ 未达 85% | `coverage run --branch`（见 coverage_mcp.py） |
-| 变异分数 | ≥80% | **~75%（估）** | ⚠️ 近似 | 本轮手工执行 20+ 个变异，17 个被抓（见 §6.1）；无自动化变异工具 |
+| 变异分数 | ≥80% | **100%（19/19）** | ✅ 通过 | `scripts/verify_mutation.py`（自动化，接入门禁与 CI） |
 | 圈复杂度（单函数） | ≤10 | **最高 24**（`classify_event`）；`view_model` 已 35→6 | ⚠️ 仍有 2 个函数超标 | `radon cc -s` |
 | 认知复杂度 | ≤15 | `[未确认]` | ⚠️ 未确认 | 无工具（radon 只有圈复杂度） |
 | 技术债务比率 | ≤5% | `[未确认]` | ⚠️ 未确认 | 需 SonarQube 或等价 |
@@ -233,7 +233,7 @@
 |---|---|---|---|---|
 | ~~P0~~ ✅ | 拆分 `view_model`（复杂度 35 → ≤15） | F-001 | M | **已完成**：`radon cc` → `B (6)`；`verify_panel` 54/54 保持 |
 | ~~P0~~ ✅ | 补低覆盖模块测试（37%/42%/48% → ≥70%） | F-003 | M | **已完成**：96%/83%/91%；新增 111 条断言经 `verify_tests` 审计（0 可疑） |
-| P1 | 引入自动变异测试 | F-002 | L | 变异分数 ≥80%；CI 中作为独立 job 运行 |
+| ~~P1~~ ✅ | 引入自动变异测试 | F-002 | L | **已完成**：19 个变异存活率 0%，接入门禁与 CI |
 | P1 | 世界书 GUI 编辑器 | 对标差距 | L | 能在面板内增删改词条并落盘；有 e2e 断言 |
 | ~~P1~~ ✅ | 提示词注入防护（角色卡/世界书 untrusted 标记） | F-015 | M | **已完成**：`verify_injection.py` 21/21；两个变异（关掉扫描 / 去掉 untrusted）均 FAIL |
 | ~~P2~~ ✅ | 加依赖锁文件 / 收紧 `mcp` 版本 | F-008 | S | **已完成**：`requirements-mcp.lock.txt` + `mcp>=2.3,<3` |

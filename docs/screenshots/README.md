@@ -19,8 +19,10 @@
 
 截图所用状态：
 
-- 来源为 `scripts/stress_freeplay.py` 跑出的自由玩家存档（玄枢界设定包，主角沈砚，
-  回合 500、事件 120 条、大事记 12 条、摘要 20 条、归档 1318 条，侧写曲线为真实走势）。
+- 来源为 `scripts/stress_freeplay.py 500` 跑出的自由玩家存档（玄枢界设定包，主角沈砚，
+  回合 500；事件/归档条数以截图当时的状态文件为准，侧写曲线为真实走势）。
+  这一版截图在 v0.9 定位闭环之后重截：世界相位、势力存量、六维道德（只显示非零维）
+  与 `terms` 覆盖都在真实渲染里。
 - 截图前由 `scripts/audit_ui.py` 逐项断言（18 项）：页签标题含品牌、`data-skin`
   与请求皮肤一致、回合号/主角名/气血渲染、图表 canvas 尺寸有效、时间线有事件、
   三个抽屉可展开且滚入视口、帮助弹窗含术语表与状态文件路径、
@@ -32,5 +34,6 @@
 ```bash
 python scripts/stress_freeplay.py 500          # 造一份真实长局存档
 python panel.py --state <存档> --port 8803     # 起只读面板
-python scripts/audit_ui.py --url http://127.0.0.1:8803   # 断言 + 截图到 scripts/_ui_shots/
+python scripts/audit_ui.py --url http://127.0.0.1:8803   # 断言 18 项 + 截图到 scripts/_ui_shots/
+# 再把 01-stage / 02-drawer-* / 03-help / 04-responsive-* 复制到本目录对应文件名
 ```

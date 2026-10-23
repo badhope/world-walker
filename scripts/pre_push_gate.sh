@@ -42,14 +42,15 @@ step "濒死保护自检" "$PY" scripts/verify_near_death.py
 step "规则内核公式对拍（77 个函数的闭式复算）" "$PY" scripts/verify_formulas.py
 step "模块分支补测（systems/narrative/cognition/economy）" "$PY" scripts/verify_branches.py
 step "长局内存稳定性（三段对照，查泄漏）" "$PY" scripts/verify_memory.py 300
+step "世界演化与结算耦合（自演化/相位/心流/道德/术语/正文/台账）" "$PY" scripts/verify_world.py
 
-# 覆盖率门禁：核心域 ≥70%（当前 81%）。装了 coverage 才跑。
+# 覆盖率门禁：核心域 ≥70%（当前 76%，含本轮新增的 world_evolution/progression）。装了 coverage 才跑。
 if "$PY" -c "import coverage" >/dev/null 2>&1; then
   say $'
 === 覆盖率门禁（核心域 ≥70%）==='
   rm -rf "$ROOT/.cov-gate"
   COV_OK=1
-  for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death; do
+  for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world; do
     "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema "$ROOT/scripts/$suite.py" >/dev/null 2>&1 || COV_OK=0
   done
   PCT=$("$PY" -m coverage report --data-file="$ROOT/.cov-gate" 2>/dev/null         | awk '/^TOTAL/ {gsub("%","",$NF); print $NF}')

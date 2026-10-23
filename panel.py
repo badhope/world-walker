@@ -102,11 +102,34 @@ def classify_event(ev, milestone_ticks=()):
 
 
 def build_scene(state, events, player):
-    """叙事主舞台标题/描述/氛围：只用状态里已有的文字，不编造剧情。"""
+    """叙事主舞台标题/描述/氛围：只用状态里已有的文字，不编造剧情。
+
+    正文优先级（越靠前越"当下"）：
+      1. `prose` 最新一段（宿主用 publish_prose 写的本回合正文）
+      2. `places[当前地点].desc`（travel 或 publish_prose 记下的本地描写）
+      3. 最新章节摘要 `summaries[-1]`
+      4. `world_info.location_desc`（开场描写）
+      5. 最近事件文案
+    这样移动之后面板显示的是新地方的描写，而不是永远停在开场那句。
+    """
     world = state.get("world_info", {}) or {}
     loc = str(player.get("location", "") or "")
+    prose = state.get("prose") or []
+    places = state.get("places") or {}
     summaries = state.get("summaries") or []
-    desc = str(summaries[-1].get("text", "") if summaries else "") or str(world.get("location_desc", "") or "")
+    desc = ""
+    prose_tick = None
+    if prose and isinstance(prose[-1], dict):
+        last = prose[-1]
+        if not loc or not last.get("location") or last.get("location") == loc:
+            desc = str(last.get("text") or "")
+            prose_tick = last.get("tick")
+    if not desc and loc:
+        desc = str((places.get(loc) or {}).get("desc") or "")
+    if not desc:
+        desc = str(summaries[-1].get("text", "") if summaries else "")
+    if not desc:
+        desc = str(world.get("location_desc", "") or "")
     focus = None
     for e in reversed(events):
         if e["severity"] != "info":
@@ -130,7 +153,8 @@ def build_scene(state, events, player):
         elif last["severity"] == "success":
             mood = "growth"
     return {"location": loc, "title": loc or str(world.get("name", "") or ""),
-            "description": desc, "mood": mood, "focus_event": focus}
+            "description": desc, "mood": mood, "focus_event": focus,
+            "prose_tick": prose_tick}
 
 
 def build_inventory(state, player):
@@ -247,7 +271,67 @@ def _build_player(state, player, loc, karma):
         "karma": karma,
         "attrs": player.get("attrs", {}),
         "inventory": build_inventory(state, player),
+        "tier": _player_tier(state, player),
+        "tier_max": len((state.get("config") or {}).get("level_tiers") or []) or None,
     }
+
+
+def _player_tier(state, player):
+    """等级阶梯序号（配置了 level_tiers 才有意义；否则返回 None 让前端回退到 stage）。"""
+    try:
+        from game_engine.rules.progression import level_tier
+        if not (state.get("config") or {}).get("level_tiers"):
+            return None
+        return level_tier(state, player)
+    except Exception:  # aqg: top-level boundary —— 阶梯坏了退回 stage 展示
+        return None
+
+
+DEFAULT_TERMS = {
+    "hero": "行者",
+    "level": "境界",
+    "location": "所在",
+    "hp": "气血",
+    "mp": "内力",
+    "gold": "钱财",
+    "flow": "心流",
+    "phase": "世界相位",
+    "karma": "未清因果债",
+    "inventory": "随身",
+    "chronicle": "编年史",
+    "present": "在场",
+    "relations": "人情关系",
+    "territory": "境地",
+    "track": "修行轨",
+    "stage": "阶段",
+    "codex": "探索图鉴",
+    "market": "市场行情",
+    "milestones": "大事记",
+    "factions": "势力",
+    "rumors": "传闻",
+    "culture": "风气",
+}
+
+
+def build_terms(state):
+    """面板术语表：默认中文修真词 + 设定包 `ui.terms` 覆盖（世界观无关的最后一公里）。"""
+    terms = dict(DEFAULT_TERMS)
+    ui = state.get("ui") or {}
+    override = ui.get("terms") if isinstance(ui.get("terms"), dict) else {}
+    for k, v in (override or {}).items():
+        key = str(k)
+        if key in terms and str(v).strip():
+            terms[key] = str(v)[:24]
+    return terms
+
+
+def build_world(state):
+    """世界侧摘要（势力/相位/谣言/风气/物价指数）：面板右栏与顶部徽章用。"""
+    try:
+        from game_engine.rules.world_evolution import world_summary
+        return world_summary(state)
+    except Exception as e:  # aqg: top-level boundary —— 世界侧坏了不影响面板其余部分
+        return {"error": str(e)[:120]}
 
 
 def _build_cast(state, loc):
@@ -322,6 +406,7 @@ def view_model(state_path):
         "tick": state.get("tick", 0),
         "seed": state.get("rng_seed"),
         "skin": skin_for_world(state),
+        "terms": build_terms(state),
         "meta": {
             "state_path": os.path.abspath(state_path),
             "sidecar": os.path.abspath(series_path(state_path)),
@@ -333,9 +418,11 @@ def view_model(state_path):
         "relations": build_relations(state),
         "player": _build_player(state, player, loc, karma),
         "insights": _build_insights(state),
+        "world_state": build_world(state),
         "moral": {
             "dims": MORAL_DIMS,
             "values": (player.get("morality") or [0, 0, 0, 0, 0, 0])[:6],
+            "derived": _derived_moral(state),
         },
         "karma": karma,
         "present": present,
@@ -348,7 +435,24 @@ def view_model(state_path):
         "summaries": len(state.get("summaries") or []),
         "archived_events": int(state.get("archived_events", 0)),
         "flags": state.get("world_flags", []),
+        "prose_count": len(state.get("prose") or []),
     }
+
+
+def _derived_moral(state):
+    """引擎推导的六维道德（从业债台账/事件累加）；面板用它覆盖静态 morality。
+
+    注意维度顺序必须与 `MORAL_DIMS`（中文展示名）一致，而引擎侧用的是英文键
+    （care/fairness/loyalty/authority/sanctity/liberty）——两边顺序一一对应。
+    推导失败时返回空表，前端自动回退到静态值。
+    """
+    try:
+        from game_engine.rules.narrative_engine import MORAL_DIMS as ENGINE_DIMS
+        from game_engine.rules.narrative_engine import update_player_moral_identity
+        vec = update_player_moral_identity(state)
+        return [int(vec.get(k, 0)) for k in ENGINE_DIMS]
+    except Exception:  # aqg: top-level boundary —— 推导失败只用静态值
+        return []
 
 
 STATIC_WHITELIST = {

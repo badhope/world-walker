@@ -31,6 +31,23 @@ KARMA_LABELS = {
     "mass_murder": "大开杀戒",
 }
 
+KARMA_VALUES = {
+    "murder_innocent": 50,
+    "murder_evil": 5,
+    "theft": 15,
+    "lie": 5,
+    "betray": 40,
+    "help_innocent": -10,
+    "help_evil": 20,
+    "repay_debt": -30,
+    "oath_broken": 60,
+    "minor_insult": 8,
+    "major_betrayal": 80,
+    "save_life": -20,
+    "mass_murder": 200,
+}
+
+
 def resolve_karma(state, actor_id, victim_id=None, action_type="normal"):
     """
     基于行动类型计业
@@ -53,22 +70,6 @@ def resolve_karma(state, actor_id, victim_id=None, action_type="normal"):
         "events": ["杀害无辜，背负50业"]
     }
     """
-    KARMA_VALUES = {
-        "murder_innocent": 50,
-        "murder_evil": 5,
-        "theft": 15,
-        "lie": 5,
-        "betray": 40,
-        "help_innocent": -10,
-        "help_evil": 20,
-        "repay_debt": -30,
-        "oath_broken": 60,
-        "minor_insult": 8,
-        "major_betrayal": 80,
-        "save_life": -20,
-        "mass_murder": 200,
-    }
-    
     result = {
         "karma_delta": 0,
         "total_unsettled": 0,

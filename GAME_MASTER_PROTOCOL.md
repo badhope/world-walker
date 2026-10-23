@@ -3,11 +3,11 @@
 > 核心原则:**所有确定性计算交给引擎,Agent 只负责文学叙事**。
 
 > **MCP 模式**：宿主是 MCP 客户端（Claude Code / Codex / Cursor 等）时，用 `mcp_server.py`
-> 暴露的 31 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
+> 暴露的 33 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
 > `moral_update` 合并为 `status`，`info_weight` 改名为 `narrative_weight`，`world_state`
 > 改名为 `read_state`；另增建局三件套 `world_schema` / `world_init` / `world_open`、
 > 叙事层 `narration_context`（关键词触发设定 + 在场角色卡面 + 编年史，每回合调）、
-> 酒馆生态 `character_card_read` / `add_character` / `import_lorebook`、回退 `snapshot` / `restore`、移动 `travel`（记图鉴）、实况主舞台 `open_panel`（只读：叙事主舞台 + HUD + 事件时间线 + 分级弹窗/提示 + 图鉴/市场/大事记抽屉；缺档可读报错并可重试）、设定包 `load_setting`、长局 `advance` / `recall` / `write_summary` / `recap` / `configure`、物资 `use_item`（持有则自备消耗、买入时已付；未持有按所在地市场价现买现用，引擎结算花钱）、自由生成 `spawn_npc`（无角色卡也能入局）、模型层 `model` / `model_list`（查 16 个命名闭式模型：经济 Lerner/OU 价格、Cobb-Douglas、种群 logistic/Lotka-Volterra、流行病 SIR、风险 Poisson/生存、热力学松弛、舆论 bounded-confidence；宿主直接用公式推导效果，不再逐事件拍脑袋）。
+> 酒馆生态 `character_card_read` / `add_character` / `import_lorebook`、回退 `snapshot` / `restore`、移动 `travel`（记图鉴）、叙事正文 `publish_prose`（把本回合正文写进状态，面板主舞台直接显示）、实况主舞台 `open_panel`（只读：叙事主舞台 + HUD + 事件时间线 + 分级弹窗/提示 + 图鉴/市场/大事记抽屉；缺档可读报错并可重试）、设定包 `load_setting`、长局 `advance` / `recall` / `write_summary` / `recap` / `configure`、物资 `use_item`（持有则自备消耗、买入时已付；未持有按所在地市场价现买现用，引擎结算花钱）、自由生成 `spawn_npc`（无角色卡也能入局）、模型层 `model` / `model_list`（查 16 个命名闭式模型：经济 Lerner/OU 价格、Cobb-Douglas、种群 logistic/Lotka-Volterra、流行病 SIR、风险 Poisson/生存、热力学松弛、舆论 bounded-confidence；宿主直接用公式推导效果，不再逐事件拍脑袋）。
 > 一键开局：调 `new_game` prompt（参数填设定），产出「协议 + 设定 + 状态文件」的完整开局指令。
 > 安装 `pip install -e ".[mcp]"` 后，客户端命令填 `world-walker-mcp`。
 
@@ -30,7 +30,7 @@
 | `moral_update` | 道德向量更新 | (无) |
 | `merit` | 功德计算 | --aid --sincerity |
 | `info_weight` | 叙事信息权重 | --probability |
-| `world_state` | 世界状态快照 | (无) |
+| `world_state` | 世界侧摘要（势力/相位/谣言/风气/物价） | (无) |
 
 ---
 
@@ -40,13 +40,17 @@
 玩家输入行动
       │
       ▼
-  [1] Agent 读取状态  ← cat game_state.json
+  [1] Agent 读取状态（MCP: read_state / CLI: cat game_state.json）
   [2] 判断行动是否涉及数值变化
-  [3] 调用引擎结算    ← python3 engine.py <action> --state game_state.json ...
-  [4] 读取引擎输出 JSON
-  [5] 生成文学描写    ← 仅展示给玩家
-  [6] 必要时机tick    ← python3 engine.py tick --state game_state.json
+  [3] 调用引擎结算（combat / trade / social / karma / travel / use_item）
+  [4] 读取引擎输出 JSON（含 phase / morale / 世界侧变化）
+  [5] 生成文学描写
+  [6] publish_prose 落盘正文 ← 面板主舞台显示的就是这段
+  [7] tick 收回合 ← 世界演化（势力/谣言/风气/NPC/相位）在这里发生
 ```
+
+**关键：`tick` 是活的。** 每次 tick 都会推进势力消长、谣言传播、风气漂移与 Panarchy 相位；
+即使玩家什么都不做，世界也在变。所以**不要跳过 tick**——跳过的不是计数，是整个世界。
 
 ---
 

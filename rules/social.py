@@ -52,7 +52,21 @@ def resolve_social_event(state, actor_id, target_id, event_type, intensity=1):
     affinity_delta, respect_delta = BEFORE.get(event_type, (0, 0))
     affinity_delta *= intensity
     respect_delta *= intensity
-    
+
+    # 道德向量修正：恶名会放大他人对你的负面反应，仁厚会放大正面反应。
+    # 全零向量（中立）时乘数恰为 1.0，旧行为不变。
+    moral_mult = 1.0
+    try:
+        from game_engine.rules.narrative_engine import moral_affinity_multiplier
+        moral_mult = float(moral_affinity_multiplier(state))
+        if affinity_delta < 0:
+            affinity_delta *= (2.0 - moral_mult)
+        else:
+            affinity_delta *= moral_mult
+        affinity_delta = int(round(affinity_delta))
+    except Exception:  # aqg: top-level boundary —— 道德是辅助输入，坏了退回原始增量
+        moral_mult = 1.0
+
     before = get_relation(state, actor_id, target_id)
     set_relation(state, actor_id, target_id, affinity_delta, respect_delta)
     after = get_relation(state, actor_id, target_id)
@@ -62,6 +76,7 @@ def resolve_social_event(state, actor_id, target_id, event_type, intensity=1):
         "affinity_after": after["affinity"],
         "respect_before": before["respect"],
         "respect_after": after["respect"],
+        "moral_multiplier": round(moral_mult, 3),
         "events": []
     }
     

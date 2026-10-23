@@ -58,11 +58,14 @@ jobs:
           python -m pip install --quiet psutil
           python scripts/verify_memory.py 300
 
+      - name: 世界演化与结算耦合
+        run: python scripts/verify_world.py
+
       - name: 覆盖率门禁（核心域 ≥70%）
         run: |
           python -m pip install --quiet coverage
           rm -f .coverage
-          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death; do
+          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world; do
             python -m coverage run --append --source=rules,panel,state_schema "scripts/$suite.py"
           done
           python -m coverage report | tee /tmp/cov.txt

@@ -34,7 +34,7 @@ EXPECTED_TOOLS = {
     'narration_context', 'character_card_read', 'add_character', 'import_lorebook',
     'snapshot', 'restore', 'travel', 'open_panel', 'load_setting',
     'advance', 'recall', 'write_summary', 'recap', 'configure',
-    'use_item', 'spawn_npc', 'model', 'model_list',
+    'use_item', 'spawn_npc', 'model', 'model_list', 'world_state', 'publish_prose',
 }
 
 RESULTS = []
@@ -119,7 +119,7 @@ async def main():
             # 1. 工具清单
             tools = await session.list_tools()
             names = {t.name for t in tools.tools}
-            check('tools/list 覆盖全部 31 个工具', names == EXPECTED_TOOLS,
+            check('tools/list 覆盖全部 %d 个工具' % len(EXPECTED_TOOLS), names == EXPECTED_TOOLS,
                   '缺少: %s' % (EXPECTED_TOOLS - names) if names != EXPECTED_TOOLS else '')
             check('每个工具都有描述', all((t.description or '').strip() for t in tools.tools))
             wi = next(t for t in tools.tools if t.name == 'world_init')

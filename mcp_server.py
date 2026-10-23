@@ -46,12 +46,15 @@ from game_engine.rules.narrative_engine import (
     check_world_emergent_events,
     flow_channel_status,
     panarchy_phase_check,
+    phase_multiplier,
     player_identity_vector,
     update_player_moral_identity,
 )
+from game_engine.rules.progression import level_tier, validate_next_level
 from game_engine.rules.social import resolve_social_event
 from game_engine.rules.social_extended import merit_quality
 from game_engine.rules.world_dynamics import event_information
+from game_engine.rules.world_evolution import evolve as evolve_world, world_summary
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
 from game_engine.state_schema import entity_key, load_state, log_event, save_state, seed_rng
 from game_engine.viz_series import record_sample
@@ -528,8 +531,15 @@ def world_schema() -> dict:
             "market": "location -> {item_key -> item_shape}；交易工具用 item_key 而非 name",
             "karma_ledger": "因果债流水（引擎维护）",
             "world_flags": "已触发的世界事件标记（字符串数组）",
-            "ui": "面板皮肤与品牌（可选）{skin: xuanshu|neutral|ink|neon, accent: '#rrggbb', motif: 文案, brand: 字标, tagline: 标语}",
+            "ui": "面板皮肤与品牌（可选）{skin, accent, motif, brand, tagline, terms:{level:等级}}",
             "event_log": "最近事件（引擎维护，保留量见 config.event_log_keep，默认 200；溢出自动归档）",
+            "factions": "势力存量 {势力名: {power, reach}}（tick 自动演化，logistic + Lotka-Volterra）",
+            "panarchy": "适应性循环 {phase: r|K|Ω|α, capital, connectedness, stress, collapses}（tick 推进）",
+            "rumors": "谣言 {主题: {s, i, r, heat}}（SIR 传播）",
+            "culture": "风气 {tradition, innovation}（Deffuant 有界信任漂移）",
+            "places": "地点描写 {地名: {desc, tick}}；面板主舞台优先显示它",
+            "prose": "叙事正文队列（publish_prose 写入，config.prose_keep 控制保留量，溢出进归档）",
+            "config.level_tiers": "等级阶梯（数组）；配了它 advance 只能逐阶递进",
         },
         "entity_shape": {
             "name": "显示名（必填）",
@@ -574,8 +584,10 @@ def world_schema() -> dict:
             "trade": "location/item_key/quantity/direction(buy|sell)/entity；买入记入持有，卖出须先持有",
             "social": "actor/target/event(%s)/intensity" % "|".join(SOCIAL_EVENTS),
             "karma": "actor/victim(可空)/karma_type(%s)" % "|".join(KARMA_TYPES),
-            "tick": "回合结束（市场演化 + tick+1）",
+            "tick": "回合结束（市场演化 + 世界演化 + tick+1；世界演化含势力/谣言/风气/NPC/相位）",
+            "world_state": "世界侧摘要：势力存量/相位/谣言热度/风气/物价指数（只读）",
             "narrative": "涌现事件 + 世界相位（每 3-5 回合查一次）",
+            "publish_prose": "发布本回合叙事正文（面板主舞台直接显示；旧文进归档）",
             "status": "心流/身份/相位/道德/认知 聚合（每 3-5 回合查一次）",
             "merit": "功德值（纯函数：aid 救助 0~1, sincerity 诚心 0~1）",
             "narrative_weight": "事件叙事权重 = -log P(事件)（纯函数）",
@@ -717,7 +729,7 @@ def combat(attacker: str, defender: str, action_type: str = "attack",
     _require_entity(state, defender, "防守方")
     result = resolve_combat(state, attacker, defender, action_type, skill)
     for e in result.get("events", []):
-        log_event(state, "combat", e)
+        log_event(state, "combat", e, outcome=result.get("outcome"))
     _remember(state, "people", state.get("entities", {}).get(defender, {}).get("name", defender))
     if result.get("defender_dead"):
         _milestone(state, "击杀", "%s 击败了 %s" % (attacker, result.get("defender", defender)))
@@ -778,7 +790,7 @@ def karma(actor: str, karma_type: str, victim: str | None = None) -> dict:
         _require_entity(state, victim, "受害方")
     result = resolve_karma(state, actor, victim, karma_type)
     for e in result.get("events", []):
-        log_event(state, "karma", e)
+        log_event(state, "karma", e, karma_type=karma_type)
     consequence = get_karma_consequence(state, actor)
     if consequence["triggered"]:
         result["karma_consequence"] = consequence
@@ -789,14 +801,39 @@ def karma(actor: str, karma_type: str, victim: str | None = None) -> dict:
 
 @server.tool()
 def tick() -> dict:
-    """推进一个回合：市场演化 + tick+1（Chinese: 每回合结束时调用一次）。Advance one turn."""
+    """推进一个回合：市场演化 + 世界演化 + tick+1（Chinese: 每回合结束时调用一次）。
+
+    世界演化包含势力消长、谣言传播、文化漂移、NPC 走动与 Panarchy 相位推进——
+    这些都不需要玩家行动也会发生，世界因此是"活的"而不是等人喂。
+    Advance one turn: market + world evolution + tick."""
 
     state = _load()
     _seed_rng(state)
     tick_market(state)
     state["tick"] = state.get("tick", 0) + 1
+    world = evolve_world(state)
+    for desc in world.get("events", []):
+        log_event(state, "world", str(desc))
     log_event(state, "tick", "回合%d结束" % state["tick"])
-    return _finish(state, {"events": ["回合%d结束" % state["tick"]]})
+    events = ["回合%d结束" % state["tick"]] + [str(e) for e in world.get("events", [])]
+    return _finish(state, {
+        "events": events,
+        "panarchy_phase": world.get("phase"),
+        "capital": world.get("capital"),
+        "connectedness": world.get("connectedness"),
+        "factions": world.get("factions"),
+        "rumors": world.get("rumors"),
+        "market_index": world.get("market_index"),
+    })
+
+
+@server.tool()
+def world_state() -> dict:
+    """世界侧现状（Chinese: 势力存量、相位、谣言热度、文化倾向、物价指数——tick 推着它们变）。
+    World snapshot: factions, panarchy, rumors, culture, market index."""
+
+    state = _load()
+    return _finish(state, world_summary(state))
 
 
 @server.tool()
@@ -808,15 +845,18 @@ def narrative() -> dict:
     _seed_rng(state)
     events = check_world_emergent_events(state)
     phase = panarchy_phase_check(state)
+    seen = state.setdefault("_emergent_seen", {})
     for e in events:
         desc = e.get("desc") or e.get("type", "")
         log_event(state, "emergent", str(desc))
-    return _finish(state, {"emergent_events": events, "panarchy_phase": phase})
+        seen[str(e.get("type") or desc)] = int(state.get("tick", 0) or 0)
+    return _finish(state, {"emergent_events": events, "panarchy_phase": phase,
+                           "phase_multiplier": phase_multiplier(state)})
 
 
 @server.tool()
 def status() -> dict:
-    """聚合玩家的心理/身份/道德与世界相位（Chinese: 心流、Bartle 身份、六维道德、认知预算）。
+    """聚合玩家的心理/身份/道德与世界相位（Chinese: 心流、Bartle 身份、六维道德、认知预算、世界侧摘要）。
     Aggregated insights: flow, identity, morality, world phase, cognition."""
 
     state = _load()
@@ -830,6 +870,8 @@ def status() -> dict:
         "identity": player_identity_vector(state),
         "panarchy_phase": panarchy_phase_check(state),
         "moral_vector": update_player_moral_identity(state),
+        "world": world_summary(state),
+        "level_tier": level_tier(state, player),
         "cognition": {
             "cognitive_budget": budget,
             "system2_likely": should_use_system2(budget, max(0.1, float(attrs.get("int", 10)) / 20)),
@@ -999,6 +1041,8 @@ def advance(next_level: str, insight: float = 0.0) -> dict:
     player = state.get("entities", {}).get("player")
     if not player:
         raise ValueError("状态里没有 player")
+    # 配置了等级阶梯的世界必须逐阶突破：把任意字符串写进 level 等于没有成长系统
+    next_level = validate_next_level(state, next_level, str(player.get("level") or ""))
     attrs = player.get("attrs", {})
     hp_max = max(1, int(player.get("hp_max", 1)))
     hp_ratio = float(player.get("hp", hp_max)) / hp_max
@@ -1159,6 +1203,25 @@ def load_setting(path: str, state_path: str = "", seed: int | None = None) -> di
         state = _load()
         state["currency"] = str(b["currency"])
         _finish(state, {})
+    if b.get("terms") or b.get("level_tiers") or b.get("places"):
+        state = _load()
+        if isinstance(b.get("terms"), dict):
+            ui = state.setdefault("ui", {})
+            ui["terms"] = {str(k): str(v) for k, v in b["terms"].items()}
+            # terms 也可以直接写在 ui 里（world_init 的 ui 参数整个透传）
+
+        if isinstance(b.get("level_tiers"), list) and b["level_tiers"]:
+            cfg = state.setdefault("config", {})
+            cfg["level_tiers"] = [str(t) for t in b["level_tiers"]]
+        if isinstance(b.get("places"), dict):
+            places = state.setdefault("places", {})
+            for name, info in b["places"].items():
+                if isinstance(info, dict):
+                    places[str(name)] = {"desc": str(info.get("desc", ""))[:1200],
+                                         "tick": int(state.get("tick", 0) or 0)}
+                elif isinstance(info, str):
+                    places[str(name)] = {"desc": info[:1200], "tick": 0}
+        _finish(state, {})
     lore_n = 0
     if b.get("lore"):
         state = _load()
@@ -1175,8 +1238,9 @@ def load_setting(path: str, state_path: str = "", seed: int | None = None) -> di
 
 
 @server.tool()
-def travel(location: str, note: str = "") -> dict:
-    """移动到新地点（Chinese: 玩家的 location 只由本工具修改；首次到达会记进探索图鉴）。
+def travel(location: str, note: str = "", desc: str = "") -> dict:
+    """移动到新地点（Chinese: 玩家的 location 只由本工具修改；首次到达会记进探索图鉴。
+    desc 给一句本地的场景描写——它会成为面板主舞台的正文，不给则沿用该地点上次的描写）。
     Move the player to a location; first arrival is recorded in the codex."""
     state = _load()
     player = state.get("entities", {}).get("player")
@@ -1192,6 +1256,10 @@ def travel(location: str, note: str = "") -> dict:
     here = [k for k, e in state.get("entities", {}).items() if k != "player" and e.get("location") == loc]
     for k in here:
         _remember(state, "people", state["entities"][k].get("name", k))
+    places = state.setdefault("places", {})
+    body = str(desc or "").strip()
+    if body:
+        places[loc] = {"desc": body[:1200], "tick": int(state.get("tick", 0) or 0)}
     log_event(state, "travel", "抵达「%s」%s%s" % (loc, "（初次探索）" if first else "",
                                                   ("：" + note) if note else ""))
     if first:
@@ -1199,7 +1267,46 @@ def travel(location: str, note: str = "") -> dict:
     return _finish(state, {"location": loc, "first_time": first,
                            "has_market": loc in state.get("market", {}),
                            "entities_here": here,
-                           "in_setting": loc in known})
+                           "in_setting": loc in known,
+                           "scene_desc": (places.get(loc) or {}).get("desc", "")})
+
+
+@server.tool()
+def publish_prose(text: str, location: str = "") -> dict:
+    """发布本回合的叙事正文（Chinese: 宿主把玩家这一步看到的文字写进状态，面板主舞台直接显示它；
+    只保留最近 N 段，旧的进归档，不会撑爆状态文件）。
+    Publish the narration prose of this turn so the live panel can show the actual story."""
+
+    state = _load()
+    body = str(text or "").strip()
+    if not body:
+        raise ValueError("text 不能为空")
+    prose = state.setdefault("prose", [])
+    player = state.get("entities", {}).get("player") or {}
+    loc = str(location or player.get("location") or "")
+    prose.append({"tick": int(state.get("tick", 0) or 0), "location": loc,
+                  "text": body[:4000]})
+    keep = int((state.get("config") or {}).get("prose_keep", 40))
+    overflow = prose[:-keep] if keep > 0 and len(prose) > keep else []
+    if overflow:
+        state["prose"] = prose[-keep:]
+        arch = _archive_path()
+        try:
+            with open(arch, "a", encoding="utf-8") as f:
+                for entry in overflow:
+                    f.write(json.dumps({"type": "prose", **entry}, ensure_ascii=False) + "\n")
+            state["archived_events"] = int(state.get("archived_events", 0) or 0) + len(overflow)
+        except OSError:  # aqg: top-level boundary —— 归档失败不该阻断叙事落盘
+            pass
+    places = state.setdefault("places", {})
+    if loc:
+        places.setdefault(loc, {})
+        places[loc]["desc"] = body[:1200]
+        places[loc]["tick"] = int(state.get("tick", 0) or 0)
+    log_event(state, "prose", body[:160])
+    return _finish(state, {"prose_count": len(state.get("prose") or []),
+                           "location": loc,
+                           "latest": body[:200]})
 
 
 @server.tool()

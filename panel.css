@@ -450,3 +450,7 @@ dialog.eventdlg button.primary { background: var(--accent-dim); border-color: va
 .badge.chance { border-color: var(--success); color: #d7f5d9; }
 .badge.warn { border-color: var(--warning); color: #ffe9c4; }
 .badges { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 8px; }
+
+/* 道德六维：只渲染非零维（见 panel.js renderHud），横向紧凑排列 */
+.moral { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 6px; font-size: 12px; }
+.moral:empty { display: none; }

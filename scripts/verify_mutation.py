@@ -32,7 +32,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MUTATIONS = [
     # ── 战斗 ──
     ('M01', '濒死保底 1 → 0', 'rules/combat.py',
-     '    player["hp"] = 1\n', '    player["hp"] = 0\n',
+     '    player["hp"] = 1\n    gold = int(player.get("gold", 0) or 0)',
+     '    player["hp"] = 0\n    gold = int(player.get("gold", 0) or 0)',
      'scripts/verify_near_death.py'),
     ('M02', '濒死不掉钱（gold_lost 置 0）', 'rules/combat.py',
      '    gold_lost = int(gold * 0.30)', '    gold_lost = 0',
@@ -57,7 +58,7 @@ MUTATIONS = [
      '        "help":       (5, 3),', '        "help":       (10, 3),',
      'scripts/verify_cli.py'),
     ('M08', '因果 theft 记错金额', 'rules/karma.py',
-     '        "theft": 15,', '        "theft": 0,',
+     '    "theft": 15,', '    "theft": 0,',
      'scripts/verify_cli.py'),
 
     # ── 模型层公式 ──
@@ -107,6 +108,30 @@ MUTATIONS = [
      '        "price_index": round(sum(ratios) / len(ratios), 4) if ratios else 1.0,',
      '        "price_index": 1.0,',
      'scripts/verify_panel.py'),
+
+    # ── 世界演化（本轮新增；每条对应一个曾经的"展示但不生效"缺陷）──
+    ('M20', 'tick 不再驱动世界演化', 'mcp_server.py',
+     '    world = evolve_world(state)', '    world = {}',
+     'scripts/verify_world.py'),
+    ('M21', '相位不再影响事件概率', 'rules/narrative_engine.py',
+     '    return PHASE_EVENT_MULT.get(_phase_key(state), 1.0)',
+     '    return 1.0',
+     'scripts/verify_world.py'),
+    ('M22', '心流不再影响命中（修正失效）', 'rules/combat.py',
+     '        hit_mult *= max(0.75, min(1.25, 1.0 - adj * 0.5))',
+     '        hit_mult *= 1.0',
+     'scripts/verify_world.py'),
+    ('M23', '暴击重新被算成失败', 'rules/narrative_engine.py',
+     '    if "命中" in desc or "暴击" in desc or "击败" in desc or "逃跑成功" in desc:',
+     '    if "命中" in desc or "击败" in desc or "逃跑成功" in desc:',
+     'scripts/verify_world.py'),
+    ('M24', '道德画像改用中文名查英文键（永远全 0）', 'panel.py',
+     '        return [int(vec.get(k, 0)) for k in ENGINE_DIMS]',
+     '        return [int(vec.get(d, 0)) for d in MORAL_DIMS]',
+     'scripts/verify_world.py'),
+    ('M25', '台账重新只裁已结算（未结算无上限）', 'state_schema.py',
+     '    over = len(ledger) - cap + 1', '    over = 0',
+     'scripts/verify_world.py'),
 ]
 
 
@@ -132,6 +157,18 @@ def run_script(rel):
     return r.returncode == 0, (r.stdout or '')[-300:]
 
 
+def _match_eol(fragment, src):
+    """把片段里的 \\n 换成目标文件实际用的行尾（Windows 上源码是 CRLF）。
+
+    不做这一步的话，任何**跨行**的变异片段在 CRLF 文件里都匹配不到，
+    脚本只会打一行 SKIP 就跳过——变异测试看起来仍然"全绿"，
+    实际上那条规则从没被验证过（本轮实测 M01 就是这样被静默跳过的）。
+    """
+    if '\r\n' in src and '\r\n' not in fragment:
+        return fragment.replace('\n', '\r\n')
+    return fragment
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--only', help='只跑某个编号，如 M01')
@@ -152,6 +189,8 @@ def main():
         # 写回时把整个文件的行尾改掉（LF→CRLF），在 git 里显示为整文件重写。
         with open(path, encoding='utf-8', newline='') as f:
             src = f.read()
+        old = _match_eol(old, src)
+        new = _match_eol(new, src)
         if src.count(old) != 1:
             print('SKIP  %s %-44s 片段不唯一（出现 %d 次）' % (mid, desc, src.count(old)))
             continue

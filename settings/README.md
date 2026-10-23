@@ -8,6 +8,9 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 
 载入后建议紧接着 `open_panel`，给玩家一块可一直看的实况主舞台（叙事/HUD/长局图表/皮肤）。
 
+**换世界只需换这个包**：世界观词、等级阶梯、地点描写、货币、皮肤与品牌全在里面；
+引擎侧不需要改一行代码。
+
 ## 格式
 
 | 字段 | 必填 | 说明 |
@@ -20,6 +23,9 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | `world_flags` | | 字符串数组（世界状态标记） |
 | `currency` | | 货币名（默认「灵石」；示例设定用「玄晶」，交易文案会跟着变） |
 | `ui` | | 面板皮肤与品牌：`{skin: xuanshu\|neutral\|ink\|neon, accent: '#rrggbb', motif: '风格文案', brand: '字标', tagline: '标语'}`；让本世界在主舞台上自带视觉风格与自己的名字（未知 skin 回退 neutral；规范见 `BRAND.md`） |
+| `level_tiers` | | 本世界的等级阶梯（数组，低→高），如 `["淬体","引元",...]`。配了它，`advance` 只能逐阶递进（同阶内可递段），跳阶/倒退会被拒；战斗按阶梯给战力加成。不配则退回旧行为（不校验） |
+| `terms` | | 面板术语覆盖 `{level:"等级", track:"进化轨", ...}`（键见 `panel.py::DEFAULT_TERMS`）。让非修真世界观不必看到「境界/修行轨」 |
+| `places` | | 地点描写 `{地名: {desc}}` 或 `{地名: "描写"}`。走到该地时面板主舞台显示它，而不是开场那句 |
 | `lore` | | 世界书条目，**与酒馆 character_book 同形**：`keys` / `secondary_keys` / `selective` / `constant` / `insertion_order` / `content` / `comment`。`narration_context` 按关键词触发它们 |
 | `seed` | | 随机种子（可复现） |
 | `state_path_hint` | | 默认状态文件名 |

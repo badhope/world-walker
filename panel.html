@@ -48,10 +48,10 @@
   <!-- 左：玩家 HUD -->
   <aside class="hud" aria-label="玩家状态">
     <section class="card">
-      <h2>行者 <span class="tag" id="pname-sub"></span></h2>
+      <h2><span data-term="hero">行者</span> <span class="tag" id="pname-sub"></span></h2>
       <div class="row"><span class="k">名号</span><b id="pname">—</b></div>
-      <div class="row"><span class="k">境界</span><span id="plevel">—</span></div>
-      <div class="row"><span class="k">所在</span><span id="ploc">—</span></div>
+      <div class="row"><span class="k" data-term="level">境界</span><span id="plevel">—</span></div>
+      <div class="row"><span class="k" data-term="location">所在</span><span id="ploc">—</span></div>
       <div class="badges" id="badges"></div>
       <div class="row"><span class="k">气血 <span id="phpn"></span> <span class="chip bad" id="hpwarn" hidden>气血吃紧</span></span><span id="pgold">—</span></div>
       <div class="barwrap" role="img" aria-label="气血条"><div class="bar hp" id="phpbar" style="width:0"></div></div>
@@ -62,15 +62,15 @@
 
     <section class="card">
       <h2>状态 · 引擎推导</h2>
-      <div class="row"><span class="k">心流</span><span id="flow">—</span></div>
-      <div class="row"><span class="k">世界相位</span><span id="phase">—</span></div>
-      <div class="row"><span class="k">未清因果债</span><span id="karma">—</span></div>
+      <div class="row"><span class="k" data-term="flow">心流</span><span id="flow">—</span></div>
+      <div class="row"><span class="k" data-term="phase">世界相位</span><span id="phase">—</span></div>
+      <div class="row"><span class="k" data-term="karma">未清因果债</span><span id="karma">—</span></div>
       <div class="moral" id="moral"></div>
       <div class="hint">心流偏低时适合安排缓冲剧情；相位决定大事件的烈度。</div>
     </section>
 
     <section class="card">
-      <h2>随身 <span class="tag" id="inv-count"></span></h2>
+      <h2><span data-term="inventory">随身</span> <span class="tag" id="inv-count"></span></h2>
       <div class="kv" id="inventory"><span class="empty">（空手）</span></div>
     </section>
   </aside>
@@ -87,7 +87,7 @@
     </div>
 
     <section class="card">
-      <h2>编年史 <span class="tag" id="timeline-hint"></span>
+      <h2><span data-term="chronicle">编年史</span> <span class="tag" id="timeline-hint"></span>
         <button class="tbtn" id="jump-latest" type="button" style="margin-left:auto">跳到最新</button>
       </h2>
       <ul class="timeline" id="timeline" aria-live="polite" aria-label="事件时间线">
@@ -122,22 +122,22 @@
   <!-- 右：在场 + 关系 + 世界网格 -->
   <aside class="cast" aria-label="在场角色与关系">
     <section class="card">
-      <h2>在场 <span class="tag" id="present-count"></span></h2>
+      <h2><span data-term="present">在场</span> <span class="tag" id="present-count"></span></h2>
       <div id="present"><span class="empty">此刻无人</span></div>
       <div id="others" class="hint"></div>
     </section>
     <section class="card">
-      <h2>人情关系 <span class="tag" id="rel-count"></span></h2>
+      <h2><span data-term="relations">人情关系</span> <span class="tag" id="rel-count"></span></h2>
       <div id="relations" class="kv"><span class="empty">（尚未结缘）</span></div>
       <div class="relnet" id="relnet" role="img" aria-label="人物关系网：中心为玩家，四周为已结缘人物"></div>
     </section>
     <section class="card">
-      <h2>境地 <span class="tag" id="map-hint"></span></h2>
+      <h2><span data-term="territory">境地</span> <span class="tag" id="map-hint"></span></h2>
       <div class="mapnet" id="mapnet" role="img" aria-label="地点分布：当前所在地高亮，连线表示已走动过的路线"></div>
       <div class="hint" id="map-legend"></div>
     </section>
     <section class="card">
-      <h2>修行轨 <span class="tag" id="stage-hint"></span></h2>
+      <h2><span data-term="track">修行轨</span> <span class="tag" id="stage-hint"></span></h2>
       <div class="track" id="stage-track"></div>
     </section>
   </aside>
@@ -146,7 +146,7 @@
 <!-- 抽屉：图鉴 / 市场 / 大事记 / 世界标记 -->
 <div class="drawers">
   <details class="drawer" id="drawer-codex">
-    <summary>探索图鉴 <span class="tag" id="lorecnt" style="margin-left:auto"></span></summary>
+    <summary><span data-term="codex">探索图鉴</span> <span class="tag" id="lorecnt" style="margin-left:auto"></span></summary>
     <div class="body">
       <div class="row"><span class="k">已探索地点</span></div><div class="kv" id="cx-loc"></div>
       <div class="row"><span class="k">已遇见人物</span></div><div class="kv" id="cx-people"></div>
@@ -156,12 +156,23 @@
   </details>
 
   <details class="drawer" id="drawer-market">
-    <summary>市场行情 <span class="tag" style="margin-left:auto">▲高于基准 · ▼低于基准</span></summary>
+    <summary><span data-term="market">市场行情</span> <span class="tag" style="margin-left:auto">▲高于基准 · ▼低于基准</span></summary>
     <div class="body"><div id="market"><span class="empty">此界无市</span></div></div>
   </details>
 
+  <details class="drawer" id="drawer-world">
+    <summary><span data-term="factions">势力</span>与风向 <span class="tag" style="margin-left:auto" id="world-hint"></span></summary>
+    <div class="body">
+      <div class="kv" id="world-factions"><span class="empty">世界还没开始演化</span></div>
+      <div class="row" style="margin-top:8px"><span class="k" data-term="rumors">传闻</span></div>
+      <div class="kv" id="world-rumors"><span class="empty">暂无传闻</span></div>
+      <div class="row" style="margin-top:8px"><span class="k" data-term="culture">风气</span></div>
+      <div class="kv" id="world-culture"><span class="empty">—</span></div>
+    </div>
+  </details>
+
   <details class="drawer" id="drawer-milestones">
-    <summary>大事记 <span class="tag" id="memhint" style="margin-left:auto"></span></summary>
+    <summary><span data-term="milestones">大事记</span> <span class="tag" id="memhint" style="margin-left:auto"></span></summary>
     <div class="body"><ul class="timeline" id="milestones" style="max-height:220px"><li class="empty">暂无</li></ul></div>
   </details>
 
@@ -208,6 +219,8 @@
       <dt>物价指数</dt><dd>全市场"当前价 ÷ 基准价"的均值。1.0 是正常，越低越适合囤货。</dd>
       <dt>心意（亲密 / 敬重）</dt><dd>人物关系两维：喜欢你和怕你/服你，是两码事。</dd>
       <dt>探索图鉴</dt><dd>去过的地方、见过的人、经手的物、触发过的设定——你自己不用记。</dd>
+      <dt>势力与风向</dt><dd>各方存量会随回合自行消长；传闻热度越高，越可能引来是非。你不用管它，它也会动。</dd>
+      <dt>这一回合的正文</dt><dd>中间那段字是你这一步的叙事正文；它由宿主写进存档，换设备打开也是同一段。</dd>
     </dl>
   </section>
 

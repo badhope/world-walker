@@ -4,7 +4,7 @@
 
 ---
 
-**万界·行者**是一个由 AI 驱动的文字互动游戏引擎。世界的演化由 15 个学科、85+ 个学术公式驱动——玩家的每个决定通过数学模型处理，世界由此自然涌现剧情，而非预设分支。
+**万界·行者**是一个由 AI 驱动的文字互动游戏引擎。世界的演化由 9 个学科、7 个模型域的 85+ 个学术公式驱动——玩家的每个决定通过数学模型处理，世界由此自然涌现剧情，而非预设分支。
 
 检索关键词: `AI文字游戏` `互动小说引擎` `涌现叙事` `认知架构` `因果世界` `双系统理论` `心流` `道德基础` `文化进化` `系统动力学` `PID控制`
 
@@ -39,7 +39,7 @@
 
 ![首访引导](docs/screenshots/first-visit.png)
 
-> 截图取自 `scripts/stress_freeplay.py` 的自由玩家存档（回合 500 / 事件 120 / 大事记 12 / 归档 1318）。
+> 截图取自 `scripts/stress_freeplay.py 500` 的自由玩家存档（回合 500；侧写为真实走势）。
 > 每张截图前逐项断言：品牌字标、`data-skin` 与请求皮肤一致、回合号与主角名渲染、图表 canvas 尺寸有效、
 > 时间线有事件、三个抽屉可展开、帮助含术语表与状态文件路径、三档视口无横向溢出、零 JS 错误、零失败请求。
 > 来源与再生方式见 [`docs/screenshots/README.md`](docs/screenshots/README.md)。
@@ -67,6 +67,16 @@ pip install -e ".[mcp]"
 设定条目、在场角色的卡面文字与编年史 → 文学描写 → `tick` 收回合 → 每 3-5 回合用
 `narrative` + `status` 检查涌现事件与心流；Agent 只负责转写 JSON，不得编造数值。
 
+- **世界自己会动（v0.9 核心）**：`tick` 不只推回合数——它驱动势力消长（logistic + Lotka-Volterra）、
+  谣言传播（SIR）、风气漂移（Deffuant 有界信任）、NPC 走动与 Panarchy 适应性循环
+  （r 增长 → K 守恒 → Ω 崩解 → α 重组，四段都走得到）。`world_state` 随时查现状；
+  面板「势力与风向」抽屉看存量与传闻热度。玩家的行动改变的是这个世界，不是一张静态图
+- **引擎推导真的参与结算**（不是只显示）：世界相位调制涌现事件概率与战斗伤害（Ω 期更烈）；
+  心流调制命中率（无聊时打不中）；六维道德由业债事件累加并影响社交增量（恶名让善意打折）
+- **世界观无关到面板术语**：设定包 `terms` 可覆盖全部界面词（`境界→等级`、`修行阶→进化轨`…），
+  `level_tiers` 定义本世界阶梯（`advance` 逐阶校验，跳阶/倒退会被拒），`places` 给地点描写
+- **叙事正文落盘**：`publish_prose` 把本回合的正文写进状态，面板主舞台直接显示；
+  `travel` 带 `desc` 记本地描写，走到新地方显示的是新地方
 - 生态兼容（不重复造轮子）：直接吃酒馆（SillyTavern）生态的**角色卡**（`.png` 内嵌 / `.json`，
   V1/V2/V3）与**世界书**（world-info / 卡内 `character_book`，含 selective/constant/disable 语义）；
   `character_card_read` 看卡 → `add_character` 入局（卡面文字进叙事层）→ `import_lorebook` 并入设定
@@ -96,16 +106,16 @@ pip install -e ".[mcp]"
 - 移动与图鉴：`travel` 是唯一能改玩家位置的工具，首次到达自动进图鉴（地点/人物/物品/已触发设定）
 - 回合可回退：`snapshot` / `restore`（引擎状态确定性，回退后重放同种子一致）
 - 濒死保护：玩家不会真正死亡——气血见底改判"重伤退场"，保底 1 点气血，代价是散落 30% 钱财、心伤 +1（面板显示濒死次数）；NPC 死亡不受影响
-- 端到端自检：`python scripts/verify_mcp_stdio.py`（55 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
-- 面板契约自检：`python scripts/verify_panel.py`（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
+- 端到端自检：`python scripts/verify_mcp_stdio.py`（56 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
+- 面板契约自检：`python scripts/verify_panel.py`（55 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
 - 濒死保护自检：`python scripts/verify_near_death.py`（7 项断言：气血保底 1 / 代价落盘 / NPC 死亡语义不变）
 - 公式对拍：`python scripts/verify_formulas.py`（122 项断言：按 docstring 的数学式独立重算 77 个函数并比对；与 verify_branches 合计覆盖 127/129 个公开函数）
-- 模块分支补测：`python scripts/verify_branches.py`（155 项断言：systems_feedback / narrative_engine / cognition / social_extended / economy 的异常路径与状态分支，并补齐 24 个剩余纯公式）
+- 模块分支补测：`python scripts/verify_branches.py`（159 项断言：systems_feedback / narrative_engine / cognition / social_extended / economy 的异常路径与状态分支，并补齐 24 个剩余纯公式）
 - 界面巡检：`python scripts/smoke_ui.py`（13 项：真实 Edge 渲染 + 抽屉可展开 + 满血不误报 + 三档视口无溢出 + 零 JS 错误）
-- 注入防护自检：`python scripts/verify_injection.py`（9 组断言：正常文本不误判 / 8 类注入特征被识别 / 输出带 untrusted 标记）
+- 注入防护自检：`python scripts/verify_injection.py`（21 项断言：正常文本不误判 / 8 类注入特征被识别 / 输出带 untrusted 标记）
 - 内存稳定性：`python scripts/verify_memory.py`（7 项：三段对照查泄漏 + 状态/侧写/归档三重有界）
-- 变异测试：`python scripts/verify_mutation.py`（19 个已知错误必须被测试杀死，存活率红线 0%）
-- 推送门禁：`bash scripts/pre_push_gate.sh`（17 项：编译 / 断言审计 / 八套自检 / 覆盖率 ≥70% / 压测 / 变异 / 打包 / 界面）
+- 变异测试：`python scripts/verify_mutation.py`（25 个已知错误必须被测试杀死，存活率红线 0%）
+- 推送门禁：`bash scripts/pre_push_gate.sh`（18 项：编译 / 断言审计 / 九套自检 / 覆盖率 ≥70% / 压测 / 变异 / 打包 / 界面）
 - CLI 通道自检：`python scripts/verify_cli.py`（20 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
 - 测试可信度审计：`python scripts/verify_tests.py`（静态审计全部自检断言，拒绝恒真/恒假/弱断言——防止"测试全绿但什么都没测"）
 - 用户视角试玩：`python scripts/user_playtest.py`（47 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）
@@ -145,7 +155,7 @@ python engine.py info_weight --state game_state.json --probability 0.05
 ```
 game_engine/                      # 仓库根即 game_engine 包（导入别名已放开，目录名任意）
 ├── engine.py                     # CLI 入口（14 条命令）
-├── mcp_server.py                 # MCP 服务器（31 个工具；除 mcp>=2 外无额外依赖）
+├── mcp_server.py                 # MCP 服务器（33 个工具；除 mcp>=2 外无额外依赖）
 ├── state_schema.py               # 状态结构 + 辅助函数
 ├── init_game.py                  # 生成示例世界（青云界）
 ├── pyproject.toml                # pip install -e ".[mcp]"；命令 world-walker / world-walker-mcp
@@ -154,16 +164,17 @@ game_engine/                      # 仓库根即 game_engine 包（导入别名�
 ├── assets/echarts.min.js         # 离线图表库（Apache-2.0，随包分发，无 CDN 依赖）
 ├── BRAND.md                      # 品牌规范（名号/标语/配色/可配置化，单一信源）
 ├── ARCHITECTURE.md               # 架构文档（唯一真理源：视图模型契约/不变量/ADR）
-├── scripts/verify_mcp_stdio.py   # MCP 端到端自检（55 项断言，含酒馆生态兼容/图鉴/面板/模型层与确定性）
-├── scripts/verify_panel.py       # 面板契约自检（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
+├── scripts/verify_mcp_stdio.py   # MCP 端到端自检（56 项断言，含酒馆生态兼容/图鉴/面板/模型层与确定性）
+├── scripts/verify_panel.py       # 面板契约自检（55 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/术语/序列采样）
 ├── scripts/verify_cli.py         # CLI 通道自检（20 项断言：只读不变量/写命令落盘/确定性）
 ├── scripts/verify_tests.py       # 测试可信度审计（AST 级：拒绝恒真/恒假/弱断言）
 ├── scripts/verify_near_death.py  # 濒死保护自检（气血保底/代价落盘/NPC 死亡不变）
 ├── scripts/verify_formulas.py    # 公式对拍（按数学式独立重算并比对 77 个函数）
-├── scripts/verify_branches.py    # 模块分支补测（111 项，低覆盖模块的异常路径）
+├── scripts/verify_branches.py    # 模块分支补测（159 项，低覆盖模块的异常路径）
 ├── scripts/smoke_ui.py           # 界面巡检（真实浏览器渲染 + 交互断言）
 ├── scripts/audit_ui.py           # 界面截图与逐项断言（生成 docs/screenshots）
-├── scripts/pre_push_gate.sh      # 推送门禁（14 项，与 CI 判据一致）
+├── scripts/verify_world.py       # 世界演化与结算耦合（世界自演化/相位/心流/道德/术语/正文/台账/阶梯）
+├── scripts/pre_push_gate.sh      # 推送门禁（18 项，与 CI 判据一致）
 ├── scripts/compile_all.py        # 跨平台全仓编译检查
 ├── scripts/check_wheel.py        # wheel 运行时资源校验（CI 与门禁共用）
 ├── scripts/user_playtest.py      # 用户视角试玩（47 项"玩家会不会投诉"检查：钻空子/边界/报错可读性）
@@ -182,14 +193,16 @@ game_engine/                      # 仓库根即 game_engine 包（导入别名�
     ├── social_extended.py        #    扩展社交（Haidt、Milgram、Bandura）
     ├── cultural_evolution.py     #    文化进化（DIT、模因、文化棘轮）
     ├── systems_feedback.py       #    系统反馈（Meadows 12 杠杆点、NAT）
-    └── narrative_engine.py       #    涌现叙事（Bartle、事件、相位）
+    ├── narrative_engine.py       #    涌现叙事（Bartle、事件、相位）
+    ├── world_evolution.py        #    世界侧演化（势力/谣言/风气/NPC/Panarchy 状态机）
+    └── progression.py            #    等级阶梯（逐阶校验/战力加成）
 ```
 
 ---
 
 ## 学术覆盖
 
-85+ 公式，15 个学科分支：
+85+ 公式，9 个学科分支（另有 7 个模型域的 16 个命名闭式模型）：
 
 | 学科 | 核心理论 | 文件 | 行数 |
 |------|---------|------|------|
@@ -201,6 +214,12 @@ game_engine/                      # 仓库根即 game_engine 包（导入别名�
 | 系统理论 | Meadows 12 杠杆点, NAT 级联, ANT 行动者网络 | systems_feedback.py | 141 |
 | 叙事学 | 涌现叙事, Bartle, 叙事传输, 空间叙事 | narrative_engine.py | 141 |
 | 信息论 | Shannon 熵, KL 散度, 事件信息量 | world_dynamics.py | — |
+| 网络/演化博弈 | Lotka-Volterra, ESS, Replicator, Hawk-Dove | models.py / world_dynamics.py | 290 |
+
+**这些公式不是摆设**：`tick` 每回合调用 logistic 增长（势力）、Lotka-Volterra（强弱压制）、
+SIR（谣言）、Deffuant（风气）、thermal_relaxation（崩解后松弛）推动世界演化；
+相位与心流直接进战斗与事件结算。哪些函数在跑、哪些是宿主按需调用的模型，
+见 `ARCHITECTURE.md` §6.3「公式的调用路径」。
 
 ---
 

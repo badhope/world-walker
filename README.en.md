@@ -4,7 +4,7 @@
 
 ---
 
-*World Walker* is an AI-driven text interaction game engine. World evolution is driven by 15 academic disciplines and 85+ formulas — every player decision is processed through mathematical models, and the world emerges its own story naturally, without pre-written branches.
+*World Walker* is an AI-driven text interaction game engine. World evolution is driven by 9 academic disciplines, 7 model domains and 85+ formulas — every player decision is processed through mathematical models, and the world emerges its own story naturally, without pre-written branches.
 
 Keywords: `AI text adventure` `interactive fiction engine` `emergent narrative` `cognitive architecture` `game AI` `world simulation` `behavioral economics` `evolutionary dynamics` `systems thinking`
 
@@ -50,6 +50,18 @@ each player action is settled by `combat` / `trade` / `social` / `karma` →
 prose → `tick` closes the turn → every 3-5 turns call `narrative` + `status`. The agent only turns
 the engine's JSON into prose — it must never invent numbers.
 
+- **The world moves on its own (v0.9 core)**: `tick` is not just a turn counter — it drives faction
+  power (logistic + Lotka-Volterra), rumor spread (SIR), culture drift (Deffuant bounded confidence),
+  NPC roaming and the Panarchy adaptive cycle (r → K → Ω → α, all four phases reachable).
+  `world_state` reports the snapshot; the panel's *factions & winds* drawer shows it live.
+- **Derived state actually settles** (not decoration): world phase scales emergent-event probability and
+  combat damage (Ω hits harder); flow state shifts hit chance (boredom = you miss); the six-dim moral
+  vector accumulates from karma events and scales social gains (a bloody reputation discounts kindness).
+- **World-agnostic down to the UI vocabulary**: a setting's `terms` overrides every panel label
+  (`境界→等级`, `修行阶→evolution track`, …); `level_tiers` defines that world's ladder and `advance`
+  enforces single-step progression (skips and regressions are rejected); `places` supplies location prose.
+- **Narration is persisted**: `publish_prose` writes the turn's prose into state and the stage shows it;
+  `travel` accepts `desc` so a new location shows its own description instead of the opening line.
 - Ecosystem compatible (no reinventing): reads SillyTavern-style **character cards** (`.png`-embedded
   or `.json`, V1/V2/V3) and **world info** lorebooks (world-info / card `character_book`, with
   selective/constant/disable semantics); `character_card_read` → `add_character` → `import_lorebook`
@@ -129,7 +141,7 @@ python engine.py info_weight --state game_state.json --probability 0.05
 ```
 game_engine/                      # the repo root IS the game_engine package (any folder name works)
 ├── engine.py                     # CLI entry (14 commands)
-├── mcp_server.py                 # MCP server (31 tools; only extra dep is mcp>=2)
+├── mcp_server.py                 # MCP server (33 tools; only extra dep is mcp>=2)
 ├── state_schema.py               # State schema + helpers
 ├── init_game.py                  # Writes the sample world (青云界)
 ├── pyproject.toml                # pip install -e ".[mcp]"; commands world-walker / world-walker-mcp
@@ -166,7 +178,7 @@ game_engine/                      # the repo root IS the game_engine package (an
 
 ## Academic Coverage
 
-85+ formulas across 15 disciplines:
+85+ formulas across 9 disciplines (plus 16 named closed-form models in 7 domains):
 
 | Discipline | Core Theories | File | Lines |
 |------------|--------------|------|-------|
@@ -178,6 +190,12 @@ game_engine/                      # the repo root IS the game_engine package (an
 | Systems Theory | Donella Meadows 12 leverage points, NAT, ANT | systems_feedback.py | 141 |
 | Narrative Studies | Emergent narrative, Bartle, narrative transportation | narrative_engine.py | 141 |
 | Information Theory | Shannon entropy, KL divergence, event information | world_dynamics.py | — |
+| Network / Evolutionary Games | Lotka-Volterra, ESS, replicator dynamics, Hawk-Dove | models.py / world_dynamics.py | 290 |
+
+**These formulas are not decoration.** Every `tick` calls logistic growth (factions), Lotka-Volterra
+(strong-weak pressure), SIR (rumors), Deffuant (culture) and thermal relaxation (post-collapse decay) to
+move the world; phase and flow feed straight into combat and event settlement. See
+`ARCHITECTURE.md` §6.3 for which functions run in the loop vs. which are host-invoked models.
 
 ---
 

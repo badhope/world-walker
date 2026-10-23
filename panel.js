@@ -138,6 +138,15 @@
     }
   }
 
+  /* ── 术语：设定包 ui.terms 覆盖默认中文词 ─────────── */
+  function applyTerms(terms) {
+    if (!terms || typeof terms !== "object") return;
+    document.querySelectorAll("[data-term]").forEach((el) => {
+      const key = el.getAttribute("data-term");
+      if (key && terms[key]) el.textContent = terms[key];
+    });
+  }
+
   /* ── render：HUD ──────────────────────────────────── */
   function renderHud(v) {
     const p = v.player || {};
@@ -156,13 +165,15 @@
     setText($("tick"), "回合 " + fmtNum(v.tick));
     setText($("clock"), "更新于 " + (v.updated_at || "—"));
 
+    const terms = v.terms || {};
     setText($("pname"), p.name || "—");
-    setText($("pname-sub"), (p.stage ? "第 " + p.stage + " 阶段" : "") || "");
+    const stageWord = terms.stage || "阶段";
+    setText($("pname-sub"), (p.stage ? "第 " + p.stage + " " + stageWord : "") || "");
     setText($("plevel"), p.level || "—");
     setText($("ploc"), p.location || "—");
     setText($("phpn"), fmtNum(p.hp) + "/" + fmtNum(p.hp_max));
     setText($("pmpn"), fmtNum(p.mp) + "/" + fmtNum(p.mp_max));
-    setText($("pgold"), "钱财 " + fmtNum(p.gold) + " " + (p.currency || ""));
+    setText($("pgold"), (terms.gold || "钱财") + " " + fmtNum(p.gold) + " " + (p.currency || ""));
 
     const hpBar = $("phpbar");
     const hpLow = p.hp_max > 0 && p.hp / p.hp_max < 0.3;
@@ -201,8 +212,11 @@
 
     const moral = $("moral");
     moral.textContent = "";
+    const moralVals = (((v.moral || {}).derived || []).length
+      ? v.moral.derived : ((v.moral || {}).values || []));
     ((v.moral || {}).dims || []).forEach((d, i) => {
-      const val = ((v.moral || {}).values || [])[i] || 0;
+      const val = moralVals[i] || 0;
+      if (!val) return;   // 零维不占位：六维全 0 时不该糊一屏"关怀 0 公平 0 …"
       const wrap = document.createElement("span");
       wrap.style.marginRight = "8px";
       const b = document.createElement("b");
@@ -474,6 +488,76 @@
     }
 
     chip($("flags"), v.flags, "dim");
+    renderWorldDrawer(v);
+  }
+
+  /* ── 世界侧：势力存量 / 传闻热度 / 风气 ──────────── */
+  function renderWorldDrawer(v) {
+    const ws = v.world_state || {};
+    const terms = v.terms || {};
+    const facBox = $("world-factions");
+    if (facBox) {
+      facBox.textContent = "";
+      const facs = ws.factions || [];
+      if (!facs.length) {
+        const s = document.createElement("span");
+        s.className = "empty";
+        s.textContent = (terms.factions || "势力") + "还没开始演化";
+        facBox.appendChild(s);
+      } else {
+        facs.forEach((f) => {
+          const s = document.createElement("span");
+          s.className = "chip" + (f.power >= 70 ? " good" : (f.power <= 25 ? " bad" : ""));
+          s.textContent = f.name + " " + f.power;
+          facBox.appendChild(s);
+        });
+      }
+    }
+    const hint = $("world-hint");
+    if (hint) {
+      const ph = ws.phase ? "相位 " + ws.phase : "";
+      const mi = (ws.market_index != null) ? "物价 " + ws.market_index : "";
+      hint.textContent = [ph, mi].filter(Boolean).join(" · ");
+    }
+    const rumBox = $("world-rumors");
+    if (rumBox) {
+      rumBox.textContent = "";
+      const rumors = ws.rumors || [];
+      if (!rumors.length) {
+        const s = document.createElement("span");
+        s.className = "empty";
+        s.textContent = "暂无传闻";
+        rumBox.appendChild(s);
+      } else {
+        rumors.forEach((r) => {
+          const s = document.createElement("span");
+          s.className = "chip" + (r.heat >= 0.3 ? " bad" : " dim");
+          s.textContent = r.topic + " " + Math.round((r.heat || 0) * 100) + "%";
+          rumBox.appendChild(s);
+        });
+      }
+    }
+    const culBox = $("world-culture");
+    if (culBox) {
+      culBox.textContent = "";
+      const cul = ws.culture || {};
+      const t = (cul.tradition != null) ? cul.tradition : null;
+      const i = (cul.innovation != null) ? cul.innovation : null;
+      if (t == null && i == null) {
+        const s = document.createElement("span");
+        s.className = "empty";
+        s.textContent = "—";
+        culBox.appendChild(s);
+      } else {
+        [["守成", t], ["求变", i]].forEach(([name, val]) => {
+          if (val == null) return;
+          const s = document.createElement("span");
+          s.className = "chip dim";
+          s.textContent = name + " " + Math.round(val * 100) + "%";
+          culBox.appendChild(s);
+        });
+      }
+    }
   }
 
   /* ── 长局态势：三张离线图表（ECharts 缺失时降级为文案）── */
@@ -818,9 +902,10 @@
     const box = $("stage-track");
     if (!box) return;
     const p = vm.player || {};
-    const stage = p.stage || 0;
-    const cap = p.stage_max || 20;
-    const shown = Math.min(cap, 20);
+    // 配置了 level_tiers 的世界用阶梯长度当上限，否则退回 stage_max
+    const stage = (p.tier != null) ? p.tier : (p.stage || 0);
+    const cap = (p.tier_max != null) ? p.tier_max : (p.stage_max || 20);
+    const shown = Math.min(cap, 20) || 1;
     setText($("stage-hint"), stage + " / " + cap + (stage >= cap ? "（已到上限）" : ""));
     box.textContent = "";
     for (let i = 0; i < shown; i++) {
@@ -879,6 +964,7 @@
       document.documentElement.style.setProperty("--accent", v.skin.accent);
       document.documentElement.style.setProperty("--accent-dim", v.skin.accent + "88");
     }
+    applyTerms(v.terms);
     renderHud(v);
     renderScene(v);
     renderCast(v);

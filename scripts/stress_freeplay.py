@@ -307,8 +307,20 @@ async def run(turns: int, quiet: bool = False):
                     # stage 缺键即 0（引擎 advance 同样按 get("stage", 0) 起算）
                     st_bk = await call('read_state', {})
                     stage_before = int(((st_bk or {}).get('entities') or {}).get('player', {}).get('stage', 0) or 0)
-                    adv = await call('advance', {'next_level': '引元境·初层' if player.stage_target == 1
-                                                 else '引元境·中层', 'insight': rng.uniform(0.4, 0.95)})
+                    # 按真实等级算下一步（阶梯校验会拒掉"同阶同名/倒退/跳阶"）
+                    _cur = (((await call('read_state', {})) or {}).get('entities') or {}).get('player', {})
+                    _cur_lvl = str(_cur.get('level') or '淬体七段')
+                    _lvl = ['淬体八段', '引元境·初层', '引元境·中层', '引元境·后层',
+                            '引元境·圆满', '元府境·初层', '元府境·中层', '元府境·后层',
+                            '元府境·圆满', '元丹境·初层', '元丹境·中层', '元丹境·后层',
+                            '元丹境·圆满', '化元境·初层', '化元境·中层', '通玄境·初层',
+                            '玄台境·初层', '玄婴境·初层', '破妄境·初层', '登枢']
+                    _idx = 0
+                    for _i, _n in enumerate(_lvl):
+                        if _cur_lvl.startswith(_n.split('·')[0]) or _n.split('·')[0] in _cur_lvl:
+                            _idx = _i + 1
+                    _pick = _lvl[min(_idx, len(_lvl) - 1)]
+                    adv = await call('advance', {'next_level': _pick, 'insight': rng.uniform(0.4, 0.95)})
                     if adv and adv.get('success'):
                         st_now = await call('read_state')
                         check(st_now, '突破成功则 stage 恰好 +1',

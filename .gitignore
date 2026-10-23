@@ -31,6 +31,10 @@ scripts/last_stress_report.json
 err*.log
 .aqg/
 
+# Pre-push gate artifacts
+.gate_out.log
+.gate-dist/
+
 # Coverage
 .cov
 .coverage

@@ -99,6 +99,12 @@ class EntityIn(BaseModel):
                                   description="随身物品 {商品 key: 数量}（可选，设定里可给初始持有；卖出须持有）")
     skills: list[str] = Field(default_factory=list, description="技能名（可选）")
     morality: list[int] = Field(default_factory=list, description="六维道德向量（可选，默认全 0）")
+    # 卡面文字：设定包与角色卡都会带这三段。缺了它们，面板的"角色卡详情"就只剩气血，
+    # 玩家点开人物看到的是一张空卡（实测：load_setting 经 pydantic 把描述全丢了）。
+    desc: str = Field(default="", description="外观/背景描写（叙事层与角色卡详情用）")
+    personality: str = Field(default="", description="性格文字（可选）")
+    speech: str = Field(default="", description="口癖/语气示例（可选）")
+    roam: bool = Field(default=False, description="是否随 tick 自行走动（默认 false，避免打断剧情）")
 
 
 class MarketItemIn(BaseModel):

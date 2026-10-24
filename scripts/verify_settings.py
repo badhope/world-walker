@@ -20,7 +20,10 @@ _pspec = _ilu.spec_from_file_location('panel_settings', os.path.join(ROOT, 'pane
 PANEL = _ilu.module_from_spec(_pspec)
 _pspec.loader.exec_module(PANEL)
 
-import mcp_server as MS
+from game_engine import settings_loader as SL
+from game_engine.rules.economy import tick_market
+from game_engine.rules.world_evolution import evolve
+from game_engine.state_schema import load_state, save_state, seed_rng
 
 SETTINGS_DIR = os.path.join(ROOT, 'settings')
 RESULTS = []
@@ -42,12 +45,16 @@ def main():
             bundle = json.load(f)
         state_path = os.path.join(tmp, fn.replace('.setting.json', '.save.json'))
         try:
-            MS.load_setting(path=path, state_path=state_path)
+            with open(path, encoding="utf-8") as f:
+                bundle = json.load(f)
+            state = SL.build_state(bundle)
+            SL.apply_runtime_fields(state, bundle)
+            save_state(state, state_path)
         except Exception as exc:
             check('%s 可载入' % fn, False, '%s: %s' % (type(exc).__name__, str(exc)[:100]))
             continue
 
-        state = MS.load_state(state_path)
+        state = load_state(state_path)
         player = state['entities']['player']
         vm = PANEL.view_model(state_path)
         terms = vm.get('terms') or {}
@@ -101,14 +108,13 @@ def main():
 
         # 世界演化在真实设定上能跑起来
         for _ in range(15):
-            state = MS.load_state(state_path)
-            MS._seed_rng(state)
-            MS.tick_market(state)
+            state = load_state(state_path)
+            seed_rng(state)
+            tick_market(state)
             state['tick'] = state.get('tick', 0) + 1
-            from game_engine.rules.world_evolution import evolve
             evolve(state)
-            MS.save_state(state, state_path)
-        st2 = MS.load_state(state_path)
+            save_state(state, state_path)
+        st2 = load_state(state_path)
         fac = st2.get('factions') or {}
         pan = st2.get('panarchy') or {}
         check('%s 连跑 15 回合：势力与相位都在动' % fn,

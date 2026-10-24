@@ -51,5 +51,15 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: 检查 Pages 是否已启用（未启用时给出可执行提示，而不是静默失败）
+        id: check
+        run: |
+          if [ -z "${{ vars.PAGES_ENABLED }}" ]; then
+            echo "::notice::仓库尚未启用 GitHub Pages。启用步骤：Settings → Pages → Build and deployment → Source 选 GitHub Actions。启用后本工作流会自动部署。"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - id: deployment
+        if: steps.check.outputs.skip != 'true'
         uses: actions/deploy-pages@v4

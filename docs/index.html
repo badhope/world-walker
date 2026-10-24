@@ -133,6 +133,7 @@
     <span class="brand"><span class="seal">行</span><b>万界·行者</b></span>
     <span class="links">
       <a href="#worlds">四套世界</a>
+      <a href="#gameplay">玩法</a>
       <a href="#mechanics">机制</a>
       <a href="#compare">对标</a>
       <a href="#quality">质量</a>
@@ -143,7 +144,7 @@
 
 <header class="hero">
   <div class="wrap">
-    <p class="eyebrow">World Walker · v1.0.0</p>
+    <p class="eyebrow">World Walker · v1.1.0</p>
     <h1>AI 负责叙述，<span class="accent">引擎负责世界</span></h1>
     <p class="lede">
       世界观无关的文字互动游戏内核：144 个规则函数结算每一次行动，34 个 MCP 工具供任意 Agent 调用，
@@ -155,7 +156,7 @@
       <span class="badge"><b>34</b> MCP 工具</span>
       <span class="badge"><b>144</b> 规则函数</span>
       <span class="badge"><b>4</b> 套世界观</span>
-      <span class="badge"><b>32/32</b> 变异测试</span>
+      <span class="badge"><b>36/36</b> 变异测试</span>
       <span class="badge"><b>88%</b> 覆盖率</span>
       <span class="badge"><b>MIT</b></span>
     </div>
@@ -203,6 +204,33 @@
   </div>
 </section>
 
+<section id="gameplay">
+  <div class="wrap">
+    <h2>四种<span class="accent">玩法循环</span>，同一套规则</h2>
+    <p class="sub">
+      世界观可换只是第一层。真正决定"这局怎么玩"的是 <code>playbook</code>：
+      循环类型、进度轴、失败条件、节拍序列、上下文注入策略。规则函数一行不改。
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>设定包</th><th>玩法循环</th><th>进度轴</th><th>失败条件</th><th>节拍</th></tr></thead>
+        <tbody>
+          <tr><td><b>玄枢界</b></td><td>自由推进 freeform</td><td>修行阶 0–10</td><td>重伤退场（hp）</td><td>日常修行 → 势力摩擦 → 生死一线（每 6 回合）</td></tr>
+          <tr><td><b>折剑行</b></td><td>声明→判定→后果 ttrpg</td><td>身手 0–7</td><td>债主上门（clock 12）</td><td>接活 → 踩点 → 动手 → 代价（每 4 回合）</td></tr>
+          <tr><td><b>霓虹深渊</b></td><td>地点与命令 mud</td><td>评级 0–7</td><td>被盯上（clock 10）</td><td>跑腿 → 接头 → 侵入 → 翻车（每 4 回合）</td></tr>
+          <tr><td><b>雾港</b></td><td>选项推进 choice</td><td>线索 0–24</td><td>理智（sanity）</td><td>异常 → 线索 → 更深的疑问（每 5 回合）</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid3" style="margin-top:16px">
+      <div class="card"><h3>事业线</h3><p>stage DAG + 世界状态谓词。任务只声明目标与压力，不声明过程；dormant 的线不显示，没 <code>exit_if</code> 的一幕永不自动推进。</p></div>
+      <div class="card"><h3>世界书</h3><p>selectiveLogic 四值、概率、sticky/cooldown、同组互斥、递归开关——与酒馆语义对齐，但时间是 tick，可复现。</p></div>
+      <div class="card"><h3>失败钟</h3><p>不是"扣血才算失败"：债主上门、被盯上、理智耗尽都是可配置的失败条件，由 <code>failure_tick</code> 推进。</p></div>
+    </div>
+    <p class="sub" style="margin-top:16px">完整字段、DAG 规则与"不支持项及理由"见 <a href="../GAMEPLAY.md">docs/GAMEPLAY.md</a>。</p>
+  </div>
+</section>
+
 <section id="mechanics">
   <div class="wrap">
     <h2>世界<span class="accent">自己会动</span></h2>
@@ -232,10 +260,11 @@
           <tr><td>数值由谁决定</td><td>语言模型生成，容易漂移</td><td><b>规则函数结算</b>，同种子逐字节可复现</td></tr>
           <tr><td>世界会不会自己动</td><td>等你行动；不行动世界静止</td><td><b>tick 自己推动</b>势力 / 谣言 / 风气 / NPC / 相位</td></tr>
           <tr><td>换世界</td><td>换提示词与角色卡</td><td><b>设定包</b>：术语、阶梯、货币、地点、世界书、品牌、皮肤</td></tr>
+          <tr><td>换玩法</td><td>换前端或换产品</td><td><b>playbook</b>：四种循环 / 五种进度轴 / 五种失败模式 / 节拍序列</td></tr>
           <tr><td>长局记忆</td><td>上下文窗口 + 摘要</td><td><b>三层记忆</b>：摘要 + 大事记 + 归档（recall 跨世代回捞）</td></tr>
           <tr><td>生态兼容</td><td>各自为政</td><td>直接读 SillyTavern <b>角色卡</b>（PNG/JSON，V1–V3）与<b>世界书</b></td></tr>
           <tr><td>界面</td><td>聊天流</td><td><b>只读实况主舞台</b>：叙事 + HUD + 长局曲线 + 图鉴 + 市场</td></tr>
-          <tr><td>可核对性</td><td>难以复核</td><td>结构化事件字段；只读工具零副作用；<b>变异测试 32/32</b></td></tr>
+          <tr><td>可核对性</td><td>难以复核</td><td>结构化事件字段；只读工具零副作用；<b>变异测试 36/36</b></td></tr>
         </tbody>
       </table>
     </div>
@@ -251,7 +280,7 @@
     </p>
     <div class="metrics">
       <div class="metric"><div class="n">530</div><div class="l">断言审计（0 可疑）</div></div>
-      <div class="metric"><div class="n">32/32</div><div class="l">变异测试全杀</div></div>
+      <div class="metric"><div class="n">36/36</div><div class="l">变异测试全杀</div></div>
       <div class="metric"><div class="n">88%</div><div class="l">核心域覆盖率</div></div>
       <div class="metric"><div class="n">17</div><div class="l">推前门禁项</div></div>
       <div class="metric"><div class="n">0</div><div class="l">bandit 告警</div></div>

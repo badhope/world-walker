@@ -420,6 +420,21 @@ def main():
     check("同 tick 重复采样覆盖（不产生重复点）", len(ser2) == 4, str([s["tick"] for s in ser2]))
 
 
+    # 8b. 玩法层契约：playbook / quests / lorebook 三个新块
+    pb = (vm_rich := _panel.view_model(rich_path)).get("playbook") or {}
+    check("视图模型含玩法剧本（loop/progress/failure/beat/guide）",
+          pb.get("loop") in ("freeform", "choice", "mud", "ttrpg")
+          and "progress" in pb and "failure" in pb and "beat" in pb
+          and isinstance(pb.get("loop_guide"), str), str(pb.get("loop")))
+    qs = vm_rich.get("quests") or {}
+    check("视图模型含事业线块（rows/total/visible）",
+          isinstance(qs.get("rows"), list) and isinstance(qs.get("total"), int)
+          and isinstance(qs.get("visible"), int), str(qs.get("total")))
+    lb = vm_rich.get("lorebook") or {}
+    check("视图模型含世界书块（rows 带 fired/sticky_left/cooldown_left）",
+          isinstance(lb.get("rows"), list) and isinstance(lb.get("total"), int),
+          "rows=%d" % len(lb.get("rows") or []))
+
     # 9. 行动队列（双向通道）：面板只写侧写、不写状态；限额与同源校验生效
     inbox_state = os.path.join(tmp2, "inbox.save.json")
     with open(inbox_state, "w", encoding="utf-8") as f:

@@ -14,6 +14,8 @@
 所有函数都是纯函数（除非显式接收 state 并原地更新），不读写文件、不依赖时间。
 """
 
+from game_engine.rules import playbook as playbook_rules
+from game_engine.rules import questline as questline_rules
 from game_engine.state_schema import entity_key, log_event
 
 ATTR_KEYS = ("str", "dex", "int", "con", "cha")
@@ -142,6 +144,11 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
             raise ValueError("实体 id 重复: %s" % eid)
         entities[eid] = normalize_entity(eid, npc)
 
+    # 玩法剧本与事业线在**建局时**就要写进状态：面板与 status 第一屏就要能显示，
+    # 不能等到 apply_runtime_fields 才补（那样 UI 第一帧是空的）。
+    playbook, pb_notes = playbook_rules.normalize(bundle.get("playbook"))
+    quests = questline_rules.normalize_all(bundle.get("questlines"))         if bundle.get("questlines") else []
+
     state = {
         "tick": 0,
         "rng_seed": int(seed if seed is not None else bundle.get("seed", DEFAULT_SEED)),
@@ -157,6 +164,10 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
             "era": str(world.get("era", "")),
             "location_desc": str(world.get("location_desc", "")),
         },
+        "playbook": playbook,
+        "playbook_notes": pb_notes,
+        "questlines": quests,
+        "quests": {},
     }
     return state
 
@@ -175,9 +186,16 @@ def search_place(bundle: dict, name: str) -> dict:
 def apply_runtime_fields(state: dict, bundle: dict) -> int:
     """把"建局之外的运行时字段"写进状态，返回导入的世界书条目数。
 
-    字段：currency / terms / level_tiers / places / lore。
+    字段：playbook / questlines / currency / terms / level_tiers / places / lore。
     这里**不**做落盘——调用方（MCP 的 load_setting）负责 save_state。
     """
+    if bundle.get("playbook"):
+        pb, notes = playbook_rules.normalize(bundle["playbook"])
+        state["playbook"] = pb
+        state["playbook_notes"] = notes
+    if bundle.get("questlines"):
+        state["questlines"] = questline_rules.normalize_all(bundle["questlines"])
+        state.setdefault("quests", {})
     if bundle.get("currency"):
         state["currency"] = str(bundle["currency"])
     terms = bundle.get("terms")
@@ -225,7 +243,13 @@ def normalize_lore_entry(entry: dict):
         enabled = bool(entry["enabled"])
     else:
         enabled = not bool(entry.get("disable", False))
-    return {
+    # 扩展字段（与 SillyTavern world-info 同名，缺省保持旧行为）：
+    #   selective_logic / probability / use_probability / group / group_weight / group_override
+    #   sticky / cooldown / delay / scan_depth / match_whole_words / exclude_recursion
+    # 这些是"逐回合确定性"实现里真正会改变结果的字段，因此必须落进状态文件，
+    # 否则快照回退重放会得到不同的上下文（INV-E4）。
+    logic = entry.get("selective_logic", entry.get("selectiveLogic"))
+    row = {
         "keys": keys,
         "secondary_keys": [str(k).strip() for k in secondary if str(k).strip()],
         "content": content,
@@ -235,5 +259,29 @@ def normalize_lore_entry(entry: dict):
         "case_sensitive": bool(entry.get("case_sensitive", False)),
         "order": int(entry.get("insertion_order", entry.get("order", 100)) or 0),
         "enabled": enabled,
+        "match_whole_words": bool(entry.get("match_whole_words", False)),
+        "exclude_recursion": bool(entry.get("exclude_recursion", False)),
+        "use_probability": bool(entry.get("use_probability", True)),
     }
+    if logic is not None:
+        row["selective_logic"] = logic
+    for key in ("probability", "sticky", "cooldown", "delay", "scan_depth"):
+        val = entry.get(key)
+        if val is not None:
+            try:
+                row[key] = int(val)
+            except (TypeError, ValueError):
+                pass
+    if entry.get("group"):
+        row["group"] = str(entry["group"])
+    for key in ("group_weight",):
+        val = entry.get(key)
+        if val is not None:
+            try:
+                row[key] = float(val)
+            except (TypeError, ValueError):
+                pass
+    if entry.get("group_override"):
+        row["group_override"] = True
+    return row
 

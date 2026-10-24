@@ -1,9 +1,10 @@
 # 万界 · 行者
 
-**版本 v1.0.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**版本 v1.1.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
-> **AI 负责叙述，引擎负责世界。**
-> 世界观无关的文字互动游戏内核：144 个规则函数、34 个 MCP 工具、4 套可直接开玩的设定包、
+> **AI 负责叙述，引擎负责世界 —— 而且"怎么玩"也能换。**
+> 四套世界观、四种玩法循环（自由推进 / 选项推进 / 地点命令 / 声明→判定→后果），同一套规则内核。
+> 世界观无关的文字互动游戏内核：144 个规则函数、39 个 MCP 工具、4 套可直接开玩的设定包、
 > 一块离线可用的只读实况主舞台。同一份存档、同一个种子，永远得到同一个世界。
 
 <p align="center">
@@ -120,7 +121,7 @@ python panel.py --state game_state.json   # 打开只读主舞台
 | 长局记忆 | 上下文窗口 + 摘要，旧事常丢 | **三层记忆**：摘要 + 大事记 + 逐条归档（`recall` 跨世代回捞） |
 | 生态兼容 | 各自为政 | 直接吃 SillyTavern **角色卡**（PNG/JSON，V1–V3）与**世界书**（含 selective/constant/disable 语义） |
 | 界面 | 聊天流为主 | **只读实况主舞台**：叙事 + HUD + 长局曲线 + 图鉴 + 市场 + 世界脉搏 |
-| 可核对性 | 难以复核 | 每条事件有结构化字段；`status` / `world_state` 只读不落盘；变异测试 32/32 |
+| 可核对性 | 难以复核 | 每条事件有结构化字段；`status` / `world_state` 只读不落盘；变异测试 36/36 |
 
 我们**不**做的事：图像生成、多人联机、云端账号体系、插件市场。
 这些是取舍不是遗漏，理由写在 [ROADMAP.md](ROADMAP.md)。
@@ -181,11 +182,13 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 ---
 
-## MCP 工具一览（34 个）
+## MCP 工具一览（39 个）
 
 | 组 | 工具 |
 |---|---|
 | 建局 | `world_schema` `world_init` `world_open` `load_setting` |
+| 玩法 | `playbook_info` `quest_status` `quest_advance` `failure_tick` |
+| 世界书 | `lore_lookup` |
 | 结算 | `combat` `trade` `social` `karma` `tick` `use_item` `advance` |
 | 叙事 | `narration_context` `publish_prose` `narrative` `narrative_weight` `merit` |
 | 长局 | `write_summary` `recap` `recall` `snapshot` `restore` `configure` |
@@ -198,6 +201,71 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 完整参数与调用约定见 [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md)。
 
 ---
+
+## 玩法层：同一套规则，四种"玩起来不一样"
+
+世界观可换只是第一层。真正决定"这局怎么玩"的是 `playbook`：
+
+| 字段 | 可选值 | 作用 |
+|---|---|---|
+| `loop` | `freeform` / `choice` / `mud` / `ttrpg` | 叙事循环：自由推进 / 选项推进 / 地点命令 / 声明→判定→后果 |
+| `input` | `natural` / `choice` / `command` | 玩家输入形态 |
+| `progress` | `{axis, label, max}` | 进度轴：`level` / `gold` / `reputation` / `knowledge` / `clock` |
+| `failure` | `{mode, label, max}` | 失败条件：`hp` / `sanity` / `clock` / `deadline` / `none` |
+| `beat` | `{pattern, every}` | 节拍序列（如「日常·摩擦·升级·代价·回收」，每 N 回合循环） |
+| `settlement` | 工具名数组 | 这一局允许的结算方式 |
+| `context` | `{inject, max_lore, scan_depth}` | 每回合上下文注入策略 |
+
+`playbook_info` 会把当前剧本、进度、失败钟、当前节拍与**给宿主的叙事指南**一起返回；
+`scripts/verify_gameplay.py`（59 项断言）逐项锁定这些语义。
+四套设定包分别演示四种循环：玄幻 `freeform` / 武侠 `ttrpg` / 赛博 `mud` / 悬疑 `choice`。
+
+## 事业线：任务只声明目标与压力，不声明过程
+
+设定包的 `questlines` 是一个 stage DAG：
+
+```json
+{
+  "id": "fog_lighthouse",
+  "title": "别让灯塔亮起来",
+  "visibility": {"flag": "无署名信"},
+  "stages": [
+    {"id": "letter", "title": "信", "objectives": ["弄清信是谁写的"],
+     "exit_if": {"visited": "雾港码头"}, "next": ["keeper"]},
+    {"id": "keeper", "title": "看守", "objectives": ["找到沈伯"],
+     "exit_if": {"visited": "灯塔"}, "next": ["ledger"]},
+    {"id": "ledger", "title": "名册", "objectives": ["对上那七个名字"], "next": []}
+  ],
+  "reward": {"flags": ["灯塔真相"]}
+}
+```
+
+- **谓词只用世界状态**：`flag` / `visited` / `gold_gte` / `karma_gte` / `tier_gte` / `relation_gte` / `item_gte` / `counter_gte` / `stage_done`，支持 `all` / `any` / `not` 组合。
+- **dormant 不显示**：没满足 `visibility` 的事业线不进面板，避免变成待办清单。
+- **`exit_if` 才推进**：没有 `exit_if` 的一幕永不自动往前跑——它等宿主用 `quest_advance` 显式判定。
+- **失败优先**：`fail_if` 或 `deadline_tick` 命中直接判失败。
+- **奖励只发一次**：完成后反复 tick 不会重复给钱。
+- 载入时做 DAG 校验：有环、next 指向不存在的 stage 一律报错。
+
+## 世界书：与酒馆语义对齐，但是逐回合确定性的
+
+导入 SillyTavern 世界书不再丢语义：
+
+| 语义 | 状态 |
+|---|---|
+| `keys` / `secondary_keys` / `selective` | ✅ |
+| `selectiveLogic` 四值（AND_ANY / NOT_ALL / NOT_ANY / AND_ALL） | ✅ |
+| `constant` / `insertion_order` / `enabled` | ✅ |
+| `probability` / `use_probability` | ✅（`sha256(seed\|tick\|entry)` 派生） |
+| `sticky` / `cooldown` / `delay` | ✅（按 tick 计，写进状态文件） |
+| `group` / `group_weight` / `group_override` | ✅（同组只出一条） |
+| `scan_depth` / `match_whole_words` / `exclude_recursion` | ✅ |
+| 递归扫描 | ✅ 但**默认关闭**（打开会把整本书拉进上下文） |
+| `position` / `depth` / `role` / `outlet` | ❌ 提示词布局属于宿主 |
+| `vectorized` / `automationId` / `characters` 过滤器 | ❌ 需要嵌入模型或前端脚本 |
+
+面板「世界书」抽屉显示每条设定的触发次数与 sticky/cooldown 剩余，
+用来回答"为什么这一段被触发了"。`lore_lookup` 工具可以按任意文本预演一次触发。
 
 ## 设定包：换世界不改代码
 
@@ -225,18 +293,19 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_formulas.py` | 122 | 按 docstring 的数学式独立重算 77 个函数 |
 | `verify_branches.py` | 159 | 低覆盖模块的异常路径与状态分支 |
 | `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
-| `verify_panel.py` | 69 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
-| `verify_mcp_stdio.py` | 63 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
+| `verify_panel.py` | 72 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
+| `verify_mcp_stdio.py` | 64 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
 | `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
 | `verify_docs.py` | 16 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
+| `verify_gameplay.py` | 59 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_injection.py` | 21 | 外部文本的注入特征识别与 untrusted 标记 |
 | `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 13 | 真实 Edge 渲染 + 抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | 547 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
-| `verify_mutation.py` | 32 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
+| `verify_tests.py` | 595 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `verify_mutation.py` | 36 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
 全程走真实 MCP stdio。最近一次 500 轮结果：0 意外错误、0 不变量破坏。
@@ -256,7 +325,7 @@ bash scripts/pre_push_gate.sh     # 17 项，与 GitHub Actions 同判据
 ```
 world-walker/                  # 仓库根即 game_engine 包
 ├── engine.py                  # CLI（14 条命令，命令表驱动）
-├── mcp_server.py              # MCP 服务器（34 个工具）
+├── mcp_server.py              # MCP 服务器（39 个工具）
 ├── state_schema.py            # 状态模型 / 原子写 / 世代归档 / 种子
 ├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
 ├── panel.html / .css / .js    # 主舞台（原生三件套，无构建链）
@@ -289,7 +358,7 @@ MIT 许可。示例设定包里的人物、势力、地名全部原创，可以�
 
 **为什么不用 pytest？**
 断言必须经得起"改坏代码看测试红不红"的检验。`verify_tests.py` 会静态拒绝恒真断言，
-`verify_mutation.py` 则真的把 32 个已知错误逐个注入源码，确认每个都能被测试杀死。
+`verify_mutation.py` 则真的把 36 个已知错误逐个注入源码，确认每个都能被测试杀死。
 两者都在门禁里。
 
 **为什么面板不能直接提交行动？**

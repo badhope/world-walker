@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "world-walker"
-version = "1.0.0"
+version = "1.1.0"
 description = "万界·行者 World Walker — AI 驱动的文字互动游戏引擎（世界观无关规则内核 + MCP 服务器）"
 readme = "README.md"
 requires-python = ">=3.10"

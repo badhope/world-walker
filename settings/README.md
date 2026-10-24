@@ -27,6 +27,8 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | `terms` | | 面板术语覆盖 `{level:"等级", track:"进化轨", ...}`（键见 `panel.py::DEFAULT_TERMS`）。让非修真世界观不必看到「境界/修行轨」 |
 | `places` | | 地点描写 `{地名: {desc}}` 或 `{地名: "描写"}`。走到该地时面板主舞台显示它，而不是开场那句 |
 | `lore` | | 世界书条目，**与酒馆 character_book 同形**：`keys` / `secondary_keys` / `selective` / `constant` / `insertion_order` / `content` / `comment`。`narration_context` 按关键词触发它们 |
+| `playbook` | | 玩法剧本 `{loop, input, progress, failure, beat, settlement, context}`；决定这一局"怎么玩"（详见 `docs/GAMEPLAY.md`）。缺省为自由推进 + 气血失败 |
+| `questlines` | | 事业线数组（stage DAG + 谓词 + 奖励）。载入时校验环与幽灵 next；未满足 `visibility` 的线保持 dormant，不占面板 |
 | `seed` | | 随机种子（可复现） |
 | `state_path_hint` | | 默认状态文件名 |
 
@@ -40,7 +42,14 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | `雾港.setting.json` | 调查悬疑 | 六阶（外行→传奇） | 法币 | 9 条 | 线索链与理智消耗、克苏鲁式"越查越冷" |
 
 四套共用同一套规则内核：战斗、交易、社交、因果、势力演化、长局记忆全部一致，
-差别只在**叙事词汇、等级阶梯、经济规模与事件推进节奏**。
+差别在**叙事词汇、等级阶梯、经济规模、玩法循环（playbook）与事业线结构**：
+
+| 设定包 | 玩法循环 | 进度轴 | 失败条件 |
+|---|---|---|---|
+| 玄枢界 | 自由推进（freeform） | 修行阶 0–10 | 重伤退场（hp） |
+| 折剑行 | 声明→判定→后果（ttrpg） | 身手 0–7 | 债主上门（clock 12） |
+| 霓虹深渊 | 地点与命令（mud） | 评级 0–7 | 被盯上（clock 10） |
+| 雾港 | 选项推进（choice） | 线索 0–24 | 理智（sanity） |
 `scripts/verify_settings.py` 会逐包断言载入完整、术语无泄漏、连跑 15 回合后世界仍在演化。
 
 每个包都配了 `places`（地点描写）与 `ui`（皮肤 + 品牌），载入后 `open_panel` 就能看到

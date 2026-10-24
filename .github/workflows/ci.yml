@@ -69,12 +69,15 @@ jobs:
       - name: 文档一致性
         run: python scripts/verify_docs.py
 
+      - name: 玩法层（剧本/事业线/世界书语义）
+        run: python scripts/verify_gameplay.py
+
       - name: 覆盖率门禁（核心域 ≥70%）
         run: |
           python -m pip install --quiet coverage
           rm -f .coverage
-          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world; do
-            python -m coverage run --append --source=rules,panel,state_schema "scripts/$suite.py"
+          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay; do
+            python -m coverage run --append --source=rules,panel,state_schema,settings_loader "scripts/$suite.py"
           done
           python -m coverage report | tee /tmp/cov.txt
           PCT=$(awk '/^TOTAL/ {gsub("%","",$NF); print $NF}' /tmp/cov.txt)

@@ -37,6 +37,9 @@ if "game_engine" not in sys.modules:
     # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
     _spec.loader.exec_module(_pkg)
 
+from game_engine.rules import lorebook as lore_engine  # noqa: E402
+from game_engine.rules import playbook as playbook_rules  # noqa: E402
+from game_engine.rules import questline as quest_rules  # noqa: E402
 from game_engine.rules.narrative_engine import (  # noqa: E402
     flow_channel_status, panarchy_phase_check, player_identity_vector)
 from game_engine.state_schema import load_state  # noqa: E402
@@ -60,6 +63,7 @@ EVENT_LABELS = {
     "tick": ("回合", "回"),
     "prose": ("正文", "墨"),
     "world": ("世事", "势"),
+    "quest": ("事业线", "线"),
 }
 
 
@@ -394,6 +398,9 @@ DEFAULT_TERMS = {
     "factions": "势力",
     "rumors": "传闻",
     "culture": "风气",
+    "quests": "事业线",
+    "playbook": "玩法",
+    "lorebook": "世界书",
 }
 
 
@@ -460,6 +467,36 @@ def _build_codex(state):
     c = state.get("codex") or {}
     return {"locations": c.get("locations", []), "people": c.get("people", []),
             "items": c.get("items", []), "lore": c.get("lore", [])}
+
+
+def _build_playbook(state):
+    """玩法剧本：这一局按什么循环、进度看什么、失败怎么算、当前节拍、宿主要怎么带。"""
+    try:
+        return playbook_rules.summary(state, state.get("playbook") or {})
+    except Exception as exc:  # aqg: top-level boundary —— 剧本坏了不影响主舞台其余部分
+        return {"error": str(exc)[:120]}
+
+
+def _build_quests(state):
+    """事业线：只给已浮现的（dormant 不占版面，避免变成待办清单）。"""
+    try:
+        quests = state.get("questlines") or []
+        return {
+            "rows": quest_rules.status(state, quests),
+            "total": len(quests),
+            "visible": quest_rules.visible_count(state, quests),
+        }
+    except Exception as exc:  # aqg: top-level boundary
+        return {"rows": [], "total": 0, "visible": 0, "error": str(exc)[:120]}
+
+
+def _build_lorebook(state):
+    """世界书：每条目的触发次数、sticky/cooldown 剩余（只读展示，解释"为什么这段被触发"）。"""
+    try:
+        entries = state.get("lore") or []
+        return {"rows": lore_engine.runtime_summary(state, entries), "total": len(entries)}
+    except Exception as exc:  # aqg: top-level boundary
+        return {"rows": [], "total": 0, "error": str(exc)[:120]}
 
 
 def _unsettled_karma(state):
@@ -531,6 +568,9 @@ def view_model(state_path):
         "flags": state.get("world_flags", []),
         "prose_count": len(state.get("prose") or []),
         "inbox_pending": len(inbox_pending(state_path)),
+        "playbook": _build_playbook(state),
+        "quests": _build_quests(state),
+        "lorebook": _build_lorebook(state),
     }
 
 

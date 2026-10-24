@@ -40,6 +40,7 @@ if "game_engine" not in sys.modules:
     _spec.loader.exec_module(_pkg)
 
 import mcp_server as MS  # noqa: E402
+from game_engine.rules import questline as quest_rules  # noqa: E402
 from game_engine.rules.world_evolution import evolve  # noqa: E402
 
 OUT_DIR = os.path.join(ROOT, "docs", "demo")
@@ -147,6 +148,17 @@ def play_one(bundle_name, turns, seed, out_path):
         state["tick"] = state.get("tick", 0) + 1
         for e in evolve(state).get("events", []):
             MS.log_event(state, "world", str(e))
+        # 事业线也要推进——否则演示存档里「事业线」卡永远是"还没到浮现的时候"，
+        # 截图与真实 tick 行为不一致（实测踩到）。
+        for ch in quest_rules.advance(state, state.get("questlines") or [],
+                                      tick=int(state["tick"])):
+            if ch.get("change") == "stage":
+                MS.log_event(state, "quest", "事业线「%s」推进到：%s"
+                              % (ch.get("quest"), ch.get("title")),
+                              quest=ch.get("quest"), stage=ch.get("stage"))
+            elif ch.get("change") == "done":
+                MS.log_event(state, "quest", "事业线「%s」完成" % ch.get("quest"),
+                             quest=ch.get("quest"))
         MS.log_event(state, "tick", "回合%d结束" % state["tick"])
         MS.save_state(state, out_path)
 

@@ -249,11 +249,6 @@
   },
   "event_log": [
     {
-      "tick": 53,
-      "type": "tick",
-      "desc": "回合53结束"
-    },
-    {
       "tick": 54,
       "type": "tick",
       "desc": "回合54结束"
@@ -577,6 +572,13 @@
       "tick": 94,
       "type": "social",
       "desc": "ECHO对林夏的敬重上升3.0"
+    },
+    {
+      "tick": 95,
+      "type": "quest",
+      "desc": "事业线「neon_arm」推进到：那个背影",
+      "quest": "neon_arm",
+      "stage": "who"
     },
     {
       "tick": 95,
@@ -1254,6 +1256,222 @@
     "era": "新历 88 年 · 雨季",
     "location_desc": "下城第 9 区的雨下了十一天。你蹲在便利店屋檐下，看着对面那栋楼的霓虹招牌一明一灭——那是「白鲸诊所」，招牌坏了三年没人修，但诊所里的人还在收活人。你的左臂在渗血，义体接口处冒出一点蓝色的电火花。"
   },
+  "playbook": {
+    "loop": "mud",
+    "input": "command",
+    "progress": {
+      "axis": "level",
+      "label": "评级",
+      "max": 7
+    },
+    "failure": {
+      "mode": "clock",
+      "label": "被盯上",
+      "max": 10
+    },
+    "beat": {
+      "pattern": [
+        "跑腿",
+        "接头",
+        "侵入",
+        "翻车",
+        "善后"
+      ],
+      "every": 4
+    },
+    "settlement": [
+      "combat",
+      "trade",
+      "social",
+      "karma"
+    ],
+    "context": {
+      "inject": [
+        "lore",
+        "cast",
+        "chronicle",
+        "quests"
+      ],
+      "max_lore": 9,
+      "scan_depth": 2
+    }
+  },
+  "playbook_notes": [],
+  "questlines": [
+    {
+      "id": "neon_arm",
+      "title": "左臂里的那段记忆",
+      "summary": "义体里存着一段不属于你的记忆：一个雨夜，一个背影，一句没说完的话。",
+      "stages": [
+        {
+          "id": "repair",
+          "title": "修接口",
+          "objectives": [
+            "找白医生处理接口过热",
+            "或者自己拆开看"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "visited": "白鲸诊所"
+          },
+          "next": [
+            "decode"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "decode",
+          "title": "解码",
+          "objectives": [
+            "找 ECHO 帮你读那段数据"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "relation_gte": {
+              "with": "echo",
+              "affinity": 40
+            }
+          },
+          "next": [
+            "who"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "who",
+          "title": "那个背影",
+          "objectives": [
+            "确认记忆的主人是谁"
+          ],
+          "enter_if": null,
+          "exit_if": null,
+          "next": [],
+          "on_enter": []
+        }
+      ],
+      "visibility": {
+        "flag": "左臂义体故障"
+      },
+      "fail_if": null,
+      "deadline_tick": null,
+      "reward": {
+        "gold": 500,
+        "flags": [
+          "记忆归属"
+        ]
+      },
+      "tags": [
+        "主线",
+        "真相"
+      ]
+    },
+    {
+      "id": "neon_greyrat",
+      "title": "灰鼠帮的规矩",
+      "summary": "地下街的规矩很土：先动手的赔钱，后动手的赔命。",
+      "stages": [
+        {
+          "id": "meet",
+          "title": "见奎",
+          "objectives": [
+            "和奎说上话（打完也算）"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "killed": "奎"
+          },
+          "next": [
+            "deal"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "deal",
+          "title": "谈一笔",
+          "objectives": [
+            "和灰鼠帮达成一次交易"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "gold_gte": 400
+          },
+          "next": [],
+          "on_enter": []
+        }
+      ],
+      "visibility": {
+        "visited": "灰鼠帮地盘"
+      },
+      "fail_if": null,
+      "deadline_tick": null,
+      "reward": {
+        "flags": [
+          "地下街通行"
+        ]
+      },
+      "tags": [
+        "支线",
+        "势力"
+      ]
+    }
+  ],
+  "quests": {
+    "neon_arm": {
+      "status": "active",
+      "stage": "who",
+      "done_stages": [
+        "repair",
+        "decode"
+      ],
+      "entered_at": {
+        "repair": 1,
+        "decode": 7,
+        "who": 95
+      },
+      "history": [
+        {
+          "tick": 1,
+          "stage": "repair",
+          "event": "enter"
+        },
+        {
+          "tick": 7,
+          "stage": "repair",
+          "event": "complete"
+        },
+        {
+          "tick": 7,
+          "stage": "decode",
+          "event": "enter"
+        },
+        {
+          "tick": 95,
+          "stage": "decode",
+          "event": "complete"
+        },
+        {
+          "tick": 95,
+          "stage": "who",
+          "event": "enter"
+        }
+      ]
+    },
+    "neon_greyrat": {
+      "status": "active",
+      "stage": "meet",
+      "done_stages": [],
+      "entered_at": {
+        "meet": 21
+      },
+      "history": [
+        {
+          "tick": 21,
+          "stage": "meet",
+          "event": "enter"
+        }
+      ]
+    }
+  },
   "codex": {
     "locations": [
       "第9区",
@@ -1329,7 +1547,10 @@
       "constant": true,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1345,7 +1566,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1362,7 +1586,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1379,7 +1606,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1395,7 +1625,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1411,7 +1644,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1427,7 +1663,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1443,7 +1682,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1459,7 +1701,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     }
   ],
   "rng_counter": 218,
@@ -1598,5 +1843,5 @@
       "text": "下城第 9 区的雨下了十一天。霓虹招牌在积水里碎成一片一片，便利店的自动门坏了，一直开着。空气里有臭氧和廉价合成食物的味道。在场的是白医生、奎、穆老板。刚才发生的事还压在心上：冲击 A级 失败，反噬 14 点气血；抵达「第9区」：回到城里，把这一路的事记下来。 世界的相位落在「r」——这种时候，任何小事都可能被放大。"
     }
   ],
-  "archived_events": 93
+  "archived_events": 97
 }

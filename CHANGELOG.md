@@ -5,6 +5,89 @@
 
 ---
 
+## v1.1.0 — 2026-10-24
+
+在 v1.0.0 的"世界观可换"之上，补齐**玩法可换**：同一个规则内核，四种完全不同的游戏循环。
+
+### 新增：玩法层（playbook）
+
+`playbook` 决定这一局"怎么玩"，规则函数一行不改：
+
+| 字段 | 作用 |
+|---|---|
+| `loop` | `freeform`（自由推进）/ `choice`（选项推进）/ `mud`（地点命令）/ `ttrpg`（声明→判定→后果） |
+| `progress` | 进度轴：`level` / `gold` / `reputation` / `knowledge` / `clock` |
+| `failure` | 失败条件：`hp` / `sanity` / `clock` / `deadline` / `none` |
+| `beat` | 节拍序列与切换节奏（如「日常·摩擦·升级·代价·回收」每 6 回合） |
+| `settlement` / `context` | 允许的结算方式、每回合上下文注入策略 |
+
+新增工具 `playbook_info`（含给宿主的叙事指南 `loop_guide`）与 `failure_tick`（失败钟）。
+
+### 新增：事业线（questlines）
+
+stage DAG + 世界状态谓词 + 奖励，取代"待办清单"式的任务系统：
+
+- `visibility` 决定何时从 dormant 浮现（不满足就不占面板）
+- `enter_if` / `exit_if` 控制每一幕的进入与离开；没有 `exit_if` 的一幕**永不自动推进**
+- `fail_if` / `deadline_tick` 失败优先于任何推进
+- 谓词只看世界状态：`flag` / `visited` / `gold_gte` / `karma_gte` / `tier_gte` / `relation_gte` / `item_gte` / `counter_gte` / `stage_done` / `quest_done` + `all` / `any` / `not`
+- 载入时校验 DAG：有环、next 指向不存在的 stage 一律报错
+- 新增工具 `quest_status` / `quest_advance`
+
+### 重写：世界书引擎（lorebook）
+
+旧实现只有"constant + 主键 + 副键 AND"的近似，导入真酒馆世界书会静默丢语义。现在：
+
+- `selectiveLogic` 四值（AND_ANY / NOT_ALL / NOT_ANY / AND_ALL）
+- `probability` / `use_probability`（`sha256(seed|tick|entry)` 派生，确定性）
+- `sticky` / `cooldown` / `delay`（按 tick 计，写进状态文件，随快照回退）
+- `group` / `group_weight` / `group_override`（同组只出一条）
+- `scan_depth` / `match_whole_words` / `exclude_recursion`
+- 递归扫描**默认关闭**（实测打开会把 21 条里的 20 条拉进上下文）；`configure(lore_recursion=N)` 可开
+- 新增工具 `lore_lookup`（按任意文本预演触发结果，回答"为什么这段被触发"）
+- 面板新增「世界书」抽屉：每条设定的触发次数、sticky/cooldown 剩余
+
+### 新增：面板玩法区
+
+- 左栏「玩法」卡：循环类型、进度条、失败条、当前节拍、宿主指南
+- 中栏「事业线」卡：已浮现的线（最多 4 条）、当前幕、目标清单、期限
+- 「世界书」抽屉与命令面板入口
+
+### 四套设定包全部升级
+
+| 设定包 | loop | 进度轴 | 失败 |
+|---|---|---|---|
+| 玄枢界 | freeform | 修行阶 0–10 | 重伤退场（hp） |
+| 折剑行 | ttrpg | 身手 0–7 | 债主上门（clock 12） |
+| 霓虹深渊 | mud | 评级 0–7 | 被盯上（clock 10） |
+| 雾港 | choice | 线索 0–24 | 理智（sanity） |
+
+每套各配 2 条事业线（主线 + 支线），全部用世界状态谓词推进。
+
+### 修复
+
+- `load_setting` 与 `build_state` 认的字段不是同一批：设定包里的 `playbook` / `questlines`
+  会在载入时被静默丢掉。现在统一委托 `settings_loader.apply_runtime_fields`。
+- 面板「事业线」卡在演示存档里永远显示"还没到浮现的时候"——`make_demo` 没调 `questline.advance`。
+- 空状态下调 `playbook.summary` 会误报 `failed=True`（无 player 时不该判失败）。
+- 世界书递归默认打开导致上下文被整本书塞满。
+
+### 测试
+
+- 新增 `scripts/verify_gameplay.py`（59 项）：剧本四循环、进度轴、失败钟幂等、节拍循环；
+  事业线 DAG/可见性/exit_if/奖励只发一次/失败优先/谓词；世界书四值逻辑/sticky/cooldown/同组/概率确定性/递归；
+  四套设定包集成；回退一致性。
+- 变异测试扩到 **36 个**（新增 M33–M36：事业线绕过 exit_if、递归默认打开、sticky 无限续期、失败钟不幂等）。
+- 断言审计 595 条 0 可疑；面板断言 72；MCP 64。
+
+### 文档
+
+- 新增 `docs/GAMEPLAY.md`：玩法层设计文档（为什么需要、字段表、DAG 规则、世界书语义与不支持项）。
+- `GAME_MASTER_PROTOCOL.md` 增加 §1c「玩法剧本与事业线」。
+- `settings/README.md` 增加 `playbook` / `questlines` 字段说明。
+
+---
+
 ## v1.0.0 — 2026-10-24
 
 首个"可以直接交付给别人玩"的版本。相比 v0.9.0，这一版修掉了三个**会让项目在某些环境里根本跑不起来**
@@ -67,8 +150,9 @@
 ### 测试
 
 - 断言审计：547 条（0 可疑）。
-- 变异测试：**32 个变异，杀死 32，存活率 0%**（新增 M26–M32：只读落盘、CLI tick 分裂、死目标刷屏、
-  队列无上限、跨站请求、文档版本漂移、README 工具数漂移）。同时把"变异片段失效"从静默 SKIP
+- 变异测试：**36 个变异，杀死 36，存活率 0%**（新增 M26–M36：只读落盘、CLI tick 分裂、死目标刷屏、
+  队列无上限、跨站请求、文档版本漂移、README 工具数漂移、事业线绕过 exit_if、世界书递归默认打开、
+  sticky 无限续期、失败钟不幂等）。同时把"变异片段失效"从静默 SKIP
   改为失败——历史上正是一次 SKIP 让一条规则从未被真正验证过。
 - 门禁 17 项全绿（编译 / 审计 / 8 套自检 / 覆盖率 / 压测 / 界面 / 变异 / 打包 / wheel）。
 - 覆盖率 88%（核心域），bandit 0 / pyflakes 0。

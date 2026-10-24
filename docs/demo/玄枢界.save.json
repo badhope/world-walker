@@ -1362,6 +1362,224 @@
     "era": "玄历七二三年 · 深秋",
     "location_desc": "临川城依川而建，青石长街湿漉漉的。城中最高的不是城楼，而是那座早已哑火的旧枢台——三百年前它喷薄元光，如今只剩一道焦痕。少年沈砚挤在人群里，看着万石商行门前的告示：听霄学宫今年开山收徒，名额七十。"
   },
+  "playbook": {
+    "loop": "freeform",
+    "input": "natural",
+    "progress": {
+      "axis": "level",
+      "label": "修行阶",
+      "max": 10
+    },
+    "failure": {
+      "mode": "hp",
+      "label": "重伤退场",
+      "max": 0
+    },
+    "beat": {
+      "pattern": [
+        "日常修行",
+        "资源争夺",
+        "势力摩擦",
+        "生死一线",
+        "代价与回收"
+      ],
+      "every": 6
+    },
+    "settlement": [
+      "combat",
+      "trade",
+      "social",
+      "karma",
+      "advance"
+    ],
+    "context": {
+      "inject": [
+        "lore",
+        "cast",
+        "chronicle",
+        "quests"
+      ],
+      "max_lore": 12,
+      "scan_depth": 3
+    }
+  },
+  "playbook_notes": [],
+  "questlines": [
+    {
+      "id": "xuanshu_trial",
+      "title": "听霄学宫·入学试炼",
+      "summary": "学宫开山收徒，七十个名额，权贵已经买走了一半。",
+      "stages": [
+        {
+          "id": "signup",
+          "title": "报名",
+          "objectives": [
+            "打听到学宫报名的门槛",
+            "凑齐报名所需的路费"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "gold_gte": 60
+          },
+          "next": [
+            "first_trial"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "first_trial",
+          "title": "第一场：筛骨",
+          "objectives": [
+            "在试炼场上撑过三招"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "tier_gte": 1
+          },
+          "next": [
+            "third_trial"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "third_trial",
+          "title": "第三场：取巧",
+          "objectives": [
+            "找到绕开名额限制的办法",
+            "或者打败一个已经拿到名额的人"
+          ],
+          "enter_if": null,
+          "exit_if": null,
+          "next": [],
+          "on_enter": []
+        }
+      ],
+      "visibility": {
+        "flag": "学宫开山之年"
+      },
+      "fail_if": null,
+      "deadline_tick": null,
+      "reward": {
+        "gold": 200,
+        "flags": [
+          "学宫弟子"
+        ]
+      },
+      "tags": [
+        "主线",
+        "成长"
+      ]
+    },
+    {
+      "id": "xuanshu_old_tower",
+      "title": "旧枢台的一线光",
+      "summary": "哑火三百年的旧枢台，最近夜里透出光。",
+      "stages": [
+        {
+          "id": "saw_light",
+          "title": "看见光",
+          "objectives": [
+            "确认那道光不是错觉"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "visited": "旧枢台废墟"
+          },
+          "next": [
+            "who_watches"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "who_watches",
+          "title": "谁在盯着",
+          "objectives": [
+            "找出同样盯着旧枢台的人"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "relation_gte": {
+              "with": "han_ya_ke",
+              "respect": 10
+            }
+          },
+          "next": [
+            "open_it"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "open_it",
+          "title": "打开它",
+          "objectives": [
+            "决定：进去，还是封上"
+          ],
+          "enter_if": null,
+          "exit_if": null,
+          "next": [],
+          "on_enter": []
+        }
+      ],
+      "visibility": {
+        "visited": "旧枢台废墟"
+      },
+      "fail_if": null,
+      "deadline_tick": null,
+      "reward": {
+        "flags": [
+          "枢台重启"
+        ]
+      },
+      "tags": [
+        "真相线"
+      ]
+    }
+  ],
+  "quests": {
+    "xuanshu_trial": {
+      "status": "active",
+      "stage": "signup",
+      "done_stages": [],
+      "entered_at": {
+        "signup": 1
+      },
+      "history": [
+        {
+          "tick": 1,
+          "stage": "signup",
+          "event": "enter"
+        }
+      ]
+    },
+    "xuanshu_old_tower": {
+      "status": "active",
+      "stage": "who_watches",
+      "done_stages": [
+        "saw_light"
+      ],
+      "entered_at": {
+        "saw_light": 28,
+        "who_watches": 29
+      },
+      "history": [
+        {
+          "tick": 28,
+          "stage": "saw_light",
+          "event": "enter"
+        },
+        {
+          "tick": 29,
+          "stage": "saw_light",
+          "event": "complete"
+        },
+        {
+          "tick": 29,
+          "stage": "who_watches",
+          "event": "enter"
+        }
+      ]
+    }
+  },
   "codex": {
     "locations": [
       "临川城",
@@ -1448,7 +1666,10 @@
       "constant": true,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1463,7 +1684,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1487,7 +1711,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1505,7 +1732,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1523,7 +1753,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1540,7 +1773,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1556,7 +1792,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1572,7 +1811,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1588,7 +1830,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1604,7 +1849,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1623,7 +1871,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1639,7 +1890,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1655,7 +1909,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1671,7 +1928,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1687,7 +1947,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1703,7 +1966,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1721,7 +1987,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1738,7 +2007,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1755,7 +2027,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1771,7 +2046,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1788,7 +2066,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     }
   ],
   "rng_counter": 605,
@@ -2075,5 +2356,5 @@
       "text": "临川城依川而建，青石长街湿漉漉的。万石商行的告示墙前挤着人，新旧告示叠了七层。在场的是沈崇山、裴无咎、石三娘。刚才发生的事还压在心上：裴无咎对沈砚的敬重上升2.0；抵达「临川城」：回到城里，把这一路的事记下来。 世界的相位落在「K」——这种时候，任何小事都可能被放大。"
     }
   ],
-  "archived_events": 576
+  "archived_events": 579
 }

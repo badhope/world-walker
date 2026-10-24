@@ -36,7 +36,8 @@ EXPECTED_TOOLS = {
     'snapshot', 'restore', 'travel', 'open_panel', 'load_setting',
     'advance', 'recall', 'write_summary', 'recap', 'configure',
     'use_item', 'spawn_npc', 'model', 'model_list', 'world_state', 'publish_prose',
-    'pending_actions',
+    'pending_actions', 'playbook_info', 'quest_status', 'quest_advance',
+    'lore_lookup', 'failure_tick',
 }
 
 RESULTS = []
@@ -448,8 +449,10 @@ async def main():
                                               {'scene_text': '旧枢台夜里透出光，试炼名额被人买断'}))
             blob = ' '.join(x['comment'] for x in nc['triggered_lore'])
             check('设定包世界书按关键词触发（含常驻基调与事件范式）',
-                  '基调' in blob and '枢台' in blob and '事件范式 · 入学试炼与大比' in blob,
+                  '基调' in blob and '事件范式 · 入学试炼与大比' in blob,
                   '触发 %d 条' % len(nc['triggered_lore']))
+            check('世界书递归默认关闭（防止整本书被拉进上下文）',
+                  nc.get('lore_by_depth', {}).keys() == {'0'}, str(nc.get('lore_by_depth')))
 
             # 18. 长局：归档/召回/摘要/回顾/突破/配置
             await session.call_tool('configure', {'event_log_keep': 5})

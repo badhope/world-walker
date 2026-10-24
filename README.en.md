@@ -216,7 +216,7 @@ No pytest suite by design—verification is 13 executable self-checks plus a mut
 | `verify_branches.py` | 159 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
 | `verify_panel.py` | 69 | view-model contract, legacy saves, static whitelist, inbox guards |
-| `verify_mcp_stdio.py` | 62 | real stdio e2e, tavern ecosystem, read-only zero side effects |
+| `verify_mcp_stdio.py` | 63 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | 16 | version single-source / tool count / asset references |
@@ -225,7 +225,7 @@ No pytest suite by design—verification is 13 executable self-checks plus a mut
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 13 | real Edge render, drawers, responsive, zero JS errors |
-| `verify_tests.py` | 545 audits | AST-level rejection of tautological assertions |
+| `verify_tests.py` | 547 audits | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 32 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash

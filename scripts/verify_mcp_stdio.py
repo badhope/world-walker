@@ -80,7 +80,10 @@ SETTING = {
          'level': '凡人', 'hp': 40, 'hp_max': 40, 'gold': 30, 'location': '临江茶棚'},
         {'id': 'vendor', 'name': '茶棚老板', 'faction': '市井',
          'attrs': {'str': 7, 'dex': 8, 'int': 12, 'con': 9, 'cha': 13},
-         'level': '凡人', 'hp': 35, 'hp_max': 35, 'gold': 150, 'location': '临江茶棚'},
+         'level': '凡人', 'hp': 35, 'hp_max': 35, 'gold': 150, 'location': '临江茶棚',
+         'desc': '茶棚老板，眼睛很尖，谁欠他两文钱都记得。',
+         'personality': '和气但不吃亏；喜欢听人讲外面的事。',
+         'speech': '「茶凉了就换一碗，人走了就不必了。」'},
     ],
     'market': [{'location': '临江茶棚', 'items': [
         {'key': 'chun_cha', 'name': '春茶', 'price': 30, 'supply': 20, 'base_price': 30,
@@ -152,6 +155,18 @@ async def main():
             out = await scenario(session, state_a, seed=42)
             check('world_init 建世界成功', isinstance(out['init'], dict) and out['init'].get('entities') == 3,
                   str(out['init'])[:80])
+            # 卡面文字必须穿过 pydantic 保留下来——它是角色卡详情弹窗与叙事层的唯一来源。
+            # 曾经的缺陷：EntityIn 没有 desc/personality/speech 字段，设定包人物描述被静默丢弃，
+            # 面板点开角色只剩气血一行。
+            carded = [e for e in SETTING['entities'] if e.get('desc')]
+            if carded:
+                saved = json.load(open(state_a, encoding='utf-8'))
+                # 挑**带卡面文字的那一个**（fixture 里是茶棚老板），不是随便第一个 NPC
+                npc = next(v for k, v in saved['entities'].items()
+                           if k != 'player' and v.get('name') == '茶棚老板')
+                check('设定包/角色卡文字经 world_init 完整保留',
+                      all(npc.get(f) for f in ('desc', 'personality', 'speech')),
+                      str({f: bool(npc.get(f)) for f in ('desc', 'personality', 'speech')}))
             check('状态文件已落盘（utf-8 JSON）', os.path.exists(state_a))
             with open(state_a, encoding='utf-8') as f:
                 disk = json.load(f)

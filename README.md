@@ -224,7 +224,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_branches.py` | 159 | 低覆盖模块的异常路径与状态分支 |
 | `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
 | `verify_panel.py` | 69 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
-| `verify_mcp_stdio.py` | 62 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
+| `verify_mcp_stdio.py` | 63 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
 | `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
 | `verify_docs.py` | 16 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
@@ -233,7 +233,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 13 | 真实 Edge 渲染 + 抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | 545 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `verify_tests.py` | 547 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
 | `verify_mutation.py` | 32 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），

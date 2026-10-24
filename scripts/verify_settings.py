@@ -84,6 +84,10 @@ def main():
             ok = False; notes.append('无市场')
         if not (vm.get('present') or vm.get('others')):
             ok = False; notes.append('无 NPC')
+        # 卡面文字必须落盘：面板的角色卡详情与 narration_context 都依赖它
+        npc_cards = [e for k, e in state['entities'].items() if k != 'player']
+        if npc_cards and not all(e.get('desc') for e in npc_cards):
+            ok = False; notes.append('NPC 缺 desc')
         check('%s 载入完整（术语/阶梯/货币/品牌/世界书/市场/NPC）' % fn, ok,
               '%s ｜ %s' % (player.get('name'), ' · '.join(notes) if notes else 'OK'))
 

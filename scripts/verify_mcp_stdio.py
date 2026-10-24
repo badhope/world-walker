@@ -12,6 +12,7 @@ MCP 服务器端到端验证 (verify_mcp_stdio.py)
 """
 
 import asyncio
+import hashlib
 import json
 import os
 import subprocess
@@ -34,7 +35,8 @@ EXPECTED_TOOLS = {
     'narration_context', 'character_card_read', 'add_character', 'import_lorebook',
     'snapshot', 'restore', 'travel', 'open_panel', 'load_setting',
     'advance', 'recall', 'write_summary', 'recap', 'configure',
-    'use_item', 'spawn_npc', 'model', 'model_list',
+    'use_item', 'spawn_npc', 'model', 'model_list', 'world_state', 'publish_prose',
+    'pending_actions',
 }
 
 RESULTS = []
@@ -119,12 +121,14 @@ async def main():
             # 1. 工具清单
             tools = await session.list_tools()
             names = {t.name for t in tools.tools}
-            check('tools/list 覆盖全部 31 个工具', names == EXPECTED_TOOLS,
+            check('tools/list 覆盖全部 %d 个工具' % len(EXPECTED_TOOLS), names == EXPECTED_TOOLS,
                   '缺少: %s' % (EXPECTED_TOOLS - names) if names != EXPECTED_TOOLS else '')
             check('每个工具都有描述', all((t.description or '').strip() for t in tools.tools))
             wi = next(t for t in tools.tools if t.name == 'world_init')
-            check('world_init 入参带字段级 schema（$defs）', bool((wi.input_schema or {}).get('$defs')),
-                  str(list((wi.input_schema or {}).get('$defs', {}))[:5]))
+            # MCP 1.x 的 pydantic 模型字段叫 inputSchema，2.x 改名 input_schema —— 两边都要能读。
+            wi_schema = getattr(wi, 'input_schema', None) or getattr(wi, 'inputSchema', None) or {}
+            check('world_init 入参带字段级 schema（$defs）', bool(wi_schema.get('$defs')),
+                  str(list(wi_schema.get('$defs', {}))[:5]))
 
             # 1b. prompt：客户端可当斜杠命令用，把「设定 → 开局指令」一键化
             pr = await session.list_prompts()
@@ -208,6 +212,27 @@ async def main():
                   len(ledger) == 1 and ledger[0]['amount'] == 15 and ledger[0]['from'] == 'player',
                   str(ledger[:1]))
 
+            # 8b. 死目标不再刷编年史：长局里"已经没有还手之力"曾连续 ×12 占满时间线。
+            #     先打死 scout，再对尸体攻击两次，断言事件条数不增。
+            # 打到真的倒下为止（命中是概率的，固定 6 次可能还没死——那会让下面的断言测错对象）
+            for _ in range(30):
+                await session.call_tool('combat', {'attacker': 'player', 'defender': 'scout',
+                                                   'action_type': 'heavy'})
+                probe = data(await session.call_tool('read_state', {}))
+                if int(probe['entities']['scout']['hp']) <= 0:
+                    break
+            dead = data(await session.call_tool('read_state', {}))
+            dead_ok = int(dead['entities']['scout']['hp']) <= 0
+            log_before = len(dead.get('event_log') or [])
+            for _ in range(2):
+                again_hit = data(await session.call_tool('combat', {
+                    'attacker': 'player', 'defender': 'scout', 'action_type': 'attack'}))
+            dead_after = data(await session.call_tool('read_state', {}))
+            tail = [e.get('desc', '') for e in (dead_after.get('event_log') or [])[log_before:]]
+            check('对已倒下目标再次攻击：返回提示但不写编年史',
+                  dead_ok and again_hit.get('target_already_dead') is True
+                  and len(tail) == 0, '新增 %d 条：%s' % (len(tail), tail[:2]))
+
             # 9. 回合
             check('tick 推进回合', out['tick'].get('_tick') == 1)
 
@@ -230,6 +255,25 @@ async def main():
             check('narrative_weight 按 -log2(p) 出数（p=0.01 → 6.6439）',
                   abs(float(weight.get('info_weight', 0)) - 6.6439) < 1e-3,
                   'info=%s 期望 6.6439' % round(weight.get('info_weight', 0), 4))
+
+            # 11a. 只读工具必须零副作用：连续查询不得推进 rng_counter 或改写状态
+            before_read = json.load(open(state_a, encoding="utf-8"))
+            snap_hash = hashlib.sha256(open(state_a, "rb").read()).hexdigest()
+            # mtime 是"有没有落盘"的直接证据：内容相同的 save_state 会让哈希不变，
+            # 但一定会刷新 mtime（原子替换）。只看哈希会把"偷偷重写"判成只读（变异 M26 曾存活）。
+            snap_mtime = os.stat(state_a).st_mtime_ns
+            for _ in range(3):
+                await session.call_tool('status', {})
+                await session.call_tool('world_state', {})
+                await session.call_tool('read_state', {})
+            after_read = json.load(open(state_a, encoding="utf-8"))
+            check('只读工具（status/world_state/read_state）不推进 rng_counter',
+                  after_read.get("rng_counter") == before_read.get("rng_counter"),
+                  "%s -> %s" % (before_read.get("rng_counter"), after_read.get("rng_counter")))
+            check('只读工具不落盘（字节不变且 mtime 不变）',
+                  hashlib.sha256(open(state_a, "rb").read()).hexdigest() == snap_hash
+                  and os.stat(state_a).st_mtime_ns == snap_mtime,
+                  'mtime %s -> %s' % (snap_mtime, os.stat(state_a).st_mtime_ns))
 
             # 11b. 模型层：命名闭式公式直接算效果
             mlist = data(await session.call_tool('model_list', {}))
@@ -481,6 +525,25 @@ async def main():
                   'loc=%d people=%d items=%d lore=%d' % (
                       len(cx.get('locations', [])), len(cx.get('people', [])),
                       len(cx.get('items', [])), len(cx.get('lore', []))))
+
+            # 面板「行动队列」：只写侧写文件，状态由宿主经引擎结算
+            inbox_hash_before = hashlib.sha256(open(panel_state, "rb").read()).hexdigest()
+            import importlib.util as _ilu2
+            _pspec = _ilu2.spec_from_file_location('ww_panel_x', os.path.join(ROOT, 'panel.py'))
+            _panelmod = _ilu2.module_from_spec(_pspec)
+            _pspec.loader.exec_module(_panelmod)
+            _panelmod.inbox_append(panel_state, '去城里打听学宫名额')
+            _panelmod.inbox_append(panel_state, '找裴无咎喝一杯')
+            queued = data(await session.call_tool('pending_actions', {'mark_done': True}))
+            check('pending_actions 取走面板排的行动并标记已处理',
+                  queued.get('count') == 2 and queued.get('marked_done') == 2
+                  and [q['text'] for q in queued['pending']] == ['去城里打听学宫名额', '找裴无咎喝一杯'],
+                  str(queued.get('count')))
+            again = data(await session.call_tool('pending_actions', {}))
+            check('pending_actions 标记后不再重复返回', again.get('count') == 0,
+                  str(again.get('count')))
+            check('行动队列不改写状态文件（字节不变）',
+                  hashlib.sha256(open(panel_state, "rb").read()).hexdigest() == inbox_hash_before)
 
             pv = data(await session.call_tool('open_panel', {'port': 8791}))
             import urllib.request

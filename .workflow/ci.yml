@@ -68,6 +68,16 @@ stages:
         script: |
           python -m pip install --quiet psutil
           python scripts/verify_memory.py 300
+      - step: settings
+        name: verify-settings
+        displayName: 多世界观设定包
+        script: |
+          python scripts/verify_settings.py
+      - step: docs
+        name: verify-docs
+        displayName: 文档一致性
+        script: |
+          python scripts/verify_docs.py
       - step: smoke
         name: engine-smoke
         displayName: 引擎烟测
@@ -112,6 +122,32 @@ stages:
         displayName: 长局压力测试
         script: |
           python scripts/stress_freeplay.py 500
+
+  - name: showcase
+    displayName: 展示素材
+    steps:
+      - step: assets
+        name: verify-assets
+        displayName: 截图/演示存档/展示站齐全
+        script: |
+          python - <<'PY'
+          import os, sys, json
+          need = ["docs/index.html", "docs/BENCHMARK.md",
+                  "docs/screenshots/stage-xuanshu.png",
+                  "docs/screenshots/stage-ink.png",
+                  "docs/screenshots/stage-neon.png",
+                  "docs/screenshots/stage-neutral.png",
+                  "docs/screenshots/walkthrough.mp4",
+                  "docs/demo/玄枢界.save.json"]
+          missing = [p for p in need if not os.path.exists(p) or os.path.getsize(p) == 0]
+          print("missing:", missing)
+          if missing:
+              sys.exit(1)
+          for w in ("玄枢界", "折剑行", "霓虹深渊", "雾港"):
+              d = json.load(open("docs/demo/%s.save.json" % w, encoding="utf-8"))
+              assert d["tick"] > 0 and d["entities"]["player"]
+          print("showcase assets ok")
+          PY
 
   - name: package
     displayName: 打包完整性

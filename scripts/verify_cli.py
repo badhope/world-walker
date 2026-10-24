@@ -263,7 +263,20 @@ def verify_determinism(tmp):
           '%d 种终态' % len(finals) if not step_fails else '中途失败: %s' % '; '.join(step_fails))
     if not step_fails and len(finals) == 1:
         base_counter = json.load(open(DEMO_STATE, encoding='utf-8')).get('rng_counter', 0)
-        check('混合动作后 rng_counter 累计 +12 并落盘',
+        # CLI 的 tick 必须和 MCP 的 tick 同义：市场 + 世界演化（势力/相位）+ tick+1。
+    # 只验 tick+1 会让"CLI 世界永远静止"漏网——那是 INV-E4/E6 的通道分裂（变异 M27 曾存活）。
+    wt = fresh_copy(tmp, 'worldtick.json')
+    for _ in range(12):
+        r = run_cli(wt, 'tick')
+    wst = json.load(open(wt, encoding='utf-8'))
+    fac = wst.get('factions') or {}
+    pan = wst.get('panarchy') or {}
+    check('CLI tick 驱动世界演化（势力存量与 Panarchy 相位落盘）',
+          r.returncode == 0 and bool(fac) and bool(pan.get('phase'))
+          and any(abs(float(v.get('power', 0)) - 32.0) > 0.5 for v in fac.values()),
+          'factions=%s phase=%s' % (list(fac)[:3], pan.get('phase')))
+
+    check('混合动作后 rng_counter 累计 +12 并落盘',
               last_counter == base_counter + 12,
               '%s -> %s' % (base_counter, last_counter))
 

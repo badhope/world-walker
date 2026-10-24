@@ -19,17 +19,24 @@ ww_smoke.json
 ww_viz.json
 ww_brand.json
 *.save.json
+# 演示存档是交付物（README/截图/视频的数据源），必须入库
+!docs/demo/*.save.json
 
 # Browser smoke screenshots (scripts/_shots)
 scripts/_shots/
 
 # Panel telemetry sidecar (long-run samples)
 *.viz.jsonl
+!docs/demo/*.viz.jsonl
 
 # Stress test artifacts
 scripts/last_stress_report.json
 err*.log
 .aqg/
+
+# Pre-push gate artifacts
+.gate_out.log
+.gate-dist/
 
 # Coverage
 .cov
@@ -43,3 +50,7 @@ scripts/_ui_shots/
 scripts/_verify_mcp_cov_tmp.py
 .cov-mcp.*
 .coverage.*
+
+# 素材流水线的中间报告（可随时重跑生成，不入库）
+scripts/_shots_report.json
+scripts/_ui_report.json

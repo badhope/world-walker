@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-22 ｜ 文档版本：v1.11
+> 最后更新：2026-10-24 ｜ 文档版本：v1.13
 
 ## 1. 概述与目标
 
@@ -29,7 +29,7 @@
 玩家(人) ──对话/行动──> 宿主 AI Agent（Claude Code / Codex / 自建）
                               │  MCP (stdio)
                               ▼
-                     world-walker MCP 服务器 (mcp_server.py, 31 工具)
+                     world-walker MCP 服务器 (mcp_server.py, 34 工具)
                               │  规则结算 (rules/*)
                               ▼
                      状态文件 ww_state.json ◄──只读── 实况主舞台 (panel.py + panel.html/css/js)
@@ -44,7 +44,7 @@
 | 容器 | 职责 | 关键约束 |
 |---|---|---|
 | `rules/*` | 纯规则结算（战斗/经济/社交/因果/叙事/模型层） | 无副作用，状态由调用方传入传出 |
-| `mcp_server.py` | 31 个 MCP 工具；读写状态文件；tick 推进 | 唯一写入源（第一阶段） |
+| `mcp_server.py` | 34 个 MCP 工具；读写状态文件；tick 推进 | 唯一写入源（第一阶段） |
 | `state_schema.py` | 状态结构、事件日志、归档、业债裁剪 | `save_state` 统一归档 |
 | `engine.py` | CLI 14 命令（手动结算/调试） | 与 MCP 共用 rules |
 | `panel.py` | 只读视图模型 + HTTP/SSE 服务 | 不写状态；静态资源白名单 |
@@ -64,7 +64,7 @@
 
 ```
 world-walker/                      # 仓库根即 game_engine 包
-├── mcp_server.py                  # MCP 服务器（31 工具；唯一写入源）
+├── mcp_server.py                  # MCP 服务器（34 工具；MCP 1.x/2.x 双布局）
 ├── engine.py                      # CLI 入口（14 命令）
 ├── state_schema.py                # 状态结构 + 归档 + 业债裁剪
 ├── panel.py                       # 实况主舞台：只读视图模型 + HTTP/SSE
@@ -72,8 +72,10 @@ world-walker/                      # 仓库根即 game_engine 包
 ├── panel.css                      # 视觉系统（token/皮肤/响应式/动效降级）
 ├── panel.js                       # 数据层 + 状态层 + 渲染/反馈层
 ├── rules/                         # 规则内核（含 models.py 命名闭式模型层）
-├── settings/                      # 设定包（玄枢界等）
-└── scripts/                       # verify_mcp_stdio / verify_panel / verify_cli / verify_tests / user_playtest / stress_freeplay
+├── settings/                      # 设定包（玄枢界 / 折剑行 / 霓虹深渊 / 雾港）
+├── docs/demo/                     # 真实演示存档（截图与视频的数据源）
+├── docs/screenshots/              # README 预览（真实渲染 + 逐项断言 + 交互录屏）
+└── scripts/                       # 13 个自检 + 变异测试 + 演示存档 / 截图视频流水线
 ```
 
 ## 6. 核心数据模型
@@ -85,10 +87,11 @@ view_model = {
   world: { name, era, location_desc },
   tick: int, updated_at: str, seed, flags: [str],
   skin: { id: "xuanshu"|"neutral", accent: "#rrggbb" },
-  player: { name, level, stage, location, hp, hp_max, mp, mp_max, gold, karma, attrs,
-            inventory: [{ key, name, quantity, type }] },
+  terms: { hero, level, location, hp, mp, gold, flow, phase, karma, track, ... },  # v1.12
+  player: { name, level, stage, stage_max, tier, tier_max, location, hp, hp_max,
+            mp, mp_max, gold, karma, attrs, inventory: [{ key, name, quantity, type }] },
   scene: { location, title, description, mood: "neutral|danger|trade|social|growth|discovery",
-           focus_event: str|null },
+           focus_event: str|null, prose_tick: int|null },   # description 优先取最新 prose
   events: [{ id, tick, type, kind, severity: "info|success|warning|danger",
              title, desc, icon, milestone: bool }],      # 最多 40 条，旧→新
   present: [{ id, name, level, hp, hp_max, desc, relation }],
@@ -96,9 +99,11 @@ view_model = {
   market: [{ location, items: [{ key, name, price, base_price, supply, delta, type }] }],
   codex: { locations, people, items, lore },
   insights: { flow, phase, identity },
-  moral: { dims, values },
+  world_state: { factions, phase, capital, connectedness, collapses, rumors, culture,
+                 market_index, intensity },               # v1.12 世界侧摘要
+  moral: { dims, values, derived },                       # derived = 引擎推导六维
   chronicle: [event_log 最近 24 条], milestones: [str], summaries: int,
-  archived_events: int, others: [{ id, name, location }], lore_total: int
+  archived_events: int, others: [{ id, name, location }], lore_total: int, prose_count: int
 }
 ```
 
@@ -122,6 +127,29 @@ view_model = {
 | INV-E3 | 只读子命令不重写状态文件（字节不变）且不推进 rng_counter | CLI | engine.py | verify_cli.py（sha256 前后对比） |
 | INV-E4 | 同一状态文件 + 同一行动 → 同结果（CLI 与 MCP 双通道），快照回退后重放亦然 | 引擎 / MCP | state_schema.seed_rng | verify_cli.py 确定性断言 + verify_mcp_stdio.py 快照重放 |
 | INV-E5 | 玩家气血不得归零（保底 1）；归零改判濒死：掉钱 30%、心伤 +1、事件与大事记留痕，且必须落盘 | 引擎 | rules/combat.py | verify_near_death.py（R1-R3 七项断言 + 重读落盘） |
+| INV-E6 | 世界必须在无玩家行动时也演化：`tick` 后势力存量/世界标记/Panarchy 相位至少一项变化 | 引擎 | rules/world_evolution.py | verify_world.py W1/W11 |
+| INV-E7 | 世界演化只用 `sha256(seed\|tick\|key)` 派生随机，不消耗 `rng_counter`、不调用 random | 引擎 | rules/world_evolution.py | verify_world.py W9（双副本逐字节一致） |
+| INV-E8 | 相位/心流/道德必须参与结算（不是仅展示）：Ω 事件概率与伤害 > K，无聊命中 < 心流，恶名降低社交增量 | 引擎 | rules/combat.py / narrative_engine.py / social.py | verify_world.py W3/W4/W5 |
+| INV-E9 | 等级阶梯配置了 `level_tiers` 时，`advance` 只能逐阶递进（跳阶/倒退/未知名一律拒） | 引擎 | rules/progression.py | verify_world.py W10 |
+| INV-E10 | 未结算因果债台账有界（≤ karma_ledger_keep），合并后总额逐分不变 | 引擎 | state_schema.py | verify_world.py W8 |
+| INV-E11 | 只读工具（`status` / `world_state` / `read_state`）不写状态文件、不推进 `rng_counter` | MCP | mcp_server._read | verify_mcp_stdio.py（字节 + mtime 双重断言） |
+| INV-E12 | CLI 与 MCP 的 `tick` 同义：市场 + 世界演化 + tick+1（含势力/相位落盘） | 引擎 / MCP | engine._do_tick / mcp_server.tick | verify_cli.py（CLI 侧）+ verify_world.py W11 |
+| INV-E13 | 面板行动队列只写 `<state>.inbox.jsonl` 侧写；状态文件字节不变；`pending_actions` 是唯一读取入口 | 面板 / MCP | panel.inbox_* | verify_panel.py（同源/内容类型/长度/有界四道断言） |
+| INV-E14 | 势力演化不得饱和：长局后头部与尾部存在差距（排行榜可读），且不收敛到单一赢家 | 引擎 | world_evolution.evolve_factions | verify_world.py W1 + make_demo 验收 |
+
+### 6.3 公式的调用路径（哪些在跑、哪些按需）
+
+v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出现「公式能对拍、但从不进对局」的情况。
+
+| 路径 | 触发者 | 用到的公式 |
+|---|---|---|
+| **回合回路**（自动） | `tick` → `world_evolution.evolve` | `logistic_growth`（势力增长）、`lotka_volterra`（强弱压制）、`sir_step`（谣言）、`deffuant_update`（风气）、`thermal_relaxation`（崩解后松弛）、Panarchy 状态机（r/K/Ω/α） |
+| **行动结算** | `combat` / `trade` / `social` / `karma` | `resolve_combat`（含相位与心流修正、阶梯战力）、`resolve_trade` + `tick_market`（OU 回归）、`resolve_social_event`（含道德乘数）、`resolve_karma`（业债台账） |
+| **派生判定** | `narrative` / `status` / 面板 `insights` | `flow_channel_status`（结构化胜负）、`player_identity_vector`、`update_player_moral_identity`、`panarchy_phase_check`、`daily_cognitive_budget` |
+| **宿主按需**（不自动跑） | 宿主调 `model(name, params)` | 16 个命名闭式模型（Lerner/Cobb-Douglas/SIR R0/泊松/热力学/舆论…）；结果不回写状态，是给叙事算草稿的 |
+
+不在这四条路径上的 `rules/*` 公开函数，是**公式库**（供宿主与未来的系统调用），
+不宣称它们参与当前回合结算。
 
 ## 7. 关键接口 / API 约定
 
@@ -132,6 +160,9 @@ view_model = {
 | `GET /assets/echarts.min.js` | 离线图表库（vendored Apache-2.0, echarts@5.5.1） | 200 text/javascript |
 | `GET /state` | 视图模型 JSON | 200 application/json |
 | `GET /series` | 长局态势样本（tick 升序，封顶 600）+ 皮肤调色板 | 200 application/json |
+| `GET /actions` | 未处理的行动队列（只读侧写） | 200 application/json |
+| `POST /action` | 把一条行动写进收件箱（同源 + JSON + ≤2000 字） | 200 JSON / 400 / 403 / 415 |
+| `GET /export` | 直出当前状态文件（只读下载） | 200 application/json + attachment |
 | `GET /events` | SSE：状态文件签名变化即推 `event: state` + 完整视图模型 | text/event-stream |
 | 其他路径 | 一律拒绝 | 404（不含任何文件内容） |
 
@@ -207,9 +238,19 @@ view_model = {
 - [x] T20 公式对拍与死代码清零（第六轮）：新增 scripts/verify_formulas.py——按 docstring 写的数学式**独立重算** 77 个函数再与返回值比对（模型层 OU/Lerner/Cobb-Douglas/Lotka-Volterra/SIR/泊松/热力学、认知前景理论/权重函数/幂律学习、社会扩展、系统论、世界动力学 Lyapunov/复利动力学、文化进化矩阵乘、因果记账），填补 rules/ 129 个公式此前零独立验证的空白；变异验证（Lerner ε±1、认知 α 0.88→0.99、记忆检索权重 0.33→0.44）均被抓；修 engine.py cognition 分支硬传 realm_level=0（任何实体得到同一认知预算，与 MCP status 的 int//5 不一致）及未用变量 spirit；全仓 pyflakes 清零（engine/rules/scripts 共 37 处未用导入与局部变量）— 验证：门禁 11 项全绿 + 公式变异 3/3 FAIL + verify_tests 0/246
 - [x] T14 测试可信度治理：修复 5 处恒真/无效断言（verify_cli 只读探针比较两份副本、verify_panel 侧写 `or True`、皮肤循环 for/else 硬编码 True、stress 归档与回退断言恒真）；新增 scripts/verify_tests.py 做 AST 级断言审计（R1 恒真/R2 常量/R3 恒真下界/R4 弱断言）；修正 world_schema event_log 错误陈述（50→config.event_log_keep 默认 200）— 验证：verify_tests 0 可疑 + 三处变异测试均能被抓出
 
+- [x] T21 公式对拍封后门与盲区补全（第六轮复验）：scripts/verify_tests.py 取消对 verify_formulas 的 `continue` 后门（原 `check_true('x',True)` 与自证式对拍可静默通过），改对拍特检后继续走 R1–R9 通用规则；verify_formulas 扩至 77 函数 / 122 运行时断言（原误称 79/58），补默认参数（cobb_douglas αβ、self_esteem、daily_cognitive_budget 正常档）、边界分支（blame_victim min、loss_aversion abs、SIR 归一化、base_activation 空输入）、退化断言（replicator 非对称收益、hawk_dove 频率、maslow 层级、KL 非对称）、C 组状态式（trade 三一致 / social gift=(8,0) / influence 有限 / karma 不触发 / 注册表）；price_equation docstring 改正为相对适应度 `w_i/w̄`；修正 README/ARCHITECTURE/门禁表述 — 验证：verify_formulas 122/122 + verify_tests 0/289 可疑 + verify_cli 20/20 + verify_panel 53/53 + verify_near_death 7/7 + verify_mcp_stdio 55/55 + user_playtest 47/47 + pyflakes 0 + 门禁 11 项绿
+
+- [x] T22 全维度审查修复与界面打磨（覆盖率 66%→81%）：按产品级代码审查/安全/SRE/竞品对标四合一标准（见 docs/PROJECT_AUDIT_2026-10-22.md）修复——界面真 bug（`.chip[hidden]` 被 `display` 覆盖、抽屉溢出视口、编年史 32% 心跳/重复合并）；bandit High 12→0（SHA1 去重键 `usedforsecurity=False`、`assert` 改 `raise ValueError`、骰子 `# nosec`）；`panel.py::view_model` 复杂度 E(35)→8 个 `_build_*` 纯函数 B(6)；新增 scripts/verify_branches.py（111 断言）补 systems_feedback/narrative/cognition/economy/social_extended 覆盖至 96/83/97/91/72%；新增 scripts/audit_ui.py + smoke_ui.py（UI 自动化）接入门禁；README/截图重做 — 验证：门禁 14 项绿 + verify_branches 111 条 + verify_panel 54/54 + radon cc B(6) + pyflakes 0
+
 - [x] T23 审查遗留清零（第七轮）：U-001 MCP 覆盖率可测（scripts/coverage_mcp.py，sitecustomize 子进程插桩，实测 mcp_server 行 34%/分支 37 部分）；U-002 依赖 CVE 用 OSV.dev 逐包查（10 包全 0）；F-008 新增 requirements-mcp.lock.txt + mcp>=2.3,<3；F-015 提示词注入防护（9 条特征扫描 + untrusted/content_policy 标记，标记而非删除保叙事）；F-014 补齐 24 个剩余纯公式（公式覆盖 105→127/129）；覆盖率 81%→87% — 验证：verify_injection 21/21（含 2 个变异）+ verify_branches 155/155 + 门禁 15 项全绿
 
 - [x] T24 审查最后三项清零：F-002 用**真变异测试**替代静态审计的信任缺口——scripts/verify_mutation.py 内置 19 个已知错误变异（濒死/经济/社交/公式/归档/注入/面板），逐一应用到源码、跑验证脚本、期望变红，存活率红线 0%；首轮跑出 2 个存活（归档计数漂移、重复事件合并未被断言），补断言后 19/19 全杀。U-003 新增 scripts/verify_memory.py 三段对照测泄漏：实测 1500 轮 RSS 增量 -0.4MB（无泄漏），状态文件稳 7KB、侧写封顶 600 条；F-009 判定不适用（本地单机工具无 SRE 指标体系）；F-011 判定承认差距 — 验证：门禁 17 项全绿 + 变异 19/19 + 内存 7/7 + 覆盖率 88%
+
+- [x] T25 可视化真修（三图从"画了"到"看得懂"）：物价指数图因 OU sigma=0 恒为 1.0 平线，加按 (rng_seed,tick,地点,商品) 派生的确定性扰动（4% 基准价，不耗 rng_counter、可 `configure(market_jitter=False)` 关）；气血/内力曲线图例按实际标注"几乎恒定/100% 回合为 100%"；纵轴自适应；图鉴累计 codex_total 作为第 4 系列上图；修面板端口被抢占（HTTPServer.allow_reuse_address=False 端口冲突抛错顺延）；修击杀不给战利品（接管 `loot_gold`）— 验证：门禁 17 项绿 + verify_* 七套全过 + 图表数据实测 price_index 442 种(0.93–1.09)/gold 30→6040/codex 8→19 + pyflakes 0
+
+- [x] T26 第二轮全维度审查 3 个 High（见 docs/AUDIT_ROUND2_2026-10-22.md）：F-001 状态文件非原子写入→临时文件+fsync+os.replace 原子替换并保留 .bak（4 条回归断言）；F-002 补 X-Content-Type-Options/X-Frame-Options/Referrer-Policy/CSP 四安全头（静态核验 0 内联 script/style/事件处理器，curl -D 四头齐全，六端点 200）；F-003 时间线条目可点击（click+Enter/Space 复用 #eventdlg）；新增 21 项 UI 逐元素巡检 — 验证：verify_branches 159/159（含 4 条原子写断言）+ 其余六套全过 + bandit High/Med/Low 0 + 门禁全绿
+
+- [x] T27 定位闭环（2026-10-23）：新增 `rules/world_evolution.py`（势力/谣言/风气/NPC/Panarchy 四段状态机）并挂进 `tick`；相位进战斗与事件结算、心流进命中、六维道德进社交；`ui.terms`/`level_tiers`/`places`/`publish_prose` 让术语与正文都可配置可落盘；修 3 个真 bug（暴击计败/道德恒 0/涌现重复）与未结算台账无界；新增 scripts/verify_world.py（46 项）与变异 M20-M25 — 验证：verify_world 46/46 + 门禁 18 项绿 + 变异 25/25 + 覆盖率 88%
 
 ## 10. 变更日志（Changelog）
 
@@ -226,6 +267,15 @@ view_model = {
 | 2026-10-20 | 测试可信度治理（v1.3）：逐条审计四套自检共 160+ 断言，修掉 5 处假测试——① verify_cli 只读探针比较两份 demo 副本而非被测命令结果；② verify_panel 侧写断言 `os.path.exists(...) or True` 恒真；③ 皮肤调色板循环用 for/else 把结论硬编码成 True；④ stress `失败回退后 stage 保持` 只判 tick>=0；⑤ stress `archived_events 与归档行数一致` 只判文件存在。新增 `scripts/verify_tests.py`（AST 级审计 R1-R4，拒绝恒真/常量/恒真下界/弱断言），并以三处代码变异反向验证其有效性；修正 world_schema `event_log 最多 50 条` 与默认 keep=200 不符的错误陈述。断言数：verify_cli 18→19、verify_panel 48→52 | §4、§9 T14 | T14 | verify_tests 0 可疑 + verify_cli 19/19 + verify_panel 52/52 + verify_mcp_stdio 49/49 + user_playtest 41/41 + stress 2000/2000 零违规 |
 | 2026-10-20 | 濒死保护（v1.4）：玩家永不真正死亡——气血归零改判「重伤退场」，保底 1 气血，代价为掉 30% 钱财 + 心伤 +1 + near_death_count 累加 + 事件与结算结果留痕，全部写入状态文件；NPC 死亡语义不变。删除 stress_freeplay 中「直接改内存 p['hp']=hp_max 假装复活」的假修复（状态文件从未变化），改为断言濒死保护未失效；面板与视图模型新增 near_death_count。§6.2 新增 INV-E5 | §6.1、§6.2、§9 T15 | T15 | verify_near_death 7/7（含 save_state 后重读核验）+ MCP stdio 端到端 gold 100→70 且磁盘一致 + 全套自检绿 |
 | 2026-10-21 | 测试可信度第二轮（v1.5）：独立专家团审计发现上一轮 5 处修复中 1 处未真正修复（归档断言 `arch>=0` 仍恒真）、1 处只修一半（回退断言 no-op restore 仍过），且 verify_tests 只能抓 20+ 种假写法中的 3 种、stress 的 10 条断言因签名不同完全不在审计范围。本轮重写审计器为 9 条规则并兼容双签名；补齐 verify_cli 写通道业务断言（trade no-op 曾 19/19 全绿）、user_playtest 价格自比与突破零成功、stress 归档/回退严格断言、verify_mcp 的 trade 入库/social 落盘/merit 精确值；并修出真 bug：快照回退后归档文件行数与 archived_events 永久漂移（300 轮实测差 2 行），save_state 现按计数截断归档文件 | §6.2、§9 T16 | T16 | verify_tests 0/168 + 7 种假写法全抓 + 清空断言被 R6 抓 + 五类变异全 FAIL + 回归全绿 |
+| 2026-10-22 | 公式对拍封后门与盲区补全（第六轮复验）：scripts/verify_tests.py 取消对 verify_formulas 的 `continue` 后门（原 `check_true('x',True)` 与自证式对拍可静默通过），改对拍特检后继续走 R1–R9 通用规则；verify_formulas 扩至 77 函数 / 122 运行时断言（原误称 79/58），补默认参数（cobb_douglas αβ、self_esteem、daily_cognitive_budget 正常档）、边界分支（blame_victim min、loss_aversion abs、SIR 归一化、base_activation 空输入）、退化断言（replicator 非对称收益、hawk_dove 频率、maslow 层级、KL 非对称）、C 组状态式（trade 三一致 / social gift=(8,0) / influence 有限 / karma 不触发 / 注册表）；price_equation docstring 改正为相对适应度 `w_i/w̄`；修正 README/ARCHITECTURE/门禁表述 | §4、§9 T21 | T21 | verify_formulas 122/122 + verify_tests 0/289 可疑 + verify_cli 20/20 + verify_panel 53/53 + verify_near_death 7/7 + verify_mcp_stdio 55/55 + user_playtest 47/47 + pyflakes 0 + 门禁 11 项绿 |
+| 2026-10-22 | 全维度审查修复与界面打磨（覆盖率 66%→81%）：按产品级代码审查/安全/SRE/竞品对标四合一标准（见 docs/PROJECT_AUDIT_2026-10-22.md）修复——界面真 bug（`.chip[hidden]` 被 `display` 覆盖、抽屉溢出视口、编年史 32% 心跳/重复合并）；bandit High 12→0（SHA1 去重键 `usedforsecurity=False`、`assert` 改 `raise ValueError`、骰子 `# nosec`）；`panel.py::view_model` 复杂度 E(35)→8 个 `_build_*` 纯函数 B(6)；新增 scripts/verify_branches.py（111 断言）补 systems_feedback/narrative/cognition/economy/social_extended 覆盖至 96/83/97/91/72%；新增 scripts/audit_ui.py + smoke_ui.py（UI 自动化）接入门禁；README/截图重做 | §4、§7、§9 T22 | T22 | 门禁 14 项绿 + verify_branches 111 条 + verify_panel 54/54 + radon cc B(6) + pyflakes 0 |
+| 2026-10-22 | 审查遗留清零（第七轮）：U-001 MCP 覆盖率可测（scripts/coverage_mcp.py，sitecustomize 子进程插桩，实测 mcp_server 行 34%/分支 37%）；U-002 依赖 CVE 用 OSV.dev 逐包查（10 包全 0）；F-008 新增 requirements-mcp.lock.txt + `mcp>=2.3,<3`；F-015 提示词注入防护（9 条特征扫描 + untrusted/content_policy 标记，标记而非删除保叙事）；F-014 补齐 24 个剩余纯公式（覆盖 105→127/129）；覆盖率 81%→87% | §4、§6.2、§9 T23 | T23 | verify_injection 21/21（含 2 变异）+ verify_branches 155/155 + 门禁 15 项绿 |
+| 2026-10-22 | 审查最后三项清零：F-002 用**真变异测试**替代静态审计信任缺口——scripts/verify_mutation.py 内置 19 个已知错误变异（濒死/经济/社交/公式/归档/注入/面板），逐一应用源码、跑验证脚本、期望变红，存活率红线 0%（首轮 2 存活已补断言）；U-003 新增 scripts/verify_memory.py 三段对照测泄漏：实测 1500 轮 RSS 增量 -0.4MB（无泄漏），状态文件稳 7KB、侧写封顶 600 条；F-009 判定不适用（本地单机工具无 SRE 指标体系）；F-011 判定承认差距 | §4、§6.2、§9 T24 | T24 | 门禁 17 项绿 + 变异 19/19 + 内存 7/7 + 覆盖率 88% |
+| 2026-10-22 | 可视化真修（三图从"画了"到"看得懂"）：物价指数图因 OU sigma=0 恒为 1.0 平线→加按 (rng_seed,tick,地点,商品) 派生的确定性扰动（4% 基准价，不耗 rng_counter、可 `configure(market_jitter=False)` 关）；气血/内力曲线图例按实际标注"几乎恒定/100% 回合为 100%"；纵轴自适应；图鉴累计 codex_total 作为第 4 系列上图；修面板端口被抢占（HTTPServer.allow_reuse_address=False 端口冲突抛错顺延）；修击杀不给战利品（接管 `loot_gold`） | §5、§7、§9 T25 | T25 | 门禁 17 项绿 + verify_* 七套全过 + 图表数据实测 price_index 442 种(0.93–1.09)/gold 30→6040/codex 8→19 + pyflakes 0 |
+| 2026-10-22 | 第二轮全维度审查 3 个 High（见 docs/AUDIT_ROUND2_2026-10-22.md）：F-001 状态文件非原子写入→临时文件+fsync+os.replace 原子替换并保留 .bak（4 条回归断言）；F-002 补 X-Content-Type-Options/X-Frame-Options/Referrer-Policy/CSP 四安全头（静态核验 0 内联 script/style/事件处理器，curl -D 四头齐全，六端点 200）；F-003 时间线条目可点击（click+Enter/Space 复用 #eventdlg）；新增 21 项 UI 逐元素巡检 | §4、§6.2、§7、§9 T26 | T26 | verify_branches 159/159（含 4 条原子写断言）+ 其余六套全过 + bandit High/Med/Low 0 + 门禁全绿 |
+
+| 2026-10-24 | **v1.0.0 交付版**：修 MCP SDK 布局不兼容（1.x `fastmcp` / 2.x `mcpserver` 双支持）、`seed_rng` 裸 import numpy 导致 MCP 子进程挂死、包元数据未执行三个阻断级缺陷；CLI `tick` 补齐世界演化（INV-E12）；只读工具零副作用（INV-E11）；死目标不再写编年史；势力演化改为禀赋上限 + 温和 LV + 挑战者回流（INV-E14）；新增行动队列双向通道（INV-E13）、世界脉搏卡、命令面板、分享模式、导出、时间线搜索、角色卡详情；新增三套设定包与 `verify_settings.py`；`engine.py` / `panel.py` / `mcp_server.py` 复杂度治理；变异测试 30/30 | §5、§6.2、§7、§9 | v1.0.0 | 门禁 17 项绿 · 变异 30/30 · 覆盖率 88% · 截图 17 张 + 录屏 |
+| 2026-10-23 | **定位闭环（v1.12）**：修复定位审计指出的三处塌陷——① 世界不自演化（500 回合只有市价在动）：新增 `rules/world_evolution.py`（势力 logistic+Lotka-Volterra、谣言 SIR、风气 Deffuant、NPC 走动、Panarchy 四段状态机 r→K→Ω→α），挂进 `tick`；② 派生指标只展示不结算：相位调制事件概率与战斗伤害、心流调制命中、六维道德由业债累加并调制社交；③ 世界观无关只到引擎不到界面：`ui.terms` 覆盖面板词、`level_tiers` 定义阶梯并由 `advance` 逐阶校验、`places`/`publish_prose` 让正文落盘。同时修 3 个真 bug（暴击被当失败、道德映射恒 0、涌现事件重复落盘）与 1 处无界增长（未结算业债台账改合并保留总额）。新增 verify_world.py（46 项）与变异 M20-M25；门禁 18 项、覆盖率 88%。ARCHITECTURE 新增 §6.3 公式调用路径，明确哪些公式在回路里、哪些是宿主按需 | §6.1、§6.2（INV-E6..E10）、§6.3 | T27 | verify_world 46/46 · 全量回归 12 套绿 · 门禁 18 项绿 · 变异 25/25 杀死 |
 
 ### ADR-004：长局可视化的三个取舍
 - **状态**：已采纳 ｜ **日期**：2026-10-15

@@ -1,225 +1,312 @@
 # 万界 · 行者
 
-**中文** | [English](README.en.md)
+**版本 v1.0.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+
+> **AI 负责叙述，引擎负责世界。**
+> 世界观无关的文字互动游戏内核：144 个规则函数、34 个 MCP 工具、4 套可直接开玩的设定包、
+> 一块离线可用的只读实况主舞台。同一份存档、同一个种子，永远得到同一个世界。
+
+<p align="center">
+  <img src="docs/screenshots/stage-xuanshu.png" alt="实况主舞台（玄枢界 · 墨金皮肤 · 第 500 回合）" width="100%">
+</p>
+
+<p align="center">
+  <a href="docs/screenshots/walkthrough.mp4">▶ 观看 12 秒真实交互录屏（行动排队 / 时间线筛选 / 命令面板 / 角色卡）</a>
+</p>
 
 ---
 
-**万界·行者**是一个由 AI 驱动的文字互动游戏引擎。世界的演化由 15 个学科、85+ 个学术公式驱动——玩家的每个决定通过数学模型处理，世界由此自然涌现剧情，而非预设分支。
+## 这是什么
 
-检索关键词: `AI文字游戏` `互动小说引擎` `涌现叙事` `认知架构` `因果世界` `双系统理论` `心流` `道德基础` `文化进化` `系统动力学` `PID控制`
+大多数 AI 文字游戏把"世界"交给语言模型即兴发挥：数值会漂移、NPC 会失忆、
+同一个选择重开一次结果不同。**万界·行者把这件事反过来**：
 
----
+- **引擎算数**：命中、伤害、价格、关系、因果、势力消长、谣言扩散，全部由确定性规则函数结算；
+- **Agent 作文**：语言模型只把你看到的 JSON 转写成文学描写，不得编造数值；
+- **面板见证**：一块只读网页主舞台实时显示真实状态——它不能改对局，因此它显示的每个数字都可核对。
 
-## 界面预览
-
-实况主舞台（`open_panel` 打开）——只读、离线可用；世界观皮肤、长局曲线与事件反馈都在这一页里。
-以下均为**真实渲染截图**（500 回合演示存档，非设计稿，由 `scripts/audit_ui.py` 断言 18 项后入库）：
-
-**玄枢界（默认皮肤）**
-
-![玄枢界主舞台](docs/screenshots/stage-xuanshu.png)
-
-| 水墨皮肤 | 霓虹皮肤 |
-|---|---|
-| ![水墨](docs/screenshots/stage-ink.png) | ![霓虹](docs/screenshots/stage-neon.png) |
-
-**抽屉：图鉴 / 市场 / 大事记**（展开时自动滚入视口）
-
-| 探索图鉴 | 市场行情 | 大事记 |
-|---|---|---|
-| ![图鉴](docs/screenshots/drawer-codex.png) | ![市场](docs/screenshots/drawer-market.png) | ![大事记](docs/screenshots/drawer-milestones.png) |
-
-**响应式与帮助**
-
-| 768px 平板 | 320px 窄屏 | 帮助与术语表 |
-|---|---|---|
-| ![平板](docs/screenshots/stage-768.png) | ![窄屏](docs/screenshots/stage-320.png) | ![帮助](docs/screenshots/help.png) |
-
-首次访问会有一条一次性引导（`localStorage` 记忆，关闭后不再出现）：
-
-![首访引导](docs/screenshots/first-visit.png)
-
-> 截图取自 `scripts/stress_freeplay.py` 的自由玩家存档（回合 500 / 事件 120 / 大事记 12 / 归档 1318）。
-> 每张截图前逐项断言：品牌字标、`data-skin` 与请求皮肤一致、回合号与主角名渲染、图表 canvas 尺寸有效、
-> 时间线有事件、三个抽屉可展开、帮助含术语表与状态文件路径、三档视口无横向溢出、零 JS 错误、零失败请求。
-> 来源与再生方式见 [`docs/screenshots/README.md`](docs/screenshots/README.md)。
+它不是又一个"AI 跑团提示词"，而是一层**可以被任何 Agent 调用的世界内核**：
+MCP 服务器（stdio）、命令行（14 条命令）、HTTP 只读面板，三条通道共用同一套规则与同一份状态文件。
 
 ---
 
-## 快速开始
-
-### 方式 A：MCP（推荐 —— 给任何 AI Agent 用）
+## 三十秒上手
 
 ```bash
-pip install -e ".[mcp]"
+pip install -e ".[mcp]"          # 仅标准库 + 可选 mcp SDK
 ```
 
-在 MCP 客户端（Claude Code / Codex / Cursor / 任意支持 MCP 的 Agent）配置里加
-（**本仓已带项目级 `opencode.json`，在仓库目录里 opencode 会自动接上**）：
+把下面这段加进任意 MCP 客户端（Claude Code / Codex / Cursor / opencode）：
 
 ```json
 { "mcpServers": { "world-walker": { "command": "world-walker-mcp" } } }
 ```
 
-把设定丢给 Agent 即可开一局（仓库自带 `settings/玄枢界.setting.json`，`load_setting` 一句话开局）。支持 MCP prompt 的客户端还能一键开局：调 `new_game`（参数填设定），
-它会生成完整开局指令。流程是：`world_init`（按设定建世界，入参带字段级说明，含 seed）→
-玩家每个行动由 `combat` / `trade` / `social` / `karma` 结算 → `narration_context` 取触发的
-设定条目、在场角色的卡面文字与编年史 → 文学描写 → `tick` 收回合 → 每 3-5 回合用
-`narrative` + `status` 检查涌现事件与心流；Agent 只负责转写 JSON，不得编造数值。
+然后对 Agent 说一句：
 
-- 生态兼容（不重复造轮子）：直接吃酒馆（SillyTavern）生态的**角色卡**（`.png` 内嵌 / `.json`，
-  V1/V2/V3）与**世界书**（world-info / 卡内 `character_book`，含 selective/constant/disable 语义）；
-  `character_card_read` 看卡 → `add_character` 入局（卡面文字进叙事层）→ `import_lorebook` 并入设定
-- **长局支持（奔着百万回合设计）**：三层记忆，叙事永远只带该带的——
-  · `write_summary` 章节摘要（宿主每 20-50 回合写一次，只写"变了什么"）
-  · 大事记（突破/击杀/初次抵达/因果升级自动记录，`recap` 与面板都读它）
-  · 事件自动归档：状态文件只保留最近 N 条（默认 200，`configure` 可调），
-    更旧的追加进 `<状态文件>.log.jsonl`，需要时用 `recall` 按关键词回捞
-  · `recap(budget_chars)` 按字符预算给「最新摘要 + 大事记 + 最近事件」
-- **成长闭环**：`advance` 突破——引擎按（洞察/心境/业债/气血）判定成败并落数值后果
-  （成功涨上限与属性、失败反噬气血并留心伤），杜绝手改等级
-- **模型层**：`model_list` 查目录、`model(name, params)` 直接按闭式公式出数（经济 Lerner 定价/OU 价格回归、
-  Cobb-Douglas、种群 logistic/Lotka-Volterra、流行病 SIR+R0、风险 Poisson 生存率、热力学松弛、舆论 bounded-confidence 等 16 个），
-  宿主推导效果不再逐事件拍脑袋；市场价格每回合走 OU 均值回归
-- 实况主舞台：`open_panel` 起一个**只读网页**（叙事主舞台 + 气血/内力/心流/世界相位 + 事件时间线 +
-  分级弹窗/提示 + 探索图鉴/市场/大事记抽屉 + 随身物品与人物关系；状态一变自动刷新，SSE 断开自动轮询兜底）
-- **长局态势可视化**：面板内三张离线图表（行藏曲线：气血/内力/钱财随回合；业债与心境；
-  市价偏离基准）＋ 事件谱（危急/警示/顺遂/寻常分布）＋ 人物关系网 ＋ 地点图 ＋ 修行阶段轨 ＋
-  危险/机会徽章；随回合自动累积采样（侧写 `<状态>.viz.jsonl`，不碰状态文件），玩家玩几百轮也能一眼看出趋势
-- **世界观皮肤 + 品牌**：面板按世界自适应 —— 玄枢界(墨金)/水墨/霓虹/通用四套皮肤，含图表配色；
-  设定包或 `world_init` 传 `ui: {skin, accent, motif, brand, tagline}` 即可让新世界自带风格与**自己的名字**
-  （未知皮肤回退通用；规范见 `BRAND.md`）
-- **上手帮助**：顶栏「帮助 ?」含术语表（心流/相位/因果债/物价指数…的人话解释）、图表读法、
-  键盘操作、数据与隐私（状态文件/侧写文件真实路径）、皮肤说明；首次访问给一次引导条，之后不再打扰
-- 使用便利：钱财等大数自动千分位、气血吃紧/业债缠身等徽章、长局人物与关系自动折叠收敛
-- 错误体验：状态缺档/损坏时给可读横幅 + 重试按钮，面板不清屏也不崩
-- 移动与图鉴：`travel` 是唯一能改玩家位置的工具，首次到达自动进图鉴（地点/人物/物品/已触发设定）
-- 回合可回退：`snapshot` / `restore`（引擎状态确定性，回退后重放同种子一致）
-- 濒死保护：玩家不会真正死亡——气血见底改判"重伤退场"，保底 1 点气血，代价是散落 30% 钱财、心伤 +1（面板显示濒死次数）；NPC 死亡不受影响
-- 端到端自检：`python scripts/verify_mcp_stdio.py`（55 项断言，含酒馆生态/图鉴/面板/设定包/长局/模型层与确定性）
-- 面板契约自检：`python scripts/verify_panel.py`（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
-- 濒死保护自检：`python scripts/verify_near_death.py`（7 项断言：气血保底 1 / 代价落盘 / NPC 死亡语义不变）
-- 公式对拍：`python scripts/verify_formulas.py`（122 项断言：按 docstring 的数学式独立重算 77 个函数并比对；与 verify_branches 合计覆盖 127/129 个公开函数）
-- 模块分支补测：`python scripts/verify_branches.py`（155 项断言：systems_feedback / narrative_engine / cognition / social_extended / economy 的异常路径与状态分支，并补齐 24 个剩余纯公式）
-- 界面巡检：`python scripts/smoke_ui.py`（13 项：真实 Edge 渲染 + 抽屉可展开 + 满血不误报 + 三档视口无溢出 + 零 JS 错误）
-- 注入防护自检：`python scripts/verify_injection.py`（9 组断言：正常文本不误判 / 8 类注入特征被识别 / 输出带 untrusted 标记）
-- 内存稳定性：`python scripts/verify_memory.py`（7 项：三段对照查泄漏 + 状态/侧写/归档三重有界）
-- 变异测试：`python scripts/verify_mutation.py`（19 个已知错误必须被测试杀死，存活率红线 0%）
-- 推送门禁：`bash scripts/pre_push_gate.sh`（17 项：编译 / 断言审计 / 八套自检 / 覆盖率 ≥70% / 压测 / 变异 / 打包 / 界面）
-- CLI 通道自检：`python scripts/verify_cli.py`（20 项断言：只读命令不改写状态文件/五条写命令落盘且字段有界/同种子同行动结果可复现）
-- 测试可信度审计：`python scripts/verify_tests.py`（静态审计全部自检断言，拒绝恒真/恒假/弱断言——防止"测试全绿但什么都没测"）
-- 用户视角试玩：`python scripts/user_playtest.py`（47 项"玩家会不会投诉"检查：卖没有的东西/超量交易/边界输入/报错可读性）
-- 实测：opencode（GLM-5.2）接入后按设定建局、连续结算三个行动，叙事数值与引擎状态文件逐项一致
-- 可复现：开局带 `seed`；每次结算的随机数由状态里的 `rng_seed` 与 `rng_counter` 共同决定，并随状态落盘
-
-### 方式 B：CLI（手动结算）
-
-```bash
-python init_game.py                                      # 生成示例世界 game_state.json（青云界）
-python engine.py world_state --state game_state.json      # Windows 用 python，macOS/Linux 用 python3
+```
+load_setting(path="settings/玄枢界.setting.json")
 ```
 
-14 条命令速查（状态文件以 `game_state.json` 为例；注意 `--item` 传的是市场 item_key，不是显示名）：
+一局就开好了。接下来每个行动都由工具结算：
+
+```
+你：我走进万石商行，把《引元诀》残页拍在柜台上，问石三娘这东西值多少。
+Agent → trade(location="临川城", item="yinyuan_canye", direction="sell", quantity=1)
+      → social(actor="player", target="shi_sanniang", event="cooperate")
+      → narration_context(...)  →  publish_prose(...)  →  tick()
+```
+
+不想装 MCP 也能玩命令行：
 
 ```bash
-python engine.py combat    --state game_state.json --attacker player --defender goblin --action_type heavy
-python engine.py trade     --state game_state.json --location bamboo_tea_booth --item an_zhen_san --quantity 3 --direction buy --entity player
-python engine.py social    --state game_state.json --actor player --target old_chen --event help
-python engine.py karma     --state game_state.json --actor player --karma_type murder_innocent
-python engine.py tick      --state game_state.json
-python engine.py flow      --state game_state.json
-python engine.py identity  --state game_state.json
-python engine.py narrative --state game_state.json
-python engine.py world_state  --state game_state.json
-python engine.py panarchy  --state game_state.json
-python engine.py moral_update   --state game_state.json
-python engine.py cognition   --state game_state.json --entity player
-python engine.py merit     --state game_state.json --aid 0.8 --sincerity 0.9
-python engine.py info_weight --state game_state.json --probability 0.05
+python init_game.py                       # 生成示例世界
+python engine.py world_state --state game_state.json
+python engine.py combat --state game_state.json --attacker player --defender goblin --action_type heavy
+python panel.py --state game_state.json   # 打开只读主舞台
 ```
+
+---
+
+## 界面
+
+全部截图来自**真实对局的真实状态**，由 `scripts/shots.py` 在 Edge 中逐项断言后现场拍摄
+（来源存档见 [`docs/demo/`](docs/demo/)，重拍命令见文末）。
+
+### 四套世界观，同一套引擎
+
+| 玄枢界（东方玄幻 · 墨金） | 折剑行（武侠 · 水墨） |
+|---|---|
+| ![玄枢界](docs/screenshots/stage-xuanshu.png) | ![折剑行](docs/screenshots/stage-ink.png) |
+| **霓虹深渊（赛博朋克 · 霓虹）** | **雾港（调查悬疑 · 石墨）** |
+| ![霓虹深渊](docs/screenshots/stage-neon.png) | ![雾港](docs/screenshots/stage-neutral.png) |
+
+皮肤只是表层。真正随世界改变的是**词、阶、钱、地点描写**——设定包里写
+`terms: { level: "身手", gold: "银两", track: "身手阶" }`，面板上就不会再出现"境界 / 灵石 / 修行轨"。
+`scripts/verify_settings.py` 会逐个世界断言这件事。
+
+### 主舞台能做什么
+
+| | |
+|---|---|
+| ![世界脉搏](docs/screenshots/drawer-world.png) | ![角色卡](docs/screenshots/character-card.png) |
+| **世界脉搏**：Panarchy 相位、势力存量、连接度、烈度、谣言热度——`tick` 每回合推动 | **角色卡**：点开在场人物，卡面文字（外观 / 性情 / 口吻）来自设定包 |
+| ![命令面板](docs/screenshots/command-palette.png) | ![行动队列](docs/screenshots/action-queue.png) |
+| **命令面板**：`Ctrl/⌘ + K`，图鉴 / 市场 / 导出 / 分享模式，全键盘可达 | **行动队列**：浏览器里排行动，经侧写文件交给 Agent 结算，状态仍只由引擎写 |
+
+| 图鉴 | 市场 | 大事记 |
+|---|---|---|
+| ![图鉴](docs/screenshots/drawer-codex.png) | ![市场](docs/screenshots/drawer-market.png) | ![大事记](docs/screenshots/drawer-milestones.png) |
+
+响应式与帮助：
+
+| 768px | 320px | 帮助 |
+|---|---|---|
+| ![平板](docs/screenshots/stage-768.png) | ![窄屏](docs/screenshots/stage-320.png) | ![帮助](docs/screenshots/help.png) |
+
+---
+
+## 它和别的 AI 文字游戏有什么不同
+
+对标对象与方法（含证据链接）见 **[docs/BENCHMARK.md](docs/BENCHMARK.md)**。一句话版本：
+
+| 维度 | 常见做法（AI Dungeon / NovelAI / SillyTavern） | 本项目 |
+|---|---|---|
+| 数值由谁决定 | 语言模型生成，容易漂移 | **规则函数结算**，同种子逐字节可复现 |
+| 世界会不会自己动 | 通常等你行动；不行动世界静止 | **`tick` 自己推动**势力 / 谣言 / 风气 / NPC / 相位 |
+| 世界观可换性 | 换的是提示词与角色卡 | 换的是**设定包**：术语、等级阶梯、货币、地点、世界书、品牌、皮肤 |
+| 长局记忆 | 上下文窗口 + 摘要，旧事常丢 | **三层记忆**：摘要 + 大事记 + 逐条归档（`recall` 跨世代回捞） |
+| 生态兼容 | 各自为政 | 直接吃 SillyTavern **角色卡**（PNG/JSON，V1–V3）与**世界书**（含 selective/constant/disable 语义） |
+| 界面 | 聊天流为主 | **只读实况主舞台**：叙事 + HUD + 长局曲线 + 图鉴 + 市场 + 世界脉搏 |
+| 可核对性 | 难以复核 | 每条事件有结构化字段；`status` / `world_state` 只读不落盘；变异测试 32/32 |
+
+我们**不**做的事：图像生成、多人联机、云端账号体系、插件市场。
+这些是取舍不是遗漏，理由写在 [ROADMAP.md](ROADMAP.md)。
+
+---
+
+## 核心机制（都在结算回路上，不是摆设）
+
+### 1. 世界自己会动
+
+每次 `tick` 都会推进：
+
+- **势力消长**：每个势力带自己的禀赋上限（由名字确定性派生），logistic 增长 + 头部两家 Lotka-Volterra 温和压制 + 挑战者回流。长期有稳定强弱，短期有换手。
+- **谣言传播**：SIR 一步。业债高、物价异常、相位剧烈时才会播种新谣言。
+- **风气漂移**：Deffuant 有界信任，每 10 回合结算一次。
+- **NPC 走动**：标注 `roam: true` 的 NPC 会换地点。
+- **Panarchy 适应性循环**：`r → K → Ω → α → r` 四段状态机，由真实存量（势力均值、关系密度、世界标记、业债、物价偏离）驱动，不是查表。
+
+`scripts/verify_world.py` 的 W1/W2/W11 断言这四件事真的发生：
+60 回合内势力存量变化、长局里四个相位都观测到、MCP `tick` 工具本身推进世界。
+
+### 2. 派生指标参与结算
+
+| 指标 | 在哪里生效 | 断言 |
+|---|---|---|
+| 世界相位 | Ω 期事件概率 ×1.6、战斗伤害 ×1.25、命中 ×0.90 | W3 |
+| 心流 | 无聊时命中下降、焦虑时上升 | W4 |
+| 六维道德画像 | 业债类型直接累加（不解析中文），恶名压低社交增量 | W5 |
+| 等级阶梯 | 战斗按阶给战力加成；`advance` 逐阶校验 | W10 |
+
+### 3. 因果债
+
+`karma` 记的是结构化账本：类型、金额、债主、回合、是否已结清。
+未结清的债会压低突破成功率、放大他人敌意，并进入突破时的"天劫强度"。
+台账有界：超出 `karma_ledger_keep` 时**合并**最旧条目并保留总额（不是截断）。
+
+### 4. 长局记忆
+
+```
+write_summary  每 20–50 回合写三五句"变了什么"
+milestones     突破 / 击杀 / 初次抵达 / 因果升级自动记录
+archive        事件超出保留量后追加进 <state>.log.jsonl
+recall         按关键词跨归档世代回捞
+recap          按字符预算给出「最新摘要 + 大事记 + 最近事件」
+```
+
+回退（`snapshot` / `restore`）只切换归档世代文件，**绝不删除任何已写下的历史**。
+
+### 5. 可复现
+
+- 开局带 `seed`；
+- 每次结算用 `sha256(seed, tick, counter)` 重置随机源，`rng_counter` 随状态落盘；
+- 世界演化另用 `sha256(seed|tick|key)` 派生随机，**不消耗** `rng_counter`；
+- 只读工具（`status` / `world_state` / `read_state`）**不落盘、不推进计数器**。
+
+三条不变量由 `verify_cli.py`（CLI 通道）、`verify_mcp_stdio.py`（MCP 通道）、
+`verify_world.py`（世界演化）同时锁定。
+
+---
+
+## MCP 工具一览（34 个）
+
+| 组 | 工具 |
+|---|---|
+| 建局 | `world_schema` `world_init` `world_open` `load_setting` |
+| 结算 | `combat` `trade` `social` `karma` `tick` `use_item` `advance` |
+| 叙事 | `narration_context` `publish_prose` `narrative` `narrative_weight` `merit` |
+| 长局 | `write_summary` `recap` `recall` `snapshot` `restore` `configure` |
+| 世界 | `read_state` `world_state` `status` |
+| 生态 | `character_card_read` `add_character` `import_lorebook` `spawn_npc` |
+| 模型 | `model` `model_list`（16 个命名闭式模型） |
+| 面板 | `open_panel` `pending_actions` |
+| 移动 | `travel` |
+
+完整参数与调用约定见 [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md)。
+
+---
+
+## 设定包：换世界不改代码
+
+一个 JSON 就是一个世界（[格式说明](settings/README.md)）：
+
+| 设定包 | 类型 | 特色 |
+|---|---|---|
+| [`玄枢界`](settings/玄枢界.setting.json) | 东方玄幻 | 十阶修行、玄晶经济、五方势力、21 条世界书 |
+| [`折剑行`](settings/折剑行.setting.json) | 武侠 | 七阶身手、断剑主线、当铺经济、克制叙事 |
+| [`霓虹深渊`](settings/霓虹深渊.setting.json) | 赛博朋克 | F–S 评级、信用点、义体与记忆、雨季氛围 |
+| [`雾港`](settings/雾港.setting.json) | 调查悬疑 | 六阶调查、理智/体力、灯塔谜题、克苏鲁基调 |
+
+`scripts/verify_settings.py` 对每个包断言：载入完整、术语覆盖生效且无未声明的外来词、
+货币与品牌落盘、地点描写生效、连跑 15 回合后势力与相位都在动。
+
+---
+
+## 质量与验证
+
+项目没有 `pytest` 套件，验证靠 13 个可执行自检脚本 + 1 套变异测试（这是设计选择：
+断言必须能被变异测试杀死，而不是只被覆盖率统计到）。
+
+| 自检 | 断言数 | 锁住什么 |
+|---|---|---|
+| `verify_formulas.py` | 122 | 按 docstring 的数学式独立重算 77 个函数 |
+| `verify_branches.py` | 159 | 低覆盖模块的异常路径与状态分支 |
+| `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
+| `verify_panel.py` | 69 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
+| `verify_mcp_stdio.py` | 62 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
+| `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
+| `verify_settings.py` | 17 | 四套世界观的载入与演化 |
+| `verify_injection.py` | 21 | 外部文本的注入特征识别与 untrusted 标记 |
+| `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
+| `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
+| `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
+| `smoke_ui.py` | 13 | 真实 Edge 渲染 + 抽屉 + 响应式 + 零 JS 错误 |
+| `verify_tests.py` | 545 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `verify_mutation.py` | 32 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
+
+另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
+全程走真实 MCP stdio。最近一次 500 轮结果：0 意外错误、0 不变量破坏。
+
+推前门禁一条命令：
+
+```bash
+bash scripts/pre_push_gate.sh     # 17 项，与 GitHub Actions 同判据
+```
+
+覆盖率门禁：核心域 ≥70%（当前实测 88%）；`bandit` High/Medium/Low 全 0；`pyflakes` 0。
 
 ---
 
 ## 项目结构
 
 ```
-game_engine/                      # 仓库根即 game_engine 包（导入别名已放开，目录名任意）
-├── engine.py                     # CLI 入口（14 条命令）
-├── mcp_server.py                 # MCP 服务器（31 个工具；除 mcp>=2 外无额外依赖）
-├── state_schema.py               # 状态结构 + 辅助函数
-├── init_game.py                  # 生成示例世界（青云界）
-├── pyproject.toml                # pip install -e ".[mcp]"；命令 world-walker / world-walker-mcp
-├── panel.py / panel.html / panel.css / panel.js   # 只读实况主舞台（视图模型 + HTTP/SSE + 前端三件套）
-├── viz_series.py                 # 长局态势侧写（<状态>.viz.jsonl 采样：图表数据源，不碰状态文件）
-├── assets/echarts.min.js         # 离线图表库（Apache-2.0，随包分发，无 CDN 依赖）
-├── BRAND.md                      # 品牌规范（名号/标语/配色/可配置化，单一信源）
-├── ARCHITECTURE.md               # 架构文档（唯一真理源：视图模型契约/不变量/ADR）
-├── scripts/verify_mcp_stdio.py   # MCP 端到端自检（55 项断言，含酒馆生态兼容/图鉴/面板/模型层与确定性）
-├── scripts/verify_panel.py       # 面板契约自检（53 项断言：视图模型契约/旧存档兼容/静态白名单/缺档错误态/品牌/帮助/序列采样）
-├── scripts/verify_cli.py         # CLI 通道自检（20 项断言：只读不变量/写命令落盘/确定性）
-├── scripts/verify_tests.py       # 测试可信度审计（AST 级：拒绝恒真/恒假/弱断言）
-├── scripts/verify_near_death.py  # 濒死保护自检（气血保底/代价落盘/NPC 死亡不变）
-├── scripts/verify_formulas.py    # 公式对拍（按数学式独立重算并比对 77 个函数）
-├── scripts/verify_branches.py    # 模块分支补测（111 项，低覆盖模块的异常路径）
-├── scripts/smoke_ui.py           # 界面巡检（真实浏览器渲染 + 交互断言）
-├── scripts/audit_ui.py           # 界面截图与逐项断言（生成 docs/screenshots）
-├── scripts/pre_push_gate.sh      # 推送门禁（14 项，与 CI 判据一致）
-├── scripts/compile_all.py        # 跨平台全仓编译检查
-├── scripts/check_wheel.py        # wheel 运行时资源校验（CI 与门禁共用）
-├── scripts/user_playtest.py      # 用户视角试玩（47 项"玩家会不会投诉"检查：钻空子/边界/报错可读性）
-├── scripts/stress_freeplay.py    # 自由玩家压力测试（默认 2000 回合，走真实 MCP stdio 通道）
-├── docs/screenshots/             # README 预览截图（真实渲染 + 断言；来源说明见该目录 README）
-├── docs/PROJECT_AUDIT_2026-10-22.md  # 全维度审查与对标报告
-├── demo_state.json               # 演示状态
-├── GAME_MASTER_PROTOCOL.md       # AI Agent 调用协议
-└── rules/                        # 85+ 学术公式（Python 实现）
-    ├── combat.py                 #    战斗 / 命中 / 暴击
-    ├── economy.py                #    经济 / 供需 / 价格波动
-    ├── social.py                 #    社交二维关系
-    ├── karma.py                  #    因果债
-    ├── cognition.py              #    认知科学（双系统、前景理论、ACT-R、心流）
-    ├── world_dynamics.py         #    世界演化（混沌、进化、Panarchy、PID）
-    ├── social_extended.py        #    扩展社交（Haidt、Milgram、Bandura）
-    ├── cultural_evolution.py     #    文化进化（DIT、模因、文化棘轮）
-    ├── systems_feedback.py       #    系统反馈（Meadows 12 杠杆点、NAT）
-    └── narrative_engine.py       #    涌现叙事（Bartle、事件、相位）
+world-walker/                  # 仓库根即 game_engine 包
+├── engine.py                  # CLI（14 条命令，命令表驱动）
+├── mcp_server.py              # MCP 服务器（34 个工具）
+├── state_schema.py            # 状态模型 / 原子写 / 世代归档 / 种子
+├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
+├── panel.html / .css / .js    # 主舞台（原生三件套，无构建链）
+├── viz_series.py              # 长局态势侧写（<state>.viz.jsonl）
+├── rules/                     # 144 个公开规则函数
+│   ├── combat.py economy.py social.py karma.py
+│   ├── cognition.py narrative_engine.py progression.py
+│   ├── world_dynamics.py world_evolution.py
+│   ├── models.py              # 16 个命名闭式模型
+│   └── social_extended.py cultural_evolution.py systems_feedback.py
+├── settings/                  # 4 套可直接开玩的设定包
+├── scripts/                   # 13 个自检 + 变异测试 + 截图/视频/演示存档流水线
+├── docs/demo/                 # 真实演示存档（截图与视频的数据源）
+├── docs/screenshots/          # README 预览（真实渲染 + 逐项断言）
+└── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）
 ```
 
 ---
 
-## 学术覆盖
+## 常见问题
 
-85+ 公式，15 个学科分支：
+**它需要联网吗？**
+不需要。核心与面板零第三方依赖，图表库本地随包分发。只有 MCP 模式需要装 `mcp` SDK。
 
-| 学科 | 核心理论 | 文件 | 行数 |
-|------|---------|------|------|
-| 认知科学 | Kahneman 双系统, Prospect Theory, ACT-R 记忆, Csikszentmihalyi 心流 | cognition.py | 235 |
-| 混沌 / 复杂系统 | Lorenz, Lyapunov 指数, Logistic 映射, Panarchy, PID 控制 | world_dynamics.py | 275 |
-| 道德心理学 | Haidt 六维, Tajfel, Bandura, Milgram, Cialdini | social_extended.py | 202 |
-| 进化动力学 | Price 方程, Hamilton, ESS, Red Queen | world_dynamics.py | — |
-| 文化进化 | DIT, 模因, 文化棘轮, 保真度衰减 | cultural_evolution.py | 92 |
-| 系统理论 | Meadows 12 杠杆点, NAT 级联, ANT 行动者网络 | systems_feedback.py | 141 |
-| 叙事学 | 涌现叙事, Bartle, 叙事传输, 空间叙事 | narrative_engine.py | 141 |
-| 信息论 | Shannon 熵, KL 散度, 事件信息量 | world_dynamics.py | — |
+**它需要 OpenAI / Claude 的 API Key 吗？**
+不需要。它不调用任何模型；模型由你的 Agent 提供。引擎只负责"世界怎么变"。
 
----
+**我能用它做商业项目吗？**
+MIT 许可。示例设定包里的人物、势力、地名全部原创，可以自由替换。
 
-## 设计原则
+**为什么不用 pytest？**
+断言必须经得起"改坏代码看测试红不红"的检验。`verify_tests.py` 会静态拒绝恒真断言，
+`verify_mutation.py` 则真的把 32 个已知错误逐个注入源码，确认每个都能被测试杀死。
+两者都在门禁里。
 
-1. **世界观无关** —— 同一套数学，换叙事词汇即可模拟修真/武侠/奇幻/科幻
-2. **涌现而非分支** —— 世界从机制中自然产生剧情，不预写分支树
-3. **Agent → 引擎 → 文学** —— 引擎返回 JSON，AI Agent 负责转为文学描写
-4. **完全响应式** —— 玩家想做的一切，引擎都能给一个有数学依据的结果
+**为什么面板不能直接提交行动？**
+可以排队，但不直接结算。面板把行动写进 `<state>.inbox.jsonl` 侧写，Agent 用 `pending_actions`
+取走并照常走引擎。这样"状态只有一个写入源"，确定性与快照回退语义不会被破坏。
 
 ---
 
-## 与他人协作
+## 重新生成演示素材
 
-- **对玩家**: 你告诉 AI Agent 你想做什么 → Agent 调用引擎 → 引擎返回 JSON → Agent 用文字告诉你发生了什么
-- **对 AI Agent**: 详见 [`GAME_MASTER_PROTOCOL.md`](GAME_MASTER_PROTOCOL.md) —— 完整的调用协议、参数说明、响应格式
+```bash
+python scripts/make_demo.py          # 4 套世界的真实演示存档 → docs/demo/
+python scripts/shots.py              # 逐项断言 + 截图 + 录屏 → docs/screenshots/
+python scripts/verify_settings.py    # 四套设定包全量校验
+```
 
 ---
 
-## 许可
+## 许可与致谢
 
-MIT
+MIT。图表库 [ECharts](https://echarts.apache.org/) 5.5.1（Apache-2.0）。
+酒馆生态格式的兼容实现参考了 SillyTavern 社区公开的角色卡与世界书规范；
+本项目不复用任何作品的名词与设定。

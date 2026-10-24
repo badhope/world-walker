@@ -35,9 +35,20 @@ if "game_engine" not in sys.modules:
     _engine_pkg = importlib.util.module_from_spec(_spec)
     _engine_pkg.__path__ = [_SCRIPT_DIR]
     sys.modules["game_engine"] = _engine_pkg
+    # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
+    _spec.loader.exec_module(_engine_pkg)
 
-from mcp.server.mcpserver import MCPServer
+# MCP SDK 兼容层：1.x 的官方入口是 mcp.server.fastmcp.FastMCP；
+# 2.x 计划改名为 mcp.server.mcpserver.MCPServer。两套布局都支持，
+# 这样 `pip install -e ".[mcp]"` 在 1.x / 2.x 环境下都能启动。
+try:
+    from mcp.server.fastmcp import FastMCP as _MCPServer
+    _MCP_LAYOUT = "fastmcp"
+except ImportError:  # pragma: no cover - 仅在只有 2.x 布局的环境走到
+    from mcp.server.mcpserver import MCPServer as _MCPServer  # type: ignore
+    _MCP_LAYOUT = "mcpserver"
 
+from game_engine import __version__ as _WW_VERSION
 from game_engine.rules.cognition import daily_cognitive_budget, should_use_system2
 from game_engine.rules.combat import resolve_combat
 from game_engine.rules.economy import resolve_trade, tick_market
@@ -46,12 +57,15 @@ from game_engine.rules.narrative_engine import (
     check_world_emergent_events,
     flow_channel_status,
     panarchy_phase_check,
+    phase_multiplier,
     player_identity_vector,
     update_player_moral_identity,
 )
+from game_engine.rules.progression import level_tier, validate_next_level
 from game_engine.rules.social import resolve_social_event
 from game_engine.rules.social_extended import merit_quality
 from game_engine.rules.world_dynamics import event_information
+from game_engine.rules.world_evolution import evolve as evolve_world, world_summary
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
 from game_engine.state_schema import entity_key, load_state, log_event, save_state, seed_rng
 from game_engine.viz_series import record_sample
@@ -111,16 +125,24 @@ class RelationIn(BaseModel):
     respect: int = Field(default=0, description="敬重/畏惧 -100~100")
 
 
-server = MCPServer(
-    name="world-walker",
-    version="0.8.0",
-    instructions=(
-        "万界·行者规则引擎：世界观无关的因果推演内核。主持文字互动游戏时："
-        "先 world_schema 了解状态结构，按玩家设定调用 world_init 建世界；"
-        "玩家的每个行动都交给对应工具结算，你只把返回的 JSON 转写成文学描写，"
-        "不得自行编造数值结果；回合结束调用 tick；每 3-5 回合调用 narrative 与 status 一次。"
-    ),
+_INSTRUCTIONS = (
+    "万界·行者规则引擎：世界观无关的因果推演内核。主持文字互动游戏时："
+    "先 world_schema 了解状态结构，按玩家设定调用 world_init 建世界；"
+    "玩家的每个行动都交给对应工具结算，你只把返回的 JSON 转写成文学描写，"
+    "不得自行编造数值结果；回合结束调用 tick；每 3-5 回合调用 narrative 与 status 一次。"
 )
+
+
+def _make_server():
+    """按 SDK 布局构造 server；1.x 的 FastMCP 不接受 version 参数。"""
+    kwargs = {"name": "world-walker", "instructions": _INSTRUCTIONS}
+    try:
+        return _MCPServer(version=_WW_VERSION, **kwargs)
+    except TypeError:  # pragma: no cover - 1.x 布局
+        return _MCPServer(**kwargs)
+
+
+server = _make_server()
 
 # 工具里"有意拒绝"的原因必须回到宿主手里。MCP SDK 对非 ToolError 的异常只回
 # "Error executing tool X"（原因留在服务端日志），宿主 Agent 无从自纠；这里把
@@ -398,6 +420,17 @@ def _seed_rng(state: dict) -> None:
     seed_rng(state)
 
 
+def _read(result: dict) -> dict:
+    """只读工具的返回包装：补 _tick，但**不落盘、不推进 rng_counter**。
+
+    为什么重要：`status` / `world_state` 这类查询工具如果顺手 save_state，
+    每查一次就会消耗一段随机序列，两个分支只差"查没查状态"就会得到不同的战斗结果——
+    直接违反 INV-E4（同状态 + 同行动 = 同结果）。查询必须无副作用。
+    """
+    result["_tick"] = int((_load().get("tick", 0)) or 0)
+    return result
+
+
 def _codex(state: dict) -> dict:
     """探索图鉴：地点/人物/物品/设定词条。面板渲染它，也是"玩家记不住"的台账。"""
     c = state.setdefault("codex", {})
@@ -528,8 +561,15 @@ def world_schema() -> dict:
             "market": "location -> {item_key -> item_shape}；交易工具用 item_key 而非 name",
             "karma_ledger": "因果债流水（引擎维护）",
             "world_flags": "已触发的世界事件标记（字符串数组）",
-            "ui": "面板皮肤与品牌（可选）{skin: xuanshu|neutral|ink|neon, accent: '#rrggbb', motif: 文案, brand: 字标, tagline: 标语}",
+            "ui": "面板皮肤与品牌（可选）{skin, accent, motif, brand, tagline, terms:{level:等级}}",
             "event_log": "最近事件（引擎维护，保留量见 config.event_log_keep，默认 200；溢出自动归档）",
+            "factions": "势力存量 {势力名: {power, reach}}（tick 自动演化，logistic + Lotka-Volterra）",
+            "panarchy": "适应性循环 {phase: r|K|Ω|α, capital, connectedness, stress, collapses}（tick 推进）",
+            "rumors": "谣言 {主题: {s, i, r, heat}}（SIR 传播）",
+            "culture": "风气 {tradition, innovation}（Deffuant 有界信任漂移）",
+            "places": "地点描写 {地名: {desc, tick}}；面板主舞台优先显示它",
+            "prose": "叙事正文队列（publish_prose 写入，config.prose_keep 控制保留量，溢出进归档）",
+            "config.level_tiers": "等级阶梯（数组）；配了它 advance 只能逐阶递进",
         },
         "entity_shape": {
             "name": "显示名（必填）",
@@ -574,8 +614,10 @@ def world_schema() -> dict:
             "trade": "location/item_key/quantity/direction(buy|sell)/entity；买入记入持有，卖出须先持有",
             "social": "actor/target/event(%s)/intensity" % "|".join(SOCIAL_EVENTS),
             "karma": "actor/victim(可空)/karma_type(%s)" % "|".join(KARMA_TYPES),
-            "tick": "回合结束（市场演化 + tick+1）",
+            "tick": "回合结束（市场演化 + 世界演化 + tick+1；世界演化含势力/谣言/风气/NPC/相位）",
+            "world_state": "世界侧摘要：势力存量/相位/谣言热度/风气/物价指数（只读）",
             "narrative": "涌现事件 + 世界相位（每 3-5 回合查一次）",
+            "publish_prose": "发布本回合叙事正文（面板主舞台直接显示；旧文进归档）",
             "status": "心流/身份/相位/道德/认知 聚合（每 3-5 回合查一次）",
             "merit": "功德值（纯函数：aid 救助 0~1, sincerity 诚心 0~1）",
             "narrative_weight": "事件叙事权重 = -log P(事件)（纯函数）",
@@ -591,6 +633,11 @@ def world_schema() -> dict:
             "use_item": "用一件物品：持有则自备消耗（买入时已付）；未持有则按所在地市场价现买现用",
             "spawn_npc": "现场生成一个 NPC（无角色卡也能入局；有卡请用 add_character）",
             "open_panel": "打开实况主舞台（只读网页：叙事/HUD/时间线/抽屉，自动刷新）",
+            "pending_actions": "取走面板「行动队列」里玩家排的行动（唯一双向通道；状态仍只由 MCP 写）",
+            "world_schema": "状态结构说明（建局前查一次即可）",
+            "world_init": "按设定建世界并写盘（建局入口）",
+            "world_open": "打开已有状态文件续跑",
+            "read_state": "读取当前对局完整状态（只读，不落盘）",
             "load_setting": "从设定包一键开一局（settings/*.setting.json）",
             "advance": "突破（引擎判定成败并给数值后果；长局的核心成长循环）",
             "recall": "按关键词回捞历史事件（归档 + 近期事件）",
@@ -716,8 +763,11 @@ def combat(attacker: str, defender: str, action_type: str = "attack",
     _require_entity(state, attacker, "攻击方")
     _require_entity(state, defender, "防守方")
     result = resolve_combat(state, attacker, defender, action_type, skill)
-    for e in result.get("events", []):
-        log_event(state, "combat", e)
+    # 对尸体继续攻击只返回一句提示，不写编年史：
+    # 否则长局里同一条"已经没有还手之力"会挤满时间线（500 回合实测 ×12 连续刷屏）。
+    if not result.get("target_already_dead"):
+        for e in result.get("events", []):
+            log_event(state, "combat", e, outcome=result.get("outcome"))
     _remember(state, "people", state.get("entities", {}).get(defender, {}).get("name", defender))
     if result.get("defender_dead"):
         _milestone(state, "击杀", "%s 击败了 %s" % (attacker, result.get("defender", defender)))
@@ -778,7 +828,7 @@ def karma(actor: str, karma_type: str, victim: str | None = None) -> dict:
         _require_entity(state, victim, "受害方")
     result = resolve_karma(state, actor, victim, karma_type)
     for e in result.get("events", []):
-        log_event(state, "karma", e)
+        log_event(state, "karma", e, karma_type=karma_type)
     consequence = get_karma_consequence(state, actor)
     if consequence["triggered"]:
         result["karma_consequence"] = consequence
@@ -789,14 +839,39 @@ def karma(actor: str, karma_type: str, victim: str | None = None) -> dict:
 
 @server.tool()
 def tick() -> dict:
-    """推进一个回合：市场演化 + tick+1（Chinese: 每回合结束时调用一次）。Advance one turn."""
+    """推进一个回合：市场演化 + 世界演化 + tick+1（Chinese: 每回合结束时调用一次）。
+
+    世界演化包含势力消长、谣言传播、文化漂移、NPC 走动与 Panarchy 相位推进——
+    这些都不需要玩家行动也会发生，世界因此是"活的"而不是等人喂。
+    Advance one turn: market + world evolution + tick."""
 
     state = _load()
     _seed_rng(state)
     tick_market(state)
     state["tick"] = state.get("tick", 0) + 1
+    world = evolve_world(state)
+    for desc in world.get("events", []):
+        log_event(state, "world", str(desc))
     log_event(state, "tick", "回合%d结束" % state["tick"])
-    return _finish(state, {"events": ["回合%d结束" % state["tick"]]})
+    events = ["回合%d结束" % state["tick"]] + [str(e) for e in world.get("events", [])]
+    return _finish(state, {
+        "events": events,
+        "panarchy_phase": world.get("phase"),
+        "capital": world.get("capital"),
+        "connectedness": world.get("connectedness"),
+        "factions": world.get("factions"),
+        "rumors": world.get("rumors"),
+        "market_index": world.get("market_index"),
+    })
+
+
+@server.tool()
+def world_state() -> dict:
+    """世界侧现状（Chinese: 势力存量、相位、谣言热度、文化倾向、物价指数——tick 推着它们变）。
+    World snapshot: factions, panarchy, rumors, culture, market index."""
+
+    state = _load()
+    return _read(world_summary(state))
 
 
 @server.tool()
@@ -805,31 +880,34 @@ def narrative() -> dict:
     Emergent world events and the current world phase."""
 
     state = _load()
-    _seed_rng(state)
     events = check_world_emergent_events(state)
     phase = panarchy_phase_check(state)
+    seen = state.setdefault("_emergent_seen", {})
     for e in events:
         desc = e.get("desc") or e.get("type", "")
         log_event(state, "emergent", str(desc))
-    return _finish(state, {"emergent_events": events, "panarchy_phase": phase})
+        seen[str(e.get("type") or desc)] = int(state.get("tick", 0) or 0)
+    return _finish(state, {"emergent_events": events, "panarchy_phase": phase,
+                           "phase_multiplier": phase_multiplier(state)})
 
 
 @server.tool()
 def status() -> dict:
-    """聚合玩家的心理/身份/道德与世界相位（Chinese: 心流、Bartle 身份、六维道德、认知预算）。
+    """聚合玩家的心理/身份/道德与世界相位（Chinese: 心流、Bartle 身份、六维道德、认知预算、世界侧摘要）。
     Aggregated insights: flow, identity, morality, world phase, cognition."""
 
     state = _load()
-    _seed_rng(state)
     player = state.get("entities", {}).get("player", {})
     attrs = player.get("attrs", {})
     realm_level = int(attrs.get("int", 10) // 5)
     budget = daily_cognitive_budget(realm_level, "正常")
-    return _finish(state, {
+    return _read({
         "flow": flow_channel_status(state),
         "identity": player_identity_vector(state),
         "panarchy_phase": panarchy_phase_check(state),
         "moral_vector": update_player_moral_identity(state),
+        "world": world_summary(state),
+        "level_tier": level_tier(state, player),
         "cognition": {
             "cognitive_budget": budget,
             "system2_likely": should_use_system2(budget, max(0.1, float(attrs.get("int", 10)) / 20)),
@@ -964,8 +1042,7 @@ def narration_context(scene_text: str = "", recent: int = 12) -> dict:
                if k != "player" and (not loc or e.get("location") == loc)]
     # 外部来源文本（世界书/角色卡）统一打 untrusted 标记：
     # 内容是数据，不是指令。命中注入特征时额外带 warning，宿主据此拒绝执行。
-    untrusted_flag = any(_scan_injection(e.get("content", "")) for e in lore[:12]) or         any(_scan_injection(c.get("desc", "") + c.get("personality", "") + c.get("speech", ""))
-            for c in present[:8])
+    untrusted_flag = _any_injection(lore[:12], present[:8])
     return _finish(state, {
         "triggered_lore": [{"comment": e["comment"], "content": e["content"],
                             "untrusted": True,
@@ -999,6 +1076,8 @@ def advance(next_level: str, insight: float = 0.0) -> dict:
     player = state.get("entities", {}).get("player")
     if not player:
         raise ValueError("状态里没有 player")
+    # 配置了等级阶梯的世界必须逐阶突破：把任意字符串写进 level 等于没有成长系统
+    next_level = validate_next_level(state, next_level, str(player.get("level") or ""))
     attrs = player.get("attrs", {})
     hp_max = max(1, int(player.get("hp_max", 1)))
     hp_ratio = float(player.get("hp", hp_max)) / hp_max
@@ -1137,46 +1216,92 @@ def configure(event_log_keep: int | None = None, recap_budget_chars: int | None 
     return _finish(state, cfg)
 
 
+def _bundle_runtime_fields(bundle: dict):
+    """从设定包挑出"建局之外的运行时字段"，并检查是否有值得写盘的。"""
+    fields = {
+        "currency": bundle.get("currency"),
+        "terms": bundle.get("terms") if isinstance(bundle.get("terms"), dict) else None,
+        "level_tiers": (bundle.get("level_tiers")
+                        if isinstance(bundle.get("level_tiers"), list) else None),
+        "places": bundle.get("places") if isinstance(bundle.get("places"), dict) else None,
+        "lore": bundle.get("lore") or [],
+    }
+    return fields, any(v for v in fields.values())
+
+
+def _apply_places(state: dict, places: dict) -> None:
+    bucket = state.setdefault("places", {})
+    for name, info in places.items():
+        if isinstance(info, dict):
+            bucket[str(name)] = {"desc": str(info.get("desc", ""))[:1200],
+                                 "tick": int(state.get("tick", 0) or 0)}
+        elif isinstance(info, str):
+            bucket[str(name)] = {"desc": info[:1200], "tick": 0}
+
+
+def _apply_bundle_extras(state_path: str, bundle: dict) -> int:
+    """把设定包里"建局之外的字段"写进状态：货币 / 术语 / 阶梯 / 地点描写 / 世界书。
+
+    旧版在 load_setting 里分四段各 load 一次、各 save 一次，逻辑全挤在一个函数里
+    （圈复杂度 29）。现在只读写一次，并把"哪些字段属于运行时配置"收在一处，
+    以后加字段不用再改主流程。
+
+    返回导入的世界书条目数。
+    """
+    fields, needs_write = _bundle_runtime_fields(bundle)
+    if not needs_write:
+        return 0
+    state = load_state(state_path)
+    if fields["currency"]:
+        state["currency"] = str(fields["currency"])
+    if fields["terms"]:
+        state.setdefault("ui", {})["terms"] = {str(k): str(v) for k, v in fields["terms"].items()}
+    if fields["level_tiers"]:
+        state.setdefault("config", {})["level_tiers"] = [str(t) for t in fields["level_tiers"]]
+    if fields["places"]:
+        _apply_places(state, fields["places"])
+    lore_n = 0
+    for entry in fields["lore"]:
+        norm = _normalize_lore_entry(entry)
+        if norm:
+            state.setdefault("lore", []).append(norm)
+            lore_n += 1
+    if lore_n:
+        log_event(state, "system", "设定包「%s」载入：世界书 %d 条"
+                  % (bundle.get("name", ""), lore_n))
+    _finish(state, {})
+    return lore_n
+
+
 @server.tool()
 def load_setting(path: str, state_path: str = "", seed: int | None = None) -> dict:
     """从「设定包」一键开一局（Chinese: 包里含 world/player/entities/market/relations/lore，
-    示例见 settings/玄枢界.setting.json，格式见 settings/README.md）。
+    示例见 settings/ 目录，格式见 settings/README.md）。
     Boot a full game from a setting bundle in one call."""
-    b = json.load(open(path, encoding="utf-8"))
-    if not isinstance(b, dict) or "world" not in b or "player" not in b:
+    with open(path, encoding="utf-8") as f:
+        bundle = json.load(f)
+    if not isinstance(bundle, dict) or "world" not in bundle or "player" not in bundle:
         raise ValueError("不是合法的设定包（缺 world/player）: %s" % path)
-    sp = state_path or b.get("state_path_hint") or "ww_state.json"
+    sp = state_path or bundle.get("state_path_hint") or "ww_state.json"
     res = world_init(state_path=sp,
-                     world=WorldInfo(**b["world"]),
-                     player=EntityIn(**b["player"]),
-                     entities=[EntityIn(**e) for e in b.get("entities", [])],
-                     market=[MarketIn(**m) for m in b.get("market", [])],
-                     relations=[RelationIn(**r) for r in b.get("relations", [])],
-                     world_flags=list(b.get("world_flags", [])),
-                     ui=dict(b.get("ui") or {}),
-                     seed=int(seed if seed is not None else b.get("seed", 20261014)))
-    if b.get("currency"):
-        state = _load()
-        state["currency"] = str(b["currency"])
-        _finish(state, {})
-    lore_n = 0
-    if b.get("lore"):
-        state = _load()
-        for e in b["lore"]:
-            n = _normalize_lore_entry(e)
-            if n:
-                state.setdefault("lore", []).append(n)
-                lore_n += 1
-        log_event(state, "system", "设定包「%s」载入：世界书 %d 条" % (b.get("name", ""), lore_n))
-        _finish(state, {})
-    return {**res, "setting": b.get("name", ""), "lore_entries": lore_n,
-            "player_level": (b.get("player") or {}).get("level", ""),
+                     world=WorldInfo(**bundle["world"]),
+                     player=EntityIn(**bundle["player"]),
+                     entities=[EntityIn(**e) for e in bundle.get("entities", [])],
+                     market=[MarketIn(**m) for m in bundle.get("market", [])],
+                     relations=[RelationIn(**r) for r in bundle.get("relations", [])],
+                     world_flags=list(bundle.get("world_flags", [])),
+                     ui=dict(bundle.get("ui") or {}),
+                     seed=int(seed if seed is not None else bundle.get("seed", 20261014)))
+    lore_n = _apply_bundle_extras(sp, bundle)
+    return {**res, "setting": bundle.get("name", ""), "lore_entries": lore_n,
+            "player_level": (bundle.get("player") or {}).get("level", ""),
             "hint": "开局前可先 open_panel 把实况主舞台给玩家；行动用 combat/trade/social/karma 结算，移动用 travel。"}
 
 
 @server.tool()
-def travel(location: str, note: str = "") -> dict:
-    """移动到新地点（Chinese: 玩家的 location 只由本工具修改；首次到达会记进探索图鉴）。
+def travel(location: str, note: str = "", desc: str = "") -> dict:
+    """移动到新地点（Chinese: 玩家的 location 只由本工具修改；首次到达会记进探索图鉴。
+    desc 给一句本地的场景描写——它会成为面板主舞台的正文，不给则沿用该地点上次的描写）。
     Move the player to a location; first arrival is recorded in the codex."""
     state = _load()
     player = state.get("entities", {}).get("player")
@@ -1192,6 +1317,10 @@ def travel(location: str, note: str = "") -> dict:
     here = [k for k, e in state.get("entities", {}).items() if k != "player" and e.get("location") == loc]
     for k in here:
         _remember(state, "people", state["entities"][k].get("name", k))
+    places = state.setdefault("places", {})
+    body = str(desc or "").strip()
+    if body:
+        places[loc] = {"desc": body[:1200], "tick": int(state.get("tick", 0) or 0)}
     log_event(state, "travel", "抵达「%s」%s%s" % (loc, "（初次探索）" if first else "",
                                                   ("：" + note) if note else ""))
     if first:
@@ -1199,7 +1328,77 @@ def travel(location: str, note: str = "") -> dict:
     return _finish(state, {"location": loc, "first_time": first,
                            "has_market": loc in state.get("market", {}),
                            "entities_here": here,
-                           "in_setting": loc in known})
+                           "in_setting": loc in known,
+                           "scene_desc": (places.get(loc) or {}).get("desc", "")})
+
+
+@server.tool()
+def publish_prose(text: str, location: str = "") -> dict:
+    """发布本回合的叙事正文（Chinese: 宿主把玩家这一步看到的文字写进状态，面板主舞台直接显示它；
+    只保留最近 N 段，旧的进归档，不会撑爆状态文件）。
+    Publish the narration prose of this turn so the live panel can show the actual story."""
+
+    state = _load()
+    body = str(text or "").strip()
+    if not body:
+        raise ValueError("text 不能为空")
+    prose = state.setdefault("prose", [])
+    player = state.get("entities", {}).get("player") or {}
+    loc = str(location or player.get("location") or "")
+    prose.append({"tick": int(state.get("tick", 0) or 0), "location": loc,
+                  "text": body[:4000]})
+    keep = int((state.get("config") or {}).get("prose_keep", 40))
+    overflow = prose[:-keep] if keep > 0 and len(prose) > keep else []
+    if overflow:
+        state["prose"] = prose[-keep:]
+        arch = _archive_path()
+        try:
+            with open(arch, "a", encoding="utf-8") as f:
+                for entry in overflow:
+                    f.write(json.dumps({"type": "prose", **entry}, ensure_ascii=False) + "\n")
+            state["archived_events"] = int(state.get("archived_events", 0) or 0) + len(overflow)
+        except OSError:  # aqg: top-level boundary —— 归档失败不该阻断叙事落盘
+            pass
+    places = state.setdefault("places", {})
+    if loc:
+        places.setdefault(loc, {})
+        places[loc]["desc"] = body[:1200]
+        places[loc]["tick"] = int(state.get("tick", 0) or 0)
+    log_event(state, "prose", body[:160])
+    return _finish(state, {"prose_count": len(state.get("prose") or []),
+                           "location": loc,
+                           "latest": body[:200]})
+
+
+def _card_text(card: dict) -> str:
+    """角色卡三段文字拼起来做注入扫描（任何一段都可能被塞指令）。"""
+    return (str(card.get("desc", "")) + str(card.get("personality", ""))
+            + str(card.get("speech", "")))
+
+
+def _any_injection(lore_entries, present_cast) -> bool:
+    """世界书或在场角色卡里是否出现注入特征。"""
+    return (any(_scan_injection(e.get("content", "")) for e in lore_entries)
+            or any(_scan_injection(_card_text(c)) for c in present_cast))
+
+
+@server.tool()
+def pending_actions(limit: int = 20, mark_done: bool = False) -> dict:
+    """取走玩家在实况面板「行动队列」里排的行动（Chinese: 宿主每回合先查这里；
+    mark_done=True 时把这些行动标记为已处理，避免重复结算）。
+    Drain player actions queued from the live panel (optional two-way channel)."""
+    import importlib.util as _ilu
+    spec = _ilu.spec_from_file_location("ww_panel_inbox", os.path.join(_SCRIPT_DIR, "panel.py"))
+    panel = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(panel)
+    sp = _state_path()
+    items = panel.inbox_pending(sp)[:max(1, int(limit))]
+    done = 0
+    if mark_done and items:
+        done = panel.inbox_mark_done(sp, [i.get("id") for i in items])
+    return {"pending": items, "count": len(items), "marked_done": done,
+            "inbox": panel.inbox_path(sp),
+            "hint": "把每条 text 当作玩家这一回合的行动，照常经 combat/trade/social/travel 等工具结算。"}
 
 
 @server.tool()

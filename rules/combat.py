@@ -7,9 +7,41 @@
 伤害公式: 基础伤害 × 攻击方str系数 × 防守方破防率 × 浮动(0.8~1.2)
 暴击: dex差 > 3 时概率暴击 (1.5倍)
 击杀: hp归零 → dead=true
+
+两条**会改变结果的输入**（旧实现里它们只是面板上的装饰）：
+- 世界相位（`state["panarchy"]["phase"]`）：Ω 动乱期命中更难、伤害更飘
+- 心流（`flow_channel_status`）：无聊→命中下降（挑战不足），焦虑→命中上升（压力激发）
 """
 
 import random
+
+
+def _combat_modifiers(state):
+    """返回 (命中倍率, 伤害倍率)。缺失/异常一律回退 1.0，不影响结算可用性。"""
+    hit_mult = 1.0
+    dmg_mult = 1.0
+    try:
+        from game_engine.rules.narrative_engine import flow_channel_status
+        flow = flow_channel_status(state)
+        adj = float(flow.get("adjustment", 0.0) or 0.0)
+        # 无聊（adjustment>0）时命中下降；焦虑（<0）时命中上升（背水一战）
+        hit_mult *= max(0.75, min(1.25, 1.0 - adj * 0.5))
+    except Exception:  # nosec B110; aqg: top-level boundary —— 心流是辅助输入，坏了不许影响战斗
+        pass
+    try:
+        phase = str((state.get("panarchy") or {}).get("phase") or "")
+        if phase == "Ω":
+            hit_mult *= 0.90
+            dmg_mult *= 1.25
+        elif phase == "α":
+            hit_mult *= 0.95
+            dmg_mult *= 1.10
+        elif phase == "K":
+            dmg_mult *= 0.95
+    except Exception:  # nosec B110; aqg: top-level boundary —— 相位缺失时按无修正处理
+        pass
+    return hit_mult, dmg_mult
+
 
 def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None):
     """
@@ -61,11 +93,22 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
         result["target_already_dead"] = True
         return result
     
-    # 计算命中
+    # 计算命中（含等级差与相位/心流修正）
     atk_power = atk_attrs.get("str", 10) + atk_attrs.get("dex", 10) * 0.5
     def_power = def_attrs.get("str", 10) + def_attrs.get("dex", 10) * 0.7
-    
+    atk_tier_bonus = def_tier_bonus = 0.0
+    try:
+        from game_engine.rules.progression import tier_bonus
+        atk_tier_bonus = tier_bonus(state, atk_ent)
+        def_tier_bonus = tier_bonus(state, def_ent)
+        atk_power += atk_tier_bonus
+        def_power += def_tier_bonus
+    except Exception:  # nosec B110; aqg: top-level boundary —— 阶梯配置坏了退回纯属性判定
+        pass
+
+    hit_mult, dmg_mult = _combat_modifiers(state)
     hit_chance = max(0.1, min(0.95, 0.5 + (atk_power - def_power) * 0.05))
+    hit_chance = max(0.05, min(0.98, hit_chance * hit_mult))
 
     # 重击更难命中 (必须在命中判定前应用)
     if action == "heavy":
@@ -73,12 +116,13 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
 
     if random.random() > hit_chance:  # nosec B311 —— 游戏骰子，非密码学用途
         result["events"].append(f"{atk_ent['name']}的攻击被{def_ent['name']}闪避")
+        result["outcome"] = "loss" if attacker_id == "player" else "win"
         return result
 
     result["hit"] = True
 
     # 计算伤害
-    base_damage = atk_attrs.get("str", 10) * 1.5
+    base_damage = atk_attrs.get("str", 10) * 1.5 + atk_tier_bonus * 1.5
 
     # action 加成
     if action == "heavy":
@@ -110,6 +154,7 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     # 防御减免
     defense = def_attrs.get("con", 10) * 0.3
     damage = max(1, base_damage - defense)
+    damage *= dmg_mult
     
     # 浮动 0.8 ~ 1.2
     damage *= random.uniform(0.8, 1.2)  # nosec B311 —— 游戏骰子，非密码学用途
@@ -127,6 +172,13 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     # 扣除血量
     def_ent["hp"] = max(0, def_ent.get("hp", 0) - damage)
     result["defender_hp_after"] = def_ent["hp"]
+    # 结构化胜负：flow_channel_status 直接读它，不再用中文关键词猜
+    if attacker_id == "player":
+        result["outcome"] = "win"
+    elif defender_id == "player":
+        result["outcome"] = "loss"
+    else:
+        result["outcome"] = "draw"
     
     # 记录事件
     hit_desc = "暴击!" if result["crit"] else "命中"

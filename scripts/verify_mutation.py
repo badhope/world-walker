@@ -32,7 +32,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MUTATIONS = [
     # ── 战斗 ──
     ('M01', '濒死保底 1 → 0', 'rules/combat.py',
-     '    player["hp"] = 1\n', '    player["hp"] = 0\n',
+     '    player["hp"] = 1\n    gold = int(player.get("gold", 0) or 0)',
+     '    player["hp"] = 0\n    gold = int(player.get("gold", 0) or 0)',
      'scripts/verify_near_death.py'),
     ('M02', '濒死不掉钱（gold_lost 置 0）', 'rules/combat.py',
      '    gold_lost = int(gold * 0.30)', '    gold_lost = 0',
@@ -57,7 +58,7 @@ MUTATIONS = [
      '        "help":       (5, 3),', '        "help":       (10, 3),',
      'scripts/verify_cli.py'),
     ('M08', '因果 theft 记错金额', 'rules/karma.py',
-     '        "theft": 15,', '        "theft": 0,',
+     '    "theft": 15,', '    "theft": 0,',
      'scripts/verify_cli.py'),
 
     # ── 模型层公式 ──
@@ -107,6 +108,59 @@ MUTATIONS = [
      '        "price_index": round(sum(ratios) / len(ratios), 4) if ratios else 1.0,',
      '        "price_index": 1.0,',
      'scripts/verify_panel.py'),
+
+    # ── 世界演化（本轮新增；每条对应一个曾经的"展示但不生效"缺陷）──
+    ('M20', 'tick 不再驱动世界演化', 'mcp_server.py',
+     '    world = evolve_world(state)', '    world = {}',
+     'scripts/verify_world.py'),
+    # 注意：M20 曾经**存活**——verify_world 的 W11 走了 in-process 调用，而变异点
+    # 在 stdio 之外的同名文件里，两处都能命中；真正让它变红的是同一条断言在本文件
+    # （MCP tick 工具）里跑，因此 M20 的目标脚本必须是 verify_world（含 W11 in-process）。
+    ('M26', '只读工具偷偷落盘（status 顺手 save_state）', 'mcp_server.py',
+     '    result["_tick"] = int((_load().get("tick", 0)) or 0)\r\n    return result',
+     '    result["_tick"] = int((_load().get("tick", 0)) or 0)\r\n    save_state(_load(), _state_path())\r\n    return result',
+     'scripts/verify_mcp_stdio.py'),
+    ('M27', 'CLI tick 退回只推市价（不驱动世界）', 'engine.py',
+     '    world = evolve_world(state)\n    for desc in world.get("events", []):',
+     '    world = {}\n    for desc in world.get("events", []):',
+     'scripts/verify_cli.py'),
+    ('M28', '死目标继续进编年史（噪声复现）', 'mcp_server.py',
+     '    if not result.get("target_already_dead"):\r\n        for e in result.get("events", []):',
+     '    if True:\r\n        for e in result.get("events", []):',
+     'scripts/verify_mcp_stdio.py'),
+    ('M29', '行动队列不设上限（侧写无限增长）', 'panel.py',
+     '    if len(pending) > INBOX_MAX_PENDING:',
+     '    if False:',
+     'scripts/verify_panel.py'),
+    ('M30', '行动队列接受跨站请求（去掉 Origin 校验）', 'panel.py',
+     "        if origin and origin.split('//')[-1] != host:",
+     '        if False:',
+     'scripts/verify_panel.py'),
+    ('M31', '文档版本号与 pyproject 漂移', 'pyproject.toml',
+     'version = "1.0.0"', 'version = "0.9.9"',
+     'scripts/verify_docs.py'),
+    ('M32', 'README 宣称的工具数与源码不符', 'README.md',
+     '## MCP 工具一览（34 个）', '## MCP 工具一览（99 个）',
+     'scripts/verify_docs.py'),
+    ('M21', '相位不再影响事件概率', 'rules/narrative_engine.py',
+     '    return PHASE_EVENT_MULT.get(_phase_key(state), 1.0)',
+     '    return 1.0',
+     'scripts/verify_world.py'),
+    ('M22', '心流不再影响命中（修正失效）', 'rules/combat.py',
+     '        hit_mult *= max(0.75, min(1.25, 1.0 - adj * 0.5))',
+     '        hit_mult *= 1.0',
+     'scripts/verify_world.py'),
+    ('M23', '暴击重新被算成失败', 'rules/narrative_engine.py',
+     '    if "命中" in desc or "暴击" in desc or "击败" in desc or "逃跑成功" in desc:',
+     '    if "命中" in desc or "击败" in desc or "逃跑成功" in desc:',
+     'scripts/verify_world.py'),
+    ('M24', '道德画像改用中文名查英文键（永远全 0）', 'panel.py',
+     '        return [int(vec.get(k, 0)) for k in ENGINE_DIMS]',
+     '        return [int(vec.get(d, 0)) for d in MORAL_DIMS]',
+     'scripts/verify_world.py'),
+    ('M25', '台账重新只裁已结算（未结算无上限）', 'state_schema.py',
+     '    over = len(ledger) - cap + 1', '    over = 0',
+     'scripts/verify_world.py'),
 ]
 
 
@@ -132,6 +186,18 @@ def run_script(rel):
     return r.returncode == 0, (r.stdout or '')[-300:]
 
 
+def _match_eol(fragment, src):
+    """把片段里的 \\n 换成目标文件实际用的行尾（Windows 上源码是 CRLF）。
+
+    不做这一步的话，任何**跨行**的变异片段在 CRLF 文件里都匹配不到，
+    脚本只会打一行 SKIP 就跳过——变异测试看起来仍然"全绿"，
+    实际上那条规则从没被验证过（本轮实测 M01 就是这样被静默跳过的）。
+    """
+    if '\r\n' in src and '\r\n' not in fragment:
+        return fragment.replace('\n', '\r\n')
+    return fragment
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--only', help='只跑某个编号，如 M01')
@@ -152,8 +218,14 @@ def main():
         # 写回时把整个文件的行尾改掉（LF→CRLF），在 git 里显示为整文件重写。
         with open(path, encoding='utf-8', newline='') as f:
             src = f.read()
+        old = _match_eol(old, src)
+        new = _match_eol(new, src)
         if src.count(old) != 1:
+            # 片段对不上 = 这条"已知错误"从未被真正验证过。静默跳过会让变异测试
+            # 看起来全绿而实际漏测（本项目历史上真发生过），所以按失败处理。
             print('SKIP  %s %-44s 片段不唯一（出现 %d 次）' % (mid, desc, src.count(old)))
+            total += 1
+            survivors.append((mid, desc + '（片段已失效，需更新）', script))
             continue
 
         total += 1

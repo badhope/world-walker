@@ -34,6 +34,8 @@ if "game_engine" not in sys.modules:
     _pkg = importlib.util.module_from_spec(_spec)
     _pkg.__path__ = [_SCRIPT_DIR]
     sys.modules["game_engine"] = _pkg
+    # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
+    _spec.loader.exec_module(_pkg)
 
 from game_engine.rules.narrative_engine import (  # noqa: E402
     flow_channel_status, panarchy_phase_check, player_identity_vector)
@@ -56,42 +58,83 @@ EVENT_LABELS = {
     "emergent": ("风起", "风"),
     "system": ("世界", "启"),
     "tick": ("回合", "回"),
+    "prose": ("正文", "墨"),
+    "world": ("世事", "势"),
+}
+
+
+_SEVERITY_BY_TYPE = {
+    "system": "info",
+    "tick": "info",
+    "travel": "info",
+    "prose": "info",
+    "world": "info",
+    "combat": "warning",
+    "trade": "success",
+    "social": "info",
+    "karma": "warning",
+    "emergent": "warning",
+    "use_item": "success",
+}
+
+
+def _combat_kind(desc):
+    """击杀 vs 交手：只按"结果"分类，不看谁赢。"""
+    if any(w in desc for w in ("击败", "击杀", "倒下")):
+        return "击杀", "danger"
+    return "交手", "warning"
+
+
+def _trade_kind(desc):
+    if "购买" in desc:
+        return "购入"
+    if "出售" in desc:
+        return "出售"
+    return "交易"
+
+
+def _social_kind(desc):
+    return "人情"
+
+
+def _breakthrough_kind(desc):
+    if any(w in desc for w in ("失败", "反噬")):
+        return "突破受挫", "danger"
+    return "突破", "success"
+
+
+def _travel_kind(desc):
+    return ("初探" if "初次" in desc else "行旅")
+
+
+def _social_severity(desc):
+    return "success" if any(w in desc for w in ("好感", "敬重", "结盟", "帮助")) else "info"
+
+
+_KIND_RULES = {
+    "combat": _combat_kind,
+    "trade": lambda d: (_trade_kind(d), "success"),
+    "social": lambda d: ("人情", _social_severity(d)),
+    "breakthrough": _breakthrough_kind,
+    "travel": lambda d: (_travel_kind(d), "info"),
 }
 
 
 def classify_event(ev, milestone_ticks=()):
-    """把一条 event_log 映射成前端可直接渲染的条目（kind/severity/title/icon 全在此决定）。"""
+    """把一条 event_log 映射成前端可直接渲染的条目（kind/severity/title/icon 全在此决定）。
+
+    分类逻辑按事件类型拆成小函数（`_KIND_RULES`），一行一个类型；
+    未登记的类型走默认值，不抛错也不编造严重度。
+    """
     etype = str(ev.get("type") or "system")
     desc = str(ev.get("desc") or "")
     tick = int(ev.get("tick", 0) or 0)
     title, icon = EVENT_LABELS.get(etype, ("事件", "·"))
-    kind, severity = "事件", "info"
-    if etype == "combat":
-        if any(w in desc for w in ("击败", "击杀", "倒下")):
-            kind, severity = "击杀", "danger"
-        else:
-            kind, severity = "交手", "warning"
-    elif etype == "trade":
-        kind = "购入" if "购买" in desc else ("出售" if "出售" in desc else "交易")
-        severity = "success"
-    elif etype == "social":
-        kind = "人情"
-        severity = "success" if any(w in desc for w in ("好感", "敬重", "结盟", "帮助")) else "info"
-    elif etype == "karma":
-        kind, severity = "因果", "warning"
-    elif etype == "breakthrough":
-        if any(w in desc for w in ("失败", "反噬")):
-            kind, severity = "突破受挫", "danger"
-        else:
-            kind, severity = "突破", "success"
-    elif etype == "travel":
-        kind = "初探" if "初次" in desc else "行旅"
-    elif etype == "use_item":
-        kind, severity = "用物", "success"
-    elif etype == "emergent":
-        kind, severity = "涌现", "warning"
-    elif etype == "system":
-        kind = "入局"
+    rule = _KIND_RULES.get(etype)
+    if rule:
+        kind, severity = rule(desc)
+    else:
+        kind, severity = "事件", _SEVERITY_BY_TYPE.get(etype, "info")
     # 事件 id 只是去重键，不用于任何安全用途（bandit B324 的 High 是误报，
     # 显式声明 usedforsecurity=False 让扫描器与读者都清楚这一点）
     digest = hashlib.sha1(desc.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
@@ -101,36 +144,99 @@ def classify_event(ev, milestone_ticks=()):
             "repeat": int(ev.get("repeat", 1) or 1)}
 
 
+SCENE_TEXT_CAP = 700
+_SCENE_TEXT_SOURCES = (
+    ("prose", "prose"),
+    ("place", "places"),
+    ("summary", "summaries"),
+    ("world", "world_info"),
+)
+
+
+def _scene_prose(state, loc):
+    """最新一段正文：只有它属于当前地点才算"当下"。"""
+    prose = state.get("prose") or []
+    if not prose or not isinstance(prose[-1], dict):
+        return "", None
+    last = prose[-1]
+    last_loc = last.get("location")
+    if loc and last_loc and last_loc != loc:
+        return "", None
+    return str(last.get("text") or ""), last.get("tick")
+
+
+def _scene_place(state, loc):
+    if not loc:
+        return ""
+    return str((state.get("places") or {}).get(loc, {}).get("desc") or "")
+
+
+def _scene_summary(state):
+    summaries = state.get("summaries") or []
+    if not summaries:
+        return ""
+    return str(summaries[-1].get("text", "") or "")
+
+
+def _scene_focus(events):
+    """最近一条非 info 事件优先；没有就用最后一条。"""
+    for e in reversed(events or []):
+        if e.get("severity") != "info":
+            return e.get("desc")
+    return events[-1]["desc"] if events else None
+
+
+_MOOD_BY_TYPE = {"trade": "trade", "social": "social", "travel": "discovery"}
+_MOOD_BY_SEVERITY = {"danger": "danger", "success": "growth"}
+
+
+def _scene_mood(events):
+    if not events:
+        return "neutral"
+    last = events[-1]
+    return (_MOOD_BY_TYPE.get(last.get("type"))
+            or _MOOD_BY_SEVERITY.get(last.get("severity"))
+            or "neutral")
+
+
+def _scene_text(state, loc, focus):
+    """按优先级取正文；每一级都只读状态，不推断剧情。"""
+    text, prose_tick = _scene_prose(state, loc)
+    for key, _label in _SCENE_TEXT_SOURCES[1:]:
+        if text:
+            break
+        if key == "place":
+            text = _scene_place(state, loc)
+        elif key == "summary":
+            text = _scene_summary(state)
+        elif key == "world":
+            text = str((state.get("world_info") or {}).get("location_desc") or "")
+    if not text and focus:
+        text = focus
+    return text, prose_tick
+
+
 def build_scene(state, events, player):
-    """叙事主舞台标题/描述/氛围：只用状态里已有的文字，不编造剧情。"""
+    """叙事主舞台标题/描述/氛围：只用状态里已有的文字，不编造剧情。
+
+    正文优先级（越靠前越"当下"）：
+      1. `prose` 最新一段（宿主用 publish_prose 写的本回合正文）
+      2. `places[当前地点].desc`（travel 或 publish_prose 记下的本地描写）
+      3. 最新章节摘要 `summaries[-1]`
+      4. `world_info.location_desc`（开场描写）
+      5. 最近事件文案
+    这样移动之后面板显示的是新地方的描写，而不是永远停在开场那句。
+    """
     world = state.get("world_info", {}) or {}
     loc = str(player.get("location", "") or "")
-    summaries = state.get("summaries") or []
-    desc = str(summaries[-1].get("text", "") if summaries else "") or str(world.get("location_desc", "") or "")
-    focus = None
-    for e in reversed(events):
-        if e["severity"] != "info":
-            focus = e["desc"]
-            break
-    if not focus and events:
-        focus = events[-1]["desc"]
-    if not desc and focus:
-        desc = focus
-    mood = "neutral"
-    if events:
-        last = events[-1]
-        if last["type"] == "trade":
-            mood = "trade"
-        elif last["type"] == "social":
-            mood = "social"
-        elif last["type"] == "travel":
-            mood = "discovery"
-        elif last["severity"] == "danger":
-            mood = "danger"
-        elif last["severity"] == "success":
-            mood = "growth"
+    focus = _scene_focus(events)
+    desc, prose_tick = _scene_text(state, loc, focus)
+    # 主舞台是"一屏可读"的叙事卡，不是阅读器：超长正文截断，完整正文仍在
+    # 状态文件与 /export 里（面板只读，不丢数据）。
+    shown = desc if len(desc) <= SCENE_TEXT_CAP else desc[:SCENE_TEXT_CAP].rstrip() + "…"
     return {"location": loc, "title": loc or str(world.get("name", "") or ""),
-            "description": desc, "mood": mood, "focus_event": focus}
+            "description": shown, "mood": _scene_mood(events), "focus_event": focus,
+            "prose_tick": prose_tick, "full_length": len(desc)}
 
 
 def build_inventory(state, player):
@@ -226,7 +332,9 @@ def _build_events(state):
     因此一并返回，避免调用方重复遍历。
     """
     milestone_ticks = {int(m.get("tick", 0) or 0) for m in (state.get("milestones") or [])}
-    raw = [e for e in (state.get("event_log") or []) if e.get("type") != "tick"]
+    # tick 是心跳、prose 是正文（已在主舞台整段显示）：两者都不该占时间线。
+    raw = [e for e in (state.get("event_log") or [])
+           if e.get("type") not in ("tick", "prose")]
     events = [classify_event(e, milestone_ticks)
               for e in _merge_adjacent(raw)[-EVENTS_CAP:]]
     return events, milestone_ticks
@@ -247,11 +355,75 @@ def _build_player(state, player, loc, karma):
         "karma": karma,
         "attrs": player.get("attrs", {}),
         "inventory": build_inventory(state, player),
+        "tier": _player_tier(state, player),
+        "tier_max": len((state.get("config") or {}).get("level_tiers") or []) or None,
     }
 
 
+def _player_tier(state, player):
+    """等级阶梯序号（配置了 level_tiers 才有意义；否则返回 None 让前端回退到 stage）。"""
+    try:
+        from game_engine.rules.progression import level_tier
+        if not (state.get("config") or {}).get("level_tiers"):
+            return None
+        return level_tier(state, player)
+    except Exception:  # aqg: top-level boundary —— 阶梯坏了退回 stage 展示
+        return None
+
+
+DEFAULT_TERMS = {
+    "hero": "行者",
+    "level": "境界",
+    "location": "所在",
+    "hp": "气血",
+    "mp": "内力",
+    "gold": "钱财",
+    "flow": "心流",
+    "phase": "世界相位",
+    "karma": "未清因果债",
+    "inventory": "随身",
+    "chronicle": "编年史",
+    "present": "在场",
+    "relations": "人情关系",
+    "territory": "境地",
+    "track": "修行轨",
+    "stage": "阶段",
+    "codex": "探索图鉴",
+    "market": "市场行情",
+    "milestones": "大事记",
+    "factions": "势力",
+    "rumors": "传闻",
+    "culture": "风气",
+}
+
+
+def build_terms(state):
+    """面板术语表：默认中文修真词 + 设定包 `ui.terms` 覆盖（世界观无关的最后一公里）。"""
+    terms = dict(DEFAULT_TERMS)
+    ui = state.get("ui") or {}
+    override = ui.get("terms") if isinstance(ui.get("terms"), dict) else {}
+    for k, v in (override or {}).items():
+        key = str(k)
+        if key in terms and str(v).strip():
+            terms[key] = str(v)[:24]
+    return terms
+
+
+def build_world(state):
+    """世界侧摘要（势力/相位/谣言/风气/物价指数）：面板右栏与顶部徽章用。"""
+    try:
+        from game_engine.rules.world_evolution import world_summary
+        return world_summary(state)
+    except Exception as e:  # aqg: top-level boundary —— 世界侧坏了不影响面板其余部分
+        return {"error": str(e)[:120]}
+
+
 def _build_cast(state, loc):
-    """在场 / 别处两类 NPC 切片（面板右栏用）。"""
+    """在场 / 别处两类 NPC 切片（面板右栏用）。
+
+    `desc/personality/speech` 一并下发：点击角色卡要能看到完整的卡面文字，
+    而不是只有被截断的一行简介（角色卡生态里这三段才是人物）。
+    """
     present, others = [], []
     for eid, ent in (state.get("entities") or {}).items():
         if eid == "player":
@@ -259,8 +431,12 @@ def _build_cast(state, loc):
         if not loc or ent.get("location") == loc:
             present.append({"id": eid, "name": ent.get("name", eid),
                             "level": ent.get("level", ""),
+                            "faction": ent.get("faction", ""),
                             "hp": ent.get("hp"), "hp_max": ent.get("hp_max"),
-                            "desc": (ent.get("desc") or "")[:90]})
+                            "desc": (ent.get("desc") or "")[:240],
+                            "personality": (ent.get("personality") or "")[:240],
+                            "speech": (ent.get("speech") or "")[:240],
+                            "mind_scars": int(ent.get("mind_scars", 0) or 0)})
         else:
             others.append({"id": eid, "name": ent.get("name", eid),
                            "location": ent.get("location", "")})
@@ -292,8 +468,9 @@ def _unsettled_karma(state):
 
 
 def _chronicle(state):
-    """编年史：同样是"滤心跳 + 合并重复"，只取最近 24 条并倒序（最新在上）。"""
-    raw = [e for e in (state.get("event_log") or []) if e.get("type") != "tick"]
+    """编年史：同样是"滤心跳/正文 + 合并重复"，只取最近 24 条并倒序（最新在上）。"""
+    raw = [e for e in (state.get("event_log") or [])
+           if e.get("type") not in ("tick", "prose")]
     return _merge_adjacent(raw)[-24:][::-1]
 
 
@@ -322,9 +499,11 @@ def view_model(state_path):
         "tick": state.get("tick", 0),
         "seed": state.get("rng_seed"),
         "skin": skin_for_world(state),
+        "terms": build_terms(state),
         "meta": {
             "state_path": os.path.abspath(state_path),
             "sidecar": os.path.abspath(series_path(state_path)),
+            "inbox": os.path.abspath(inbox_path(state_path)),
             "read_only": True,
             "panel": "万界·行者 实况主舞台（只读）",
         },
@@ -333,9 +512,11 @@ def view_model(state_path):
         "relations": build_relations(state),
         "player": _build_player(state, player, loc, karma),
         "insights": _build_insights(state),
+        "world_state": build_world(state),
         "moral": {
             "dims": MORAL_DIMS,
             "values": (player.get("morality") or [0, 0, 0, 0, 0, 0])[:6],
+            "derived": _derived_moral(state),
         },
         "karma": karma,
         "present": present,
@@ -348,7 +529,123 @@ def view_model(state_path):
         "summaries": len(state.get("summaries") or []),
         "archived_events": int(state.get("archived_events", 0)),
         "flags": state.get("world_flags", []),
+        "prose_count": len(state.get("prose") or []),
+        "inbox_pending": len(inbox_pending(state_path)),
     }
+
+
+def _derived_moral(state):
+    """引擎推导的六维道德（从业债台账/事件累加）；面板用它覆盖静态 morality。
+
+    注意维度顺序必须与 `MORAL_DIMS`（中文展示名）一致，而引擎侧用的是英文键
+    （care/fairness/loyalty/authority/sanctity/liberty）——两边顺序一一对应。
+    推导失败时返回空表，前端自动回退到静态值。
+    """
+    try:
+        from game_engine.rules.narrative_engine import MORAL_DIMS as ENGINE_DIMS
+        from game_engine.rules.narrative_engine import update_player_moral_identity
+        vec = update_player_moral_identity(state)
+        return [int(vec.get(k, 0)) for k in ENGINE_DIMS]
+    except Exception:  # aqg: top-level boundary —— 推导失败只用静态值
+        return []
+
+
+# ────────────────────────── 行动收件箱（双向通道，可选）──────────────────────────
+# 面板仍然**只读状态文件**（INV-V1 不变）。玩家在浏览器里写的行动不进状态，
+# 而是追加到 `<状态文件>.inbox.jsonl` 这个侧写文件；宿主 Agent 用 MCP 工具
+# `pending_actions` 取走并照常经引擎结算。这样：
+#   · 状态只有一个写入源（MCP），确定性 / 快照回退语义不被破坏；
+#   · 玩家不必每回合切回对话框，浏览器就能排队行动；
+#   · 宿主不在线时行动只是"排队"，不会凭空改世界。
+INBOX_MAX_TEXT = 2000
+INBOX_MAX_PENDING = 100
+
+
+def inbox_path(state_path):
+    """收件箱侧写路径（与状态文件同目录，不参与打包）。"""
+    return state_path + ".inbox.jsonl"
+
+
+def inbox_read_all(state_path):
+    """读全部收件记录（坏行跳过，永不抛）。"""
+    out = []
+    path = inbox_path(state_path)
+    if not state_path or not os.path.exists(path):
+        return out
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(rec, dict) and rec.get('text'):
+                    out.append(rec)
+    except OSError:
+        return []
+    return out
+
+
+def inbox_pending(state_path):
+    """未处理的行动（按写入顺序，封顶 INBOX_MAX_PENDING）。"""
+    return [r for r in inbox_read_all(state_path) if not r.get('done')][-INBOX_MAX_PENDING:]
+
+
+def _rewrite_inbox(state_path, records):
+    path = inbox_path(state_path)
+    with open(path, 'w', encoding='utf-8') as f:
+        for rec in records:
+            f.write(json.dumps(rec, ensure_ascii=False) + '\n')
+
+
+def inbox_append(state_path, text, source='panel'):
+    """追加一条行动；超出上限时丢弃最旧的未处理条目（侧写保持有界）。"""
+    rec = {
+        'id': hashlib.sha1(('%s|%s' % (time.time_ns(), text)).encode('utf-8'),
+                           usedforsecurity=False).hexdigest()[:12],
+        'ts': time.strftime('%Y-%m-%dT%H:%M:%S'),
+        'tick': None,
+        'source': str(source)[:24],
+        'text': text,
+        'done': False,
+    }
+    try:
+        with open(state_path, 'r', encoding='utf-8') as f:
+            rec['tick'] = int(json.load(f).get('tick', 0) or 0)
+    except (OSError, ValueError, TypeError):
+        pass
+    records = inbox_read_all(state_path)
+    records.append(rec)
+    pending = [r for r in records if not r.get('done')]
+    if len(pending) > INBOX_MAX_PENDING:
+        drop = len(pending) - INBOX_MAX_PENDING
+        keep = []
+        for r in records:
+            if drop > 0 and not r.get('done'):
+                drop -= 1
+                continue
+            keep.append(r)
+        records = keep
+    _rewrite_inbox(state_path, records)
+    return rec
+
+
+def inbox_mark_done(state_path, ids):
+    """把指定 id 标为已处理；返回实际标记条数。"""
+    wanted = {str(i) for i in ids}
+    records = inbox_read_all(state_path)
+    n = 0
+    for r in records:
+        if str(r.get('id')) in wanted and not r.get('done'):
+            r['done'] = True
+            r['done_ts'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+            n += 1
+    if n:
+        _rewrite_inbox(state_path, records)
+    return n
 
 
 STATIC_WHITELIST = {
@@ -461,6 +758,75 @@ class Handler(BaseHTTPRequestHandler):
         except OSError:
             self._send(404, "text/plain; charset=utf-8", b"not found")
 
+    def _json_body(self, limit=8192):
+        try:
+            n = int(self.headers.get('Content-Length') or 0)
+        except ValueError:
+            return None
+        if n <= 0 or n > limit:
+            return None
+        try:
+            return json.loads(self.rfile.read(n).decode('utf-8'))
+        except (ValueError, UnicodeDecodeError):
+            return None
+
+    def do_POST(self):
+        """唯一写入口：行动收件箱（状态文件仍然只读，INV-V1 不变）。
+
+        本机服务不等于没有攻击面，因此：
+          · 带 Origin 时必须与 Host 同源（跨站表单伪造会被拒）；
+          · 只收 application/json（简单请求无法跨站伪造该 Content-Type）；
+          · 请求体 ≤ 8KB、正文 ≤ 2000 字；
+          · 未知路径一律 404，不回显任何内容。
+        """
+        path = self.path.split("?")[0]
+        if path != '/action':
+            self._send(404, 'text/plain; charset=utf-8', b'not found')
+            return
+        origin = self.headers.get('Origin') or ''
+        host = self.headers.get('Host') or ''
+        if origin and origin.split('//')[-1] != host:
+            self._send(403, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False, 'error': '跨站请求被拒绝'},
+                                  ensure_ascii=False).encode('utf-8'))
+            return
+        ctype = (self.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+        if ctype != 'application/json':
+            self._send(415, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False, 'error': '只接受 application/json'},
+                                  ensure_ascii=False).encode('utf-8'))
+            return
+        body = self._json_body()
+        if not isinstance(body, dict):
+            self._send(400, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False, 'error': '请求体不是合法 JSON'},
+                                  ensure_ascii=False).encode('utf-8'))
+            return
+        text = str(body.get('text') or '').strip()
+        if not text:
+            self._send(400, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False, 'error': '行动不能为空'},
+                                  ensure_ascii=False).encode('utf-8'))
+            return
+        if len(text) > INBOX_MAX_TEXT:
+            self._send(400, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False,
+                                   'error': '行动太长（上限 %d 字）' % INBOX_MAX_TEXT},
+                                  ensure_ascii=False).encode('utf-8'))
+            return
+        try:
+            rec = inbox_append(self.state_path, text)
+        except OSError as exc:
+            self._send(500, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False,
+                                   'error': '写入收件箱失败：%s' % str(exc)[:120]},
+                                  ensure_ascii=False).encode('utf-8'))
+            return
+        self._send(200, 'application/json; charset=utf-8',
+                   json.dumps({'ok': True, 'queued': rec,
+                               'pending': len(inbox_pending(self.state_path))},
+                              ensure_ascii=False).encode('utf-8'))
+
     def do_GET(self):
         path = self.path.split("?")[0]
         if path == "/state":
@@ -477,6 +843,28 @@ class Handler(BaseHTTPRequestHandler):
                     "hint": "文件可能正在写入或格式不合法；稍候重试，或先用 snapshot 校验存档。",
                 }, ensure_ascii=False).encode("utf-8")
             self._send(200, "application/json; charset=utf-8", vm)
+        elif path == "/actions":
+            body = json.dumps({'pending': inbox_pending(self.state_path)},
+                              ensure_ascii=False).encode('utf-8')
+            self._send(200, 'application/json; charset=utf-8', body)
+        elif path == "/export":
+            try:
+                with open(self.state_path, 'rb') as f:
+                    raw = f.read()
+            except OSError as exc:
+                self._send(404, 'application/json; charset=utf-8',
+                           json.dumps({'error': '状态文件不可读：%s' % str(exc)[:120]},
+                                      ensure_ascii=False).encode('utf-8'))
+                return
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(raw)))
+            self.send_header('Content-Disposition',
+                             'attachment; filename="%s"' % os.path.basename(self.state_path))
+            for name, val in self._SECURITY_HEADERS:
+                self.send_header(name, val)
+            self.end_headers()
+            self.wfile.write(raw)
         elif path == "/series":
             body = json.dumps(self._series_payload(), ensure_ascii=False).encode("utf-8")
             self._send(200, "application/json; charset=utf-8", body)

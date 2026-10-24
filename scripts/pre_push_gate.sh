@@ -42,14 +42,17 @@ step "濒死保护自检" "$PY" scripts/verify_near_death.py
 step "规则内核公式对拍（77 个函数的闭式复算）" "$PY" scripts/verify_formulas.py
 step "模块分支补测（systems/narrative/cognition/economy）" "$PY" scripts/verify_branches.py
 step "长局内存稳定性（三段对照，查泄漏）" "$PY" scripts/verify_memory.py 300
+step "世界演化与结算耦合（自演化/相位/心流/道德/术语/正文/台账）" "$PY" scripts/verify_world.py
+step "多世界观设定包（四种世界各跑一遍载入与演化）" "$PY" scripts/verify_settings.py
+step "文档一致性（版本/工具数/截图引用/演示存档/CHANGELOG）" "$PY" scripts/verify_docs.py
 
-# 覆盖率门禁：核心域 ≥70%（当前 81%）。装了 coverage 才跑。
+# 覆盖率门禁：核心域 ≥70%（当前 76%，含本轮新增的 world_evolution/progression）。装了 coverage 才跑。
 if "$PY" -c "import coverage" >/dev/null 2>&1; then
   say $'
 === 覆盖率门禁（核心域 ≥70%）==='
   rm -rf "$ROOT/.cov-gate"
   COV_OK=1
-  for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death; do
+  for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world; do
     "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema "$ROOT/scripts/$suite.py" >/dev/null 2>&1 || COV_OK=0
   done
   PCT=$("$PY" -m coverage report --data-file="$ROOT/.cov-gate" 2>/dev/null         | awk '/^TOTAL/ {gsub("%","",$NF); print $NF}')
@@ -97,6 +100,32 @@ fi
 
 # 真变异测试：把实现改坏，确认测试会红（静态审计之外的唯一硬证据）
 step "变异测试（已知错误必须被测试杀死）" "$PY" scripts/verify_mutation.py
+
+# 展示素材：README/Pages 依赖的截图、录屏、演示存档必须存在且可载入
+say $'\n=== 展示素材（截图/录屏/演示存档/展示站）==='
+if "$PY" - <<'PYGATE'
+import json, os, sys
+need = ["docs/index.html", "docs/BENCHMARK.md",
+        "docs/screenshots/stage-xuanshu.png", "docs/screenshots/stage-ink.png",
+        "docs/screenshots/stage-neon.png", "docs/screenshots/stage-neutral.png",
+        "docs/screenshots/command-palette.png", "docs/screenshots/character-card.png",
+        "docs/screenshots/action-queue.png", "docs/screenshots/walkthrough.mp4",
+        "docs/demo/玄枢界.save.json"]
+missing = [p for p in need if not os.path.exists(p) or os.path.getsize(p) == 0]
+if missing:
+    print("缺少展示素材:", missing)
+    sys.exit(1)
+for w in ("玄枢界", "折剑行", "霓虹深渊", "雾港"):
+    d = json.load(open("docs/demo/%s.save.json" % w, encoding="utf-8"))
+    assert d["tick"] > 0 and d["entities"]["player"], w
+print("展示素材齐全，演示存档可载入")
+PYGATE
+then
+  say "  PASS"
+else
+  say "  FAIL"
+  FAILED=1
+fi
 
 # 打包完整性：对齐 CI 的 package 作业（构建 + wheel 资源校验）
 # 本机可能无外网 PyPI，构建时不做隔离环境（CI 上有网，用默认隔离即可）

@@ -58,11 +58,20 @@ jobs:
           python -m pip install --quiet psutil
           python scripts/verify_memory.py 300
 
+      - name: 世界演化与结算耦合
+        run: python scripts/verify_world.py
+
+      - name: 多世界观设定包
+        run: python scripts/verify_settings.py
+
+      - name: 文档一致性
+        run: python scripts/verify_docs.py
+
       - name: 覆盖率门禁（核心域 ≥70%）
         run: |
           python -m pip install --quiet coverage
           rm -f .coverage
-          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death; do
+          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world; do
             python -m coverage run --append --source=rules,panel,state_schema "scripts/$suite.py"
           done
           python -m coverage report | tee /tmp/cov.txt
@@ -150,19 +159,59 @@ jobs:
           path: dist/*
           retention-days: 7
 
+  # ── 展示站（GitHub Pages）素材校验：缺图/缺视频直接红 ─────────────────
+  showcase:
+    name: showcase assets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 展示素材齐全且非空
+        run: |
+          python - <<'PY'
+          import os, sys
+          need = [
+              "docs/index.html",
+              "docs/screenshots/stage-xuanshu.png",
+              "docs/screenshots/stage-ink.png",
+              "docs/screenshots/stage-neon.png",
+              "docs/screenshots/stage-neutral.png",
+              "docs/screenshots/command-palette.png",
+              "docs/screenshots/character-card.png",
+              "docs/screenshots/action-queue.png",
+              "docs/screenshots/walkthrough.mp4",
+              "docs/demo/玄枢界.save.json",
+              "docs/BENCHMARK.md",
+          ]
+          missing = [p for p in need if not os.path.exists(p) or os.path.getsize(p) == 0]
+          print("missing/empty:", missing)
+          sys.exit(1 if missing else 0)
+          PY
+      - name: 演示存档可被引擎载入
+        run: |
+          python - <<'PY'
+          import json
+          for w in ("玄枢界", "折剑行", "霓虹深渊", "雾港"):
+              p = "docs/demo/%s.save.json" % w
+              d = json.load(open(p, encoding="utf-8"))
+              assert d.get("tick", 0) > 0, p
+              assert d.get("entities", {}).get("player"), p
+              print(w, "tick", d["tick"], "phase", (d.get("panarchy") or {}).get("phase"))
+          PY
+
   # ── 汇总门禁：三平台 CI 的单一判据 ────────────────────────────────────
   gate:
     name: CI gate
     if: always()
-    needs: [core, mcp, package]
+    needs: [core, mcp, package, showcase]
     runs-on: ubuntu-latest
     steps:
       - name: 任一作业未成功则整体失败
         run: |
-          echo "core=${{ needs.core.result }} mcp=${{ needs.mcp.result }} package=${{ needs.package.result }}"
+          echo "core=${{ needs.core.result }} mcp=${{ needs.mcp.result }} package=${{ needs.package.result }} showcase=${{ needs.showcase.result }}"
           if [ "${{ needs.core.result }}" != "success" ] || \
              [ "${{ needs.mcp.result }}" != "success" ] || \
-             [ "${{ needs.package.result }}" != "success" ]; then
+             [ "${{ needs.package.result }}" != "success" ] || \
+             [ "${{ needs.showcase.result }}" != "success" ]; then
             echo "::error::CI 门禁未通过"
             exit 1
           fi

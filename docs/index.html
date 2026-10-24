@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>万界·行者 World Walker — AI 负责叙述，引擎负责世界</title>
+<meta name="description" content="世界观无关的 AI 文字互动游戏内核：确定性规则结算 + 34 个 MCP 工具 + 只读实况主舞台。四套可直接开玩的设定包。" />
+<meta property="og:title" content="万界·行者 World Walker" />
+<meta property="og:description" content="AI 负责叙述，引擎负责世界。144 个规则函数、34 个 MCP 工具、4 套设定包。" />
+<meta property="og:image" content="screenshots/stage-xuanshu.png" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f13'/%3E%3Ctext x='16' y='22.5' font-size='17' text-anchor='middle' fill='%23e8b04b' font-family='serif'%3E%E8%A1%8C%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #0b0d11; --surface: #141820; --surface2: #1b212b; --line: #2b3341;
+    --text: #ecebe6; --dim: #a3abb9; --faint: #7d8695;
+    --accent: #e8b04b; --accent-dim: #8a6a2c; --danger: #e06c62; --success: #6fbf73;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background:
+      radial-gradient(1200px 700px at 15% -10%, rgba(232,176,75,.06), transparent 60%),
+      radial-gradient(900px 600px at 90% 0%, rgba(79,224,192,.05), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font: 16px/1.7 "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+  pre {
+    background: #080a0e; border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; overflow: auto; font-size: 13.5px; line-height: 1.6;
+  }
+  code { background: #0a0c10; border: 1px solid var(--line); border-radius: 4px;
+         padding: 1px 5px; font-size: .9em; }
+  pre code { background: none; border: 0; padding: 0; }
+  .wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+
+  /* ── nav ── */
+  nav {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(11,13,17,.86); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap { display: flex; align-items: center; gap: 18px; height: 62px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .seal {
+    width: 32px; height: 32px; display: grid; place-items: center;
+    border: 1px solid var(--accent-dim); border-radius: 8px;
+    background: linear-gradient(160deg, rgba(232,176,75,.18), rgba(232,176,75,.04));
+    color: var(--accent); font-family: "Noto Serif SC", serif; font-weight: 700; font-size: 18px;
+  }
+  .brand b { font-size: 16px; color: var(--accent); letter-spacing: .04em; }
+  nav .links { margin-left: auto; display: flex; gap: 18px; flex-wrap: wrap; }
+  nav .links a { color: var(--dim); font-size: 14px; }
+  nav .links a:hover { color: var(--text); }
+
+  /* ── hero ── */
+  header.hero { padding: 72px 0 40px; text-align: center; }
+  .eyebrow { color: var(--accent); font-size: 13px; letter-spacing: .22em; text-transform: uppercase; }
+  h1 { font-size: clamp(30px, 5vw, 52px); line-height: 1.2; margin: 14px 0 16px; font-weight: 700; }
+  h1 .accent { color: var(--accent); }
+  .lede { color: var(--dim); font-size: clamp(15px, 1.5vw, 18px); max-width: 760px; margin: 0 auto; }
+  .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 24px 0 30px; }
+  .badge {
+    font-size: 12.5px; color: var(--dim); border: 1px solid var(--line-strong, #3b4657);
+    background: var(--surface); border-radius: 999px; padding: 4px 12px;
+  }
+  .badge b { color: var(--accent); font-weight: 600; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px;
+    padding: 10px 22px; border-radius: 10px; font-size: 15px; font-weight: 600;
+    border: 1px solid var(--line); background: var(--surface2); color: var(--text);
+    transition: .18s;
+  }
+  .btn:hover { text-decoration: none; border-color: var(--accent-dim); transform: translateY(-1px); }
+  .btn.primary { background: linear-gradient(180deg, #b98a35, var(--accent-dim)); border-color: var(--accent); color: #fff; }
+
+  /* ── sections ── */
+  section { padding: 62px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: clamp(22px, 3vw, 30px); margin-bottom: 10px; }
+  h2 .accent { color: var(--accent); }
+  .sub { color: var(--dim); margin-bottom: 28px; max-width: 820px; }
+
+  .shot {
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+    background: var(--surface); box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .shot img { display: block; width: 100%; height: auto; }
+  .caption { color: var(--faint); font-size: 13px; padding: 10px 14px; }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .card h3 { font-size: 16px; color: var(--accent); margin-bottom: 8px; }
+  .card p { color: var(--dim); font-size: 14.5px; }
+  .card ul { margin: 8px 0 0 18px; color: var(--dim); font-size: 14.5px; }
+  .card li { margin: 4px 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--faint); font-weight: 500; font-size: 13px; }
+  td b { color: var(--accent); }
+  .scroll { overflow-x: auto; }
+
+  .worlds { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .world { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+  .world img { width: 100%; display: block; }
+  .world div { padding: 12px 14px; }
+  .world b { color: var(--accent); font-size: 15px; }
+  .world span { display: block; color: var(--faint); font-size: 13px; margin-top: 3px; }
+
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .metric { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; text-align: center; }
+  .metric .n { font-size: 26px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .metric .l { font-size: 12.5px; color: var(--faint); margin-top: 4px; }
+
+  footer { padding: 40px 0 60px; color: var(--faint); font-size: 13.5px; text-align: center; }
+  video { width: 100%; display: block; border-radius: 14px; border: 1px solid var(--line); background: #000; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <span class="brand"><span class="seal">行</span><b>万界·行者</b></span>
+    <span class="links">
+      <a href="#worlds">四套世界</a>
+      <a href="#mechanics">机制</a>
+      <a href="#compare">对标</a>
+      <a href="#quality">质量</a>
+      <a href="https://github.com/badhope/world-walker">GitHub</a>
+    </span>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">World Walker · v1.0.0</p>
+    <h1>AI 负责叙述，<span class="accent">引擎负责世界</span></h1>
+    <p class="lede">
+      世界观无关的文字互动游戏内核：144 个规则函数结算每一次行动，34 个 MCP 工具供任意 Agent 调用，
+      四套设定包换世界不改一行代码，一块只读实况主舞台把真实状态摆在你面前。
+      同一个存档、同一个种子，永远得到同一个世界。
+    </p>
+    <div class="badges">
+      <span class="badge"><b>零</b>运行时依赖</span>
+      <span class="badge"><b>34</b> MCP 工具</span>
+      <span class="badge"><b>144</b> 规则函数</span>
+      <span class="badge"><b>4</b> 套世界观</span>
+      <span class="badge"><b>32/32</b> 变异测试</span>
+      <span class="badge"><b>88%</b> 覆盖率</span>
+      <span class="badge"><b>MIT</b></span>
+    </div>
+    <div class="cta">
+      <a class="btn primary" href="#quickstart">三十秒上手</a>
+      <a class="btn" href="screenshots/walkthrough.mp4">▶ 看交互录屏</a>
+      <a class="btn" href="https://github.com/badhope/world-walker">查看源码</a>
+    </div>
+  </div>
+</header>
+
+<section id="stage">
+  <div class="wrap">
+    <h2>主舞台：<span class="accent">看世界怎么动</span></h2>
+    <p class="sub">
+      不是聊天窗口，是一块只读仪表盘：叙事正文、身家状态、三张长局曲线、关系网、地点图、
+      世界脉搏、图鉴与市场。它不能改对局，所以显示的每个数字都可核对。
+    </p>
+    <div class="shot">
+      <img src="screenshots/stage-xuanshu.png" alt="玄枢界主舞台，第 500 回合真实存档" loading="lazy" />
+      <div class="caption">玄枢界 · 墨金皮肤 · 第 500 回合（来自 docs/demo 的真实演示存档）</div>
+    </div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="shot"><img src="screenshots/drawer-world.png" alt="世界脉搏" loading="lazy" /><div class="caption">世界脉搏：Panarchy 相位 / 势力存量 / 连接度 / 烈度</div></div>
+      <div class="shot"><img src="screenshots/character-card.png" alt="角色卡详情" loading="lazy" /><div class="caption">角色卡：点开在场人物，读卡面文字</div></div>
+      <div class="shot"><img src="screenshots/command-palette.png" alt="命令面板" loading="lazy" /><div class="caption">命令面板：Ctrl/⌘+K，全键盘可达</div></div>
+      <div class="shot"><img src="screenshots/action-queue.png" alt="行动队列" loading="lazy" /><div class="caption">行动队列：浏览器排队，引擎结算</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="worlds">
+  <div class="wrap">
+    <h2>四套世界，<span class="accent">同一套引擎</span></h2>
+    <p class="sub">
+      换世界不改代码：设定包里写清术语、等级阶梯、货币、地点描写、世界书、品牌与皮肤。
+      面板上不会再出现"境界 / 灵石 / 修行轨"——除非这个世界本就该有。
+    </p>
+    <div class="worlds">
+      <div class="world"><img src="screenshots/stage-xuanshu.png" alt="玄枢界" loading="lazy" /><div><b>玄枢界</b><span>东方玄幻 · 十阶修行 · 玄晶经济 · 8 势力</span></div></div>
+      <div class="world"><img src="screenshots/stage-ink.png" alt="折剑行" loading="lazy" /><div><b>折剑行</b><span>武侠 · 七阶身手 · 银两 · 断剑主线</span></div></div>
+      <div class="world"><img src="screenshots/stage-neon.png" alt="霓虹深渊" loading="lazy" /><div><b>霓虹深渊</b><span>赛博朋克 · F–S 评级 · 信用点 · 义体与记忆</span></div></div>
+      <div class="world"><img src="screenshots/stage-neutral.png" alt="雾港" loading="lazy" /><div><b>雾港</b><span>调查悬疑 · 六阶调查 · 理智 · 灯塔谜题</span></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="mechanics">
+  <div class="wrap">
+    <h2>世界<span class="accent">自己会动</span></h2>
+    <p class="sub">
+      每次 <code>tick</code> 都推进势力消长、谣言传播、风气漂移、NPC 走动与 Panarchy 适应性循环。
+      不消耗 LLM token，也不需要玩家行动。
+    </p>
+    <div class="grid3">
+      <div class="card"><h3>势力消长</h3><p>每个势力有确定性禀赋上限，logistic 增长 + 头部两家 Lotka–Volterra 温和压制 + 挑战者回流。长期有格局，短期有换手。</p></div>
+      <div class="card"><h3>谣言与风气</h3><p>SIR 一步传播谣言，Deffuant 有界信任推动风气。业债高、物价异动、相位剧烈时才播种新传闻。</p></div>
+      <div class="card"><h3>Panarchy 四段环</h3><p>r 增长 → K 守恒 → Ω 崩溃 → α 重组，由真实存量驱动，不是查表。Ω 期事件概率与伤害显著更高。</p></div>
+      <div class="card"><h3>派生指标进结算</h3><p>相位调制事件与战斗，心流调制命中，六维道德调制社交，等级阶梯给战力加成并限制突破。</p></div>
+      <div class="card"><h3>因果债</h3><p>结构化账本：类型 / 金额 / 债主 / 回合 / 是否结清。未清债务压低突破成功率，并进入"天劫"强度。</p></div>
+      <div class="card"><h3>长局记忆</h3><p>摘要 + 大事记 + 世代归档。回退只切换归档文件，绝不删除已写下的历史。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="wrap">
+    <h2>和别的 AI 文字游戏<span class="accent">有什么不同</span></h2>
+    <p class="sub">完整对标（含 7 个具名竞品、10 条差距的四类处置）见 <a href="BENCHMARK.md">docs/BENCHMARK.md</a>。</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>维度</th><th>常见做法</th><th>万界·行者</th></tr></thead>
+        <tbody>
+          <tr><td>数值由谁决定</td><td>语言模型生成，容易漂移</td><td><b>规则函数结算</b>，同种子逐字节可复现</td></tr>
+          <tr><td>世界会不会自己动</td><td>等你行动；不行动世界静止</td><td><b>tick 自己推动</b>势力 / 谣言 / 风气 / NPC / 相位</td></tr>
+          <tr><td>换世界</td><td>换提示词与角色卡</td><td><b>设定包</b>：术语、阶梯、货币、地点、世界书、品牌、皮肤</td></tr>
+          <tr><td>长局记忆</td><td>上下文窗口 + 摘要</td><td><b>三层记忆</b>：摘要 + 大事记 + 归档（recall 跨世代回捞）</td></tr>
+          <tr><td>生态兼容</td><td>各自为政</td><td>直接读 SillyTavern <b>角色卡</b>（PNG/JSON，V1–V3）与<b>世界书</b></td></tr>
+          <tr><td>界面</td><td>聊天流</td><td><b>只读实况主舞台</b>：叙事 + HUD + 长局曲线 + 图鉴 + 市场</td></tr>
+          <tr><td>可核对性</td><td>难以复核</td><td>结构化事件字段；只读工具零副作用；<b>变异测试 32/32</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="quality">
+  <div class="wrap">
+    <h2>质量是<span class="accent">可验证的</span></h2>
+    <p class="sub">
+      没有 pytest 套件，取而代之的是 13 个可执行自检 + 一套变异测试：
+      断言必须能被"改坏代码"杀死，而不是只被覆盖率统计到。
+    </p>
+    <div class="metrics">
+      <div class="metric"><div class="n">530</div><div class="l">断言审计（0 可疑）</div></div>
+      <div class="metric"><div class="n">32/32</div><div class="l">变异测试全杀</div></div>
+      <div class="metric"><div class="n">88%</div><div class="l">核心域覆盖率</div></div>
+      <div class="metric"><div class="n">17</div><div class="l">推前门禁项</div></div>
+      <div class="metric"><div class="n">0</div><div class="l">bandit 告警</div></div>
+      <div class="metric"><div class="n">500</div><div class="l">轮真实压测（0 违规）</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart">
+  <div class="wrap">
+    <h2>三十秒<span class="accent">上手</span></h2>
+    <p class="sub">MCP 客户端（Claude Code / Codex / Cursor / opencode）里加一行即可。也可以只用命令行。</p>
+    <div class="grid2">
+      <div class="card">
+        <h3>1 · 安装</h3>
+        <pre><code>pip install -e ".[mcp]"</code></pre>
+        <h3 style="margin-top:18px">2 · 接入</h3>
+        <pre><code>{
+  "mcpServers": {
+    "world-walker": { "command": "world-walker-mcp" }
+  }
+}</code></pre>
+      </div>
+      <div class="card">
+        <h3>3 · 开一局</h3>
+        <pre><code>load_setting(path="settings/玄枢界.setting.json")</code></pre>
+        <h3 style="margin-top:18px">4 · 走一步</h3>
+        <pre><code>trade(location="临川城", item="ningyuan_dan",
+      direction="buy", quantity=2)
+social(actor="player", target="shi_sanniang",
+       event="cooperate")
+narration_context(scene_text="万石商行")
+publish_prose(text="……")
+tick()</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="video">
+  <div class="wrap">
+    <h2>真实交互<span class="accent">录屏</span></h2>
+    <p class="sub">Playwright 在真实 Edge 中操作真实面板并录制，不是动效演示稿。</p>
+    <video controls preload="metadata" poster="screenshots/stage-xuanshu.png">
+      <source src="screenshots/walkthrough.mp4" type="video/mp4" />
+      你的浏览器不支持 video 标签，可直接 <a href="screenshots/walkthrough.mp4">下载观看</a>。
+    </video>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>万界·行者 World Walker · MIT · 图表库 ECharts 5.5.1（Apache-2.0）</p>
+    <p style="margin-top:8px">
+      <a href="https://github.com/badhope/world-walker">GitHub</a> ·
+      <a href="https://gitee.com/badhope/world-walker">Gitee</a> ·
+      <a href="https://gitcode.com/badhope/world-walker">GitCode</a> ·
+      <a href="../README.md">README</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

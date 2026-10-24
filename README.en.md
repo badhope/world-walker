@@ -1,202 +1,242 @@
 # World Walker
 
-[中文](README.md) | **English**
+[中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
+
+> **The AI narrates. The engine owns the world.**
+> A world-agnostic interactive-fiction kernel: 144 rule functions, 34 MCP tools,
+> 4 playable setting bundles, and a read-only live stage that works offline.
+> Same save, same seed—always the same world.
+
+<p align="center">
+  <img src="docs/screenshots/stage-xuanshu.png" alt="Live stage (Xuanshu, ink-gold skin, turn 500)" width="100%">
+</p>
+
+<p align="center">
+  <a href="docs/screenshots/walkthrough.mp4">▶ Watch the 12-second real interaction recording</a>
+</p>
 
 ---
 
-*World Walker* is an AI-driven text interaction game engine. World evolution is driven by 15 academic disciplines and 85+ formulas — every player decision is processed through mathematical models, and the world emerges its own story naturally, without pre-written branches.
+## Why this exists
 
-Keywords: `AI text adventure` `interactive fiction engine` `emergent narrative` `cognitive architecture` `game AI` `world simulation` `behavioral economics` `evolutionary dynamics` `systems thinking`
+Most AI text games hand the "world" to a language model: numbers drift, NPCs forget,
+the same choice gives a different outcome on replay. **World Walker inverts that**:
 
----
+- **The engine does the math** — hits, damage, prices, relationships, karma, faction power,
+  rumor spread are all resolved by deterministic rule functions.
+- **The agent writes the prose** — the LLM only turns returned JSON into literary text;
+  it must not invent numbers.
+- **The panel bears witness** — a read-only web stage shows the real state, so every number
+  on screen is checkable.
 
-## Screenshots
-
-The live stage (opened by `open_panel`) — read-only, offline-capable; world skins, long-run curves and
-event feedback all live on this one page. All shots below are **real renders** (2000-turn demo save, not mockups):
-
-| Xuanshu (default skin) | Ink skin | Neon skin |
-|---|---|---|
-| ![Xuanshu](docs/screenshots/stage-xuanshu.png) | ![Ink](docs/screenshots/stage-ink.png) | ![Neon](docs/screenshots/stage-neon.png) |
-
-| 320px narrow | Help & glossary | First-visit guide |
-|---|---|---|
-| ![Narrow](docs/screenshots/stage-320.png) | ![Help](docs/screenshots/help.png) | ![First visit](docs/screenshots/first-visit.png) |
-
-> Captured from the `scripts/stress_freeplay.py 2000` free-player save (600 telemetry samples); every shot is
-> taken only after asserting brand / skin / chart rendering / timeline. Provenance: [`docs/screenshots/README.md`](docs/screenshots/README.md).
+It is not another "AI GM prompt". It is a **world kernel any agent can call**: an MCP server (stdio),
+a CLI (14 commands), and an HTTP read-only panel sharing one rule set and one state file.
 
 ---
 
-## Quick Start
-
-### Option A: MCP (recommended — for any AI agent)
+## Quick start (30 seconds)
 
 ```bash
-pip install -e ".[mcp]"
+pip install -e ".[mcp]"          # stdlib only + optional mcp SDK
 ```
 
-Add to your MCP client (Claude Code / Codex / Cursor / any MCP-capable agent):
+Add to any MCP client (Claude Code / Codex / Cursor / opencode):
 
 ```json
 { "mcpServers": { "world-walker": { "command": "world-walker-mcp" } } }
 ```
 
-Hand your setting bible to the agent and play. Clients with MCP prompt support can start in one step:
-call `new_game` (pass the setting) and it produces the full opening brief. The loop is:
-`world_init` (build the world from the setting; typed args with field docs; takes a seed) →
-each player action is settled by `combat` / `trade` / `social` / `karma` →
-`narration_context` returns the triggered lore, the on-scene cast's card prose and a chronicle →
-prose → `tick` closes the turn → every 3-5 turns call `narrative` + `status`. The agent only turns
-the engine's JSON into prose — it must never invent numbers.
+Then tell your agent:
 
-- Ecosystem compatible (no reinventing): reads SillyTavern-style **character cards** (`.png`-embedded
-  or `.json`, V1/V2/V3) and **world info** lorebooks (world-info / card `character_book`, with
-  selective/constant/disable semantics); `character_card_read` → `add_character` → `import_lorebook`
-- **Long-game support (built for a million turns)**: three memory layers — `write_summary` chapter
-  summaries (host writes one every 20-50 turns), milestones (breakthroughs / kills / first arrivals,
-  auto-recorded), and automatic event archiving (state keeps the last N events, default 200; older ones
-  spill to `<state>.log.jsonl`, searchable via `recall`). `recap(budget_chars)` assembles summary +
-  milestones + recent events under a character budget.
-- **Growth loop**: `advance` — the engine rolls breakthroughs from insight / mind / karma / HP and applies
-  the numeric consequences (success raises caps and attrs, failure backlashes HP and leaves a mind scar).
-- **Model layer**: `model_list` / `model(name, params)` evaluate 16 named closed-form models directly
-  (Lerner pricing / OU price reversion, Cobb-Douglas, logistic & Lotka-Volterra populations, SIR + R0,
-  Poisson survival, thermal relaxation, bounded-confidence opinion dynamics, …). Market prices mean-revert
-  via the OU model every tick — hosts derive effects from formulas instead of ad-hoc reasoning.
-- Live stage: `open_panel` serves a **read-only stage** (narrative panel + HP/MP/flow/world phase + event
-  timeline + graded dialogs/toasts + drawers for codex / market / milestones + inventory & relations;
-  auto-refreshes via SSE with polling fallback, and shows a readable banner + retry when the save is
-  missing). Standalone: `python panel.py --state ww_state.json`
-- **Long-run telemetry visuals**: three offline charts (vitals/gold over turns; karma & affinity;
-  price index vs baseline) + an event spectrum + a relationship network + a locations map +
-  a cultivation stage track + danger/opportunity badges. Samples accumulate per turn into a sidecar
-  (`<state>.viz.jsonl`, never touching the save file) so hundreds of turns stay readable at a glance.
-- **World skins & branding**: the stage adapts to the setting — xuanshu (ink & gold) / ink / neon / neutral,
-  including chart palettes; a setting bundle or `world_init` can pass
-  `ui: {skin, accent, motif, brand, tagline}` so a new world ships its own look **and its own name**
-  (unknown ids fall back to neutral; spec in `BRAND.md`).
-- **Onboarding help**: a top-bar Help (`?`) dialog with a plain-language glossary (flow, panarchy phase,
-  karma, price index, …), how to read each chart, keyboard controls, data & privacy (real state/sidecar
-  paths) and skin notes; first-time visitors get a one-shot guidance strip.
-- Convenience: thousands separators for large numbers, low-HP / karma badges, and automatic
-  collapsing of long-run cast & relation lists.
-- Travel & codex: `travel` is the only tool that moves the player; first arrival enters the codex
-- Deterministic undo: `snapshot` / `restore`
-- Near-death protection: the player never truly dies — hitting zero HP becomes "severe injury retreat" with 1 HP floor, costing 30% of gold and +1 mind scar (panel shows the count); NPC deaths are unaffected
-- End-to-end self-check: `python scripts/verify_mcp_stdio.py` (55 assertions, including ecosystem / codex / panel / settings / long game / model layer / determinism)
-- Panel contract self-check: `python scripts/verify_panel.py` (53 assertions: view-model contract / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
-- CLI channel self-check: `python scripts/verify_cli.py` (20 assertions: read-only commands never rewrite the save / all five write paths persist with bounded fields / same seed + same action reproduces)
-- Near-death self-check: `python scripts/verify_near_death.py` (7 assertions: 1-HP floor / costs persisted / NPC death semantics unchanged)
-- Formula cross-check: `python scripts/verify_formulas.py` (121 assertions: independently re-derives 77 functions from their documented math and compares, including default params, boundary branches and state invariants)
-- Test-integrity audit: `python scripts/verify_tests.py` (statically audits every self-check assertion and rejects tautologies / always-false / weak checks — no more "all green but nothing tested")
-- User-perspective playtest: `python scripts/user_playtest.py` (47 checks a real player would raise — money-minting exploits, boundary inputs, readable refusals)
-- Field-tested: opencode (GLM-5.2) builds a world from the setting and settles three actions in a row;
-  its narration matches the engine's state file item by item
-- Reproducible: pass `seed` at world_init; every settlement seeds its RNG from the state's
-  `rng_seed` + `rng_counter`, both persisted with the state.
+```
+load_setting(path="settings/玄枢界.setting.json")
+```
 
-### Option B: CLI (manual settlement)
+That boots a full game. Every action is then settled by tools:
+
+```
+You: I walk into the Wanshi trading house and put the torn page on the counter.
+Agent → trade(location="临川城", item="yinyuan_canye", direction="sell", quantity=1)
+      → social(actor="player", target="shi_sanniang", event="cooperate")
+      → narration_context(...)  →  publish_prose(...)  →  tick()
+```
+
+No MCP? The CLI works too:
 
 ```bash
-python init_game.py                                      # writes the sample world game_state.json
-python engine.py world_state --state game_state.json      # `python` on Windows, `python3` on macOS/Linux
+python init_game.py
+python engine.py world_state --state game_state.json
+python engine.py combat --state game_state.json --attacker player --defender goblin --action_type heavy
+python panel.py --state game_state.json
 ```
 
-14 commands at a glance (using `game_state.json`; note `--item` takes the market item_key, not the display name):
+---
+
+## Screens
+
+Every screenshot is a **real render of a real save**, asserted element-by-element in Edge by
+`scripts/shots.py`. Source saves live in [`docs/demo/`](docs/demo/).
+
+| Xuanshu (Eastern fantasy · ink-gold) | Zhejian (Wuxia · ink) |
+|---|---|
+| ![Xuanshu](docs/screenshots/stage-xuanshu.png) | ![Zhejian](docs/screenshots/stage-ink.png) |
+| **Neon Abyss (cyberpunk · neon)** | **Fogport (investigation · graphite)** |
+| ![Neon](docs/screenshots/stage-neon.png) | ![Fogport](docs/screenshots/stage-neutral.png) |
+
+Skins are the surface. What actually changes with the world is **vocabulary, tiers, currency and
+place descriptions**: a setting bundle can write `terms: { level: "身手", gold: "银两" }` and the panel
+will never show "境界 / 灵石" again. `scripts/verify_settings.py` asserts this for every bundle.
+
+| | |
+|---|---|
+| ![World pulse](docs/screenshots/drawer-world.png) | ![Character card](docs/screenshots/character-card.png) |
+| **World pulse**: Panarchy phase, faction power, connectedness, intensity, rumors — advanced every `tick` | **Character card**: click anyone on stage to read their card text |
+| ![Command palette](docs/screenshots/command-palette.png) | ![Action queue](docs/screenshots/action-queue.png) |
+| **Command palette** (`Ctrl/⌘+K`), fully keyboard reachable | **Action queue**: queue actions in the browser; the agent drains them via `pending_actions` |
+
+| Codex | Market | Milestones |
+|---|---|---|
+| ![Codex](docs/screenshots/drawer-codex.png) | ![Market](docs/screenshots/drawer-market.png) | ![Milestones](docs/screenshots/drawer-milestones.png) |
+
+---
+
+## How it compares
+
+Full method and evidence: **[docs/BENCHMARK.md](docs/BENCHMARK.md)**. One-line version:
+
+| Dimension | Typical (AI Dungeon / NovelAI / SillyTavern) | This project |
+|---|---|---|
+| Who decides numbers | The LLM, in prose | **Rule functions**, byte-identical replay per seed |
+| Does the world move on its own | No (waits for input) | **`tick` advances** factions / rumors / culture / NPCs / Panarchy |
+| Swapping worlds | Prompt + character card | **Setting bundle**: terms, tiers, currency, places, lorebook, brand, skin |
+| Long-game memory | Context window + summary | **Three layers**: summaries + milestones + generational archive (`recall`) |
+| Ecosystem | Proprietary | Reads SillyTavern **character cards** (PNG/JSON, V1–V3) and **world info** |
+| Interface | Chat stream | **Read-only live stage**: narrative + HUD + long-run charts + codex + market |
+| Auditable | Hard | Structured event fields; read-only tools never write; mutation suite 32/32 |
+
+We deliberately **do not** do: image generation, multiplayer, cloud accounts, plugin marketplaces.
+Reasons are in [ROADMAP.md](ROADMAP.md).
+
+---
+
+## Core mechanics (all on the settlement path)
+
+### 1. The world moves by itself
+
+Each `tick` advances:
+
+- **Factions** — logistic growth toward a per-faction endowment cap (deterministically derived from the name),
+  mild Lotka–Volterra pressure between the top two, plus challenger backflow.
+  Long-term hierarchy, short-term turnover.
+- **Rumors** — one SIR step; new rumors seed only on high karma, price anomalies, or violent phases.
+- **Culture** — Deffuant bounded confidence, evaluated every 10 turns.
+- **NPCs** — entities tagged `roam: true` change locations.
+- **Panarchy** — an explicit `r → K → Ω → α → r` state machine driven by real stock
+  (faction mean, relation density, world flags, karma, price deviation), not a lookup table.
+
+`verify_world.py` (W1/W2/W11) asserts all four actually happen, including through the real MCP `tick` tool.
+
+### 2. Derived metrics feed settlement
+
+| Metric | Where it acts | Test |
+|---|---|---|
+| World phase | Ω: event probability ×1.6, damage ×1.25, hit ×0.90 | W3 |
+| Flow | boredom lowers hit chance, anxiety raises it | W4 |
+| Six-axis morality | accumulated from karma type (not parsed from Chinese text); infamy dampens social gains | W5 |
+| Level tiers | combat power bonus per tier; `advance` enforces step-by-step progression | W10 |
+
+### 3. Karma ledger
+
+Structured entries: type, amount, creditor, turn, settled. Unsettled debt lowers breakthrough odds,
+amplifies hostility, and raises "tribulation" severity. The ledger is bounded by **merging** the oldest
+entries while preserving the total—never truncating.
+
+### 4. Long-game memory
+
+```
+write_summary  every 20–50 turns: three to five sentences about what changed
+milestones     breakthroughs / kills / first arrivals / karma escalations
+archive        overflow events appended to <state>.log.jsonl
+recall         keyword recall across archive generations
+recap          budgeted bundle: latest summary + milestones + recent events
+```
+
+`snapshot` / `restore` only switch archive generations—they **never delete written history**.
+
+### 5. Reproducibility
+
+- Every game carries a `seed`.
+- Each settlement reseeds from `sha256(seed, tick, counter)`; `rng_counter` is persisted.
+- World evolution derives randomness from `sha256(seed|tick|key)` and does **not** consume `rng_counter`.
+- Read-only tools (`status` / `world_state` / `read_state`) **never write and never advance the counter**.
+
+Locked by `verify_cli.py` (CLI channel), `verify_mcp_stdio.py` (MCP channel) and `verify_world.py` (world evolution).
+
+---
+
+## MCP tools (34)
+
+| Group | Tools |
+|---|---|
+| Setup | `world_schema` `world_init` `world_open` `load_setting` |
+| Settlement | `combat` `trade` `social` `karma` `tick` `use_item` `advance` |
+| Narrative | `narration_context` `publish_prose` `narrative` `narrative_weight` `merit` |
+| Long game | `write_summary` `recap` `recall` `snapshot` `restore` `configure` |
+| World | `read_state` `world_state` `status` |
+| Ecosystem | `character_card_read` `add_character` `import_lorebook` `spawn_npc` |
+| Models | `model` `model_list` (16 named closed-form models) |
+| Panel | `open_panel` `pending_actions` |
+| Movement | `travel` |
+
+See [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md).
+
+---
+
+## Setting bundles: swap worlds without code
+
+| Bundle | Genre | Highlights |
+|---|---|---|
+| [`玄枢界`](settings/玄枢界.setting.json) | Eastern fantasy | ten cultivation tiers, crystal economy, five factions, 21 lorebook entries |
+| [`折剑行`](settings/折剑行.setting.json) | Wuxia | seven martial tiers, broken-sword main line, pawnshop economy |
+| [`霓虹深渊`](settings/霓虹深渊.setting.json) | Cyberpunk | F–S ratings, credits, cyberware and memory, endless rain |
+| [`雾港`](settings/雾港.setting.json) | Investigation | six investigator tiers, sanity/stamina, lighthouse mystery |
+
+Format: [settings/README.md](settings/README.md).
+
+---
+
+## Quality
+
+No pytest suite by design—verification is 13 executable self-checks plus a mutation suite
+(assertions must be *killable*, not merely *covered*).
+
+| Suite | Assertions | Locks |
+|---|---|---|
+| `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
+| `verify_branches.py` | 159 | exception paths and state branches of low-coverage modules |
+| `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
+| `verify_panel.py` | 69 | view-model contract, legacy saves, static whitelist, inbox guards |
+| `verify_mcp_stdio.py` | 62 | real stdio e2e, tavern ecosystem, read-only zero side effects |
+| `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
+| `verify_settings.py` | 17 | all four bundles load and evolve |
+| `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
+| `verify_near_death.py` | 7 | near-death protection |
+| `verify_memory.py` | 7 | leak check + three bounded structures |
+| `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
+| `smoke_ui.py` | 13 | real Edge render, drawers, responsive, zero JS errors |
+| `verify_tests.py` | 545 audits | AST-level rejection of tautological assertions |
+| `verify_mutation.py` | 32 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
-python engine.py combat    --state game_state.json --attacker player --defender goblin --action_type heavy
-python engine.py trade     --state game_state.json --location bamboo_tea_booth --item an_zhen_san --quantity 3 --direction buy --entity player
-python engine.py social    --state game_state.json --actor player --target old_chen --event help
-python engine.py karma     --state game_state.json --actor player --karma_type murder_innocent
-python engine.py tick      --state game_state.json
-python engine.py flow      --state game_state.json
-python engine.py identity  --state game_state.json
-python engine.py narrative --state game_state.json
-python engine.py world_state  --state game_state.json
-python engine.py panarchy  --state game_state.json
-python engine.py moral_update   --state game_state.json
-python engine.py cognition   --state game_state.json --entity player
-python engine.py merit     --state game_state.json --aid 0.8 --sincerity 0.9
-python engine.py info_weight --state game_state.json --probability 0.05
+bash scripts/pre_push_gate.sh     # 17 checks, same criteria as GitHub Actions
 ```
 
----
-
-## Project Structure
-
-```
-game_engine/                      # the repo root IS the game_engine package (any folder name works)
-├── engine.py                     # CLI entry (14 commands)
-├── mcp_server.py                 # MCP server (31 tools; only extra dep is mcp>=2)
-├── state_schema.py               # State schema + helpers
-├── init_game.py                  # Writes the sample world (青云界)
-├── pyproject.toml                # pip install -e ".[mcp]"; commands world-walker / world-walker-mcp
-├── panel.py / panel.html / panel.css / panel.js   # read-only live stage (view model + HTTP/SSE + web UI)
-├── viz_series.py                 # long-run telemetry sidecar (<state>.viz.jsonl; chart data, never touches the save)
-├── assets/echarts.min.js         # offline chart library (Apache-2.0, shipped with the package, no CDN)
-├── BRAND.md                      # brand spec (name / tagline / palette / configurability; single source)
-├── ARCHITECTURE.md               # architecture doc (single source of truth: view-model contract / invariants / ADRs)
-├── scripts/verify_mcp_stdio.py   # MCP end-to-end self-check (55 assertions, including ecosystem compat / codex / panel / model layer / determinism)
-├── scripts/verify_panel.py       # panel contract self-check (53 assertions: view model / legacy saves / static whitelist / missing-save banner / brand / help / series sampling)
-├── scripts/verify_cli.py         # CLI channel self-check (20 assertions: read-only invariants / write persistence / determinism)
-├── scripts/verify_tests.py       # test-integrity audit (AST-level: rejects tautologies / always-false / weak checks)
-├── scripts/verify_near_death.py  # near-death self-check (HP floor / persisted costs / NPC death unchanged)
-├── scripts/verify_formulas.py    # formula cross-check (independent re-derivation of 77 functions)
-├── scripts/user_playtest.py      # user-perspective playtest (47 "would a player complain?" checks: exploits / edges / error readability)
-├── scripts/stress_freeplay.py    # free-player stress test (default 2000 turns, real MCP stdio channel)
-├── docs/screenshots/             # README preview shots (real renders + assertions; provenance in that folder's README)
-├── demo_state.json               # Demo game state
-├── GAME_MASTER_PROTOCOL.md       # AI Agent call protocol
-└── rules/                        # 85+ academic formulas as Python
-    ├── combat.py                 #    combat / hit / crit
-    ├── economy.py                #    economy / supply / demand
-    ├── social.py                 #    social 2D relations
-    ├── karma.py                  #    causal debt (karma)
-    ├── cognition.py              #    cognitive science
-    ├── world_dynamics.py         #    world evolution (chaos/Panarchy/PID)
-    ├── social_extended.py        #    extended social (Haidt/Milgram/Bandura)
-    ├── cultural_evolution.py     #    cultural evolution (DIT/memes/ratchet)
-    ├── systems_feedback.py       #    systems feedback (Meadows 12/NAT)
-    └── narrative_engine.py       #    emergent narrative (Bartle/events)
-```
-
----
-
-## Academic Coverage
-
-85+ formulas across 15 disciplines:
-
-| Discipline | Core Theories | File | Lines |
-|------------|--------------|------|-------|
-| Cognitive Science | Kahneman dual-system, Prospect Theory, ACT-R memory, Flow | cognition.py | 235 |
-| Chaos / Complex Systems | Lorenz attractor, Lyapunov exponent, Logistic map, Panarchy, PID | world_dynamics.py | 275 |
-| Moral Psychology | Haidt 6-dim, Tajfel, Bandura, Milgram, Cialdini | social_extended.py | 202 |
-| Evolutionary Dynamics | Price equation, Hamilton, ESS, Red Queen | world_dynamics.py | — |
-| Cultural Evolution | DIT, memetics, cultural ratchet, fidelity decay | cultural_evolution.py | 92 |
-| Systems Theory | Donella Meadows 12 leverage points, NAT, ANT | systems_feedback.py | 141 |
-| Narrative Studies | Emergent narrative, Bartle, narrative transportation | narrative_engine.py | 141 |
-| Information Theory | Shannon entropy, KL divergence, event information | world_dynamics.py | — |
-
----
-
-## Design Principles
-
-1. **Worldview-agnostic** — same math, different narrative vocabulary
-2. **Emergence over branching** — the world produces its own story from mechanisms
-3. **Agent → Engine → Prose** — engine returns JSON, AI Agent renders it as prose
-4. **Fully responsive** — every player action gets a mathematically grounded result
-
----
-
-## Collaboration
-
-- **For players**: tell the Agent what you want → Agent calls engine → engine returns JSON → Agent narrates what happened
-- **For AI Agents**: see [`GAME_MASTER_PROTOCOL.md`](GAME_MASTER_PROTOCOL.md) for the full call protocol, parameters, and response schemas
+Coverage gate: core ≥70% (currently 88%); bandit High/Medium/Low = 0; pyflakes = 0.
 
 ---
 
 ## License
 
-MIT
+MIT. Charts by [ECharts](https://echarts.apache.org/) 5.5.1 (Apache-2.0).
+Tavern-ecosystem compatibility follows the publicly documented character-card / world-info conventions;
+no names or settings from existing works are reused.

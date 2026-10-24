@@ -51,6 +51,9 @@ EXPECTED = {
     'scripts/verify_memory.py': 6,
     'scripts/user_playtest.py': 43,
     'scripts/stress_freeplay.py': 10,
+    'scripts/verify_world.py': 48,
+    'scripts/verify_settings.py': 6,
+    'scripts/verify_docs.py': 16,
 }
 CHECK_FUNCS = {'check', 'ux', 'check_true'}
 FINDINGS = []

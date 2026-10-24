@@ -39,7 +39,7 @@
 }
 """
 
-import json, os, random
+import json, os, random, sys
 import shutil as _shutil
 
 def new_game():
@@ -113,7 +113,18 @@ def save_state(state, path):
                 _shutil.copyfile(path, path + ".bak")
             except OSError:  # aqg: top-level boundary —— 备份失败不该阻断本次保存
                 pass
-        os.replace(tmp, path)
+        # Windows 上 os.replace 可能被瞬时占用挡住（杀毒软件扫描、编辑器读取、备份代理）。
+        # 这不是逻辑错误，重试几次就好；直接抛 PermissionError 会让一次正常回合莫名其妙失败。
+        import time as _time
+        for attempt in range(5):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                _time.sleep(0.05 * (attempt + 1))
+
     except Exception:
         try:
             os.unlink(tmp)
@@ -136,11 +147,13 @@ def seed_rng(state) -> None:
     state["rng_counter"] = counter
     mixed = (int(seed) * 1000003 + int(state.get("tick", 0)) * 7919 + counter) % (2 ** 32)
     random.seed(mixed)
-    try:
-        import numpy as np
+    # numpy 只在**已经被导入**时同步种子：
+    #   1. 本项目宣称零第三方依赖，工具调用里裸 import numpy 会让首次结算多花数百毫秒，
+    #      并在某些 Windows 子进程环境里卡住（实测 MCP stdio 服务里 status/tick 挂死）；
+    #   2. 没被导入就说明这一局没有代码在用 numpy 随机源，重置它没有意义。
+    np = sys.modules.get("numpy")
+    if np is not None:
         np.random.seed(mixed)
-    except ImportError:  # numpy 为可选依赖，缺失时仅跳过其全局种子重置
-        pass
 
 def entity_key(a, b):
     """生成关系键——保证对称性，始终按字母顺序"""
@@ -183,15 +196,40 @@ def add_karma(state, debtor, creditor, ktype, amount):
     return entry
 
 def _prune_settled(state, ledger, cap):
-    """结算完毕的业债条目不再被任何读取器使用（get_unsettled_karma 已过滤），
-    超保留量时从最旧的开始裁，防止长局无界增长。"""
+    """把台账裁到保留量以内，**不丢失任何未结算债务**。
+
+    两级策略：
+      1. 先删已结算条目（不再被任何读取器使用，get_unsettled_karma 已过滤）；
+      2. 仍然超额 → 把最旧的未结算条目合并成一条汇总条目（`merged` 记录条数），
+         总额**逐分不变**，只丢单条明细（明细在归档与大事记里仍可回捞）。
+
+    为什么不能直接截断：用户明确反对「按计数截断会物理删历史」
+    （见 ARCHIVE_GENERATION 决策）。合并保留总额，因此业债机制与风险等级不变。
+    """
     if len(ledger) <= cap:
         return
     settled = [i for i, e in enumerate(ledger) if e.get("settled")]
     for i in sorted(settled, reverse=True):
         if len(ledger) <= cap:
-            break
+            return
         del ledger[i]
+    if len(ledger) <= cap:
+        return
+    # 仍有超额：把最旧的若干条未结算条目合并成一条
+    over = len(ledger) - cap + 1
+    head = ledger[:over]
+    tail = ledger[over:]
+    merged_amount = sum(int(e.get("amount", 0) or 0) for e in head)
+    merged = {
+        "from": head[0].get("from", ""),
+        "to": head[-1].get("to", ""),
+        "type": "merged",
+        "amount": merged_amount,
+        "tick": head[0].get("tick", 0),
+        "settled": False,
+        "merged": len(head),
+    }
+    ledger[:] = [merged] + tail
 
 def get_unsettled_karma(state, entity):
     """获取某实体未偿还的因果债总额"""
@@ -200,14 +238,23 @@ def get_unsettled_karma(state, entity):
         if e["from"] == entity and not e["settled"]
     )
 
-def log_event(state, etype, desc):
-    """记录事件到日志"""
+def log_event(state, etype, desc, **extra):
+    """记录事件到日志。
+
+    `extra` 是结构化附加字段（outcome / karma_type / location 等）：
+    结算层与展示层读结构化字段，不再靠中文关键词反推语义。
+    旧调用点不传 extra 时行为完全不变。
+    """
     log = state.get("event_log")
     if not isinstance(log, list):
         log = state["event_log"] = []
-    log.append({
+    entry = {
         "tick": state.get("tick", 0),
         "type": etype,
         "desc": desc
-    })
+    }
+    for k, v in extra.items():
+        if v is not None:
+            entry[k] = v
+    log.append(entry)
     # 只追加；截断与归档统一在 save_state 里做（保证任何写入路径都不会漏归档）

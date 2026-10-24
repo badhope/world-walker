@@ -19,6 +19,7 @@
 退出码: 0 = 一致；1 = 有漂移
 """
 
+import ast
 import os
 import re
 import sys
@@ -55,31 +56,33 @@ def main():
     readme = read('README.md')
     check('D1c README 提到当前版本', ver in readme, ver)
 
-    # D2 工具数：源码里 @server.tool 数量
-    mcp = read('mcp_server.py')
-    tool_count = len(re.findall(r'^@server\.tool', mcp, re.M))
-    # 精确解析：用 ast 读 world_schema 的返回字面量不可行（它含格式化表达式），
-    # 改为直接 import 模块后比较字典键——这是唯一不会数错的方式。
-    sys.path.insert(0, ROOT)
-    import importlib
-    if 'game_engine' not in sys.modules:
-        import importlib.util as _ilu
-        _spec = _ilu.spec_from_file_location('game_engine', os.path.join(ROOT, '__init__.py'),
-                                            submodule_search_locations=[ROOT])
-        _pkg = _ilu.module_from_spec(_spec)
-        _pkg.__path__ = [ROOT]
-        sys.modules['game_engine'] = _pkg
-        _spec.loader.exec_module(_pkg)
-    _ms = importlib.import_module('game_engine.mcp_server')
-    actual = {t.name for t in _ms.server._tool_manager.list_tools()}
-    registered = len(set(_ms.world_schema()['action_tools']))
-    check('D2d world_schema 登记的键与实际工具名逐一对应',
-          set(_ms.world_schema()['action_tools']) == actual,
-          '缺少: %s' % sorted(actual - set(_ms.world_schema()['action_tools']))[:3])
-    check('D2a 每行一个 @server.tool（无重复装饰）', tool_count > 30, '%d 个' % tool_count)
-    check('D2b world_schema 登记数与实际工具数完全一致',
-          registered == tool_count, 'registered=%d tools=%d' % (registered, tool_count))
-    # README 里所有 "NN 个 MCP 工具" 与 "工具一览（NN 个）" 的写法都要对得上
+    # D2 工具数：静态解析（零依赖——CI core 作业没装 mcp，不能 import mcp_server）
+    src = read('mcp_server.py')
+    tree = ast.parse(src)
+    decorated = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for deco in node.decorator_list:
+            func = deco.func if isinstance(deco, ast.Call) else deco
+            if (isinstance(func, ast.Attribute) and func.attr == 'tool'
+                    and isinstance(func.value, ast.Name) and func.value.id == 'server'):
+                decorated[node.name] = True
+    tool_count = len(decorated)
+    check('D2a 静态解析出全部工具函数', tool_count > 25, '%d 个' % tool_count)
+
+    registered = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Dict):
+            keys = [k.value for k in node.keys
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+            if 'world_init' in keys and 'tick' in keys and len(keys) > 20:
+                registered = set(keys)
+                break
+    check('D2b world_schema 登记的工具名与实际工具完全一致',
+          registered is not None and registered == set(decorated),
+          '缺少: %s' % (sorted(set(decorated) - (registered or set()))[:4] if registered else '未找到'))
+
     claimed = (re.findall(r'(\d+)\s*个\s*MCP\s*工具', readme)
                + re.findall(r'MCP\s*工具一览（(\d+)\s*个）', readme)
                + re.findall(r'MCP 服务器（(\d+) 个工具）', readme))

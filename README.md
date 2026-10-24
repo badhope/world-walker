@@ -217,7 +217,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `context` | `{inject, max_lore, scan_depth}` | 每回合上下文注入策略 |
 
 `playbook_info` 会把当前剧本、进度、失败钟、当前节拍与**给宿主的叙事指南**一起返回；
-`scripts/verify_gameplay.py`（59 项断言）逐项锁定这些语义。
+`scripts/verify_gameplay.py`（60 项断言）逐项锁定这些语义。
 四套设定包分别演示四种循环：玄幻 `freeform` / 武侠 `ttrpg` / 赛博 `mud` / 悬疑 `choice`。
 
 ## 事业线：任务只声明目标与压力，不声明过程
@@ -298,13 +298,13 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
 | `verify_docs.py` | 16 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
-| `verify_gameplay.py` | 59 | 玩法剧本 / 事业线 DAG / 世界书语义 |
+| `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_injection.py` | 21 | 外部文本的注入特征识别与 untrusted 标记 |
 | `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 13 | 真实 Edge 渲染 + 抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | 595 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `verify_tests.py` | 596 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
 | `verify_mutation.py` | 36 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），

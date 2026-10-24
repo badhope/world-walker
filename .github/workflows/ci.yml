@@ -61,7 +61,9 @@ jobs:
       - name: 世界演化与结算耦合
         run: python scripts/verify_world.py
 
-      - name: 多世界观设定包
+      # 这一步在 core 作业里跑，环境**没有** mcp —— verify_settings 若能通过，
+      # 就证明"设定包 → 状态"这条路径确实只依赖标准库。
+      - name: 多世界观设定包（零依赖路径）
         run: python scripts/verify_settings.py
 
       - name: 文档一致性

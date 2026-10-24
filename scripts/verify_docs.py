@@ -129,6 +129,11 @@ def main():
     check('D7b 中英文 README 的断言数一致', zh_claims == en_claims,
           'zh=%s en=%s' % (zh_claims[:4], en_claims[:4]))
 
+    # D7c pages 部署在未启用仓库时不得阻塞（否则每次推送都红）
+    pages_wf = read('.github/workflows/pages.yml')
+    check('D7c Pages 部署带"未启用则跳过"的守卫',
+          'PAGES_ENABLED' in pages_wf and "steps.check.outputs.skip" in pages_wf)
+
     # D8 生产代码无 TODO 占位
     todo = []
     for name in ('engine.py', 'mcp_server.py', 'panel.py', 'state_schema.py', 'viz_series.py', '__init__.py'):

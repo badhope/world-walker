@@ -218,7 +218,8 @@ No pytest suite by design—verification is 13 executable self-checks plus a mut
 | `verify_panel.py` | 69 | view-model contract, legacy saves, static whitelist, inbox guards |
 | `verify_mcp_stdio.py` | 62 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
-| `verify_settings.py` | 17 | all four bundles load and evolve |
+| `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
+| `verify_docs.py` | 16 | version single-source / tool count / asset references |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |

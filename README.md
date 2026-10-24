@@ -226,7 +226,8 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_panel.py` | 69 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
 | `verify_mcp_stdio.py` | 62 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
 | `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
-| `verify_settings.py` | 17 | 四套世界观的载入与演化 |
+| `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
+| `verify_docs.py` | 16 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
 | `verify_injection.py` | 21 | 外部文本的注入特征识别与 untrusted 标记 |
 | `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |

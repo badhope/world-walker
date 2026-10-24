@@ -229,13 +229,13 @@ No pytest suite by design—verification is 13 executable self-checks plus a mut
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | 16 | version single-source / tool count / asset references |
-| `verify_gameplay.py` | 59 | 玩法剧本 / 事业线 DAG / 世界书语义 |
+| `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 13 | real Edge render, drawers, responsive, zero JS errors |
-| `verify_tests.py` | 595 audits | AST-level rejection of tautological assertions |
+| `verify_tests.py` | 596 audits | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 36 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash

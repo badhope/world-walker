@@ -38,6 +38,8 @@ if 'game_engine' not in sys.modules:
     _pkg = importlib.util.module_from_spec(_spec)
     _pkg.__path__ = [ROOT]
     sys.modules['game_engine'] = _pkg
+    # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
+    _spec.loader.exec_module(_pkg)
 
 # 直接导入 mcp_server 的纯函数（不起服务）
 _spec2 = importlib.util.spec_from_file_location('ww_mcp', os.path.join(ROOT, 'mcp_server.py'))

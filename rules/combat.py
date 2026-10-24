@@ -26,7 +26,7 @@ def _combat_modifiers(state):
         adj = float(flow.get("adjustment", 0.0) or 0.0)
         # 无聊（adjustment>0）时命中下降；焦虑（<0）时命中上升（背水一战）
         hit_mult *= max(0.75, min(1.25, 1.0 - adj * 0.5))
-    except Exception:  # aqg: top-level boundary —— 心流是辅助输入，坏了不许影响战斗
+    except Exception:  # nosec B110; aqg: top-level boundary —— 心流是辅助输入，坏了不许影响战斗
         pass
     try:
         phase = str((state.get("panarchy") or {}).get("phase") or "")
@@ -38,7 +38,7 @@ def _combat_modifiers(state):
             dmg_mult *= 1.10
         elif phase == "K":
             dmg_mult *= 0.95
-    except Exception:  # aqg: top-level boundary —— 相位缺失时按无修正处理
+    except Exception:  # nosec B110; aqg: top-level boundary —— 相位缺失时按无修正处理
         pass
     return hit_mult, dmg_mult
 
@@ -103,7 +103,7 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
         def_tier_bonus = tier_bonus(state, def_ent)
         atk_power += atk_tier_bonus
         def_power += def_tier_bonus
-    except Exception:  # aqg: top-level boundary —— 阶梯配置坏了退回纯属性判定
+    except Exception:  # nosec B110; aqg: top-level boundary —— 阶梯配置坏了退回纯属性判定
         pass
 
     hit_mult, dmg_mult = _combat_modifiers(state)

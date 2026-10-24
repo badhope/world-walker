@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-23 ｜ 文档版本：v1.12
+> 最后更新：2026-10-24 ｜ 文档版本：v1.13
 
 ## 1. 概述与目标
 
@@ -29,7 +29,7 @@
 玩家(人) ──对话/行动──> 宿主 AI Agent（Claude Code / Codex / 自建）
                               │  MCP (stdio)
                               ▼
-                     world-walker MCP 服务器 (mcp_server.py, 33 工具)
+                     world-walker MCP 服务器 (mcp_server.py, 34 工具)
                               │  规则结算 (rules/*)
                               ▼
                      状态文件 ww_state.json ◄──只读── 实况主舞台 (panel.py + panel.html/css/js)
@@ -44,7 +44,7 @@
 | 容器 | 职责 | 关键约束 |
 |---|---|---|
 | `rules/*` | 纯规则结算（战斗/经济/社交/因果/叙事/模型层） | 无副作用，状态由调用方传入传出 |
-| `mcp_server.py` | 31 个 MCP 工具；读写状态文件；tick 推进 | 唯一写入源（第一阶段） |
+| `mcp_server.py` | 34 个 MCP 工具；读写状态文件；tick 推进 | 唯一写入源（第一阶段） |
 | `state_schema.py` | 状态结构、事件日志、归档、业债裁剪 | `save_state` 统一归档 |
 | `engine.py` | CLI 14 命令（手动结算/调试） | 与 MCP 共用 rules |
 | `panel.py` | 只读视图模型 + HTTP/SSE 服务 | 不写状态；静态资源白名单 |
@@ -64,7 +64,7 @@
 
 ```
 world-walker/                      # 仓库根即 game_engine 包
-├── mcp_server.py                  # MCP 服务器（33 工具；唯一写入源）
+├── mcp_server.py                  # MCP 服务器（34 工具；MCP 1.x/2.x 双布局）
 ├── engine.py                      # CLI 入口（14 命令）
 ├── state_schema.py                # 状态结构 + 归档 + 业债裁剪
 ├── panel.py                       # 实况主舞台：只读视图模型 + HTTP/SSE
@@ -72,8 +72,10 @@ world-walker/                      # 仓库根即 game_engine 包
 ├── panel.css                      # 视觉系统（token/皮肤/响应式/动效降级）
 ├── panel.js                       # 数据层 + 状态层 + 渲染/反馈层
 ├── rules/                         # 规则内核（含 models.py 命名闭式模型层）
-├── settings/                      # 设定包（玄枢界等）
-└── scripts/                       # verify_mcp_stdio / verify_panel / verify_cli / verify_tests / user_playtest / stress_freeplay
+├── settings/                      # 设定包（玄枢界 / 折剑行 / 霓虹深渊 / 雾港）
+├── docs/demo/                     # 真实演示存档（截图与视频的数据源）
+├── docs/screenshots/              # README 预览（真实渲染 + 逐项断言 + 交互录屏）
+└── scripts/                       # 13 个自检 + 变异测试 + 演示存档 / 截图视频流水线
 ```
 
 ## 6. 核心数据模型
@@ -130,6 +132,10 @@ view_model = {
 | INV-E8 | 相位/心流/道德必须参与结算（不是仅展示）：Ω 事件概率与伤害 > K，无聊命中 < 心流，恶名降低社交增量 | 引擎 | rules/combat.py / narrative_engine.py / social.py | verify_world.py W3/W4/W5 |
 | INV-E9 | 等级阶梯配置了 `level_tiers` 时，`advance` 只能逐阶递进（跳阶/倒退/未知名一律拒） | 引擎 | rules/progression.py | verify_world.py W10 |
 | INV-E10 | 未结算因果债台账有界（≤ karma_ledger_keep），合并后总额逐分不变 | 引擎 | state_schema.py | verify_world.py W8 |
+| INV-E11 | 只读工具（`status` / `world_state` / `read_state`）不写状态文件、不推进 `rng_counter` | MCP | mcp_server._read | verify_mcp_stdio.py（字节 + mtime 双重断言） |
+| INV-E12 | CLI 与 MCP 的 `tick` 同义：市场 + 世界演化 + tick+1（含势力/相位落盘） | 引擎 / MCP | engine._do_tick / mcp_server.tick | verify_cli.py（CLI 侧）+ verify_world.py W11 |
+| INV-E13 | 面板行动队列只写 `<state>.inbox.jsonl` 侧写；状态文件字节不变；`pending_actions` 是唯一读取入口 | 面板 / MCP | panel.inbox_* | verify_panel.py（同源/内容类型/长度/有界四道断言） |
+| INV-E14 | 势力演化不得饱和：长局后头部与尾部存在差距（排行榜可读），且不收敛到单一赢家 | 引擎 | world_evolution.evolve_factions | verify_world.py W1 + make_demo 验收 |
 
 ### 6.3 公式的调用路径（哪些在跑、哪些按需）
 
@@ -154,6 +160,9 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
 | `GET /assets/echarts.min.js` | 离线图表库（vendored Apache-2.0, echarts@5.5.1） | 200 text/javascript |
 | `GET /state` | 视图模型 JSON | 200 application/json |
 | `GET /series` | 长局态势样本（tick 升序，封顶 600）+ 皮肤调色板 | 200 application/json |
+| `GET /actions` | 未处理的行动队列（只读侧写） | 200 application/json |
+| `POST /action` | 把一条行动写进收件箱（同源 + JSON + ≤2000 字） | 200 JSON / 400 / 403 / 415 |
+| `GET /export` | 直出当前状态文件（只读下载） | 200 application/json + attachment |
 | `GET /events` | SSE：状态文件签名变化即推 `event: state` + 完整视图模型 | text/event-stream |
 | 其他路径 | 一律拒绝 | 404（不含任何文件内容） |
 
@@ -265,6 +274,7 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
 | 2026-10-22 | 可视化真修（三图从"画了"到"看得懂"）：物价指数图因 OU sigma=0 恒为 1.0 平线→加按 (rng_seed,tick,地点,商品) 派生的确定性扰动（4% 基准价，不耗 rng_counter、可 `configure(market_jitter=False)` 关）；气血/内力曲线图例按实际标注"几乎恒定/100% 回合为 100%"；纵轴自适应；图鉴累计 codex_total 作为第 4 系列上图；修面板端口被抢占（HTTPServer.allow_reuse_address=False 端口冲突抛错顺延）；修击杀不给战利品（接管 `loot_gold`） | §5、§7、§9 T25 | T25 | 门禁 17 项绿 + verify_* 七套全过 + 图表数据实测 price_index 442 种(0.93–1.09)/gold 30→6040/codex 8→19 + pyflakes 0 |
 | 2026-10-22 | 第二轮全维度审查 3 个 High（见 docs/AUDIT_ROUND2_2026-10-22.md）：F-001 状态文件非原子写入→临时文件+fsync+os.replace 原子替换并保留 .bak（4 条回归断言）；F-002 补 X-Content-Type-Options/X-Frame-Options/Referrer-Policy/CSP 四安全头（静态核验 0 内联 script/style/事件处理器，curl -D 四头齐全，六端点 200）；F-003 时间线条目可点击（click+Enter/Space 复用 #eventdlg）；新增 21 项 UI 逐元素巡检 | §4、§6.2、§7、§9 T26 | T26 | verify_branches 159/159（含 4 条原子写断言）+ 其余六套全过 + bandit High/Med/Low 0 + 门禁全绿 |
 
+| 2026-10-24 | **v1.0.0 交付版**：修 MCP SDK 布局不兼容（1.x `fastmcp` / 2.x `mcpserver` 双支持）、`seed_rng` 裸 import numpy 导致 MCP 子进程挂死、包元数据未执行三个阻断级缺陷；CLI `tick` 补齐世界演化（INV-E12）；只读工具零副作用（INV-E11）；死目标不再写编年史；势力演化改为禀赋上限 + 温和 LV + 挑战者回流（INV-E14）；新增行动队列双向通道（INV-E13）、世界脉搏卡、命令面板、分享模式、导出、时间线搜索、角色卡详情；新增三套设定包与 `verify_settings.py`；`engine.py` / `panel.py` / `mcp_server.py` 复杂度治理；变异测试 30/30 | §5、§6.2、§7、§9 | v1.0.0 | 门禁 17 项绿 · 变异 30/30 · 覆盖率 88% · 截图 17 张 + 录屏 |
 | 2026-10-23 | **定位闭环（v1.12）**：修复定位审计指出的三处塌陷——① 世界不自演化（500 回合只有市价在动）：新增 `rules/world_evolution.py`（势力 logistic+Lotka-Volterra、谣言 SIR、风气 Deffuant、NPC 走动、Panarchy 四段状态机 r→K→Ω→α），挂进 `tick`；② 派生指标只展示不结算：相位调制事件概率与战斗伤害、心流调制命中、六维道德由业债累加并调制社交；③ 世界观无关只到引擎不到界面：`ui.terms` 覆盖面板词、`level_tiers` 定义阶梯并由 `advance` 逐阶校验、`places`/`publish_prose` 让正文落盘。同时修 3 个真 bug（暴击被当失败、道德映射恒 0、涌现事件重复落盘）与 1 处无界增长（未结算业债台账改合并保留总额）。新增 verify_world.py（46 项）与变异 M20-M25；门禁 18 项、覆盖率 88%。ARCHITECTURE 新增 §6.3 公式调用路径，明确哪些公式在回路里、哪些是宿主按需 | §6.1、§6.2（INV-E6..E10）、§6.3 | T27 | verify_world 46/46 · 全量回归 12 套绿 · 门禁 18 项绿 · 变异 25/25 杀死 |
 
 ### ADR-004：长局可视化的三个取舍

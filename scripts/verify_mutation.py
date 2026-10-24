@@ -113,6 +113,35 @@ MUTATIONS = [
     ('M20', 'tick 不再驱动世界演化', 'mcp_server.py',
      '    world = evolve_world(state)', '    world = {}',
      'scripts/verify_world.py'),
+    # 注意：M20 曾经**存活**——verify_world 的 W11 走了 in-process 调用，而变异点
+    # 在 stdio 之外的同名文件里，两处都能命中；真正让它变红的是同一条断言在本文件
+    # （MCP tick 工具）里跑，因此 M20 的目标脚本必须是 verify_world（含 W11 in-process）。
+    ('M26', '只读工具偷偷落盘（status 顺手 save_state）', 'mcp_server.py',
+     '    result["_tick"] = int((_load().get("tick", 0)) or 0)\r\n    return result',
+     '    result["_tick"] = int((_load().get("tick", 0)) or 0)\r\n    save_state(_load(), _state_path())\r\n    return result',
+     'scripts/verify_mcp_stdio.py'),
+    ('M27', 'CLI tick 退回只推市价（不驱动世界）', 'engine.py',
+     '    world = evolve_world(state)\n    for desc in world.get("events", []):',
+     '    world = {}\n    for desc in world.get("events", []):',
+     'scripts/verify_cli.py'),
+    ('M28', '死目标继续进编年史（噪声复现）', 'mcp_server.py',
+     '    if not result.get("target_already_dead"):\r\n        for e in result.get("events", []):',
+     '    if True:\r\n        for e in result.get("events", []):',
+     'scripts/verify_mcp_stdio.py'),
+    ('M29', '行动队列不设上限（侧写无限增长）', 'panel.py',
+     '    if len(pending) > INBOX_MAX_PENDING:',
+     '    if False:',
+     'scripts/verify_panel.py'),
+    ('M30', '行动队列接受跨站请求（去掉 Origin 校验）', 'panel.py',
+     "        if origin and origin.split('//')[-1] != host:",
+     '        if False:',
+     'scripts/verify_panel.py'),
+    ('M31', '文档版本号与 pyproject 漂移', 'pyproject.toml',
+     'version = "1.0.0"', 'version = "0.9.9"',
+     'scripts/verify_docs.py'),
+    ('M32', 'README 宣称的工具数与源码不符', 'README.md',
+     '## MCP 工具一览（34 个）', '## MCP 工具一览（99 个）',
+     'scripts/verify_docs.py'),
     ('M21', '相位不再影响事件概率', 'rules/narrative_engine.py',
      '    return PHASE_EVENT_MULT.get(_phase_key(state), 1.0)',
      '    return 1.0',
@@ -192,7 +221,11 @@ def main():
         old = _match_eol(old, src)
         new = _match_eol(new, src)
         if src.count(old) != 1:
+            # 片段对不上 = 这条"已知错误"从未被真正验证过。静默跳过会让变异测试
+            # 看起来全绿而实际漏测（本项目历史上真发生过），所以按失败处理。
             print('SKIP  %s %-44s 片段不唯一（出现 %d 次）' % (mid, desc, src.count(old)))
+            total += 1
+            survivors.append((mid, desc + '（片段已失效，需更新）', script))
             continue
 
         total += 1

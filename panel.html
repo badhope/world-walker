@@ -29,6 +29,11 @@
   </span>
   <button class="tbtn" id="help-btn" type="button" title="帮助与术语（快捷键 ?）"
           aria-haspopup="dialog">帮助 <kbd>?</kbd></button>
+  <button class="tbtn" id="palette-btn" type="button" title="命令面板（Ctrl/⌘ + K）"
+          aria-haspopup="dialog">命令 <kbd>⌘K</kbd></button>
+  <button class="tbtn" id="share-btn" type="button" aria-pressed="false"
+          title="分享模式：隐藏存档路径与操作提示，适合截图与直播">分享模式</button>
+  <button class="tbtn" id="export-btn" type="button" title="下载当前对局状态 JSON（只读导出）">导出</button>
   <button class="tbtn" id="motion" type="button" aria-pressed="false"
           title="暂停/恢复界面动效">动效：开</button>
 </header>
@@ -84,12 +89,33 @@
       </div>
       <p id="scene-desc" class="empty">等待状态文件…</p>
       <div class="focus" id="scene-focus" hidden></div>
+      <form class="composer" id="composer" autocomplete="off">
+        <label class="sr-only" for="action-text">你想做什么</label>
+        <textarea id="action-text" rows="1" maxlength="2000"
+                  placeholder="写下这一步想做的事（Enter 排队，Shift+Enter 换行）——行动会进「行动队列」，由对局助手结算"></textarea>
+        <div class="composer-side">
+          <button type="submit" class="tbtn primary" id="action-send">排队</button>
+          <span class="hint">队列 <b id="inbox-count">0</b> 条 · <span id="inbox-status">指挥官在对话里取走</span></span>
+        </div>
+      </form>
     </div>
 
     <section class="card">
       <h2><span data-term="chronicle">编年史</span> <span class="tag" id="timeline-hint"></span>
         <button class="tbtn" id="jump-latest" type="button" style="margin-left:auto">跳到最新</button>
       </h2>
+      <div class="timeline-tools">
+        <label class="sr-only" for="event-search">搜索事件</label>
+        <input id="event-search" type="search" placeholder="搜索事件（如：突破 / 柳寒衣）"
+               autocomplete="off" maxlength="60" />
+        <div class="seg" id="event-filter" role="group" aria-label="按类型筛选事件">
+          <button type="button" class="seg-btn" data-filter="all" aria-pressed="true">全部</button>
+          <button type="button" class="seg-btn" data-filter="combat" aria-pressed="false">交锋</button>
+          <button type="button" class="seg-btn" data-filter="social" aria-pressed="false">人情</button>
+          <button type="button" class="seg-btn" data-filter="trade" aria-pressed="false">交易</button>
+          <button type="button" class="seg-btn" data-filter="milestone" aria-pressed="false">大事</button>
+        </div>
+      </div>
       <ul class="timeline" id="timeline" aria-live="polite" aria-label="事件时间线">
         <li class="empty">暂无事件</li>
       </ul>
@@ -113,6 +139,19 @@
         <div class="chart-empty" id="chart3-empty" hidden>暂无样本。</div>
       </section>
     </div>
+    <section class="card">
+      <h2>世界脉搏 <span class="tag" id="pulse-hint"></span></h2>
+      <div class="pulse" id="pulse">
+        <div class="pulse-phase"><span class="pulse-badge" id="pulse-phase" data-phase="">—</span>
+          <span class="hint" id="pulse-trigger"></span></div>
+        <div class="pulse-meters">
+          <div class="meter"><span class="k">存量</span><div class="meter-bar"><i id="meter-capital" style="width:0"></i></div><b id="meter-capital-n">—</b></div>
+          <div class="meter"><span class="k">连接度</span><div class="meter-bar"><i id="meter-conn" style="width:0"></i></div><b id="meter-conn-n">—</b></div>
+          <div class="meter"><span class="k">烈度</span><div class="meter-bar"><i id="meter-int" style="width:0"></i></div><b id="meter-int-n">—</b></div>
+        </div>
+        <div class="kv" id="pulse-factions"></div>
+      </div>
+    </section>
     <section class="card">
       <h2>事件谱 <span class="tag" id="spectrum-hint"></span></h2>
       <div class="spectrum" id="spectrum" aria-label="按类型的事件分布"></div>
@@ -187,6 +226,21 @@
 
 <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
 
+<dialog class="carddlg" id="carddlg" aria-labelledby="card-name">
+  <h3 id="card-name">角色</h3>
+  <div class="card-meta" id="card-meta-line"></div>
+  <div id="card-body"></div>
+  <div class="dlg-actions"><button type="button" id="card-close">知道了（Esc）</button></div>
+</dialog>
+
+<dialog class="palette" id="palette" aria-labelledby="palette-label">
+  <label id="palette-label" class="sr-only">命令面板</label>
+  <input id="palette-input" type="search" placeholder="输入命令：图鉴 / 市场 / 大事 / 帮助 / 导出 / 分享 / 跳到最新 / 主题"
+         autocomplete="off" aria-controls="palette-list" />
+  <ul id="palette-list" role="listbox" aria-label="可用命令"></ul>
+  <p class="hint">↑↓ 选择 · Enter 执行 · Esc 关闭</p>
+</dialog>
+
 <dialog class="eventdlg" id="eventdlg" aria-labelledby="dlg-title">
   <h3 id="dlg-title"><span id="dlg-icon" aria-hidden="true"></span><span id="dlg-title-text">事件</span></h3>
   <div class="dlg-meta" id="dlg-meta"></div>
@@ -238,6 +292,7 @@
     <h4>键盘 <span id="help-keys" class="tag">keyboard</span></h4>
     <ul>
       <li><kbd>?</kbd> 打开/关闭本帮助；<kbd>Esc</kbd> 关闭任何弹窗（焦点会回到你原来待的控件）。</li>
+      <li><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>K</kbd> 命令面板（图鉴 / 市场 / 导出 / 分享模式…），↑↓ 选择、Enter 执行。</li>
       <li><kbd>Tab</kbd> 在控件间移动；抽屉与按钮都可用 <kbd>Enter</kbd>/<kbd>Space</kbd> 展开。</li>
       <li>顶栏「动效：开/关」可暂停所有过渡动画（系统级"减少动态效果"也会自动生效）。</li>
     </ul>
@@ -248,6 +303,7 @@
     <ul>
       <li>状态文件：<code id="help-state-path">—</code>（对局的唯一权威，一切数值以它为准）</li>
       <li>趋势侧写：<code id="help-sidecar-path">—</code>（面板自己的采样账本，删了只丢曲线，不伤对局）</li>
+      <li>行动队列：你在下方输入的行动会写进同目录的收件箱，由对局助手取走结算——<b>面板本身从不改对局状态</b>。</li>
       <li>面板只监听本机 <code>127.0.0.1</code>，不向任何外部服务发送数据。</li>
     </ul>
   </section>

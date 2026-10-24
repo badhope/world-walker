@@ -39,7 +39,7 @@
 }
 """
 
-import json, os, random
+import json, os, random, sys
 import shutil as _shutil
 
 def new_game():
@@ -113,7 +113,18 @@ def save_state(state, path):
                 _shutil.copyfile(path, path + ".bak")
             except OSError:  # aqg: top-level boundary —— 备份失败不该阻断本次保存
                 pass
-        os.replace(tmp, path)
+        # Windows 上 os.replace 可能被瞬时占用挡住（杀毒软件扫描、编辑器读取、备份代理）。
+        # 这不是逻辑错误，重试几次就好；直接抛 PermissionError 会让一次正常回合莫名其妙失败。
+        import time as _time
+        for attempt in range(5):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                _time.sleep(0.05 * (attempt + 1))
+
     except Exception:
         try:
             os.unlink(tmp)
@@ -136,11 +147,13 @@ def seed_rng(state) -> None:
     state["rng_counter"] = counter
     mixed = (int(seed) * 1000003 + int(state.get("tick", 0)) * 7919 + counter) % (2 ** 32)
     random.seed(mixed)
-    try:
-        import numpy as np
+    # numpy 只在**已经被导入**时同步种子：
+    #   1. 本项目宣称零第三方依赖，工具调用里裸 import numpy 会让首次结算多花数百毫秒，
+    #      并在某些 Windows 子进程环境里卡住（实测 MCP stdio 服务里 status/tick 挂死）；
+    #   2. 没被导入就说明这一局没有代码在用 numpy 随机源，重置它没有意义。
+    np = sys.modules.get("numpy")
+    if np is not None:
         np.random.seed(mixed)
-    except ImportError:  # numpy 为可选依赖，缺失时仅跳过其全局种子重置
-        pass
 
 def entity_key(a, b):
     """生成关系键——保证对称性，始终按字母顺序"""

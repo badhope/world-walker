@@ -287,6 +287,15 @@
         div.className = "castcard";
         if (c.hp != null && c.hp <= 0) div.classList.add("down");
         else if (relMap[c.id] && relMap[c.id].affinity <= -30) div.classList.add("hostile");
+        // 角色卡可点开：卡面文字（desc/personality/speech）才是酒馆生态里的人物本体。
+        div.tabIndex = 0;
+        div.setAttribute("role", "button");
+        div.setAttribute("aria-label", "查看 " + (c.name || "角色") + " 详情");
+        const openCard = () => openCardDialog(c, relMap[c.id], div);
+        div.addEventListener("click", openCard);
+        div.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openCard(); }
+        });
         const b = document.createElement("b");
         b.textContent = c.name;
         div.appendChild(b);
@@ -357,6 +366,7 @@
     const li = document.createElement("li");
     li.dataset.severity = e.severity;
     li.dataset.eventId = e.id;
+    li.dataset.eventType = e.type || "";
     if (e.milestone) {
       li.classList.add("is-milestone");
       li.title = "大事记：会被 recap 与回捞记住的事件";
@@ -398,6 +408,39 @@
     return li;
   }
 
+  let timelineFilter = "all";
+  let timelineQuery = "";
+
+  function applyTimelineFilter() {
+    const ul = $("timeline");
+    if (!ul) return;
+    const q = timelineQuery.trim().toLowerCase();
+    let shown = 0;
+    ul.querySelectorAll("li[data-event-id]").forEach((li) => {
+      const type = li.dataset.eventType || "";
+      const isMs = li.classList.contains("is-milestone");
+      const text = (li.textContent || "").toLowerCase();
+      let ok = true;
+      if (timelineFilter === "milestone") ok = isMs;
+      else if (timelineFilter !== "all") ok = type === timelineFilter;
+      if (ok && q) ok = text.indexOf(q) >= 0;
+      li.hidden = !ok;
+      if (ok) shown += 1;
+    });
+    // 时间线里所有条目都被过滤掉时给一句可读的空态，而不是一片空白
+    let hint = ul.querySelector("li.filter-empty");
+    if (!shown) {
+      if (!hint) {
+        hint = document.createElement("li");
+        hint.className = "empty filter-empty";
+        ul.appendChild(hint);
+      }
+      hint.textContent = timelineQuery ? "没有匹配「" + timelineQuery + "」的事件" : "这一类暂时没有事件";
+    } else if (hint) {
+      hint.remove();
+    }
+  }
+
   function renderTimeline(v) {
     const ul = $("timeline");
     ul.textContent = "";
@@ -412,6 +455,7 @@
       return;
     }
     events.forEach((e) => ul.appendChild(timelineItem(e)));
+    applyTimelineFilter();
   }
 
   function renderDrawers(v) {
@@ -951,7 +995,10 @@
       d.addEventListener('toggle', () => {
         if (!d.open) return;
         requestAnimationFrame(() => {
-          d.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          // 抽屉在页面底部：从顶部点开是"长距离跳转"。长跳用瞬时定位，
+          // 短跳才用平滑滚动——否则一屏半的平滑动画既慢又容易被误认为没反应。
+          const far = d.getBoundingClientRect().top > window.innerHeight * 1.5;
+          d.scrollIntoView({ block: 'nearest', behavior: far ? 'auto' : 'smooth' });
         });
       });
     });
@@ -975,7 +1022,56 @@
     renderMapNet(v);
     renderStageTrack(v);
     renderBadges(v);
+    renderPulse(v);
     refreshSeries(v);
+  }
+
+  /* ── 世界脉搏：相位 / 存量 / 连接度 / 烈度 / 势力 ─────── */
+  const PHASE_LABEL = { r: "开发/增长", K: "保护/守恒", "Ω": "崩溃/释放", "α": "重组/革新" };
+
+  function renderPulse(v) {
+    const ws = v.world_state || {};
+    const badge = $("pulse-phase");
+    const phase = ws.phase || "";
+    if (badge) {
+      badge.dataset.phase = phase;
+      badge.textContent = phase ? (phase + " · " + (PHASE_LABEL[phase] || "")) : "尚未演化";
+      badge.title = ws.phase ? "Panarchy 适应性循环阶段" : "推进回合后世界开始演化";
+    }
+    const setMeter = (id, numId, val, max, fmt) => {
+      const bar = $(id), num = $(numId);
+      if (bar) bar.style.width = Math.max(0, Math.min(100, (val / (max || 1)) * 100)) + "%";
+      if (num) num.textContent = (val == null) ? "—" : fmt(val);
+    };
+    setMeter("meter-capital", "meter-capital-n", ws.capital, 1, (x) => Number(x).toFixed(2));
+    setMeter("meter-conn", "meter-conn-n", ws.connectedness, 1, (x) => Number(x).toFixed(2));
+    setMeter("meter-int", "meter-int-n", ws.intensity, 2, (x) => "×" + Number(x).toFixed(2));
+    setText($("pulse-hint"),
+      (ws.collapses ? "崩解 " + ws.collapses + " 次 · " : "") +
+      "物价 " + (ws.market_index != null ? ws.market_index : "—"));
+    const box = $("pulse-factions");
+    if (box) {
+      box.textContent = "";
+      const facs = (ws.factions || []).slice(0, 6);
+      if (!facs.length) {
+        const s = document.createElement("span");
+        s.className = "empty";
+        s.textContent = "推进几个回合后，势力存量会自己动起来";
+        box.appendChild(s);
+      } else {
+        facs.forEach((f) => {
+          const s = document.createElement("span");
+          s.className = "chip" + (f.power >= 70 ? " good" : (f.power <= 25 ? " bad" : " dim"));
+          s.textContent = f.name + " " + f.power;
+          box.appendChild(s);
+        });
+      }
+    }
+    const trig = $("pulse-trigger");
+    if (trig) {
+      const ph = (v.insights || {}).phase || {};
+      trig.textContent = ph.trigger || "";
+    }
   }
 
   /* ── 反馈层：toast / dialog ───────────────────────── */
@@ -1099,6 +1195,45 @@
       .catch(() => { setConn("down", "连接失败，重试中…"); });
   }
 
+  function openDrawer(id) {
+    const d = $(id);
+    if (!d) return;
+    d.open = true;
+    requestAnimationFrame(() => d.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  }
+
+  function openCardDialog(c, rel, trigger) {
+    const dlg = $("carddlg");
+    if (!dlg || typeof dlg.showModal !== "function") return;
+    setText($("card-name"), c.name || "角色");
+    const bits = [c.level, c.faction, rel ? ("亲密 " + rel.affinity + " · 敬重 " + rel.respect) : ""]
+      .filter(Boolean);
+    setText($("card-meta-line"), bits.join(" · "));
+    const sec = (title, body) => {
+      if (!body) return null;
+      const wrap = document.createElement("section");
+      wrap.className = "card-sec";
+      const h = document.createElement("h4");
+      h.textContent = title;
+      const p = document.createElement("p");
+      p.textContent = body;
+      wrap.appendChild(h);
+      wrap.appendChild(p);
+      return wrap;
+    };
+    const host = $("card-body");
+    host.textContent = "";
+    [
+      sec("关于", c.desc),
+      sec("性情", c.personality),
+      sec("口吻", c.speech),
+      sec("状态", (c.hp != null ? "气血 " + c.hp + "/" + c.hp_max : "") +
+        (c.mind_scars ? " · 心伤 " + c.mind_scars : "")),
+    ].forEach((el) => { if (el) host.appendChild(el); });
+    panelState.cardReturn = trigger || document.activeElement;
+    if (!dlg.open) dlg.showModal();
+  }
+
   function boot() {
     wireDrawers();
     fetchState();
@@ -1157,6 +1292,108 @@
       });
     });
 
+    /* ── 时间线搜索与筛选 ───────────────── */
+    const search = $("event-search");
+    if (search) {
+      let t = null;
+      search.addEventListener("input", () => {
+        timelineQuery = search.value || "";
+        clearTimeout(t);
+        t = setTimeout(applyTimelineFilter, 80);
+      });
+      search.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape") { search.value = ""; timelineQuery = ""; applyTimelineFilter(); }
+      });
+    }
+    const filterBox = $("event-filter");
+    if (filterBox) {
+      filterBox.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-filter]");
+        if (!btn) return;
+        timelineFilter = btn.dataset.filter || "all";
+        filterBox.querySelectorAll("[data-filter]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === btn));
+        });
+        applyTimelineFilter();
+      });
+    }
+
+    /* ── 分享模式：隐藏路径 / 队列 / 导出入口，专供截图直播 ── */
+    const shareBtn = $("share-btn");
+    const setShare = (on) => {
+      document.body.dataset.share = on ? "on" : "off";
+      if (shareBtn) {
+        shareBtn.setAttribute("aria-pressed", String(on));
+        setText(shareBtn, on ? "分享模式：开" : "分享模式");
+      }
+      storageSet("ww_share", on ? "1" : "0");
+    };
+    if (shareBtn) {
+      shareBtn.addEventListener("click", () => setShare(document.body.dataset.share !== "on"));
+      setShare(storageGet("ww_share") === "1");
+    }
+
+    /* ── 导出当前状态（服务端只读直出，不经过前端拼装）── */
+    const exportBtn = $("export-btn");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", () => { window.location.href = "/export"; });
+    }
+
+    /* ── 行动队列：浏览器排队 → 宿主用 pending_actions 取走 ── */
+    const composer = $("composer");
+    if (composer) {
+      const ta = $("action-text");
+      const send = $("action-send");
+      const refreshInbox = () => {
+        fetch("/actions").then((r) => r.json()).then((d) => {
+          setText($("inbox-count"), String((d.pending || []).length));
+        }).catch(() => {});
+      };
+      const submit = () => {
+        const text = (ta.value || "").trim();
+        if (!text) return;
+        send.disabled = true;
+        setText(send, "…");
+        fetch("/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text }),
+        }).then((r) => r.json()).then((d) => {
+          if (d && d.ok) {
+            ta.value = "";
+            ta.style.height = "";
+            setText($("inbox-status"), "已排队（共 " + d.pending + " 条）");
+            setTimeout(() => setText($("inbox-status"), "指挥官在对话里取走"), 3200);
+            refreshInbox();
+          } else {
+            setText($("inbox-status"), (d && d.error) || "排队失败");
+          }
+        }).catch(() => setText($("inbox-status"), "排队失败：面板未连接"))
+          .finally(() => { send.disabled = false; setText(send, "排队"); });
+      };
+      composer.addEventListener("submit", (ev) => { ev.preventDefault(); submit(); });
+      ta.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); submit(); }
+      });
+      ta.addEventListener("input", () => {
+        ta.style.height = "auto";
+        ta.style.height = Math.min(132, ta.scrollHeight) + "px";
+      });
+      refreshInbox();
+      setInterval(refreshInbox, 5000);
+    }
+
+    const cardDlg = $("carddlg");
+    if (cardDlg) {
+      cardDlg.addEventListener("close", () => {
+        const back = panelState.cardReturn;
+        panelState.cardReturn = null;
+        if (back && document.contains(back)) back.focus();
+      });
+      const cc = $("card-close");
+      if (cc) cc.addEventListener("click", () => cardDlg.close());
+    }
+
     $("dlg-close").addEventListener("click", closeDialog);
     $("dlg-ok").addEventListener("click", closeDialog);
     $("eventdlg").addEventListener("close", () => {
@@ -1166,6 +1403,83 @@
       }
       panelState.focusReturn = null;
       panelState.dialogFor = null;
+    });
+
+    /* ── 命令面板：Ctrl/⌘+K，键盘可达（listbox 语义）── */
+    const COMMANDS = [
+      { k: "图鉴", run: () => openDrawer("drawer-codex") },
+      { k: "市场", run: () => openDrawer("drawer-market") },
+      { k: "大事记", run: () => openDrawer("drawer-milestones") },
+      { k: "势力", run: () => openDrawer("drawer-world") },
+      { k: "世界标记", run: () => openDrawer("drawer-flags") },
+      { k: "帮助", run: () => openHelp($("help-btn")) },
+      { k: "跳到最新", run: () => { const ul = $("timeline"); if (ul) ul.scrollTop = 0; } },
+      { k: "导出状态", run: () => { window.location.href = "/export"; } },
+      { k: "分享模式", run: () => $("share-btn") && $("share-btn").click() },
+      { k: "动效开关", run: () => $("motion") && $("motion").click() },
+    ];
+    const palette = $("palette");
+    const pInput = $("palette-input");
+    const pList = $("palette-list");
+    let pItems = [];
+    let pIndex = 0;
+
+    const paintPalette = () => {
+      if (!pList) return;
+      pList.textContent = "";
+      pItems.forEach((cmd, i) => {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        li.setAttribute("aria-selected", String(i === pIndex));
+        const span = document.createElement("span");
+        span.textContent = cmd.k;
+        li.appendChild(span);
+        li.addEventListener("click", () => { runPalette(cmd); });
+        pList.appendChild(li);
+      });
+    };
+    const filterPalette = () => {
+      const q = (pInput.value || "").trim().toLowerCase();
+      pItems = q ? COMMANDS.filter((c) => c.k.toLowerCase().indexOf(q) >= 0) : COMMANDS.slice();
+      pIndex = 0;
+      paintPalette();
+    };
+    const runPalette = (cmd) => {
+      if (palette && palette.open) palette.close();
+      if (cmd) cmd.run();
+    };
+    const openPalette = () => {
+      if (!palette || typeof palette.showModal !== "function") return;
+      pInput.value = "";
+      filterPalette();
+      if (!palette.open) palette.showModal();
+      pInput.focus();
+    };
+    const paletteBtn = $("palette-btn");
+    if (paletteBtn) paletteBtn.addEventListener("click", openPalette);
+    if (pInput) {
+      pInput.addEventListener("input", filterPalette);
+      pInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "ArrowDown") {
+          ev.preventDefault();
+          pIndex = Math.min(pItems.length - 1, pIndex + 1);
+          paintPalette();
+        } else if (ev.key === "ArrowUp") {
+          ev.preventDefault();
+          pIndex = Math.max(0, pIndex - 1);
+          paintPalette();
+        } else if (ev.key === "Enter") {
+          ev.preventDefault();
+          runPalette(pItems[pIndex]);
+        }
+      });
+    }
+    document.addEventListener("keydown", (ev) => {
+      const mod = ev.ctrlKey || ev.metaKey;
+      if (mod && (ev.key === "k" || ev.key === "K")) {
+        ev.preventDefault();
+        if (palette && palette.open) palette.close(); else openPalette();
+      }
     });
 
     /* ── 帮助：入口按钮 + `?` 快捷键（不打扰正在输入的场景，本页无输入框）── */

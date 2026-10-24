@@ -12,7 +12,7 @@ include pyproject.toml
 recursive-include assets *.js
 recursive-include settings *.json *.md
 recursive-include scripts *.py
-recursive-include docs *.png *.md
+recursive-include docs *.png *.md *.mp4 *.json *.jsonl
 
 include panel.html
 include panel.css
@@ -20,4 +20,4 @@ include panel.js
 
 prune __pycache__
 prune .aqg
-global-exclude *.py[cod] *.viz.jsonl
+global-exclude *.py[cod]

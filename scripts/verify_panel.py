@@ -419,6 +419,97 @@ def main():
     ser2 = _panel.load_series(sp)
     check("同 tick 重复采样覆盖（不产生重复点）", len(ser2) == 4, str([s["tick"] for s in ser2]))
 
+
+    # 9. 行动队列（双向通道）：面板只写侧写、不写状态；限额与同源校验生效
+    inbox_state = os.path.join(tmp2, "inbox.save.json")
+    with open(inbox_state, "w", encoding="utf-8") as f:
+        json.dump(rich_state(), f, ensure_ascii=False)
+    inbox_hash = hashlib.sha256(open(inbox_state, "rb").read()).hexdigest()
+    rec = _panel.inbox_append(inbox_state, "我想去黑风寨找独眼狼算账")
+    check("行动队列：追加后进入 pending 且带状态回合号",
+          rec.get("id") and len(_panel.inbox_pending(inbox_state)) == 1
+          and _panel.inbox_pending(inbox_state)[0]["tick"] == 12,
+          str(rec.get("tick")))
+    check("行动队列：侧写独立成文件（<state>.inbox.jsonl），状态文件字节不变",
+          os.path.exists(_panel.inbox_path(inbox_state))
+          and hashlib.sha256(open(inbox_state, "rb").read()).hexdigest() == inbox_hash)
+    n_done = _panel.inbox_mark_done(inbox_state, [rec["id"]])
+    check("行动队列：标记已处理后不再出现在 pending",
+          n_done == 1 and _panel.inbox_pending(inbox_state) == [], "marked=%d" % n_done)
+    for i in range(_panel.INBOX_MAX_PENDING + 6):
+        _panel.inbox_append(inbox_state, "排队行动 %d" % i)
+    # 注意：inbox_pending() 自己会切片到上限，所以只看 pending 长度测不出"文件无限增长"。
+    # 必须看**落盘行数**，否则删掉裁剪逻辑测试仍然全绿（变异 M29 实测存活过）。
+    with open(_panel.inbox_path(inbox_state), encoding="utf-8") as f:
+        inbox_lines = len([ln for ln in f.read().splitlines() if ln.strip()])
+    # 这里只追加过 1 条已处理记录，所以正确实现的行数上限就是 MAX_PENDING + 1；
+    # 留 1 行余量，任何"不裁剪"实现（106 行）都会立刻越界。
+    check("行动队列：落盘记录有界（≤ %d 行，不是只切片返回）" % (_panel.INBOX_MAX_PENDING + 2),
+          inbox_lines <= _panel.INBOX_MAX_PENDING + 2,
+          "%d 行 / pending %d" % (inbox_lines, len(_panel.inbox_pending(inbox_state))))
+
+    # 10. 行动队列 HTTP 层：同源 / Content-Type / 长度 三道闸
+    inbox_srv, inbox_port = _panel.start(inbox_state, PORT + 3)
+    inbox_base = "http://127.0.0.1:%d" % inbox_port
+    try:
+        def post_action(payload, ctype="application/json", origin=None):
+            import urllib.request as _ur
+            req = _ur.Request(inbox_base + "/action",
+                              data=json.dumps(payload).encode("utf-8"),
+                              headers={"Content-Type": ctype, **({"Origin": origin} if origin else {})},
+                              method="POST")
+            try:
+                with _ur.urlopen(req, timeout=8) as r:
+                    return r.status, json.loads(r.read().decode("utf-8"))
+            except urllib.error.HTTPError as e:
+                try:
+                    return e.code, json.loads(e.read().decode("utf-8"))
+                except Exception:
+                    return e.code, {}
+            except Exception as e:
+                return 0, {"error": str(e)}
+
+        # 上一条测试把队列塞满了：先清空，才能验证"新增一条 → pending +1"而不是撞上限
+        _panel.inbox_mark_done(inbox_state, [r.get("id") for r in _panel.inbox_read_all(inbox_state)])
+        before_pending = len(_panel.inbox_pending(inbox_state))
+        st_ok, body_ok = post_action({"text": "去渡口打听消息"})
+        check("POST /action 接受同源 JSON 并返回 pending 计数",
+              st_ok == 200 and body_ok.get("ok") and before_pending == 0
+              and body_ok.get("pending") == before_pending + 1,
+              "status=%s pending=%s" % (st_ok, body_ok.get("pending")))
+        st_bad, body_bad = post_action({"text": "x"}, ctype="text/plain")
+        check("POST /action 拒绝非 JSON（415）", st_bad == 415 and body_bad.get("ok") is False,
+              "status=%s" % st_bad)
+        st_x, body_x = post_action({"text": "x"}, origin="http://evil.example")
+        check("POST /action 拒绝跨站 Origin（403）", st_x == 403 and body_x.get("ok") is False,
+              "status=%s" % st_x)
+        st_long, body_long = post_action({"text": "长" * (_panel.INBOX_MAX_TEXT + 10)})
+        check("POST /action 拒绝超长行动（400）", st_long == 400, "status=%s" % st_long)
+        st_empty, _ = post_action({"text": "   "})
+        check("POST /action 拒绝空行动（400）", st_empty == 400, "status=%s" % st_empty)
+        st_404, _ct, _b = http_get(inbox_base + "/action2")
+        check("未知 POST 路径一律 404", st_404 == 404, "status=%s" % st_404)
+        st_actions, acts = get_json(inbox_base + "/actions")
+        check("GET /actions 返回未处理行动列表",
+              st_actions == 200 and isinstance((acts or {}).get("pending"), list),
+              str(len((acts or {}).get("pending") or [])))
+        st_exp, ct_exp, body_exp = http_get(inbox_base + "/export")
+        exported = json.loads(body_exp.decode("utf-8")) if body_exp else {}
+        check("/export 直出状态 JSON（只读，内容与存档一致）",
+              st_exp == 200 and exported.get("tick") == 12 and "application/json" in ct_exp,
+              "status=%s tick=%s" % (st_exp, exported.get("tick")))
+        check("行动队列 HTTP 层全程不写状态文件（字节不变）",
+              hashlib.sha256(open(inbox_state, "rb").read()).hexdigest() == inbox_hash)
+    finally:
+        inbox_srv.shutdown()
+
+    # 11. 视图模型新增：inbox_pending 计数 + meta.inbox 路径
+    vm_meta = _panel.view_model(inbox_state)
+    check("视图模型带 inbox_pending 与 meta.inbox",
+          isinstance(vm_meta.get("inbox_pending"), int)
+          and str(vm_meta.get("meta", {}).get("inbox", "")).endswith(".inbox.jsonl"),
+          "pending=%s" % vm_meta.get("inbox_pending"))
+
     passed = sum(RESULTS)
     print("\n%d/%d passed" % (passed, len(RESULTS)))
     return 0 if passed == len(RESULTS) else 1

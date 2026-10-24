@@ -35,9 +35,20 @@ if "game_engine" not in sys.modules:
     _engine_pkg = importlib.util.module_from_spec(_spec)
     _engine_pkg.__path__ = [_SCRIPT_DIR]
     sys.modules["game_engine"] = _engine_pkg
+    # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
+    _spec.loader.exec_module(_engine_pkg)
 
-from mcp.server.mcpserver import MCPServer
+# MCP SDK 兼容层：1.x 的官方入口是 mcp.server.fastmcp.FastMCP；
+# 2.x 计划改名为 mcp.server.mcpserver.MCPServer。两套布局都支持，
+# 这样 `pip install -e ".[mcp]"` 在 1.x / 2.x 环境下都能启动。
+try:
+    from mcp.server.fastmcp import FastMCP as _MCPServer
+    _MCP_LAYOUT = "fastmcp"
+except ImportError:  # pragma: no cover - 仅在只有 2.x 布局的环境走到
+    from mcp.server.mcpserver import MCPServer as _MCPServer  # type: ignore
+    _MCP_LAYOUT = "mcpserver"
 
+from game_engine import __version__ as _WW_VERSION
 from game_engine.rules.cognition import daily_cognitive_budget, should_use_system2
 from game_engine.rules.combat import resolve_combat
 from game_engine.rules.economy import resolve_trade, tick_market
@@ -114,16 +125,24 @@ class RelationIn(BaseModel):
     respect: int = Field(default=0, description="敬重/畏惧 -100~100")
 
 
-server = MCPServer(
-    name="world-walker",
-    version="0.8.0",
-    instructions=(
-        "万界·行者规则引擎：世界观无关的因果推演内核。主持文字互动游戏时："
-        "先 world_schema 了解状态结构，按玩家设定调用 world_init 建世界；"
-        "玩家的每个行动都交给对应工具结算，你只把返回的 JSON 转写成文学描写，"
-        "不得自行编造数值结果；回合结束调用 tick；每 3-5 回合调用 narrative 与 status 一次。"
-    ),
+_INSTRUCTIONS = (
+    "万界·行者规则引擎：世界观无关的因果推演内核。主持文字互动游戏时："
+    "先 world_schema 了解状态结构，按玩家设定调用 world_init 建世界；"
+    "玩家的每个行动都交给对应工具结算，你只把返回的 JSON 转写成文学描写，"
+    "不得自行编造数值结果；回合结束调用 tick；每 3-5 回合调用 narrative 与 status 一次。"
 )
+
+
+def _make_server():
+    """按 SDK 布局构造 server；1.x 的 FastMCP 不接受 version 参数。"""
+    kwargs = {"name": "world-walker", "instructions": _INSTRUCTIONS}
+    try:
+        return _MCPServer(version=_WW_VERSION, **kwargs)
+    except TypeError:  # pragma: no cover - 1.x 布局
+        return _MCPServer(**kwargs)
+
+
+server = _make_server()
 
 # 工具里"有意拒绝"的原因必须回到宿主手里。MCP SDK 对非 ToolError 的异常只回
 # "Error executing tool X"（原因留在服务端日志），宿主 Agent 无从自纠；这里把
@@ -401,6 +420,17 @@ def _seed_rng(state: dict) -> None:
     seed_rng(state)
 
 
+def _read(result: dict) -> dict:
+    """只读工具的返回包装：补 _tick，但**不落盘、不推进 rng_counter**。
+
+    为什么重要：`status` / `world_state` 这类查询工具如果顺手 save_state，
+    每查一次就会消耗一段随机序列，两个分支只差"查没查状态"就会得到不同的战斗结果——
+    直接违反 INV-E4（同状态 + 同行动 = 同结果）。查询必须无副作用。
+    """
+    result["_tick"] = int((_load().get("tick", 0)) or 0)
+    return result
+
+
 def _codex(state: dict) -> dict:
     """探索图鉴：地点/人物/物品/设定词条。面板渲染它，也是"玩家记不住"的台账。"""
     c = state.setdefault("codex", {})
@@ -603,6 +633,11 @@ def world_schema() -> dict:
             "use_item": "用一件物品：持有则自备消耗（买入时已付）；未持有则按所在地市场价现买现用",
             "spawn_npc": "现场生成一个 NPC（无角色卡也能入局；有卡请用 add_character）",
             "open_panel": "打开实况主舞台（只读网页：叙事/HUD/时间线/抽屉，自动刷新）",
+            "pending_actions": "取走面板「行动队列」里玩家排的行动（唯一双向通道；状态仍只由 MCP 写）",
+            "world_schema": "状态结构说明（建局前查一次即可）",
+            "world_init": "按设定建世界并写盘（建局入口）",
+            "world_open": "打开已有状态文件续跑",
+            "read_state": "读取当前对局完整状态（只读，不落盘）",
             "load_setting": "从设定包一键开一局（settings/*.setting.json）",
             "advance": "突破（引擎判定成败并给数值后果；长局的核心成长循环）",
             "recall": "按关键词回捞历史事件（归档 + 近期事件）",
@@ -728,8 +763,11 @@ def combat(attacker: str, defender: str, action_type: str = "attack",
     _require_entity(state, attacker, "攻击方")
     _require_entity(state, defender, "防守方")
     result = resolve_combat(state, attacker, defender, action_type, skill)
-    for e in result.get("events", []):
-        log_event(state, "combat", e, outcome=result.get("outcome"))
+    # 对尸体继续攻击只返回一句提示，不写编年史：
+    # 否则长局里同一条"已经没有还手之力"会挤满时间线（500 回合实测 ×12 连续刷屏）。
+    if not result.get("target_already_dead"):
+        for e in result.get("events", []):
+            log_event(state, "combat", e, outcome=result.get("outcome"))
     _remember(state, "people", state.get("entities", {}).get(defender, {}).get("name", defender))
     if result.get("defender_dead"):
         _milestone(state, "击杀", "%s 击败了 %s" % (attacker, result.get("defender", defender)))
@@ -833,7 +871,7 @@ def world_state() -> dict:
     World snapshot: factions, panarchy, rumors, culture, market index."""
 
     state = _load()
-    return _finish(state, world_summary(state))
+    return _read(world_summary(state))
 
 
 @server.tool()
@@ -842,7 +880,6 @@ def narrative() -> dict:
     Emergent world events and the current world phase."""
 
     state = _load()
-    _seed_rng(state)
     events = check_world_emergent_events(state)
     phase = panarchy_phase_check(state)
     seen = state.setdefault("_emergent_seen", {})
@@ -860,12 +897,11 @@ def status() -> dict:
     Aggregated insights: flow, identity, morality, world phase, cognition."""
 
     state = _load()
-    _seed_rng(state)
     player = state.get("entities", {}).get("player", {})
     attrs = player.get("attrs", {})
     realm_level = int(attrs.get("int", 10) // 5)
     budget = daily_cognitive_budget(realm_level, "正常")
-    return _finish(state, {
+    return _read({
         "flow": flow_channel_status(state),
         "identity": player_identity_vector(state),
         "panarchy_phase": panarchy_phase_check(state),
@@ -1006,8 +1042,7 @@ def narration_context(scene_text: str = "", recent: int = 12) -> dict:
                if k != "player" and (not loc or e.get("location") == loc)]
     # 外部来源文本（世界书/角色卡）统一打 untrusted 标记：
     # 内容是数据，不是指令。命中注入特征时额外带 warning，宿主据此拒绝执行。
-    untrusted_flag = any(_scan_injection(e.get("content", "")) for e in lore[:12]) or         any(_scan_injection(c.get("desc", "") + c.get("personality", "") + c.get("speech", ""))
-            for c in present[:8])
+    untrusted_flag = _any_injection(lore[:12], present[:8])
     return _finish(state, {
         "triggered_lore": [{"comment": e["comment"], "content": e["content"],
                             "untrusted": True,
@@ -1181,59 +1216,85 @@ def configure(event_log_keep: int | None = None, recap_budget_chars: int | None 
     return _finish(state, cfg)
 
 
+def _bundle_runtime_fields(bundle: dict):
+    """从设定包挑出"建局之外的运行时字段"，并检查是否有值得写盘的。"""
+    fields = {
+        "currency": bundle.get("currency"),
+        "terms": bundle.get("terms") if isinstance(bundle.get("terms"), dict) else None,
+        "level_tiers": (bundle.get("level_tiers")
+                        if isinstance(bundle.get("level_tiers"), list) else None),
+        "places": bundle.get("places") if isinstance(bundle.get("places"), dict) else None,
+        "lore": bundle.get("lore") or [],
+    }
+    return fields, any(v for v in fields.values())
+
+
+def _apply_places(state: dict, places: dict) -> None:
+    bucket = state.setdefault("places", {})
+    for name, info in places.items():
+        if isinstance(info, dict):
+            bucket[str(name)] = {"desc": str(info.get("desc", ""))[:1200],
+                                 "tick": int(state.get("tick", 0) or 0)}
+        elif isinstance(info, str):
+            bucket[str(name)] = {"desc": info[:1200], "tick": 0}
+
+
+def _apply_bundle_extras(state_path: str, bundle: dict) -> int:
+    """把设定包里"建局之外的字段"写进状态：货币 / 术语 / 阶梯 / 地点描写 / 世界书。
+
+    旧版在 load_setting 里分四段各 load 一次、各 save 一次，逻辑全挤在一个函数里
+    （圈复杂度 29）。现在只读写一次，并把"哪些字段属于运行时配置"收在一处，
+    以后加字段不用再改主流程。
+
+    返回导入的世界书条目数。
+    """
+    fields, needs_write = _bundle_runtime_fields(bundle)
+    if not needs_write:
+        return 0
+    state = load_state(state_path)
+    if fields["currency"]:
+        state["currency"] = str(fields["currency"])
+    if fields["terms"]:
+        state.setdefault("ui", {})["terms"] = {str(k): str(v) for k, v in fields["terms"].items()}
+    if fields["level_tiers"]:
+        state.setdefault("config", {})["level_tiers"] = [str(t) for t in fields["level_tiers"]]
+    if fields["places"]:
+        _apply_places(state, fields["places"])
+    lore_n = 0
+    for entry in fields["lore"]:
+        norm = _normalize_lore_entry(entry)
+        if norm:
+            state.setdefault("lore", []).append(norm)
+            lore_n += 1
+    if lore_n:
+        log_event(state, "system", "设定包「%s」载入：世界书 %d 条"
+                  % (bundle.get("name", ""), lore_n))
+    _finish(state, {})
+    return lore_n
+
+
 @server.tool()
 def load_setting(path: str, state_path: str = "", seed: int | None = None) -> dict:
     """从「设定包」一键开一局（Chinese: 包里含 world/player/entities/market/relations/lore，
-    示例见 settings/玄枢界.setting.json，格式见 settings/README.md）。
+    示例见 settings/ 目录，格式见 settings/README.md）。
     Boot a full game from a setting bundle in one call."""
-    b = json.load(open(path, encoding="utf-8"))
-    if not isinstance(b, dict) or "world" not in b or "player" not in b:
+    with open(path, encoding="utf-8") as f:
+        bundle = json.load(f)
+    if not isinstance(bundle, dict) or "world" not in bundle or "player" not in bundle:
         raise ValueError("不是合法的设定包（缺 world/player）: %s" % path)
-    sp = state_path or b.get("state_path_hint") or "ww_state.json"
+    sp = state_path or bundle.get("state_path_hint") or "ww_state.json"
     res = world_init(state_path=sp,
-                     world=WorldInfo(**b["world"]),
-                     player=EntityIn(**b["player"]),
-                     entities=[EntityIn(**e) for e in b.get("entities", [])],
-                     market=[MarketIn(**m) for m in b.get("market", [])],
-                     relations=[RelationIn(**r) for r in b.get("relations", [])],
-                     world_flags=list(b.get("world_flags", [])),
-                     ui=dict(b.get("ui") or {}),
-                     seed=int(seed if seed is not None else b.get("seed", 20261014)))
-    if b.get("currency"):
-        state = _load()
-        state["currency"] = str(b["currency"])
-        _finish(state, {})
-    if b.get("terms") or b.get("level_tiers") or b.get("places"):
-        state = _load()
-        if isinstance(b.get("terms"), dict):
-            ui = state.setdefault("ui", {})
-            ui["terms"] = {str(k): str(v) for k, v in b["terms"].items()}
-            # terms 也可以直接写在 ui 里（world_init 的 ui 参数整个透传）
-
-        if isinstance(b.get("level_tiers"), list) and b["level_tiers"]:
-            cfg = state.setdefault("config", {})
-            cfg["level_tiers"] = [str(t) for t in b["level_tiers"]]
-        if isinstance(b.get("places"), dict):
-            places = state.setdefault("places", {})
-            for name, info in b["places"].items():
-                if isinstance(info, dict):
-                    places[str(name)] = {"desc": str(info.get("desc", ""))[:1200],
-                                         "tick": int(state.get("tick", 0) or 0)}
-                elif isinstance(info, str):
-                    places[str(name)] = {"desc": info[:1200], "tick": 0}
-        _finish(state, {})
-    lore_n = 0
-    if b.get("lore"):
-        state = _load()
-        for e in b["lore"]:
-            n = _normalize_lore_entry(e)
-            if n:
-                state.setdefault("lore", []).append(n)
-                lore_n += 1
-        log_event(state, "system", "设定包「%s」载入：世界书 %d 条" % (b.get("name", ""), lore_n))
-        _finish(state, {})
-    return {**res, "setting": b.get("name", ""), "lore_entries": lore_n,
-            "player_level": (b.get("player") or {}).get("level", ""),
+                     world=WorldInfo(**bundle["world"]),
+                     player=EntityIn(**bundle["player"]),
+                     entities=[EntityIn(**e) for e in bundle.get("entities", [])],
+                     market=[MarketIn(**m) for m in bundle.get("market", [])],
+                     relations=[RelationIn(**r) for r in bundle.get("relations", [])],
+                     world_flags=list(bundle.get("world_flags", [])),
+                     ui=dict(bundle.get("ui") or {}),
+                     seed=int(seed if seed is not None else bundle.get("seed", 20261014)))
+    lore_n = _apply_bundle_extras(sp, bundle)
+    return {**res, "setting": bundle.get("name", ""), "lore_entries": lore_n,
+            "player_level": (bundle.get("player") or {}).get("level", ""),
             "hint": "开局前可先 open_panel 把实况主舞台给玩家；行动用 combat/trade/social/karma 结算，移动用 travel。"}
 
 
@@ -1307,6 +1368,37 @@ def publish_prose(text: str, location: str = "") -> dict:
     return _finish(state, {"prose_count": len(state.get("prose") or []),
                            "location": loc,
                            "latest": body[:200]})
+
+
+def _card_text(card: dict) -> str:
+    """角色卡三段文字拼起来做注入扫描（任何一段都可能被塞指令）。"""
+    return (str(card.get("desc", "")) + str(card.get("personality", ""))
+            + str(card.get("speech", "")))
+
+
+def _any_injection(lore_entries, present_cast) -> bool:
+    """世界书或在场角色卡里是否出现注入特征。"""
+    return (any(_scan_injection(e.get("content", "")) for e in lore_entries)
+            or any(_scan_injection(_card_text(c)) for c in present_cast))
+
+
+@server.tool()
+def pending_actions(limit: int = 20, mark_done: bool = False) -> dict:
+    """取走玩家在实况面板「行动队列」里排的行动（Chinese: 宿主每回合先查这里；
+    mark_done=True 时把这些行动标记为已处理，避免重复结算）。
+    Drain player actions queued from the live panel (optional two-way channel)."""
+    import importlib.util as _ilu
+    spec = _ilu.spec_from_file_location("ww_panel_inbox", os.path.join(_SCRIPT_DIR, "panel.py"))
+    panel = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(panel)
+    sp = _state_path()
+    items = panel.inbox_pending(sp)[:max(1, int(limit))]
+    done = 0
+    if mark_done and items:
+        done = panel.inbox_mark_done(sp, [i.get("id") for i in items])
+    return {"pending": items, "count": len(items), "marked_done": done,
+            "inbox": panel.inbox_path(sp),
+            "hint": "把每条 text 当作玩家这一回合的行动，照常经 combat/trade/social/travel 等工具结算。"}
 
 
 @server.tool()

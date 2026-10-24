@@ -22,8 +22,12 @@ REQUIRED = [
     'panel.js',
     'assets/echarts.min.js',
     'settings/玄枢界.setting.json',
+    'settings/折剑行.setting.json',
+    'settings/霓虹深渊.setting.json',
+    'settings/雾港.setting.json',
     'ARCHITECTURE.md',
     'BRAND.md',
+    'docs/demo/玄枢界.save.json',
 ]
 
 

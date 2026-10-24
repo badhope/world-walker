@@ -85,7 +85,18 @@ def _market_index(state: dict) -> float:
 
 
 def evolve_factions(state: dict) -> List[str]:
-    """势力消长：logistic 增长 + 头部两家 Lotka-Volterra 压制。
+    """势力消长：每个势力有自己的**禀赋**与承载上限，头部两家再做温和的相互压制。
+
+    为什么不是"所有势力都朝 100 长"：那样几十回合后全体贴顶，排行榜变成平线，
+    "谁在崛起"就看不出来了（实测 180 回合即饱和）。为什么也不是"共享一个总容量"：
+    那会把所有势力拉平到同一个数（实测 8 家全部 35.5），同样没有信息量。
+
+    正确做法是让**每个势力带着自己的禀赋**参与竞争：
+      · 禀赋由势力名确定性派生（`sha256(name)` → 0.55~1.45），决定它的承载上限；
+      · logistic 增长把自己的存量推向该上限；
+      · 头部两家再用 Lotka-Volterra 做温和压制，制造此消彼长的摆荡；
+      · 强者承担治理成本，弱者享受"挑战者回流"，避免赢家通吃。
+    结果是：长期有稳定的强弱格局（排行榜可读），短期有换手（世界是活的）。
 
     返回本回合产生的事件文案（供 tick 写进编年史）。
     """
@@ -98,36 +109,57 @@ def evolve_factions(state: dict) -> List[str]:
     events = []
 
     names = sorted(fac)
-    for i, name in enumerate(names):
+    previous_leader = state.get("_faction_leader")
+    ranks = sorted(names, key=lambda n: -float(fac[n].get("power", 50.0)))
+    for name in names:
         row = fac.setdefault(name, {"power": 50.0, "reach": 0.2})
         power = float(row.get("power", 50.0))
-        drift = (_unit(seed, tick, "fac:" + name) - 0.5) * 2.0 * intensity
-        grown = logistic_growth(power, 0.03 + 0.01 * max(0.0, drift), 100.0)
-        row["power"] = max(1.0, min(100.0, grown))
+        trait = 0.55 + _unit(seed, 0, "trait:" + name) * 0.90
+        cap = 24.0 + 40.0 * trait                      # 46 ~ 82，各自的"天花板"
+        drift = (_unit(seed, tick, "fac:" + name) - 0.5) * 0.10 * intensity
+        r = 0.055 * (1.0 - min(1.0, power / max(1.0, cap))) + drift
+        grown = logistic_growth(power, r, cap + 6.0)
+        fac[name]["power"] = max(3.0, min(96.0, grown))
 
-    top = sorted(names, key=lambda n: -float(fac[n].get("power", 0)))[:2]
+    top = ranks[:2]
     if len(top) == 2:
         a, b = top
         pa = float(fac[a].get("power", 50.0))
         pb = float(fac[b].get("power", 50.0))
-        # 强者压制弱者：把两者的比值往均衡拉，弱者被吃掉的份额按强度缩放
         prey, pred = min(pa, pb), max(pa, pb)
         if pred > 0:
             prey2, pred2 = lotka_volterra(prey / 100.0, pred / 100.0,
-                                          a=0.01 * intensity, b=0.06,
-                                          c=0.05, d=0.005)
+                                          a=0.004 * intensity, b=0.014,
+                                          c=0.012, d=0.006)
             weaker = a if pa <= pb else b
             stronger = b if weaker == a else a
-            fac[weaker]["power"] = max(1.0, min(100.0, prey2 * 100.0))
-            fac[stronger]["power"] = max(1.0, min(100.0, pred2 * 100.0))
+            fac[weaker]["power"] = max(3.0, min(96.0, prey2 * 100.0))
+            fac[stronger]["power"] = max(3.0, min(96.0, pred2 * 100.0))
+
+    # 挑战者回流 + 强者治理成本：没有这两项，任何正反馈竞争都会在长局里一家独大。
+    avg = sum(float(fac[n].get("power", 50.0)) for n in names) / len(names)
+    for name in names:
+        cur = float(fac[name].get("power", 50.0))
+        pull = 0.02 * (avg - cur) * min(1.5, intensity)
+        if cur > 68.0:
+            pull -= 0.008 * (cur - 68.0)
+        fac[name]["power"] = max(3.0, min(96.0, cur + pull))
 
     leader = max(names, key=lambda n: float(fac[n].get("power", 0)))
     leader_power = float(fac[leader].get("power", 0))
-    flag = "势力:%s 势盛" % leader
+    avg_power = sum(float(fac[n].get("power", 0)) for n in names) / len(names)
     flags = state.setdefault("world_flags", [])
-    if leader_power >= 78.0 and flag not in flags:
-        flags.append(flag)
-        events.append("「%s」声势渐盛，开始主导地方格局" % leader)
+    state["_faction_leader"] = leader
+    # "势盛"用相对优势判定：绝对阈值在容量受限的世界里永远到不了。
+    # 判据用"绝对差距"而不是比值：两家时平均=中位，比值阈值要么永远触发（≥1.1）
+    # 要么永远不触发（≥1.3），而差距 >6 点在有 4~8 家的世界里恒定代表"压过一头"。
+    if avg_power > 0 and leader_power >= 38.0 and (leader_power - avg_power) >= 4.0:
+        flag = "势力:%s 势盛" % leader
+        if flag not in flags:
+            flags.append(flag)
+            events.append("「%s」声势渐盛，开始主导地方格局" % leader)
+    if previous_leader and previous_leader != leader:
+        events.append("「%s」压过「%s」，地方格局换了个主" % (leader, previous_leader))
     if len(flags) > MAX_FLAGS:
         del flags[:len(flags) - MAX_FLAGS]
     return events

@@ -55,6 +55,12 @@ def sample_of(state):
         "affinity_avg": round(sum(affs) / len(affs), 2) if affs else 0.0,
         "codex_total": int(codex_total),
         "location": str(p.get("location", "") or ""),
+        # 世界侧脉搏：长局里"世界自己会动"的可视证据（相位/存量/连接度/烈度）。
+        # 旧存档没有 panarchy 时给中性值，图表自动降级。
+        "phase": str(((state.get("panarchy") or {}).get("phase") or "")),
+        "capital": round(float(((state.get("panarchy") or {}).get("capital") or 0.0)), 4),
+        "connectedness": round(float(((state.get("panarchy") or {}).get("connectedness") or 0.0)), 4),
+        "intensity": round(float((state.get("panarchy") or {}).get("intensity") or 1.0), 3),
     }
 
 
@@ -104,7 +110,7 @@ def load_series(state_path):
                 for line in f:
                     try:
                         s = json.loads(line)
-                    except Exception:  # aqg: top-level boundary —— 单行坏样本跳过，不打断整段历史
+                    except Exception:  # nosec B112; aqg: top-level boundary —— 单行坏样本跳过，不打断整段历史
                         continue
                     if isinstance(s, dict) and "tick" in s:
                         out.append(s)

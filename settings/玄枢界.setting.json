@@ -636,5 +636,159 @@
   "ui": {
     "skin": "xuanshu",
     "motif": "玄门·墨金"
-  }
+  },
+  "playbook": {
+    "loop": "freeform",
+    "input": "natural",
+    "progress": {
+      "axis": "level",
+      "label": "修行阶",
+      "max": 10
+    },
+    "failure": {
+      "mode": "hp",
+      "label": "重伤退场",
+      "max": 0
+    },
+    "beat": {
+      "pattern": [
+        "日常修行",
+        "资源争夺",
+        "势力摩擦",
+        "生死一线",
+        "代价与回收"
+      ],
+      "every": 6
+    },
+    "settlement": [
+      "combat",
+      "trade",
+      "social",
+      "karma",
+      "advance"
+    ],
+    "context": {
+      "inject": [
+        "lore",
+        "cast",
+        "chronicle",
+        "quests"
+      ],
+      "max_lore": 12,
+      "scan_depth": 3
+    }
+  },
+  "questlines": [
+    {
+      "id": "xuanshu_trial",
+      "title": "听霄学宫·入学试炼",
+      "summary": "学宫开山收徒，七十个名额，权贵已经买走了一半。",
+      "tags": [
+        "主线",
+        "成长"
+      ],
+      "visibility": {
+        "flag": "学宫开山之年"
+      },
+      "stages": [
+        {
+          "id": "signup",
+          "title": "报名",
+          "objectives": [
+            "打听到学宫报名的门槛",
+            "凑齐报名所需的路费"
+          ],
+          "exit_if": {
+            "gold_gte": 60
+          },
+          "next": [
+            "first_trial"
+          ]
+        },
+        {
+          "id": "first_trial",
+          "title": "第一场：筛骨",
+          "objectives": [
+            "在试炼场上撑过三招"
+          ],
+          "exit_if": {
+            "tier_gte": 1
+          },
+          "next": [
+            "third_trial"
+          ]
+        },
+        {
+          "id": "third_trial",
+          "title": "第三场：取巧",
+          "objectives": [
+            "找到绕开名额限制的办法",
+            "或者打败一个已经拿到名额的人"
+          ],
+          "next": []
+        }
+      ],
+      "reward": {
+        "gold": 200,
+        "flags": [
+          "学宫弟子"
+        ]
+      }
+    },
+    {
+      "id": "xuanshu_old_tower",
+      "title": "旧枢台的一线光",
+      "summary": "哑火三百年的旧枢台，最近夜里透出光。",
+      "tags": [
+        "真相线"
+      ],
+      "visibility": {
+        "visited": "旧枢台废墟"
+      },
+      "stages": [
+        {
+          "id": "saw_light",
+          "title": "看见光",
+          "objectives": [
+            "确认那道光不是错觉"
+          ],
+          "exit_if": {
+            "visited": "旧枢台废墟"
+          },
+          "next": [
+            "who_watches"
+          ]
+        },
+        {
+          "id": "who_watches",
+          "title": "谁在盯着",
+          "objectives": [
+            "找出同样盯着旧枢台的人"
+          ],
+          "exit_if": {
+            "relation_gte": {
+              "with": "han_ya_ke",
+              "respect": 10
+            }
+          },
+          "next": [
+            "open_it"
+          ]
+        },
+        {
+          "id": "open_it",
+          "title": "打开它",
+          "objectives": [
+            "决定：进去，还是封上"
+          ],
+          "next": []
+        }
+      ],
+      "reward": {
+        "flags": [
+          "枢台重启"
+        ]
+      }
+    }
+  ]
 }

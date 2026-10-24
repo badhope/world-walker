@@ -75,6 +75,16 @@
     </section>
 
     <section class="card">
+      <h2><span data-term="playbook">玩法</span> <span class="tag" id="pb-loop"></span></h2>
+      <div class="row"><span class="k" id="pb-progress-label">进度</span><span id="pb-progress">—</span></div>
+      <div class="barwrap" role="img" aria-label="进度条"><div class="bar" id="pb-bar" style="width:0"></div></div>
+      <div class="row"><span class="k" id="pb-fail-label">失败</span><span id="pb-fail">—</span></div>
+      <div class="barwrap" role="img" aria-label="失败条"><div class="bar danger" id="pb-fail-bar" style="width:0"></div></div>
+      <div class="row"><span class="k">当前节拍</span><span id="pb-beat">—</span></div>
+      <div class="hint" id="pb-guide"></div>
+    </section>
+
+    <section class="card">
       <h2><span data-term="inventory">随身</span> <span class="tag" id="inv-count"></span></h2>
       <div class="kv" id="inventory"><span class="empty">（空手）</span></div>
     </section>
@@ -99,6 +109,11 @@
         </div>
       </form>
     </div>
+
+    <section class="card" id="quest-card">
+      <h2><span data-term="quests">事业线</span> <span class="tag" id="quest-hint"></span></h2>
+      <div id="quest-list"><span class="empty">这一局还没有浮现的事业线</span></div>
+    </section>
 
     <section class="card">
       <h2><span data-term="chronicle">编年史</span> <span class="tag" id="timeline-hint"></span>
@@ -207,6 +222,14 @@
       <div class="kv" id="world-rumors"><span class="empty">暂无传闻</span></div>
       <div class="row" style="margin-top:8px"><span class="k" data-term="culture">风气</span></div>
       <div class="kv" id="world-culture"><span class="empty">—</span></div>
+    </div>
+  </details>
+
+  <details class="drawer" id="drawer-lorebook">
+    <summary><span data-term="lorebook">世界书</span> <span class="tag" id="lore-hint" style="margin-left:auto"></span></summary>
+    <div class="body">
+      <div class="hint">这里显示每条设定的触发次数与冷却剩余——用来解释「为什么这一句被触发」。</div>
+      <div id="lore-rows"></div>
     </div>
   </details>
 

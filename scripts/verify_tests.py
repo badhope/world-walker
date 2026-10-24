@@ -42,7 +42,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 静态 check() 调用点数的精确基线：少一条就报 R6（删除断言/整段检查都拦得住）
 EXPECTED = {
     'scripts/verify_cli.py': 7,
-    'scripts/verify_panel.py': 47,
+    'scripts/verify_panel.py': 50,
     'scripts/verify_mcp_stdio.py': 53,
     'scripts/verify_near_death.py': 7,
     'scripts/verify_formulas.py': 119,
@@ -54,6 +54,7 @@ EXPECTED = {
     'scripts/verify_world.py': 48,
     'scripts/verify_settings.py': 6,
     'scripts/verify_docs.py': 16,
+    'scripts/verify_gameplay.py': 44,
 }
 CHECK_FUNCS = {'check', 'ux', 'check_true'}
 FINDINGS = []

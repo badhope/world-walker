@@ -136,13 +136,32 @@ MUTATIONS = [
      "        if origin and origin.split('//')[-1] != host:",
      '        if False:',
      'scripts/verify_panel.py'),
+    # M31/M32 的片段依赖"当前版本号/工具数"，写死会在版本升级后失效（已被 SKIP→FAIL 机制抓到）。
+    # 这里改成占位符，由 main() 在运行时替换成真实值。
     ('M31', '文档版本号与 pyproject 漂移', 'pyproject.toml',
-     'version = "1.0.0"', 'version = "0.9.9"',
+     '@@VERSION@@', '@@VERSION@@.0.1',
      'scripts/verify_docs.py'),
     ('M32', 'README 宣称的工具数与源码不符', 'README.md',
-     '## MCP 工具一览（34 个）', '## MCP 工具一览（99 个）',
+     '## MCP 工具一览（@@TOOLCOUNT@@ 个）', '## MCP 工具一览（@@TOOLCOUNT_WRONG@@ 个）',
      'scripts/verify_docs.py'),
-    ('M21', '相位不再影响事件概率', 'rules/narrative_engine.py',
+    ('M33', '事业线绕过 exit_if 自动推进（任务自己往前跑）', 'rules/questline.py',
+     '    if cur.get("exit_if") is None or not evaluate(state, cur["exit_if"]):\n        return changes',
+     '    if False:\n        return changes',
+     'scripts/verify_gameplay.py'),
+    ('M34', '世界书递归默认打开（整本书进上下文）', 'rules/lorebook.py',
+     'get("lore_recursion", 0) or 0',
+     'get("lore_recursion", 3) or 3',
+     'scripts/verify_gameplay.py'),
+    ('M35', 'sticky 每次触发都续期（永不结束）', 'rules/lorebook.py',
+     '        rt["sticky_until"][eid] = int(tick) + sticky',
+     '        rt["sticky_until"][eid] = int(tick) + sticky * 99',
+     'scripts/verify_gameplay.py'),
+    ('M36', '失败钟不幂等（同 tick 同原因重复计数）', 'rules/playbook.py',
+     '    if key in seen:\n        return failure_state(state, pb)',
+     '    if False:\n        return failure_state(state, pb)',
+     'scripts/verify_gameplay.py'),
+    ('M21', '相位不再影响事件概率'
+, 'rules/narrative_engine.py',
      '    return PHASE_EVENT_MULT.get(_phase_key(state), 1.0)',
      '    return 1.0',
      'scripts/verify_world.py'),
@@ -207,10 +226,25 @@ def main():
         print('需要 git 来安全回滚改动')
         return 2
 
+    # 把占位符替换成当前真实值（版本号 / 工具数），避免版本升级后变异片段失效。
+    import re as _re
+    version = _re.search(r'__version__\s*=\s*"([^"]+)"',
+                         open(os.path.join(ROOT, '__init__.py'), encoding='utf-8').read()).group(1)
+    mcp_src = open(os.path.join(ROOT, 'mcp_server.py'), encoding='utf-8').read()
+    tool_count = len(_re.findall(r'^@server\.tool', mcp_src, _re.M))
+    resolved = []
+    for mid, desc, target, old_frag, new_frag, script in MUTATIONS:
+        old_frag = old_frag.replace('@@VERSION@@', version)
+        new_frag = new_frag.replace('@@VERSION@@', version)
+        new_frag = new_frag.replace('@@TOOLCOUNT_WRONG@@', str(tool_count + 65))
+        old_frag = old_frag.replace('@@TOOLCOUNT@@', str(tool_count))
+        resolved.append((mid, desc, target, old_frag, new_frag, script))
+    mutations = resolved
+
     total = killed = 0
     survivors = []
 
-    for mid, desc, target, old, new, script in MUTATIONS:
+    for mid, desc, target, old, new, script in mutations:
         if args.only and args.only != mid:
             continue
         path = os.path.join(ROOT, target)

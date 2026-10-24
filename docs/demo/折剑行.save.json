@@ -278,11 +278,6 @@
   "event_log": [
     {
       "tick": 55,
-      "type": "tick",
-      "desc": "回合55结束"
-    },
-    {
-      "tick": 55,
       "type": "travel",
       "desc": "抵达「听雨楼」：沿途留意了路边的动静"
     },
@@ -330,6 +325,13 @@
       "tick": 60,
       "type": "breakthrough",
       "desc": "突破至 二流"
+    },
+    {
+      "tick": 61,
+      "type": "quest",
+      "desc": "事业线「zhejian_broken_sword」推进到：断碑崖",
+      "quest": "zhejian_broken_sword",
+      "stage": "cliff"
     },
     {
       "tick": 61,
@@ -1283,6 +1285,219 @@
     "era": "大衍十一年 · 霜降",
     "location_desc": "洛水渡的雾还没散。渡口边支着一张旧木桌，桌上压着一柄断了两寸的剑——剑是我爹留下的，桌是昨天赌赢的。摆渡的老艄公看了我一眼，说：'上不上？不上就等下一趟，下一趟是三天后。'"
   },
+  "playbook": {
+    "loop": "ttrpg",
+    "input": "natural",
+    "progress": {
+      "axis": "level",
+      "label": "身手",
+      "max": 7
+    },
+    "failure": {
+      "mode": "clock",
+      "label": "债主上门",
+      "max": 12
+    },
+    "beat": {
+      "pattern": [
+        "接活",
+        "踩点",
+        "动手",
+        "收尾",
+        "代价"
+      ],
+      "every": 4
+    },
+    "settlement": [
+      "combat",
+      "trade",
+      "social",
+      "karma"
+    ],
+    "context": {
+      "inject": [
+        "lore",
+        "cast",
+        "chronicle",
+        "quests"
+      ],
+      "max_lore": 10,
+      "scan_depth": 2
+    }
+  },
+  "playbook_notes": [],
+  "questlines": [
+    {
+      "id": "zhejian_broken_sword",
+      "title": "断剑十三式",
+      "summary": "父亲留下半柄断剑和七式残招。缺的六式，藏在当年那一剑里。",
+      "stages": [
+        {
+          "id": "ask_around",
+          "title": "打听断剑",
+          "objectives": [
+            "问老艄公关于这把剑的事",
+            "去当铺查死当记录"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "visited": "栖霞镇"
+          },
+          "next": [
+            "first_lesson"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "first_lesson",
+          "title": "第一课：断",
+          "objectives": [
+            "找到愿意教你的人（或愿意跟你打的人）"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "tier_gte": 2
+          },
+          "next": [
+            "cliff"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "cliff",
+          "title": "断碑崖",
+          "objectives": [
+            "上崖",
+            "回答段无的那个问题"
+          ],
+          "enter_if": null,
+          "exit_if": null,
+          "next": [],
+          "on_enter": []
+        }
+      ],
+      "visibility": {
+        "flag": "断剑在手"
+      },
+      "fail_if": null,
+      "deadline_tick": null,
+      "reward": {
+        "flags": [
+          "断剑重铸"
+        ]
+      },
+      "tags": [
+        "主线"
+      ]
+    },
+    {
+      "id": "zhejian_debt",
+      "title": "当铺的账",
+      "summary": "宁三娘的账不记在纸上，记在人脸上。",
+      "stages": [
+        {
+          "id": "borrow",
+          "title": "开口",
+          "objectives": [
+            "向宁三娘借一笔钱，或当掉一件东西"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "gold_gte": 100
+          },
+          "next": [
+            "repay"
+          ],
+          "on_enter": []
+        },
+        {
+          "id": "repay",
+          "title": "还账",
+          "objectives": [
+            "连本带利还清"
+          ],
+          "enter_if": null,
+          "exit_if": {
+            "gold_gte": 300
+          },
+          "next": [],
+          "on_enter": []
+        }
+      ],
+      "visibility": {
+        "flag": "父仇未明"
+      },
+      "fail_if": null,
+      "deadline_tick": null,
+      "reward": {
+        "gold": 50,
+        "flags": [
+          "宁三娘的人情"
+        ]
+      },
+      "tags": [
+        "支线",
+        "经济"
+      ]
+    }
+  ],
+  "quests": {
+    "zhejian_broken_sword": {
+      "status": "active",
+      "stage": "cliff",
+      "done_stages": [
+        "ask_around",
+        "first_lesson"
+      ],
+      "entered_at": {
+        "ask_around": 1,
+        "first_lesson": 7,
+        "cliff": 61
+      },
+      "history": [
+        {
+          "tick": 1,
+          "stage": "ask_around",
+          "event": "enter"
+        },
+        {
+          "tick": 7,
+          "stage": "ask_around",
+          "event": "complete"
+        },
+        {
+          "tick": 7,
+          "stage": "first_lesson",
+          "event": "enter"
+        },
+        {
+          "tick": 61,
+          "stage": "first_lesson",
+          "event": "complete"
+        },
+        {
+          "tick": 61,
+          "stage": "cliff",
+          "event": "enter"
+        }
+      ]
+    },
+    "zhejian_debt": {
+      "status": "active",
+      "stage": "borrow",
+      "done_stages": [],
+      "entered_at": {
+        "borrow": 1
+      },
+      "history": [
+        {
+          "tick": 1,
+          "stage": "borrow",
+          "event": "enter"
+        }
+      ]
+    }
+  },
   "codex": {
     "locations": [
       "洛水渡",
@@ -1360,7 +1575,10 @@
       "constant": true,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1376,7 +1594,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1395,7 +1616,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1411,7 +1635,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1427,7 +1654,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1444,7 +1674,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1461,7 +1694,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1477,7 +1713,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1493,7 +1732,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     },
     {
       "keys": [
@@ -1509,7 +1751,10 @@
       "constant": false,
       "case_sensitive": false,
       "order": 100,
-      "enabled": true
+      "enabled": true,
+      "match_whole_words": false,
+      "exclude_recursion": false,
+      "use_probability": true
     }
   ],
   "rng_counter": 219,
@@ -1665,5 +1910,5 @@
       "text": "洛水渡的雾还没散。渡口边支着一张旧木桌，桌上压着一柄断了两寸的剑。摆渡的老艄公蹲在船头抽旱烟，看水面的浮木比看人还专心。在场的是老艄公、祁九。刚才发生的事还压在心上：突破至 绝顶；抵达「洛水渡」：回到城里，把这一路的事记下来。 世界的相位落在「K」——这种时候，任何小事都可能被放大。"
     }
   ],
-  "archived_events": 93
+  "archived_events": 97
 }

@@ -1,8 +1,9 @@
 # World Walker
 
-[中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
+[中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Gameplay layer](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
 
-> **The AI narrates. The engine owns the world.**
+> **The AI narrates. The engine owns the world — and the way you play is configurable too.**
+> Four worlds, four gameplay loops (freeform / choice / location-command / declare-resolve-consequence), one rule core.
 > A world-agnostic interactive-fiction kernel: 144 rule functions, 34 MCP tools,
 > 4 playable setting bundles, and a read-only live stage that works offline.
 > Same save, same seed—always the same world.
@@ -120,7 +121,7 @@ Full method and evidence: **[docs/BENCHMARK.md](docs/BENCHMARK.md)**. One-line v
 | Long-game memory | Context window + summary | **Three layers**: summaries + milestones + generational archive (`recall`) |
 | Ecosystem | Proprietary | Reads SillyTavern **character cards** (PNG/JSON, V1–V3) and **world info** |
 | Interface | Chat stream | **Read-only live stage**: narrative + HUD + long-run charts + codex + market |
-| Auditable | Hard | Structured event fields; read-only tools never write; mutation suite 32/32 |
+| Auditable | Hard | Structured event fields; read-only tools never write; mutation suite 36/36 |
 
 We deliberately **do not** do: image generation, multiplayer, cloud accounts, plugin marketplaces.
 Reasons are in [ROADMAP.md](ROADMAP.md).
@@ -223,18 +224,19 @@ No pytest suite by design—verification is 13 executable self-checks plus a mut
 | `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
 | `verify_branches.py` | 159 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
-| `verify_panel.py` | 69 | view-model contract, legacy saves, static whitelist, inbox guards |
-| `verify_mcp_stdio.py` | 63 | real stdio e2e, tavern ecosystem, read-only zero side effects |
+| `verify_panel.py` | 72 | view-model contract, legacy saves, static whitelist, inbox guards |
+| `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | 16 | version single-source / tool count / asset references |
+| `verify_gameplay.py` | 59 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 13 | real Edge render, drawers, responsive, zero JS errors |
-| `verify_tests.py` | 547 audits | AST-level rejection of tautological assertions |
-| `verify_mutation.py` | 32 mutants | **break the code, require tests to go red**; survival must be 0% |
+| `verify_tests.py` | 595 audits | AST-level rejection of tautological assertions |
+| `verify_mutation.py` | 36 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
 bash scripts/pre_push_gate.sh     # 17 checks, same criteria as GitHub Actions

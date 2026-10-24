@@ -568,3 +568,32 @@ dialog.carddlg button {
 .castcard[role="button"] { cursor: pointer; }
 .castcard[role="button"]:hover { background: var(--surface-2); border-radius: var(--radius-sm); }
 .castcard[role="button"]:focus-visible { outline: var(--focus); outline-offset: 2px; }
+
+/* ── 玩法剧本 / 事业线 / 世界书 ─────────────────── */
+.bar.danger { background: linear-gradient(90deg, #7a2d2d, var(--danger)); }
+.bar[style*="width:0"] { min-width: 0; }
+
+.quest {
+  border-left: 3px solid var(--accent-dim); padding: 6px 0 6px 10px; margin: 8px 0;
+}
+.quest.done { border-left-color: var(--success); opacity: .78; }
+.quest.failed { border-left-color: var(--danger); opacity: .78; }
+.quest b { color: var(--accent); font-size: 14px; }
+.quest .stage {
+  display: inline-block; font-size: 11.5px; color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 6px;
+}
+.quest ul { margin: 4px 0 0 16px; font-size: 13px; color: var(--text-dim); }
+.quest li { margin: 2px 0; }
+.quest .tagline { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+
+.lore-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 10px;
+  align-items: center; padding: 5px 0; border-bottom: 1px dotted var(--line);
+  font-size: 13px;
+}
+.lore-row .n { color: var(--text); }
+.lore-row .k { color: var(--text-faint); font-size: 11.5px; }
+.lore-row .c { color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+#pb-guide { margin-top: 6px; line-height: 1.5; }

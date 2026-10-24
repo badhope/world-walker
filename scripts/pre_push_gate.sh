@@ -45,6 +45,7 @@ step "长局内存稳定性（三段对照，查泄漏）" "$PY" scripts/verify_
 step "世界演化与结算耦合（自演化/相位/心流/道德/术语/正文/台账）" "$PY" scripts/verify_world.py
 step "多世界观设定包（四种世界各跑一遍载入与演化）" "$PY" scripts/verify_settings.py
 step "文档一致性（版本/工具数/截图引用/演示存档/CHANGELOG）" "$PY" scripts/verify_docs.py
+step "玩法层（剧本/事业线/世界书语义）" "$PY" scripts/verify_gameplay.py
 
 # 覆盖率门禁：核心域 ≥70%（当前 76%，含本轮新增的 world_evolution/progression）。装了 coverage 才跑。
 if "$PY" -c "import coverage" >/dev/null 2>&1; then
@@ -52,8 +53,8 @@ if "$PY" -c "import coverage" >/dev/null 2>&1; then
 === 覆盖率门禁（核心域 ≥70%）==='
   rm -rf "$ROOT/.cov-gate"
   COV_OK=1
-  for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world; do
-    "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema "$ROOT/scripts/$suite.py" >/dev/null 2>&1 || COV_OK=0
+  for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay; do
+    "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema,settings_loader "$ROOT/scripts/$suite.py" >/dev/null 2>&1 || COV_OK=0
   done
   PCT=$("$PY" -m coverage report --data-file="$ROOT/.cov-gate" 2>/dev/null         | awk '/^TOTAL/ {gsub("%","",$NF); print $NF}')
   rm -rf "$ROOT/.cov-gate"

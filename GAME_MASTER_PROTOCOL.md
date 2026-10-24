@@ -3,7 +3,7 @@
 > 核心原则:**所有确定性计算交给引擎,Agent 只负责文学叙事**。
 
 > **MCP 模式**：宿主是 MCP 客户端（Claude Code / Codex / Cursor 等）时，用 `mcp_server.py`
-> 暴露的 34 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
+> 暴露的 39 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
 > `moral_update` 合并为 `status`，`info_weight` 改名为 `narrative_weight`，`world_state`
 > 改名为 `read_state`；另增建局三件套 `world_schema` / `world_init` / `world_open`、
 > 叙事层 `narration_context`（关键词触发设定 + 在场角色卡面 + 编年史，每回合调）、
@@ -49,6 +49,30 @@ pending_actions(mark_done=True)
 
 ---
 
+## 1c. 玩法剧本与事业线（先读这一节再带团）
+
+一局游戏除了世界观，还有"怎么玩"。开局后第一件事调 `playbook_info()`：
+
+```
+→ {
+    loop: "ttrpg",
+    loop_guide: "按「玩家声明 → 引擎判定 → 后果描述」三步走…",
+    progress: {axis: "level", label: "身手", value: 2, max: 7, ratio: 0.29},
+    failure: {mode: "clock", label: "债主上门", value: 0, max: 12},
+    beat: {name: "接活", every: 4, next_in: 3},
+    quests: [...]
+  }
+```
+
+- **按 `loop_guide` 带团**：freeform 不写选项；choice 每场给 2–4 个有代价差异的选项；
+  mud 用「地点—出口—在场者—对象」组织；ttrpg 走"声明→判定→后果"。
+- **按 `beat.name` 调节奏**：节拍是循环的，`next_in` 告诉你还有几回合换拍。
+- **失败压力用 `failure`**：`clock` 模式下调 `failure_tick(amount, reason)` 推进败局钟，
+  不要直接扣血；`sanity` 模式看 `mp`；`deadline` 模式看回合数。
+- **事业线用 `quest_status()` 查**（只返回已浮现的）。玩家做到某件数值推断不出的事
+  （"把信交给林小姐"）时，调 `quest_advance(quest, stage)` 记录；引擎自己判定下一幕的门禁。
+  不要每回合都查、也不要主动把 dormant 的线告诉玩家——它们还没浮现。
+
 ## 2. 每回合强制流程
 
 ```
@@ -59,7 +83,8 @@ pending_actions(mark_done=True)
   [1] Agent 读取状态（MCP: read_state / CLI: cat game_state.json）
   [2] 判断行动是否涉及数值变化
   [3] 调用引擎结算（combat / trade / social / karma / travel / use_item）
-  [4] 读取引擎输出 JSON（含 phase / morale / 世界侧变化）
+  [4] 读取引擎输出 JSON（含 phase / morale / 世界侧变化；tick 还会返回 quest_changes 与 playbook）
+  [4b] 每 3-5 回合：`playbook_info()` 看节拍与失败钟，`quest_status()` 看事业线进展
   [5] 生成文学描写
   [6] publish_prose 落盘正文 ← 面板主舞台显示的就是这段
   [7] tick 收回合 ← 世界演化（势力/谣言/风气/NPC/相位）在这里发生

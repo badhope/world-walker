@@ -1023,6 +1023,9 @@
     renderStageTrack(v);
     renderBadges(v);
     renderPulse(v);
+    renderPlaybook(v);
+    renderQuests(v);
+    renderLorebook(v);
     refreshSeries(v);
   }
 
@@ -1193,6 +1196,161 @@
         apply(v);
       })
       .catch(() => { setConn("down", "连接失败，重试中…"); });
+  }
+
+  /* ── 玩法剧本：循环 / 进度 / 失败钟 / 节拍 ─────────── */
+  const LOOP_LABEL = {
+    freeform: "自由推进", choice: "选项推进", mud: "地点与命令", ttrpg: "声明→判定→后果",
+  };
+
+  function renderPlaybook(v) {
+    const pb = v.playbook || {};
+    if (pb.error) { setText($("pb-guide"), "玩法剧本读取失败：" + pb.error); return; }
+    setText($("pb-loop"), LOOP_LABEL[pb.loop] || pb.loop || "");
+    const pr = pb.progress || {};
+    setText($("pb-progress-label"), pr.label || "进度");
+    setText($("pb-progress"), pr.max
+      ? (pr.value + " / " + pr.max)
+      : String(pr.value == null ? "—" : pr.value));
+    const bar = $("pb-bar");
+    if (bar) bar.style.width = (pr.ratio != null ? Math.round(pr.ratio * 100) : 0) + "%";
+
+    const f = pb.failure || {};
+    setText($("pb-fail-label"), f.label || "失败");
+    let failText = "—";
+    if (f.mode === "clock") failText = f.value + " / " + f.max + " 格";
+    else if (f.mode === "deadline") failText = "第 " + f.value + " 回合 / 限 " + f.max;
+    else if (f.mode === "sanity") failText = f.value + " / " + f.max;
+    else if (f.mode === "hp") failText = f.value + " / " + f.max;
+    else if (f.mode === "none") failText = "本局无失败条件";
+    setText($("pb-fail"), failText);
+    const fbar = $("pb-fail-bar");
+    if (fbar) fbar.style.width = (f.ratio != null ? Math.round(f.ratio * 100) : 0) + "%";
+
+    const b = pb.beat || {};
+    setText($("pb-beat"), b.name ? (b.name + "（还有 " + b.next_in + " 回合）") : "—");
+    setText($("pb-guide"), pb.loop_guide || "");
+  }
+
+  /* ── 事业线：只显示已浮现的，最多 3 条（避免变成待办清单） ── */
+  function renderQuests(v) {
+    const box = $("quest-list");
+    if (!box) return;
+    const q = v.quests || {};
+    const rows = (q.rows || []);
+    setText($("quest-hint"), q.total
+      ? ("已浮现 " + rows.length + " / 共 " + q.total)
+      : "");
+    box.textContent = "";
+    if (!rows.length) {
+      const s = document.createElement("span");
+      s.className = "empty";
+      s.textContent = q.total
+        ? "这一局有 " + q.total + " 条事业线，还没到浮现的时候"
+        : "这一局没有配置事业线";
+      box.appendChild(s);
+      return;
+    }
+    rows.slice(0, 4).forEach((r) => {
+      const div = document.createElement("div");
+      div.className = "quest" + (r.status === "done" ? " done" : (r.status === "failed" ? " failed" : ""));
+      const b = document.createElement("b");
+      b.textContent = r.title || r.id;
+      div.appendChild(b);
+      if (r.stage_title) {
+        const st = document.createElement("span");
+        st.className = "stage";
+        st.textContent = r.stage_title;
+        div.appendChild(st);
+      }
+      if (r.status === "done") {
+        const d = document.createElement("span");
+        d.className = "chip good";
+        d.style.marginLeft = "6px";
+        d.textContent = "已完成";
+        div.appendChild(d);
+      } else if (r.status === "failed") {
+        const d = document.createElement("span");
+        d.className = "chip bad";
+        d.style.marginLeft = "6px";
+        d.textContent = "已失败";
+        div.appendChild(d);
+      }
+      if (r.summary) {
+        const t = document.createElement("div");
+        t.className = "tagline";
+        t.textContent = r.summary;
+        div.appendChild(t);
+      }
+      if ((r.objectives || []).length) {
+        const ul = document.createElement("ul");
+        r.objectives.forEach((o) => {
+          const li = document.createElement("li");
+          li.textContent = o;
+          ul.appendChild(li);
+        });
+        div.appendChild(ul);
+      }
+      if (r.deadline_tick) {
+        const t = document.createElement("div");
+        t.className = "tagline";
+        t.textContent = "期限：第 " + r.deadline_tick + " 回合";
+        div.appendChild(t);
+      }
+      box.appendChild(div);
+    });
+    expander(box, rows.length, Math.min(4, rows.length), () => {
+      rows.slice(4).forEach((r) => {
+        const div = document.createElement("div");
+        div.className = "quest";
+        const b2 = document.createElement("b");
+        b2.textContent = r.title || r.id;
+        div.appendChild(b2);
+        box.appendChild(div);
+      });
+    }, "条事业线");
+  }
+
+  /* ── 世界书：触发次数与冷却（解释"为什么这段被触发"） ── */
+  function renderLorebook(v) {
+    const box = $("lore-rows");
+    if (!box) return;
+    const lb = v.lorebook || {};
+    const rows = lb.rows || [];
+    setText($("lore-hint"), lb.total ? (lb.total + " 条 · 已触发 " + rows.filter((r) => r.fired > 0).length) : "");
+    box.textContent = "";
+    if (!rows.length) {
+      const s = document.createElement("span");
+      s.className = "empty";
+      s.textContent = "这一局没有世界书条目";
+      box.appendChild(s);
+      return;
+    }
+    rows.slice(0, 40).forEach((r) => {
+      const div = document.createElement("div");
+      div.className = "lore-row";
+      const n = document.createElement("div");
+      const b = document.createElement("div");
+      b.className = "n";
+      b.textContent = r.comment + (r.constant ? "（常驻）" : "");
+      const k = document.createElement("div");
+      k.className = "k";
+      k.textContent = (r.keys || []).join(" / ") || "无关键词";
+      n.appendChild(b);
+      n.appendChild(k);
+      const fired = document.createElement("div");
+      fired.className = "c";
+      fired.textContent = r.fired ? ("触发 " + r.fired + " 次") : "未触发";
+      const state = document.createElement("div");
+      state.className = "c";
+      if (r.sticky_left > 0) state.textContent = "保留 " + r.sticky_left + " 回合";
+      else if (r.cooldown_left > 0) state.textContent = "冷却 " + r.cooldown_left + " 回合";
+      else state.textContent = "";
+      div.appendChild(n);
+      div.appendChild(fired);
+      div.appendChild(state);
+      box.appendChild(div);
+    });
   }
 
   function openDrawer(id) {
@@ -1412,6 +1570,7 @@
       { k: "大事记", run: () => openDrawer("drawer-milestones") },
       { k: "势力", run: () => openDrawer("drawer-world") },
       { k: "世界标记", run: () => openDrawer("drawer-flags") },
+      { k: "世界书", run: () => openDrawer("drawer-lorebook") },
       { k: "帮助", run: () => openHelp($("help-btn")) },
       { k: "跳到最新", run: () => { const ul = $("timeline"); if (ul) ul.scrollTop = 0; } },
       { k: "导出状态", run: () => { window.location.href = "/export"; } },

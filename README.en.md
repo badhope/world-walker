@@ -98,6 +98,14 @@ will never show "境界 / 灵石" again. `scripts/verify_settings.py` asserts th
 |---|---|---|
 | ![Codex](docs/screenshots/drawer-codex.png) | ![Market](docs/screenshots/drawer-market.png) | ![Milestones](docs/screenshots/drawer-milestones.png) |
 
+| 768px | 320px | Help |
+|---|---|---|
+| ![Tablet](docs/screenshots/stage-768.png) | ![Narrow](docs/screenshots/stage-320.png) | ![Help](docs/screenshots/help.png) |
+
+| Share mode (hides paths & controls) | First-visit guide |
+|---|---|
+| ![Share mode](docs/screenshots/share-mode.png) | ![First visit](docs/screenshots/first-visit.png) |
+
 ---
 
 ## How it compares

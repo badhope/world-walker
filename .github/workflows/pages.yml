@@ -32,6 +32,9 @@ jobs:
               "docs/screenshots/stage-ink.png",
               "docs/screenshots/stage-neon.png",
               "docs/screenshots/stage-neutral.png",
+              "docs/screenshots/command-palette.png",
+              "docs/screenshots/character-card.png",
+              "docs/screenshots/action-queue.png",
               "docs/screenshots/walkthrough.mp4",
               "docs/BENCHMARK.md",
           ]
@@ -40,6 +43,10 @@ jobs:
           sys.exit(1 if missing else 0)
           PY
       - uses: actions/configure-pages@v5
+        with:
+          # 仓库第一次跑时自动启用 Pages（否则 deploy-pages 会因为站点不存在而失败）。
+          # 需要本文件顶部的 pages: write 权限。
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs
@@ -51,15 +58,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: 检查 Pages 是否已启用（未启用时给出可执行提示，而不是静默失败）
-        id: check
-        run: |
-          if [ -z "${{ vars.PAGES_ENABLED }}" ]; then
-            echo "::notice::仓库尚未启用 GitHub Pages。启用步骤：Settings → Pages → Build and deployment → Source 选 GitHub Actions。启用后本工作流会自动部署。"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
       - id: deployment
-        if: steps.check.outputs.skip != 'true'
         uses: actions/deploy-pages@v4

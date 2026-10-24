@@ -98,11 +98,13 @@ python panel.py --state game_state.json   # 打开只读主舞台
 |---|---|---|
 | ![图鉴](docs/screenshots/drawer-codex.png) | ![市场](docs/screenshots/drawer-market.png) | ![大事记](docs/screenshots/drawer-milestones.png) |
 
-响应式与帮助：
+响应式、帮助与演示模式：
 
 | 768px | 320px | 帮助 |
 |---|---|---|
 | ![平板](docs/screenshots/stage-768.png) | ![窄屏](docs/screenshots/stage-320.png) | ![帮助](docs/screenshots/help.png) |
+| **分享模式**（隐藏路径与操作区，适合直播） | **首次访问引导**（一次性） | |
+| ![分享模式](docs/screenshots/share-mode.png) | ![首访引导](docs/screenshots/first-visit.png) | |
 
 ---
 

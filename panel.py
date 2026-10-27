@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-万界·行者 · 实况面板 (World Walker Live Panel)
+World Games · 实况面板 (World Games Live Panel)
 
 一个**只读**的小型 HTTP 服务：把状态文件渲染成可以长期挂着的游戏面板
 （玩家血量/心流/图鉴/编年史/市场行情实时更新）。
@@ -542,7 +542,7 @@ def view_model(state_path):
             "sidecar": os.path.abspath(series_path(state_path)),
             "inbox": os.path.abspath(inbox_path(state_path)),
             "read_only": True,
-            "panel": "万界·行者 实况主舞台（只读）",
+            "panel": "World Games 主舞台（只读）",
         },
         "scene": build_scene(state, events, player),
         "events": events,
@@ -571,7 +571,47 @@ def view_model(state_path):
         "playbook": _build_playbook(state),
         "quests": _build_quests(state),
         "lorebook": _build_lorebook(state),
+        "game": _build_game(state),
+        "sessions": _build_sessions(state_path),
     }
+
+
+def _build_game(state):
+    """通用游戏档案 + 最近判定 + 上下文台账概览（任何题材都用同一块 UI）。"""
+    out = {"profile": {}, "checks": [], "check_rate": {}, "context": {}}
+    try:
+        from game_engine.rules import gamesystem as game_rules
+        out["profile"] = game_rules.profile_of(state)
+    except Exception as exc:  # aqg: top-level boundary —— 档案坏了不影响其余面板
+        out["profile"] = {"error": str(exc)[:120], "resources": [], "attributes": [],
+                          "meters": [], "tags": [], "sheet": {}}
+    try:
+        from game_engine.rules import checks as check_rules
+        out["checks"] = check_rules.summary(state, 10)
+        out["check_rate"] = check_rules.win_rate(state)
+    except Exception as exc:  # aqg: top-level boundary
+        out["check_error"] = str(exc)[:120]
+    try:
+        from game_engine.rules import context as context_rules
+        out["context"] = context_rules.summary(state)
+    except Exception as exc:  # aqg: top-level boundary
+        out["context"] = {"error": str(exc)[:120], "total": 0, "recent": [], "by_kind": {}}
+    return out
+
+
+def _build_sessions(state_path):
+    """存档库只读清单（读目录与文件头，不写任何东西）。"""
+    try:
+        from game_engine import sessions as session_store
+        root = session_store.saves_root(os.path.dirname(os.path.abspath(state_path)))
+        rows = session_store.list_saves(root)
+        active = os.path.abspath(state_path)
+        for row in rows:
+            row["active"] = os.path.abspath(row.get("path", "")) == active
+        return {"root": root, "saves": rows[:50], "count": len(rows),
+                "trash": len(session_store.list_trash(root))}
+    except Exception as exc:  # aqg: top-level boundary —— 存档库读不到不影响主舞台
+        return {"root": "", "saves": [], "count": 0, "trash": 0, "error": str(exc)[:120]}
 
 
 def _derived_moral(state):
@@ -726,8 +766,8 @@ SKINS = {
 
 
 # 品牌默认值（单一信源，BRAND.md 与 README 引用此处；ui.brand/tagline 可整局覆盖）
-DEFAULT_BRAND = "万界·行者"
-DEFAULT_TAGLINE = "万界为卷 · 因果为墨"
+DEFAULT_BRAND = "World Games"
+DEFAULT_TAGLINE = "万物皆可为一局 · 规则为证"
 
 
 def skin_for_world(state):
@@ -996,7 +1036,7 @@ def start(state_path, port=8765, host="127.0.0.1"):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="万界·行者 实况面板")
+    ap = argparse.ArgumentParser(description="World Games 实况面板")
     ap.add_argument("--state", default="ww_state.json", help="状态文件路径")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--host", default="127.0.0.1")

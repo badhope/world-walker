@@ -5,6 +5,80 @@
 
 ---
 
+## v1.2.0 — 2026-10-27
+
+**从「一个修仙文字游戏」升级为「装任何游戏的框架」**：更名 World Games，新增通用判定、
+游戏档案、上下文台账、存档库四层；面板补上这四层的可视化。原有四套设定包与全部规则不变。
+
+### 更名（保留兼容）
+
+- 产品名 World Games；面板默认字标/标语、MCP server name、CLI 描述全部切换。
+- `pyproject.toml` 新增 `world-games` / `world-games-mcp` 入口；`world-walker` / `world-walker-mcp`
+  保留为**兼容别名**，Python 包名仍是 `game_engine`，现有客户端配置无需改动。
+
+### 新增：通用判定（`rules/checks.py`，6 个公开函数）
+
+任何游戏都能用的一套判定，不再假设"攻击-防御-伤害"：
+
+| 能力 | 说明 |
+|---|---|
+| 骰型 | `d20` / `2d6` / `3d6` / `d100` / `4dF` / `pool`（骰池），支持 `2d6+1` 修正 |
+| 模式 | `add`（总值比难度）/ `roll_under`（低于目标）/ `pool`（数成功骰）/ `fate` |
+| 修正 | 属性值 + 任意修正列表（带标签），全部计入 margin |
+| 成功等级 | 大成功 / 成功 / 部分成功 / 失败，按 margin 分档；自然极值上下调一档 |
+| 对抗 | `opposed_by` 用同一骰型与属性再掷，margin = 我 − 对方 |
+| 台账 | 写 `state["checks"]`，`checks_keep` 有界（默认 200） |
+
+MCP 工具 `roll`；面板新增「判定记录」卡（成功率 + 最近 10 条）。
+
+### 新增：游戏档案（`rules/gamesystem.py`，6 个公开函数）
+
+把"这一局是什么游戏"从代码里拿出来：
+
+- `attributes` / `resources` / `meters` 三类自定义条目，各自带 `min`/`max` 与颜色；
+- `tags`（戒严/雨季/被通缉）与自由 `sheet`（职业、目标、住所……）任意题材可用；
+- **旧存档零迁移**：没有显式档案时自动从 `hp`/`mp`/`gold`/`attrs`/`playbook` 推导；
+- 全部条目有上限（32 条 / 40 字段 / 24 标签），写入前 clamp。
+
+MCP 工具 `game_profile` / `game_adjust` / `game_tag` / `game_sheet`；面板新增「游戏档案」卡。
+
+### 新增：上下文台账（`rules/context.py`，6 个公开函数）
+
+互动对话的核心是"AI 该记住什么"，现在这件事可核对：
+
+- `remember` / `search` / `forget` / `set_status`：事实、线索、承诺、人物、地点、物品、规则、备注八类；
+- `confidence` 与 `ttl`：低置信度先被淘汰，过期事实默认不出现在检索里；
+- `pack`：按字符预算拼「玩法 + 未结案 + 场景相关 + 最近事件 + 其他事实」，超预算截断并报告；
+- 输出统一带 `untrusted` 与 `content_policy`（与角色卡同规格，数据不是指令）；
+- 台账有界（400 条），去重（同类型同正文刷新而非追加）。
+
+MCP 工具 `context_remember` / `context_search` / `context_forget` / `context_pack`；
+面板新增「上下文台账」抽屉。
+
+### 新增：存档库（`sessions.py`）
+
+- `session_new` / `session_switch` / `session_list` / `session_snapshot` / `session_manage` / `session_import`；
+- 所有存档集中在一个目录（默认 `<对局目录>/saves/`，可用 `WORLD_GAMES_SAVES` 覆盖）；
+- 局名安全化（保留中英文数字，其余折叠为 `_`，长度 48 上限）；
+- 快照同 tick 只留一份、最多 20 份；删除是**移入回收站**，可还原；`purge` 才是真删；
+- 面板新增「存档库」抽屉（只读列出，切换/新建由宿主执行）。
+
+### 面板
+
+- 新增 3 个区块：游戏档案卡（左栏）、判定记录卡（中栏）、上下文台账与存档库抽屉；
+- 所有渲染走 `textContent`，不拼 HTML；`/state` 视图模型新增 `game` 与 `sessions` 两个顶层字段；
+- 面板仍然是**严格只读**：新增内容全部来自状态文件与目录扫描。
+
+### 测试
+
+- 新增 `scripts/verify_generic.py`（84 项断言）：判定四模式/自然极值/对抗/确定性/台账有界、
+  档案回退与 clamp、上下文检索与预算、存档库全生命周期与路径安全、MCP 集成、品牌默认值。
+- `verify_tests.py` 审计 705 条 0 可疑；`verify_panel.py` 品牌断言切到 World Games。
+- `verify_docs.py` 的 D11/D12/D13 自动跟随新的函数数/自检数/工具数。
+- 变异测试扩到 **40 个**（M37–M40：判定忽略属性、资源不夹紧、ttl 不生效、局名不安全），全部被新断言杀死。
+
+---
+
 ## v1.1.1 — 2026-10-27
 
 全量审计（22 项门禁基线 + 代码/文档/CI 交叉核对）后的修复版，不改架构、不加依赖。

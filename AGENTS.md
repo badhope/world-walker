@@ -1,6 +1,7 @@
-# AGENTS.md — 万界·行者 World Walker
+# AGENTS.md — World Games
 
-AI 驱动的文字互动游戏引擎：规则结算内核（Python）+ MCP 服务器 + 只读网页主舞台。零第三方运行时依赖（MCP 为可选 extra）。
+通用 AI 互动游戏框架：规则结算内核（Python）+ 上下文台账 + 存档库 + MCP 服务器 + 只读网页主舞台。
+任何题材都能用；内置四套设定包只是示例。零第三方运行时依赖（MCP 为可选 extra）。
 
 **`ARCHITECTURE.md` 是本项目唯一真理源**——凡影响架构/接口/数据模型/依赖/目录结构的变更，必须同步更新它。
 
@@ -8,19 +9,23 @@ AI 驱动的文字互动游戏引擎：规则结算内核（Python）+ MCP 服�
 
 - 仓库根即 `game_engine` 包（`pyproject.toml` 中 `package-dir = { "game_engine" = "." }`，内部统一 `import game_engine.*`）
 - `engine.py` — 规则结算内核
-- `mcp_server.py` — MCP 工具入口（39 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
+- `mcp_server.py` — MCP 工具入口（54 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
 - `panel.py` / `panel.html` / `panel.css` / `panel.js` — 只读主舞台（面板不许写状态；
   行动队列只写 `<state>.inbox.jsonl` 侧写，状态仍由 MCP 单点写入）
 - `state_schema.py` — 状态模型（原子写 / 世代归档 / 种子）
+- `sessions.py` — 存档库（多局/快照/回收站；只碰文件系统，不写状态内容）
+- `rules/checks.py` — 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
+- `rules/gamesystem.py` — 游戏档案（自定义属性/资源/进度轨/标签/表格；旧存档自动回退）
+- `rules/context.py` — 上下文台账（事实/线索/承诺 + 预算打包）
 - `settings_loader.py` — 设定包 → 状态（**纯标准库**；MCP 与零依赖自检共用，不要在这里引 mcp）
-- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（14 个 `verify_*.py` + 素材流水线）
+- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（15 个 `verify_*.py` + 素材流水线）
 
 ## 运行
 
 ```bash
 pip install -e .            # 或 pip install -e '.[mcp]' 装 MCP 依赖
-world-walker                # CLI
-world-walker-mcp            # MCP 服务器
+world-games                 # CLI（兼容别名 world-walker）
+world-games-mcp             # MCP 服务器（兼容别名 world-walker-mcp）
 bash play.sh                # 快速开局
 ```
 
@@ -32,7 +37,7 @@ bash scripts/pre_push_gate.sh   # 推送前门禁，与 GitHub Actions 同判据
 
 分项可跑：`verify_formulas.py`、`verify_memory.py`、`verify_mcp_stdio.py`、`verify_panel.py`、
 `verify_injection.py`、`verify_branches.py`、`verify_cli.py`、`verify_near_death.py`、
-`verify_world.py`、`verify_settings.py`、`verify_docs.py`、`verify_mutation.py`、`smoke_ui.py`。
+`verify_world.py`、`verify_settings.py`、`verify_docs.py`、`verify_generic.py`、`verify_mutation.py`、`smoke_ui.py`。
 
 **CI 的 core 作业不装 mcp**：任何要在 core 里跑的脚本都不得 import `mcp_server`（会 ModuleNotFoundError）。
 设定包相关逻辑一律走 `settings_loader.py`。

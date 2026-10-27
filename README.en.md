@@ -1,12 +1,15 @@
-# World Walker
+# World Games
 
-[中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Gameplay layer](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
+**v1.2.0** · [中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Gameplay layer](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
 
-> **The AI narrates. The engine owns the world — and the way you play is configurable too.**
-> Four worlds, four gameplay loops (freeform / choice / location-command / declare-resolve-consequence), one rule core.
-> A world-agnostic interactive-fiction kernel: 162 rule functions, 39 MCP tools,
-> 4 playable setting bundles, and a read-only live stage that works offline.
+> **The AI narrates. The engine owns the world — and any game can live inside it.**
+> A general interactive-game framework: any genre, any dice system, any resource track, one deterministic rule core.
+> 180 rule functions, 54 MCP tools, four playable bundles shipped,
+> a context ledger the AI must not forget, a save library, and a read-only live stage.
 > Same save, same seed—always the same world.
+
+> **Renamed in v1.2.0**: "World Walker" is now **World Games**. The Python package stays
+> `game_engine`; `world-walker` / `world-walker-mcp` remain as compatibility aliases.
 
 <p align="center">
   <img src="docs/screenshots/stage-xuanshu.png" alt="Live stage (Xuanshu, ink-gold skin, turn 500)" width="100%">
@@ -124,7 +127,7 @@ Full method and evidence: **[docs/BENCHMARK.md](docs/BENCHMARK.md)**. One-line v
 | Long-game memory | Context window + summary | **Three layers**: summaries + milestones + generational archive (`recall`) |
 | Ecosystem | Proprietary | Reads SillyTavern **character cards** (PNG/JSON, V1–V3) and **world info** |
 | Interface | Chat stream | **Read-only live stage**: narrative + HUD + long-run charts + codex + market |
-| Auditable | Hard | Structured event fields; read-only tools never write; mutation suite 36/36 |
+| Auditable | Hard | Structured event fields; read-only tools never write; mutation suite 40/40 |
 
 We deliberately **do not** do: image generation, multiplayer, cloud accounts, plugin marketplaces.
 Reasons are in [ROADMAP.md](ROADMAP.md).
@@ -186,7 +189,7 @@ Locked by `verify_cli.py` (CLI channel), `verify_mcp_stdio.py` (MCP channel) and
 
 ---
 
-## MCP tools (39)
+## MCP tools (54)
 
 | Group | Tools |
 |---|---|
@@ -201,6 +204,10 @@ Locked by `verify_cli.py` (CLI channel), `verify_mcp_stdio.py` (MCP channel) and
 | Models | `model` `model_list` (16 named closed-form models) |
 | Panel | `open_panel` `pending_actions` |
 | Movement | `travel` |
+| Generic checks | `roll` |
+| Game profile | `game_profile` `game_adjust` `game_tag` `game_sheet` |
+| Context ledger | `context_remember` `context_search` `context_forget` `context_pack` |
+| Save library | `session_list` `session_new` `session_switch` `session_snapshot` `session_manage` `session_import` |
 
 See [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md).
 
@@ -282,7 +289,7 @@ Format: [settings/README.md](settings/README.md).
 
 ## Quality
 
-No pytest suite by design—verification is 14 executable self-checks plus a mutation suite
+No pytest suite by design—verification is 15 executable self-checks plus a mutation suite
 (assertions must be *killable*, not merely *covered*).
 
 | Suite | Assertions | Locks |
@@ -290,25 +297,26 @@ No pytest suite by design—verification is 14 executable self-checks plus a mut
 | `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
 | `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
-| `verify_panel.py` | 72 | view-model contract, legacy saves, static whitelist, inbox guards |
+| `verify_panel.py` | 75 | view-model contract, legacy saves, static whitelist, inbox guards |
 | `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | 16 | version single-source / tool count / asset references |
 | `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
+| `verify_generic.py` | 84 | generic checks, game profile, context ledger, save library, brand |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 13 | real Edge render, drawers, responsive, zero JS errors |
-| `verify_tests.py` | 632 audits | AST-level rejection of tautological assertions |
-| `verify_mutation.py` | 36 mutants | **break the code, require tests to go red**; survival must be 0% |
+| `verify_tests.py` | 708 audits | AST-level rejection of tautological assertions |
+| `verify_mutation.py` | 40 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 22 checks, same criteria as GitHub Actions
+bash scripts/pre_push_gate.sh     # 23 checks, same criteria as GitHub Actions
 ```
 
-Coverage gate: core ≥70% (currently 88%); pyflakes = 0. bandit is clean on the engine core; the repository-wide scan still reports findings confined to test scripts.
+Coverage gate: core ≥70% (currently 88%, incl. the generic layer); pyflakes = 0. bandit is clean on the engine core; the repository-wide scan still reports findings confined to test scripts.
 
 ---
 

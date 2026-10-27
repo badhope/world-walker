@@ -110,7 +110,7 @@ def main():
                 print('%s  %-42s %s' % ('PASS' if ok else 'FAIL', name, str(note)[:70]))
 
             body = page.inner_text('body')
-            check('页签含品牌', '行者' in page.title(), page.title())
+            check('页签含品牌', 'World Games' in page.title() or '行者' in page.title(), page.title())
             check('皮肤已应用', page.eval_on_selector('body', 'e => e.dataset.skin') == 'xuanshu')
             check('主角名渲染', '沈砚' in body)
             check('回合号渲染', '42' in body)
@@ -142,6 +142,22 @@ def main():
                   page.evaluate('''() => { const x = document.querySelector('#drawer-codex');
                       const r = x.getBoundingClientRect();
                       return x.open && r.top < window.innerHeight && r.bottom > 0; }'''))
+            # v1.2.0 通用游戏层：三块 UI 必须真实渲染（旧存档走推导路径）
+            game_txt = page.inner_text('#game-card')
+            check('游戏档案卡渲染（旧存档推导出资源）',
+                  '生命' in game_txt and '钱财' in game_txt, game_txt[:60].replace('\n', ' '))
+            check('判定记录卡存在（无记录时给空态）',
+                  page.query_selector('#checks-card') is not None
+                  and ('还没有判定' in page.inner_text('#checks-card')
+                       or page.query_selector('#checks .check-row') is not None))
+            for drawer in ('#drawer-context', '#drawer-sessions'):
+                page.evaluate('(x) => { x.open = true; }', page.query_selector(drawer))
+                page.wait_for_timeout(300)
+                ok = page.evaluate('''(sel) => { const x = document.querySelector(sel);
+                    return x.open && x.innerText.length > 10; }''', drawer)
+                check('新抽屉可展开且有内容 %s' % drawer, ok)
+            page.evaluate('''() => document.querySelectorAll('details.drawer')
+                .forEach((d) => { d.open = false; })''')
             # 帮助
             page.click('#help-btn')
             page.wait_for_timeout(500)

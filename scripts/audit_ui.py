@@ -58,7 +58,7 @@ def main():
 
         # 1. 基础渲染
         title = page.title()
-        check('页签标题含品牌', '行者' in title or '万界' in title, title)
+        check('页签标题含品牌', 'World Games' in title or '行者' in title or '万界' in title, title)
         check('data-skin 属性存在', page.eval_on_selector('body', 'e => e.dataset.skin') not in (None, ''),
               page.eval_on_selector('body', 'e => e.dataset.skin'))
         shot(page, '01-stage')

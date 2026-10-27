@@ -38,6 +38,11 @@ EXPECTED_TOOLS = {
     'use_item', 'spawn_npc', 'model', 'model_list', 'world_state', 'publish_prose',
     'pending_actions', 'playbook_info', 'quest_status', 'quest_advance',
     'lore_lookup', 'failure_tick',
+    # v1.2.0 通用游戏层
+    'roll', 'game_profile', 'game_adjust', 'game_tag', 'game_sheet',
+    'context_remember', 'context_search', 'context_forget', 'context_pack',
+    'session_list', 'session_new', 'session_switch', 'session_snapshot',
+    'session_manage', 'session_import',
 }
 
 RESULTS = []

@@ -89,8 +89,8 @@ stages:
         script: |
           python -m pip install --quiet coverage
           rm -f .coverage
-          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay; do
-            python -m coverage run --append --source=rules,panel,state_schema,settings_loader "scripts/$suite.py"
+          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay verify_generic; do
+            python -m coverage run --append --source=rules,panel,state_schema,settings_loader,sessions "scripts/$suite.py"
           done
           python -m coverage report | tee /tmp/cov.txt
           PCT=$(awk '/^TOTAL/ {gsub("%","",$NF); print $NF}' /tmp/cov.txt)
@@ -100,6 +100,11 @@ stages:
         displayName: 玩法层（剧本/事业线/世界书）
         script: |
           python scripts/verify_gameplay.py
+      - step: generic
+        name: verify-generic
+        displayName: 通用游戏层（判定/档案/上下文/存档库）
+        script: |
+          python scripts/verify_generic.py
       - step: smoke
         name: engine-smoke
         displayName: 引擎烟测

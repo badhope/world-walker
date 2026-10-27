@@ -1,15 +1,40 @@
-# Game Master 协议 (AI → 引擎调用约定 v2)
+# World Games 主持协议 (AI → 引擎调用约定 v3)
 
-> 核心原则:**所有确定性计算交给引擎,Agent 只负责文学叙事**。
+> 核心原则:**所有确定性计算交给引擎,Agent 只负责文学叙事与对话**。
+>
+> **v3 变化**：新增通用判定（`roll`）、游戏档案（`game_*`）、上下文台账（`context_*`）、存档库（`session_*`）四组工具。
+> 前 39 个工具面向角色扮演式结算；后 15 个不假设任何题材——任何游戏都能用。
 
 > **MCP 模式**：宿主是 MCP 客户端（Claude Code / Codex / Cursor 等）时，用 `mcp_server.py`
-> 暴露的 39 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
+> 暴露的 54 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
 > `moral_update` 合并为 `status`，`info_weight` 改名为 `narrative_weight`；`world_state`
 > 仍是独立只读工具（与 `read_state` 并存：前者返回世界侧摘要，后者返回完整状态）；另增建局三件套 `world_schema` / `world_init` / `world_open`、
 > 叙事层 `narration_context`（关键词触发设定 + 在场角色卡面 + 编年史，每回合调）、
 > 酒馆生态 `character_card_read` / `add_character` / `import_lorebook`、回退 `snapshot` / `restore`、移动 `travel`（记图鉴）、叙事正文 `publish_prose`（把本回合正文写进状态，面板主舞台直接显示）、实况主舞台 `open_panel`（只读：叙事主舞台 + HUD + 事件时间线 + 分级弹窗/提示 + 图鉴/市场/大事记/世界脉搏抽屉；缺档可读报错并可重试）、面板行动队列 `pending_actions`（玩家在浏览器排的行动写进侧写文件，宿主取走后照常经引擎结算）、设定包 `load_setting`、长局 `advance` / `recall` / `write_summary` / `recap` / `configure`、物资 `use_item`（持有则自备消耗、买入时已付；未持有按所在地市场价现买现用，引擎结算花钱）、自由生成 `spawn_npc`（无角色卡也能入局）、模型层 `model` / `model_list`（查 16 个命名闭式模型：经济 Lerner/OU 价格、Cobb-Douglas、种群 logistic/Lotka-Volterra、流行病 SIR、风险 Poisson/生存、热力学松弛、舆论 bounded-confidence；宿主直接用公式推导效果，不再逐事件拍脑袋）。
 > 一键开局：调 `new_game` prompt（参数填设定），产出「协议 + 设定 + 状态文件」的完整开局指令。
 > 安装 `pip install -e ".[mcp]"` 后，客户端命令填 `world-walker-mcp`。
+
+---
+
+## 0. 通用局怎么带（任何题材）
+
+不是修仙/武侠也没关系。宿主按这五步带任意游戏：
+
+```
+1. session_new(name="我的团", setting_path="settings/雾港.setting.json")
+   # 或用 world_init 自定义世界；session_list 可随时看所有存档
+2. game_profile({...})            # 可选：定义这一局的资源/属性/进度轨（不填就走默认）
+3. roll(attribute="int", difficulty=12, dice="2d6", reason="翻查档案")
+   # 任何需要"判定"的地方都走它；combat/trade/social 只适合有数值冲突的场景
+4. context_remember("门房说昨夜灯塔亮过", kind="clue", keys=["灯塔"]) 
+   context_pack(scene_text="灯塔")          # 每回合把该记的东西打包给自己
+5. publish_prose(正文) → tick()（需要推进世界时）
+```
+
+**上下文纪律**：玩家说过的承诺、发现的线索、NPC 的关键台词，都要 `context_remember` 落盘；
+否则长局里"AI 忘了"是无法追责的。`context_pack` 每回合调一次，按预算取材料。
+
+**存档纪律**：一局一个 `session_new`；重大节点 `session_snapshot`；不要手改 JSON，用工具。
 
 ---
 

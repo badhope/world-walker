@@ -139,7 +139,7 @@ MUTATIONS = [
     # M31/M32 的片段依赖"当前版本号/工具数"，写死会在版本升级后失效（已被 SKIP→FAIL 机制抓到）。
     # 这里改成占位符，由 main() 在运行时替换成真实值。
     ('M31', '文档版本号与 pyproject 漂移', 'pyproject.toml',
-     '@@VERSION@@', '@@VERSION@@.0.1',
+     'version = "@@VERSION@@"', 'version = "@@VERSION@@.0.1"',
      'scripts/verify_docs.py'),
     ('M32', 'README 宣称的工具数与源码不符', 'README.md',
      '## MCP 工具一览（@@TOOLCOUNT@@ 个）', '## MCP 工具一览（@@TOOLCOUNT_WRONG@@ 个）',
@@ -180,6 +180,24 @@ MUTATIONS = [
     ('M25', '台账合并丢失债务人归属（A 的债挂到 B 名下）', 'state_schema.py',
      '        debtor = e.get("from", "")', '        debtor = "player"',
      'scripts/verify_branches.py'),
+
+    # ── 通用游戏层（v1.2.0）──
+    ('M37', '判定忽略属性修正', 'rules/checks.py',
+     '    attr_mod = _attr_modifier(actor, attribute)',
+     '    attr_mod = 0',
+     'scripts/verify_generic.py'),
+    ('M38', '资源调整不夹紧上下限', 'rules/gamesystem.py',
+     '    if hi and hi > lo:\n        after = max(lo, min(hi, after))',
+     '    if False:\n        after = max(lo, min(hi, after))',
+     'scripts/verify_generic.py'),
+    ('M39', '上下文 ttl 过期不生效', 'rules/context.py',
+     '        if ttl and fact.get("status") == "open" and tick - int(fact.get("tick", 0) or 0) > ttl:',
+     '        if False:',
+     'scripts/verify_generic.py'),
+    ('M40', '存档局名不做路径安全化', 'sessions.py',
+     '    text = SAFE_NAME.sub("_", text).strip("._-")',
+     '    text = text.strip()',
+     'scripts/verify_generic.py'),
 ]
 
 

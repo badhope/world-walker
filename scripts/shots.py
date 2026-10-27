@@ -122,7 +122,7 @@ def main():
                         pass
 
                 body = page.inner_text("body")
-                check("%s 页签/品牌" % world, ("行者" in page.title() or world in page.title()), page.title())
+                check("%s 页签/品牌" % world, ("World Games" in page.title() or "行者" in page.title() or world in page.title()), page.title())
                 check("%s 皮肤匹配设定包" % world,
                       page.eval_on_selector("body", "e => e.dataset.skin") == skin,
                       page.eval_on_selector("body", "e => e.dataset.skin"))

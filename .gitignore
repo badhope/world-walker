@@ -14,6 +14,8 @@ dist/
 # Runtime state (_player save files_)
 game_state.json
 ww_state.json
+# 存档库（sessions 的默认目录；用户对局不应进版本库）
+saves/
 ww_live.json
 ww_smoke.json
 ww_viz.json

@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="description" content="万界·行者 · 实况主舞台：只读展示对局状态、事件时间线与分级反馈。" />
+<meta name="description" content="World Games · 主舞台：只读展示任意互动游戏的对局状态、判定记录与上下文台账。" />
 <meta name="theme-color" content="#0d0f13" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f13'/%3E%3Ctext x='16' y='22.5' font-size='17' text-anchor='middle' fill='%23e8b04b' font-family='serif'%3E%E8%A1%8C%3C/text%3E%3C/svg%3E" />
-<title>万界·行者 · 实况主舞台</title>
+<title>World Games · 主舞台</title>
 <link rel="stylesheet" href="/panel.css" />
 </head>
 <body data-skin="neutral">
@@ -15,8 +15,8 @@
   <div class="brand">
     <span class="seal" aria-hidden="true">行</span>
     <div class="brandtext">
-      <h1 class="wordmark">万界·行者</h1>
-      <span class="tagline">万界为卷 · 因果为墨</span>
+      <h1 class="wordmark">World Games</h1>
+      <span class="tagline">万物皆可为一局 · 规则为证</span>
     </div>
   </div>
   <span class="meta" id="world">—</span>
@@ -39,8 +39,8 @@
 </header>
 
 <div class="guide" id="guide" hidden>
-  <span id="guide-text">第一次来？这块是<b>只读实况主舞台</b>——你玩你的，它跟着变：左侧是行者的身家状态，
-    中间是叙事与编年史、三张长局趋势图，右侧是人物关系与地点。按 <kbd>?</kbd> 看术语与读图说明。</span>
+  <span id="guide-text">第一次来？这块是<b>只读主舞台</b>——你玩你的，它跟着变：左侧是你的角色/资源与这一局的玩法，
+    中间是叙事、判定记录与编年史，右侧是在场角色与场景。按 <kbd>?</kbd> 看术语与读图说明。</span>
   <button class="tbtn" id="guide-close" type="button">知道了</button>
 </div>
 
@@ -63,6 +63,17 @@
       <div class="row"><span class="k">内力 <span id="pmpn"></span></span></div>
       <div class="barwrap" role="img" aria-label="内力条"><div class="bar mp" id="pmpbar" style="width:0"></div></div>
       <div class="kv" id="pattrs"></div>
+    </section>
+
+    <!-- 通用游戏档案：任何题材都用这一块（旧存档自动从 hp/mp/gold/attrs 推导） -->
+    <section class="card" id="game-card">
+      <h2>游戏档案 <span class="tag" id="game-kind"></span></h2>
+      <div class="row"><span class="k">本局</span><b id="game-title">—</b></div>
+      <div class="kv" id="game-resources"><span class="empty">（无资源轨）</span></div>
+      <div class="kv" id="game-attributes"></div>
+      <div class="kv" id="game-meters"></div>
+      <div class="kv" id="game-tags"></div>
+      <div class="hint" id="game-sheet"></div>
     </section>
 
     <section class="card">
@@ -109,6 +120,12 @@
         </div>
       </form>
     </div>
+
+    <!-- 判定记录：任何游戏都能用的"这一局掷了什么" -->
+    <section class="card" id="checks-card">
+      <h2>判定记录 <span class="tag" id="checks-hint"></span></h2>
+      <div class="checks" id="checks"><span class="empty">还没有判定——宿主可以调 roll / combat / social 结算</span></div>
+    </section>
 
     <section class="card" id="quest-card">
       <h2><span data-term="quests">事业线</span> <span class="tag" id="quest-hint"></span></h2>
@@ -236,6 +253,23 @@
   <details class="drawer" id="drawer-milestones">
     <summary><span data-term="milestones">大事记</span> <span class="tag" id="memhint" style="margin-left:auto"></span></summary>
     <div class="body"><ul class="timeline" id="milestones" style="max-height:220px"><li class="empty">暂无</li></ul></div>
+  </details>
+
+  <details class="drawer" id="drawer-context">
+    <summary><span data-term="context">上下文台账</span> <span class="tag" id="ctx-hint" style="margin-left:auto"></span></summary>
+    <div class="body">
+      <div class="hint">宿主用 context_remember 记下的线索/承诺/事实。互动对话的"该记住什么"在这里可核对。</div>
+      <div class="kv" id="ctx-stats"></div>
+      <div id="ctx-rows"></div>
+    </div>
+  </details>
+
+  <details class="drawer" id="drawer-sessions">
+    <summary><span data-term="sessions">存档库</span> <span class="tag" id="sess-hint" style="margin-left:auto"></span></summary>
+    <div class="body">
+      <div class="hint">面板只读：这里列出存档与进度，切换/新建请让宿主调用 session_switch / session_new。</div>
+      <div id="sess-rows"></div>
+    </div>
   </details>
 
   <details class="drawer" id="drawer-flags">

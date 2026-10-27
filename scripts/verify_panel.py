@@ -224,11 +224,24 @@ def main():
               and isinstance(vm.get("market"), list) and bool(vm.get("market")))
         check("/state 事件数组有界（<=40）", isinstance(events, list) and len(events) <= 40,
               "%d 条" % (len(events) if isinstance(events, list) else -1))
+        # v1.2.0 通用游戏层：视图模型必须带 game 与 sessions
+        game = vm.get("game") or {}
+        check("视图模型带 game 区块（profile/checks/check_rate/context）",
+              set(game) >= {"profile", "checks", "check_rate", "context"},
+              str(sorted(game)))
+        check("旧存档自动推导游戏档案（资源含 hp/mp/gold）",
+              [r.get("key") for r in (game.get("profile") or {}).get("resources") or []]
+              == ["hp", "mp", "gold"],
+              str([r.get("key") for r in (game.get("profile") or {}).get("resources") or []]))
+        sessions = vm.get("sessions") or {}
+        check("视图模型带 sessions 区块（root/count/saves）",
+              isinstance(sessions.get("saves"), list) and isinstance(sessions.get("root"), str),
+              str({k: sessions.get(k) for k in ("count", "trash")}))
 
         # 1b. 品牌可配置（R10）
         check("品牌默认值随 /state 下发",
-              vm.get("skin", {}).get("brand") == "万界·行者"
-              and vm.get("skin", {}).get("tagline") == "万界为卷 · 因果为墨",
+              vm.get("skin", {}).get("brand") == "World Games"
+              and vm.get("skin", {}).get("tagline") == "万物皆可为一局 · 规则为证",
               "%s / %s" % (vm.get("skin", {}).get("brand"), vm.get("skin", {}).get("tagline")))
         check("meta 提供状态文件路径（本地只读信息）",
               isinstance(vm.get("meta"), dict)
@@ -247,8 +260,8 @@ def main():
               st == 200 and "text/html" in ct and "实况".encode("utf-8") in body,
               "status=%s ct=%s" % (st, ct.split(";")[0]))
         check("页面品牌要素齐全（字标/标语/图标/重试横幅）",
-              "万界·行者" in body.decode("utf-8", "replace")
-              and "万界为卷" in body.decode("utf-8", "replace")
+              "World Games" in body.decode("utf-8", "replace")
+              and "万物皆可为一局" in body.decode("utf-8", "replace")
               and "rel=\"icon\"" in body.decode("utf-8", "replace")
               and "notice-retry" in body.decode("utf-8", "replace"))
         # 1c. 帮助体系（R11）/ 一次引导（R12）

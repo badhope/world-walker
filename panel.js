@@ -152,7 +152,7 @@
     const p = v.player || {};
     const worldName = (v.world && v.world.name) || "未命名世界";
     const skin = v.skin || {};
-    const brand = skin.brand || "万界·行者";
+    const brand = skin.brand || "World Games";
     setText($("world"), worldName);
     const mark = document.querySelector(".wordmark");
     if (mark) mark.textContent = brand;
@@ -1026,6 +1026,7 @@
     renderPlaybook(v);
     renderQuests(v);
     renderLorebook(v);
+    renderGame(v);
     refreshSeries(v);
   }
 
@@ -1353,6 +1354,250 @@
     });
   }
 
+  /* ── 通用游戏层：档案 / 判定 / 上下文 / 存档库 ─────────── */
+
+  const KIND_LABEL = {
+    rpg: "角色扮演", investigation: "调查", management: "经营",
+    survival: "生存", story: "叙事", board: "桌游", custom: "自定义",
+  };
+  const CHECK_LEVEL_LABEL = {
+    critical_success: "大成功", success: "成功", partial: "部分成功", failure: "失败",
+  };
+  const FACT_KIND_LABEL = {
+    fact: "事实", clue: "线索", promise: "承诺", npc: "人物",
+    place: "地点", item: "物品", rule: "规则", note: "备注",
+  };
+
+  function checkLevelClass(level) {
+    if (level === "critical_success" || level === "success") return "lv ok";
+    if (level === "partial") return "lv partial";
+    return "lv bad";
+  }
+
+  function gameResRow(host, item) {
+    const row = document.createElement("div");
+    row.className = "game-res";
+    const k = document.createElement("span");
+    k.className = "k";
+    k.textContent = item.label || item.key;
+    const barwrap = document.createElement("div");
+    barwrap.className = "barwrap";
+    const bar = document.createElement("div");
+    const lo = Number(item.min || 0);
+    const hi = Number(item.max || 0);
+    bar.className = "bar" + (item.color === "hp" ? " hp" : (item.color === "mp" ? " mp" : ""));
+    bar.style.width = pct(Number(item.value || 0) - lo, hi > lo ? hi - lo : 0) + "%";
+    barwrap.appendChild(bar);
+    const v = document.createElement("span");
+    v.className = "val";
+    v.textContent = hi > lo
+      ? (item.value + " / " + hi)
+      : String(item.value == null ? "—" : item.value);
+    row.appendChild(k);
+    row.appendChild(barwrap);
+    row.appendChild(v);
+    host.appendChild(row);
+  }
+
+  function renderGame(v) {
+    const g = v.game || {};
+    const prof = g.profile || {};
+    setText($("game-kind"), KIND_LABEL[prof.kind] || prof.kind || "");
+    setText($("game-title"), prof.title || (v.world || {}).name || "—");
+
+    const resBox = $("game-resources");
+    if (resBox) {
+      resBox.textContent = "";
+      const res = prof.resources || [];
+      if (!res.length) {
+        const s = document.createElement("span");
+        s.className = "empty";
+        s.textContent = "（无资源轨）";
+        resBox.appendChild(s);
+      } else {
+        res.forEach((item) => gameResRow(resBox, item));
+      }
+    }
+
+    const attrBox = $("game-attributes");
+    if (attrBox) {
+      attrBox.textContent = "";
+      (prof.attributes || []).forEach((item) => {
+        const s = document.createElement("span");
+        s.className = "chip dim";
+        s.textContent = (item.label || item.key) + " " + item.value;
+        attrBox.appendChild(s);
+      });
+    }
+
+    const meterBox = $("game-meters");
+    if (meterBox) {
+      meterBox.textContent = "";
+      (prof.meters || []).forEach((item) => gameResRow(meterBox, item));
+    }
+
+    const tagBox = $("game-tags");
+    if (tagBox) {
+      tagBox.textContent = "";
+      (prof.tags || []).forEach((tag) => {
+        const s = document.createElement("span");
+        s.className = "chip accent";
+        s.textContent = tag;
+        tagBox.appendChild(s);
+      });
+    }
+
+    const sheet = prof.sheet || {};
+    const keys = Object.keys(sheet);
+    const hint = $("game-sheet");
+    if (hint) {
+      hint.textContent = keys.length
+        ? keys.slice(0, 8).map((k) => k + "：" + sheet[k]).join(" · ")
+        : "";
+    }
+
+    renderChecks(g);
+    renderContext(g);
+    renderSessions(v);
+  }
+
+  function renderChecks(g) {
+    const box = $("checks");
+    if (!box) return;
+    const rows = g.checks || [];
+    const rate = g.check_rate || {};
+    setText($("checks-hint"), rate.total
+      ? (rate.success + "/" + rate.total + " 成功 · " + Math.round((rate.rate || 0) * 100) + "%")
+      : "");
+    box.textContent = "";
+    if (!rows.length) {
+      const s = document.createElement("span");
+      s.className = "empty";
+      s.textContent = g.check_error
+        ? ("判定记录读取失败：" + g.check_error)
+        : "还没有判定——宿主可以调 roll / combat / social 结算";
+      box.appendChild(s);
+      return;
+    }
+    rows.slice(0, 10).forEach((r) => {
+      const div = document.createElement("div");
+      div.className = "check-row";
+      const lv = document.createElement("span");
+      lv.className = checkLevelClass(r.level);
+      lv.textContent = CHECK_LEVEL_LABEL[r.level] || r.level || "—";
+      const mid = document.createElement("div");
+      const why = document.createElement("div");
+      why.className = "why";
+      why.textContent = (r.reason || (r.actor + " · " + (r.attribute || "无属性")));
+      const num = document.createElement("div");
+      num.className = "num";
+      num.textContent = r.total + " vs " + r.difficulty;
+      mid.appendChild(why);
+      mid.appendChild(num);
+      const dice = document.createElement("span");
+      dice.className = "num";
+      dice.textContent = r.dice || "";
+      div.appendChild(lv);
+      div.appendChild(mid);
+      div.appendChild(dice);
+      box.appendChild(div);
+    });
+  }
+
+  function renderContext(g) {
+    const ctx = g.context || {};
+    const hint = $("ctx-hint");
+    if (hint) hint.textContent = (ctx.open || 0) + " 条未结案 · 共 " + (ctx.total || 0);
+    const stats = $("ctx-stats");
+    if (stats) {
+      stats.textContent = "";
+      Object.entries(ctx.by_kind || {}).forEach(([k, n]) => {
+        if (!n) return;
+        const s = document.createElement("span");
+        s.className = "chip dim";
+        s.textContent = (FACT_KIND_LABEL[k] || k) + " " + n;
+        stats.appendChild(s);
+      });
+    }
+    const box = $("ctx-rows");
+    if (!box) return;
+    box.textContent = "";
+    const rows = ctx.recent || [];
+    if (!rows.length) {
+      const s = document.createElement("span");
+      s.className = "empty";
+      s.textContent = ctx.error ? ("台账读取失败：" + ctx.error) : "台账为空——宿主可用 context_remember 记线索与承诺";
+      box.appendChild(s);
+      return;
+    }
+    rows.forEach((r) => {
+      const div = document.createElement("div");
+      div.className = "ctx-row";
+      const kind = document.createElement("span");
+      kind.className = "kind";
+      kind.textContent = FACT_KIND_LABEL[r.kind] || r.kind || "事实";
+      const right = document.createElement("div");
+      const txt = document.createElement("div");
+      txt.className = "txt";
+      txt.textContent = r.text || "";
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = "第 " + (r.tick || 0) + " 回合" +
+        ((r.keys || []).length ? " · " + r.keys.join(" / ") : "");
+      right.appendChild(txt);
+      right.appendChild(meta);
+      div.appendChild(kind);
+      div.appendChild(right);
+      box.appendChild(div);
+    });
+  }
+
+  function renderSessions(v) {
+    const s = v.sessions || {};
+    const hint = $("sess-hint");
+    if (hint) hint.textContent = s.count ? (s.count + " 局 · 回收站 " + (s.trash || 0)) : "";
+    const box = $("sess-rows");
+    if (!box) return;
+    box.textContent = "";
+    const rows = s.saves || [];
+    if (!rows.length) {
+      const p = document.createElement("span");
+      p.className = "empty";
+      p.textContent = s.error
+        ? ("存档库读取失败：" + s.error)
+        : "存档库为空——用 session_new 新建一局（存档会集中在这个目录）";
+      box.appendChild(p);
+      if (s.root) {
+        const h = document.createElement("div");
+        h.className = "meta";
+        h.style.marginTop = "6px";
+        h.textContent = "目录：" + s.root;
+        box.appendChild(h);
+      }
+      return;
+    }
+    rows.forEach((r) => {
+      const div = document.createElement("div");
+      div.className = "sess-row" + (r.active ? " active" : "");
+      const left = document.createElement("div");
+      const n = document.createElement("div");
+      n.className = "n";
+      n.textContent = (r.broken ? "（损坏）" : "") + r.name;
+      const m = document.createElement("div");
+      m.className = "m";
+      m.textContent = [r.world || "未命名世界", r.player || "", r.updated || ""]
+        .filter(Boolean).join(" · ");
+      left.appendChild(n);
+      left.appendChild(m);
+      const num = document.createElement("span");
+      num.className = "num";
+      num.textContent = "第 " + (r.tick || 0) + " 回合" + (r.active ? " · 当前" : "");
+      div.appendChild(left);
+      div.appendChild(num);
+      box.appendChild(div);
+    });
+  }
+
   function openDrawer(id) {
     const d = $(id);
     if (!d) return;
@@ -1571,6 +1816,8 @@
       { k: "势力", run: () => openDrawer("drawer-world") },
       { k: "世界标记", run: () => openDrawer("drawer-flags") },
       { k: "世界书", run: () => openDrawer("drawer-lorebook") },
+      { k: "上下文台账", run: () => openDrawer("drawer-context") },
+      { k: "存档库", run: () => openDrawer("drawer-sessions") },
       { k: "帮助", run: () => openHelp($("help-btn")) },
       { k: "跳到最新", run: () => { const ul = $("timeline"); if (ul) ul.scrollTop = 0; } },
       { k: "导出状态", run: () => { window.location.href = "/export"; } },

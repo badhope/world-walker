@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "world-walker"
-version = "1.1.1"
-description = "万界·行者 World Walker — AI 驱动的文字互动游戏引擎（世界观无关规则内核 + MCP 服务器）"
+version = "1.2.0"
+description = "World Games — 通用 AI 互动游戏框架（任意题材的规则内核 + 上下文管理 + MCP 服务器 + 只读主舞台）"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -22,6 +22,9 @@ classifiers = [
 mcp = ["mcp>=2.3,<3"]
 
 [project.scripts]
+world-games = "game_engine.engine:main"
+world-games-mcp = "game_engine.mcp_server:main"
+# 兼容别名（v1.2.0 更名前的入口，保留以免现有客户端配置失效）
 world-walker = "game_engine.engine:main"
 world-walker-mcp = "game_engine.mcp_server:main"
 

@@ -218,16 +218,33 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
                 info["tick"] = int(state.get("tick", 0) or 0)
                 bucket[str(name)] = info
 
+    # 去重：load_setting / 重复 apply_runtime_fields / 同包二次载入都不能让世界书翻倍
+    # （实测同一包调用两次会 21→42 条，narration_context 的预算被重复条目吃掉）。
+    lore = state.setdefault("lore", [])
+    seen = {_lore_identity(e) for e in lore if isinstance(e, dict)}
     lore_n = 0
     for entry in bundle.get("lore") or []:
         norm = normalize_lore_entry(entry)
         if norm:
-            state.setdefault("lore", []).append(norm)
+            ident = _lore_identity(norm)
+            if ident in seen:
+                continue
+            seen.add(ident)
+            lore.append(norm)
             lore_n += 1
     if lore_n:
         log_event(state, "system", "设定包「%s」载入：世界书 %d 条"
                   % (bundle.get("name", ""), lore_n))
     return lore_n
+
+
+def _lore_identity(entry: dict) -> tuple:
+    """世界书条目的稳定身份：优先 id，其次 (comment, keys, content) 三元组。"""
+    eid = entry.get("id")
+    if eid is not None and str(eid).strip():
+        return ("id", str(eid).strip())
+    return ("body", str(entry.get("comment") or ""),
+            tuple(entry.get("keys") or []), str(entry.get("content") or ""))
 
 
 def normalize_lore_entry(entry: dict):

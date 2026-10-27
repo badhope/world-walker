@@ -711,6 +711,14 @@ def audit_regressions():
           {d: get_unsettled_karma(st, d) for d in 'ABCD'},
           {'A': 100, 'B': 100, 'C': 100, 'D': 50})
 
+    # 世界书重复导入不得翻倍（load_setting 二次调用 / apply_runtime_fields 重复）
+    from game_engine.settings_loader import apply_runtime_fields
+    st = {'tick': 0, 'lore': [], 'ui': {}, 'config': {}, 'entities': {'player': {}}}
+    bundle = {'name': 'x', 'lore': [{'comment': 'c', 'keys': ['k'], 'content': 'v'}]}
+    apply_runtime_fields(st, bundle)
+    apply_runtime_fields(st, bundle)
+    check('世界书二次导入后的条目数', len(st['lore']), 1)
+
     # 纯公式边界：不得因数学域错误抛异常（model() 暴露给宿主任意入参）
     from game_engine.rules import world_dynamics as WD
     check_true('lyapunov_exponent dx_t=0 返回 -inf 而非抛错',

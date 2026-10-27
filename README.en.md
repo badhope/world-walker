@@ -288,7 +288,7 @@ No pytest suite by design—verification is 14 executable self-checks plus a mut
 | Suite | Assertions | Locks |
 |---|---|---|
 | `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
-| `verify_branches.py` | 191 | exception paths and state branches of low-coverage modules |
+| `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
 | `verify_panel.py` | 72 | view-model contract, legacy saves, static whitelist, inbox guards |
 | `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
@@ -301,7 +301,7 @@ No pytest suite by design—verification is 14 executable self-checks plus a mut
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 13 | real Edge render, drawers, responsive, zero JS errors |
-| `verify_tests.py` | 629 audits | AST-level rejection of tautological assertions |
+| `verify_tests.py` | 632 audits | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 36 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash

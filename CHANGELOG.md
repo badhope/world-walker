@@ -33,6 +33,9 @@
 
 - `social` 的 `intensity` 接受 `NaN/Inf/0/负数` 并写坏关系值；未知事件静默加 0。改为 `ValueError`。
 - `should_use_system2` 完全忽略 `inhibition_budget`（预算耗尽强制退化从未生效）；改为预算参与判定，并支持确定性 `roll` 供只读查询。
+- `apply_runtime_fields` 重复导入同一世界书会把条目翻倍（21→42）；按 id/正文去重。
+- `character_card_read` 不标记 `untrusted`、不报告注入命中；现在与 `narration_context` 同规格。
+- `lyapunov_exponent` / `predictability_horizon` / `hawk_dove_ess_frequency` 的数学域错误改为返回极限值。
 - `model` 对 `lerner_price(elasticity<=1)` 返回 `inf`，不是合法 JSON；改为明确报错。
 - `open_panel` 每次调用都新建 HTTP 服务器线程；同状态复用、换局重建。
 - `load_setting` 在 wheel 安装场景下找不到相对路径 `settings/...`；增加包内路径回退。
@@ -41,9 +44,9 @@
 
 ### 测试
 
-- `verify_branches.py` 新增 32 条回归断言（159→191 运行时断言），覆盖上述每条修复。
+- `verify_branches.py` 新增 33 条回归断言（159→192 运行时断言），覆盖上述每条修复。
 - `verify_tests.py` 的断言基线校准到静态真实值（panel 66 / mcp 64 / cli 9 / memory 7 / branches 165）。
-- 断言审计 629 条 0 可疑；门禁 22 项全绿。
+- 断言审计 632 条 0 可疑；门禁 22 项全绿。
 
 ### 文档
 

@@ -1,10 +1,10 @@
 # 万界 · 行者
 
-**版本 v1.1.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**版本 v1.1.1** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
 > **AI 负责叙述，引擎负责世界 —— 而且"怎么玩"也能换。**
 > 四套世界观、四种玩法循环（自由推进 / 选项推进 / 地点命令 / 声明→判定→后果），同一套规则内核。
-> 世界观无关的文字互动游戏内核：144 个规则函数、39 个 MCP 工具、4 套可直接开玩的设定包、
+> 世界观无关的文字互动游戏内核：162 个规则函数、39 个 MCP 工具、4 套可直接开玩的设定包、
 > 一块离线可用的只读实况主舞台。同一份存档、同一个种子，永远得到同一个世界。
 
 <p align="center">
@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/screenshots/walkthrough.mp4">▶ 观看 12 秒真实交互录屏（行动排队 / 时间线筛选 / 命令面板 / 角色卡）</a>
+  <a href="docs/screenshots/walkthrough.mp4">▶ 观看 16 秒真实交互录屏（行动排队 / 时间线筛选 / 命令面板 / 角色卡）</a>
 </p>
 
 ---
@@ -49,11 +49,14 @@ pip install -e ".[mcp]"          # 仅标准库 + 可选 mcp SDK
 load_setting(path="settings/玄枢界.setting.json")
 ```
 
+在仓库根目录直接运行时按上面的相对路径即可；`pip` 安装后设定包位于包目录内，
+`load_setting` 会在原路径不存在时自动回退到包内同名路径。
+
 一局就开好了。接下来每个行动都由工具结算：
 
 ```
 你：我走进万石商行，把《引元诀》残页拍在柜台上，问石三娘这东西值多少。
-Agent → trade(location="临川城", item="yinyuan_canye", direction="sell", quantity=1)
+Agent → trade(location="临川城", item="ningyuan_dan", direction="buy", quantity=1)
       → social(actor="player", target="shi_sanniang", event="cooperate")
       → narration_context(...)  →  publish_prose(...)  →  tick()
 ```
@@ -273,7 +276,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 | 设定包 | 类型 | 特色 |
 |---|---|---|
-| [`玄枢界`](settings/玄枢界.setting.json) | 东方玄幻 | 十阶修行、玄晶经济、五方势力、21 条世界书 |
+| [`玄枢界`](settings/玄枢界.setting.json) | 东方玄幻 | 十阶修行、玄晶经济、八股势力、21 条世界书 |
 | [`折剑行`](settings/折剑行.setting.json) | 武侠 | 七阶身手、断剑主线、当铺经济、克制叙事 |
 | [`霓虹深渊`](settings/霓虹深渊.setting.json) | 赛博朋克 | F–S 评级、信用点、义体与记忆、雨季氛围 |
 | [`雾港`](settings/雾港.setting.json) | 调查悬疑 | 六阶调查、理智/体力、灯塔谜题、克苏鲁基调 |
@@ -285,13 +288,13 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 ## 质量与验证
 
-项目没有 `pytest` 套件，验证靠 13 个可执行自检脚本 + 1 套变异测试（这是设计选择：
+项目没有 `pytest` 套件，验证靠 14 个可执行自检脚本 + 1 套变异测试（这是设计选择：
 断言必须能被变异测试杀死，而不是只被覆盖率统计到）。
 
 | 自检 | 断言数 | 锁住什么 |
 |---|---|---|
 | `verify_formulas.py` | 122 | 按 docstring 的数学式独立重算 77 个函数 |
-| `verify_branches.py` | 159 | 低覆盖模块的异常路径与状态分支 |
+| `verify_branches.py` | 188 | 低覆盖模块的异常路径与状态分支 |
 | `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
 | `verify_panel.py` | 72 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
 | `verify_mcp_stdio.py` | 64 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
@@ -304,7 +307,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 13 | 真实 Edge 渲染 + 抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | 596 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `verify_tests.py` | 626 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
 | `verify_mutation.py` | 36 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
@@ -313,10 +316,10 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 推前门禁一条命令：
 
 ```bash
-bash scripts/pre_push_gate.sh     # 17 项，与 GitHub Actions 同判据
+bash scripts/pre_push_gate.sh     # 22 项，与 GitHub Actions 同判据
 ```
 
-覆盖率门禁：核心域 ≥70%（当前实测 88%）；`bandit` High/Medium/Low 全 0；`pyflakes` 0。
+覆盖率门禁：核心域 ≥70%（当前实测 88%）；`pyflakes` 0。`bandit` 只在核心引擎源码上为 0，仓库级扫描仍会在测试脚本里报低危项。
 
 ---
 
@@ -330,14 +333,14 @@ world-walker/                  # 仓库根即 game_engine 包
 ├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
 ├── panel.html / .css / .js    # 主舞台（原生三件套，无构建链）
 ├── viz_series.py              # 长局态势侧写（<state>.viz.jsonl）
-├── rules/                     # 144 个公开规则函数
+├── rules/                     # 162 个公开规则函数
 │   ├── combat.py economy.py social.py karma.py
 │   ├── cognition.py narrative_engine.py progression.py
 │   ├── world_dynamics.py world_evolution.py
 │   ├── models.py              # 16 个命名闭式模型
 │   └── social_extended.py cultural_evolution.py systems_feedback.py
 ├── settings/                  # 4 套可直接开玩的设定包
-├── scripts/                   # 13 个自检 + 变异测试 + 截图/视频/演示存档流水线
+├── scripts/                   # 14 个自检 + 变异测试 + 截图/视频/演示存档流水线
 ├── docs/demo/                 # 真实演示存档（截图与视频的数据源）
 ├── docs/screenshots/          # README 预览（真实渲染 + 逐项断言）
 └── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）

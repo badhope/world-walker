@@ -38,18 +38,20 @@ def normalize_entity(entity_id: str, raw: dict) -> dict:
             raise ValueError("实体 %s 的属性 %s 必须是数字" % (entity_id, key))
         attrs[key] = int(val)
 
-    hp_max = int(raw.get("hp_max", 100))
-    mp_max = int(raw.get("mp_max", 0))
+    hp_max = max(1, int(raw.get("hp_max", 100)))
+    mp_max = max(0, int(raw.get("mp_max", 0)))
+    hp = max(0, min(int(raw.get("hp", hp_max)), hp_max))
+    mp = max(0, min(int(raw.get("mp", mp_max)), mp_max))
     ent = {
         "name": str(raw["name"]),
         "faction": str(raw.get("faction", "")),
         "attrs": attrs,
-        "hp": int(raw.get("hp", hp_max)),
+        "hp": hp,
         "hp_max": hp_max,
-        "mp": int(raw.get("mp", mp_max)),
+        "mp": mp,
         "mp_max": mp_max,
         "level": str(raw.get("level", "凡人")),
-        "gold": int(raw.get("gold", 0)),
+        "gold": max(0, int(raw.get("gold", 0))),
         "location": str(raw.get("location", "")),
     }
     for extra in ("desc", "personality", "speech"):
@@ -88,12 +90,13 @@ def normalize_market(market: list) -> dict:
             if not isinstance(item, dict) or not item.get("key"):
                 raise ValueError("market.items 每项都必须有 key")
             key = str(item["key"])
-            price = int(item.get("price", 50))
+            # 价格必须为正：负价格会让买入反向加钱（见 economy.resolve_trade 的同类防护）。
+            price = max(1, int(item.get("price", 50)))
             items[key] = {
                 "name": str(item.get("name", key)),
                 "price": price,
-                "supply": int(item.get("supply", 20)),
-                "base_price": int(item.get("base_price", price)),
+                "supply": max(0, int(item.get("supply", 20))),
+                "base_price": max(1, int(item.get("base_price", price))),
                 "type": str(item.get("type", "")),
                 "desc": str(item.get("desc", "")),
             }
@@ -111,8 +114,10 @@ def normalize_relations(relations: list, entity_ids) -> dict:
         for eid in (a, b):
             if eid not in entity_ids:
                 raise ValueError("关系引用了不存在的实体: %s" % eid)
-        out[entity_key(a, b)] = {"affinity": int(rel.get("affinity", 0)),
-                                 "respect": int(rel.get("respect", 0))}
+        out[entity_key(a, b)] = {
+            "affinity": max(-100, min(100, int(rel.get("affinity", 0)))),
+            "respect": max(-100, min(100, int(rel.get("respect", 0)))),
+        }
     return out
 
 
@@ -265,13 +270,22 @@ def normalize_lore_entry(entry: dict):
     }
     if logic is not None:
         row["selective_logic"] = logic
-    for key in ("probability", "sticky", "cooldown", "delay", "scan_depth"):
+    # probability 是 0-100 的百分比（酒馆语义），必须保留小数：
+    # 旧实现用 int() 把 0.9 截成 0（永不触发）、把 1 当比例 100%（恒触发）。
+    for key in ("sticky", "cooldown", "delay", "scan_depth"):
         val = entry.get(key)
         if val is not None:
             try:
                 row[key] = int(val)
             except (TypeError, ValueError):
                 pass
+    if entry.get("probability") is not None:
+        try:
+            row["probability"] = float(entry["probability"])
+            # 酒馆语义：>=1 是百分比（1 = 1%）；(0,1) 是旧配置的比例写法（0.9 = 90%）。
+            row["probability_scale"] = 1 if 0 < row["probability"] < 1 else 100
+        except (TypeError, ValueError):
+            pass
     if entry.get("group"):
         row["group"] = str(entry["group"])
     for key in ("group_weight",):
@@ -283,5 +297,10 @@ def normalize_lore_entry(entry: dict):
                 pass
     if entry.get("group_override"):
         row["group_override"] = True
+    # 条目 id / uid 必须保留：_entry_id 优先用它做运行时键；
+    # 丢掉后同 comment 的两条会在 chosen[eid] 里互相覆盖（实测只触发第一条）。
+    eid = entry.get("id") if entry.get("id") is not None else entry.get("uid")
+    if eid is not None and str(eid).strip():
+        row["id"] = str(eid).strip()
     return row
 

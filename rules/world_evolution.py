@@ -299,7 +299,7 @@ def panarchy_step(state: dict) -> Dict:
         # 守恒期：存量见顶、连接度继续收紧，压力累积
         capital = logistic_growth(capital, 0.05, dest_capital)
         conn = logistic_growth(conn, 0.09, max(0.2, dest_conn))
-        karma = sum(e.get("amount", 0) for e in (state.get("karma_ledger") or [])
+        karma = sum(int(e.get("amount", 0) or 0) for e in (state.get("karma_ledger") or [])
                     if e.get("from") == "player" and not e.get("settled"))
         stress += 0.008 + min(0.03, karma / 6000.0) + max(0.0, _market_index(state) - 1.1) * 0.10
         if stress >= 1.0 or conn >= 0.92:
@@ -330,6 +330,9 @@ def panarchy_step(state: dict) -> Dict:
     pan["connectedness"] = round(conn, 4)
     pan["stress"] = round(stress, 4)
     pan["phase"] = phase
+    # hold 必须落盘：α 期的倒计时是跨回合状态，只在局部变量里减会每回合从 8 读回，
+    # 相位永远卡在 α（实测 hold 恒为 8、四段环断掉）。r/K 期写 0 让状态可读。
+    pan["hold"] = int(hold)
 
     # 状态机相位是权威；描述文案按相位查表（四段环必须都走得到才叫"适应性循环"）
     info = dict(PHASE_INFO[phase])

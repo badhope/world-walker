@@ -4,8 +4,8 @@
 
 > **MCP 模式**：宿主是 MCP 客户端（Claude Code / Codex / Cursor 等）时，用 `mcp_server.py`
 > 暴露的 39 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
-> `moral_update` 合并为 `status`，`info_weight` 改名为 `narrative_weight`，`world_state`
-> 改名为 `read_state`；另增建局三件套 `world_schema` / `world_init` / `world_open`、
+> `moral_update` 合并为 `status`，`info_weight` 改名为 `narrative_weight`；`world_state`
+> 仍是独立只读工具（与 `read_state` 并存：前者返回世界侧摘要，后者返回完整状态）；另增建局三件套 `world_schema` / `world_init` / `world_open`、
 > 叙事层 `narration_context`（关键词触发设定 + 在场角色卡面 + 编年史，每回合调）、
 > 酒馆生态 `character_card_read` / `add_character` / `import_lorebook`、回退 `snapshot` / `restore`、移动 `travel`（记图鉴）、叙事正文 `publish_prose`（把本回合正文写进状态，面板主舞台直接显示）、实况主舞台 `open_panel`（只读：叙事主舞台 + HUD + 事件时间线 + 分级弹窗/提示 + 图鉴/市场/大事记/世界脉搏抽屉；缺档可读报错并可重试）、面板行动队列 `pending_actions`（玩家在浏览器排的行动写进侧写文件，宿主取走后照常经引擎结算）、设定包 `load_setting`、长局 `advance` / `recall` / `write_summary` / `recap` / `configure`、物资 `use_item`（持有则自备消耗、买入时已付；未持有按所在地市场价现买现用，引擎结算花钱）、自由生成 `spawn_npc`（无角色卡也能入局）、模型层 `model` / `model_list`（查 16 个命名闭式模型：经济 Lerner/OU 价格、Cobb-Douglas、种群 logistic/Lotka-Volterra、流行病 SIR、风险 Poisson/生存、热力学松弛、舆论 bounded-confidence；宿主直接用公式推导效果，不再逐事件拍脑袋）。
 > 一键开局：调 `new_game` prompt（参数填设定），产出「协议 + 设定 + 状态文件」的完整开局指令。
@@ -122,7 +122,7 @@ pending_actions(mark_done=True)
 
 ## 5. 调用示例
 
-\```bash
+```bash
 # 战斗
 python3 engine.py combat --state g.json --attacker player --defender bandit --action_type heavy
 
@@ -140,4 +140,4 @@ python3 engine.py narrative --state g.json
 python3 engine.py karma --state g.json --actor player --victim villager --karma_type murder_innocent
 # 输出: {"risk_level": "high", "karma_consequence": {"triggered": true, "effects": ["突破成功率-30%"]}}
 # Agent: 描写玩家心中隐约的不安感,突破时心魔威力增大
-\```
+```

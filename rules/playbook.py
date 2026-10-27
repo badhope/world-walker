@@ -18,6 +18,7 @@
   · 任何"随机"都用 `sha256(seed|tick|key)` 派生，不消耗 rng_counter。
 """
 
+import copy
 import hashlib
 
 LOOPS = ("freeform", "choice", "mud", "ttrpg")
@@ -96,9 +97,9 @@ def normalize(raw):
     但 `playbook_notes` 会记录哪些项被回退了，面板与 status 都能看到。
     """
     notes = []
-    pb = dict(DEFAULT_PLAYBOOK)
-    for key in ("progress", "failure", "beat", "context"):
-        pb[key] = dict(DEFAULT_PLAYBOOK[key])
+    # 深拷贝：beat.pattern 是 list，浅拷贝会让调用方原地修改污染全局默认剧本
+    # （实测 append 一次后，后续所有 normalize 都带上那个词）。
+    pb = copy.deepcopy(DEFAULT_PLAYBOOK)
     if not isinstance(raw, dict):
         return pb, ["playbook 缺失或不是对象，已用默认剧本"]
 
@@ -120,8 +121,9 @@ def normalize(raw):
 
 def beat_at(playbook, tick):
     """当前节拍（第几拍、叫什么）。循环播放，不依赖墙钟。"""
-    pattern = (playbook or DEFAULT_PLAYBOOK)["beat"]["pattern"]
-    every = max(1, int((playbook or DEFAULT_PLAYBOOK)["beat"]["every"] or 5))
+    source = playbook or DEFAULT_PLAYBOOK
+    pattern = source.get("beat", {}).get("pattern") or DEFAULT_PLAYBOOK["beat"]["pattern"]
+    every = max(1, int(source.get("beat", {}).get("every") or 5))
     idx = (max(0, int(tick)) // every) % len(pattern)
     return {"index": idx, "name": pattern[idx], "every": every,
             "next_in": every - (max(0, int(tick)) % every)}

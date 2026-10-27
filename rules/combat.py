@@ -91,6 +91,7 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     if int(def_ent.get("hp", 0) or 0) <= 0:
         result["events"].append(f"{def_ent.get('name', defender_id)}已经没有还手之力")
         result["target_already_dead"] = True
+        result["outcome"] = "draw"
         return result
     
     # 计算命中（含等级差与相位/心流修正）
@@ -110,6 +111,25 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     hit_chance = max(0.1, min(0.95, 0.5 + (atk_power - def_power) * 0.05))
     hit_chance = max(0.05, min(0.98, hit_chance * hit_mult))
 
+    # 逃跑是独立动作：不参与命中判定，否则"逃跑失败"会被写成"攻击被闪避"，
+    # 并且双方 dex 都为 0 时下面的除法会直接抛 ZeroDivisionError。
+    if action == "flee":
+        dex_a = max(0, int(atk_attrs.get("dex", 10) or 0))
+        dex_b = max(0, int(def_attrs.get("dex", 10) or 0))
+        flee_chance = max(0.05, min(0.95, dex_a / max(1, dex_a + dex_b)))
+        result["hit"] = True
+        result["events"].append(f"{atk_ent['name']}尝试逃跑")
+        if random.random() < flee_chance:  # nosec B311 —— 游戏骰子，非密码学用途
+            result["events"].append("逃跑成功!")
+            result["fled"] = True
+        else:
+            result["events"].append("逃跑失败!")
+            result["fled"] = False
+        # 逃跑不计入战斗胜负：flow_channel_status 只统计 win/loss，
+        # 否则"逃跑成功"会被旧文案回退误判成 win、失败判成 loss，扭曲心流。
+        result["outcome"] = "draw"
+        return result
+
     # 重击更难命中 (必须在命中判定前应用)
     if action == "heavy":
         hit_chance = max(0.1, hit_chance * 0.7)
@@ -127,25 +147,22 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     # action 加成
     if action == "heavy":
         base_damage *= 1.8
-    elif action == "flee":
-        result["events"].append(f"{atk_ent['name']}尝试逃跑")
-        flee_chance = atk_attrs.get("dex", 10) / (atk_attrs.get("dex", 10) + def_attrs.get("dex", 10))
-        if random.random() < flee_chance:  # nosec B311 —— 游戏骰子，非密码学用途
-            result["events"].append("逃跑成功!")
-            result["fled"] = True
-        else:
-            result["events"].append("逃跑失败!")
-            result["fled"] = False
-        return result
     
     # 技能/功法加成 (世界观无关——"功法"可以是内力/法力/科技, 只是名字不同)
     skill_bonus = 1.0
     if skill:
         # skill 格式: {"name": "寒冰箭", "power": 2.0, "mp_cost": 10}
-        skill_bonus = skill.get("power", 1.5)
-        mp_cost = skill.get("mp_cost", 0)
-        if atk_ent.get("mp", 0) >= mp_cost:
-            atk_ent["mp"] -= mp_cost
+        if not isinstance(skill, dict) or not skill.get("name"):
+            raise ValueError("skill 必须是含 name 的对象")
+        try:
+            skill_bonus = float(skill.get("power", 1.5))
+            mp_cost = float(skill.get("mp_cost", 0) or 0)
+        except (TypeError, ValueError):
+            raise ValueError("skill.power / skill.mp_cost 必须是数字")
+        if not (skill_bonus > 0) or mp_cost < 0:
+            raise ValueError("skill.power 必须为正、skill.mp_cost 不能为负")
+        if float(atk_ent.get("mp", 0) or 0) >= mp_cost:
+            atk_ent["mp"] = float(atk_ent.get("mp", 0) or 0) - mp_cost
             base_damage *= skill_bonus
             result["events"].append(f"{atk_ent['name']}施展{skill['name']}!")
         else:

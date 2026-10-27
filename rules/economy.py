@@ -89,14 +89,20 @@ def resolve_trade(state, location_id, item, quantity, is_buyer, entity_id):
         return result
     
     item_data = loc_market[item]
+    # 负价格会让买入变成"加钱"（total 为负 → gold -= total 反而增加），
+    # 属于可被设定包/手改状态放大成无限金钱的漏洞，必须在结算前拒绝。
+    if int(item_data.get("price", 0) or 0) < 1:
+        result["events"].append("商品价格非法（必须为正）")
+        return result
     item_name = item_data.get("name") or item   # 叙事文本用显示名，item_key 只做定位
     
     # 大宗交易引起的价格波动
     supply_ratio = quantity / max(1, item_data["supply"])
     
+    supply = max(0, int(item_data.get("supply", 0) or 0))
     if is_buyer:
-        if item_data["supply"] < quantity:
-            result["events"].append(f"库存不足(只剩{item_data['supply']}个)")
+        if supply < quantity:
+            result["events"].append(f"库存不足(只剩{supply}个)")
             return result
         
         # 价格随购买量上升
@@ -110,10 +116,10 @@ def resolve_trade(state, location_id, item, quantity, is_buyer, entity_id):
         
         # 执行交易
         ent["gold"] -= total
-        item_data["supply"] -= quantity
+        item_data["supply"] = supply - quantity
         _add_items(ent, item, quantity)
-        # 价格更新
-        item_data["price"] = int(item_data["price"] * (1 + supply_ratio * 0.05))
+        # 价格更新基于本次成交价（用旧价会把大宗买入的涨价吞掉，出现买完立刻卖出套利）
+        item_data["price"] = max(1, int(price * (1 + min(supply_ratio, 1.0) * 0.05)))
         
         result["success"] = True
         result["price_per_unit"] = price
@@ -141,11 +147,12 @@ def resolve_trade(state, location_id, item, quantity, is_buyer, entity_id):
         total = price * quantity
         
         ent["gold"] = ent.get("gold", 0) + total
-        item_data["supply"] += quantity
+        item_data["supply"] = supply + quantity
         _add_items(ent, item, -quantity)
+        # 卖出只让价格回落，不抬高 base_price：
+        # 旧实现 max(base, sell_price) 是单向棘轮，长局里物价只能涨不能跌。
         sell_price = int(item_data["price"] * (1 - supply_ratio * 0.03))
-        item_data["base_price"] = max(int(item_data["base_price"]), sell_price)
-        item_data["price"] = max(int(item_data["base_price"]) // 2, sell_price)
+        item_data["price"] = max(1, sell_price)
         
         result["success"] = True
         result["price_per_unit"] = price
@@ -187,6 +194,9 @@ def tick_market(state):
             jitter_on = (state.get("config") or {}).get("market_jitter", True)
             noise = (jitter * max(1.0, base * 0.04)) if jitter_on else 0.0
             data["price"] = max(1, int(round(cur + (-0.15 * (cur - base)) + noise)))
-            # 供给缓慢恢复
-            if data["supply"] < 20:
-                data["supply"] += 1
+            # 供给向 20 回归（卖出造成的超额库存在回合里慢慢消化，而不是永久滞留）
+            supply = int(data.get("supply", 0) or 0)
+            if supply < 20:
+                data["supply"] = supply + 1
+            elif supply > 20:
+                data["supply"] = supply - 1

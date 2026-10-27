@@ -405,6 +405,13 @@ def _seed_rng(state: dict) -> None:
     seed_rng(state)
 
 
+def _unit_roll(state: dict, key: str) -> float:
+    """由 (rng_seed, tick, key) 派生的 [0,1) 伪随机量：只读展示用，不消耗 rng_counter。"""
+    import hashlib as _hl
+    raw = ("%s|%s|%s" % (state.get("rng_seed") or 0, state.get("tick") or 0, key)).encode("utf-8")
+    return int.from_bytes(_hl.sha256(raw).digest()[:8], "big") / float(1 << 64)
+
+
 def _read(result: dict) -> dict:
     """只读工具的返回包装：补 _tick，但**不落盘、不推进 rng_counter**。
 
@@ -934,7 +941,10 @@ def status() -> dict:
         "level_tier": level_tier(state, player),
         "cognition": {
             "cognitive_budget": budget,
-            "system2_likely": should_use_system2(budget, max(0.1, float(attrs.get("int", 10)) / 20)),
+            # 只读查询不能有抖动：用 state 派生的确定性 roll，而不是全局 random
+            "system2_likely": should_use_system2(
+                budget, max(0.1, float(attrs.get("int", 10)) / 20),
+                roll=_unit_roll(state, "system2")),
         },
         "unsettled_karma": sum(e["amount"] for e in state.get("karma_ledger", [])
                                if e["from"] == "player" and not e["settled"]),
@@ -971,6 +981,8 @@ def model(name: str, params: dict[str, float] | None = None) -> dict:
     Evaluate a named closed-form model (economics/population/epidemiology/probability/
     thermodynamics/opinion): model('lotka_volterra', {'prey': 8, 'predator': 3})."""
 
+    # 模型层是纯函数：随机型模型（ou_price 等）由 rules.models.model 内部固定种子，
+    # 不读对局状态、不消耗 rng_counter，因此同一请求永远得到同一结果。
     res = _model_fn(name, **(params or {}))
     res["params"] = params or {}
     return res
@@ -1242,7 +1254,7 @@ def configure(event_log_keep: int | None = None, recap_budget_chars: int | None 
                      ("summary_keep", summary_keep), ("milestone_keep", milestone_keep),
                      ("panel_port", panel_port)):
         if val is not None:
-            cfg[key] = int(val)
+            cfg[key] = max(1, int(val))
     if currency:
         state["currency"] = str(currency)
     if lore_recursion is not None:
@@ -1283,10 +1295,21 @@ def load_setting(path: str, state_path: str = "", seed: int | None = None) -> di
     """从「设定包」一键开一局（Chinese: 包里含 world/player/entities/market/relations/lore，
     示例见 settings/ 目录，格式见 settings/README.md）。
     Boot a full game from a setting bundle in one call."""
-    with open(path, encoding="utf-8") as f:
-        bundle = json.load(f)
+    # 安装后的 wheel 里，设定包在包目录下（与 mcp_server.py 同级），
+    # 而 README 的示例是相对仓库根的 "settings/xxx.setting.json"。
+    # 原路径不存在时回退到包内同名路径，并保留原始报错信息便于排查。
+    raw_path = path
+    if not os.path.exists(path) and not os.path.isabs(path):
+        bundled = os.path.join(_SCRIPT_DIR, path)
+        if os.path.exists(bundled):
+            path = bundled
+    try:
+        with open(path, encoding="utf-8") as f:
+            bundle = json.load(f)
+    except OSError as exc:
+        raise ValueError("设定包不存在或不可读: %s（也尝试了包内路径）" % raw_path) from exc
     if not isinstance(bundle, dict) or "world" not in bundle or "player" not in bundle:
-        raise ValueError("不是合法的设定包（缺 world/player）: %s" % path)
+        raise ValueError("不是合法的设定包（缺 world/player）: %s" % raw_path)
     sp = state_path or bundle.get("state_path_hint") or "ww_state.json"
     res = world_init(state_path=sp,
                      world=WorldInfo(**bundle["world"]),
@@ -1411,14 +1434,33 @@ def open_panel(port: int = 8765) -> dict:
     """打开实况主舞台（Chinese: 只读网页——叙事主舞台/HUD/事件时间线/分级弹窗与提示/图鉴/行情，
     状态一变自动刷新，缺档给可读横幅）。
     Open the read-only live stage (auto-refreshing web view of the game state)."""
+    # 同一份状态已有面板在跑就复用：重复 open_panel 会每次新建线程 + 监听端口，长会话里泄漏句柄。
+    # 切到另一局（state 路径不同）时必须重建，否则面板还在读上一局的状态文件。
+    existing = PANELS.get("server")
+    if existing is not None and PANELS.get("state") == _state_path():
+        try:
+            actual = int(existing.server_address[1])
+            return {"url": "http://127.0.0.1:%d/" % actual, "port": actual,
+                    "state": PANELS.get("state"), "reused": True,
+                    "note": "面板只读；状态一变就推新数据"}
+        except Exception:  # aqg: top-level boundary —— 旧服务器已关闭时重建
+            PANELS.pop("server", None)
+    elif existing is not None:
+        try:
+            existing.shutdown()
+        except Exception:  # aqg: top-level boundary —— 旧面板关不掉也不能阻断新面板
+            pass
+        PANELS.pop("server", None)
     import importlib.util
     spec = importlib.util.spec_from_file_location("ww_panel", os.path.join(_SCRIPT_DIR, "panel.py"))
     panel = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(panel)
     srv, actual = panel.start(_state_path(), port)
     PANELS["server"] = srv
+    PANELS["state"] = _state_path()
     return {"url": "http://127.0.0.1:%d/" % actual, "port": actual,
-            "state": _state_path(), "note": "面板只读；状态一变就推新数据"}
+            "state": _state_path(), "reused": False,
+            "note": "面板只读；状态一变就推新数据"}
 
 
 @server.tool()

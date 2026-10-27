@@ -78,6 +78,23 @@ stages:
         displayName: 文档一致性
         script: |
           python scripts/verify_docs.py
+      - step: world
+        name: verify-world
+        displayName: 世界演化与结算耦合
+        script: |
+          python scripts/verify_world.py
+      - step: coverage
+        name: coverage
+        displayName: 覆盖率门禁（核心域 ≥70%）
+        script: |
+          python -m pip install --quiet coverage
+          rm -f .coverage
+          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay; do
+            python -m coverage run --append --source=rules,panel,state_schema,settings_loader "scripts/$suite.py"
+          done
+          python -m coverage report | tee /tmp/cov.txt
+          PCT=$(awk '/^TOTAL/ {gsub("%","",$NF); print $NF}' /tmp/cov.txt)
+          python -c "import sys; sys.exit(0 if float('$PCT') >= 70 else 1)"
       - step: gameplay
         name: verify-gameplay
         displayName: 玩法层（剧本/事业线/世界书）
@@ -168,4 +185,12 @@ stages:
         displayName: 校验 wheel 资源
         script: |
           python scripts/check_wheel.py dist
+      - step: install-wheel
+        name: install-wheel
+        displayName: 从 wheel 安装并跑起来
+        script: |
+          python -m venv "$PWD/.venv-wheel"
+          "$PWD/.venv-wheel/bin/python" -m pip install --quiet dist/*.whl
+          "$PWD/.venv-wheel/bin/python" -c "import game_engine, os; root = os.path.dirname(game_engine.__file__); assert os.path.exists(os.path.join(root, 'panel.html'))"
+          "$PWD/.venv-wheel/bin/world-walker" --help > /dev/null
 

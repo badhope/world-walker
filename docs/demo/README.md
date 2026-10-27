@@ -14,8 +14,8 @@
 重新生成：
 
 ```bash
-python scripts/make_demo.py
-python scripts/audit_ui.py --state docs/demo/<世界>.save.json   # 截图
+python scripts/make_demo.py      # 生成四套演示存档（确定性，逐字节一致）
+python scripts/shots.py          # 逐项断言后截图 + 录制交互视频
 ```
 
 同一 seed 生成同一份存档（逐字节一致），因此截图与存档可以互相对照。

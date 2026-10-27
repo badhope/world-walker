@@ -4,7 +4,7 @@
 
 > **The AI narrates. The engine owns the world — and the way you play is configurable too.**
 > Four worlds, four gameplay loops (freeform / choice / location-command / declare-resolve-consequence), one rule core.
-> A world-agnostic interactive-fiction kernel: 144 rule functions, 34 MCP tools,
+> A world-agnostic interactive-fiction kernel: 162 rule functions, 39 MCP tools,
 > 4 playable setting bundles, and a read-only live stage that works offline.
 > Same save, same seed—always the same world.
 
@@ -47,6 +47,9 @@ Add to any MCP client (Claude Code / Codex / Cursor / opencode):
 { "mcpServers": { "world-walker": { "command": "world-walker-mcp" } } }
 ```
 
+The relative bundle path below works from a repo checkout; after `pip install` the bundles
+live inside the package and `load_setting` falls back to that location automatically.
+
 Then tell your agent:
 
 ```
@@ -57,7 +60,7 @@ That boots a full game. Every action is then settled by tools:
 
 ```
 You: I walk into the Wanshi trading house and put the torn page on the counter.
-Agent → trade(location="临川城", item="yinyuan_canye", direction="sell", quantity=1)
+Agent → trade(location="临川城", item="ningyuan_dan", direction="buy", quantity=1)
       → social(actor="player", target="shi_sanniang", event="cooperate")
       → narration_context(...)  →  publish_prose(...)  →  tick()
 ```
@@ -183,11 +186,13 @@ Locked by `verify_cli.py` (CLI channel), `verify_mcp_stdio.py` (MCP channel) and
 
 ---
 
-## MCP tools (34)
+## MCP tools (39)
 
 | Group | Tools |
 |---|---|
 | Setup | `world_schema` `world_init` `world_open` `load_setting` |
+| Gameplay | `playbook_info` `quest_status` `quest_advance` `failure_tick` |
+| Lorebook | `lore_lookup` |
 | Settlement | `combat` `trade` `social` `karma` `tick` `use_item` `advance` |
 | Narrative | `narration_context` `publish_prose` `narrative` `narrative_weight` `merit` |
 | Long game | `write_summary` `recap` `recall` `snapshot` `restore` `configure` |
@@ -200,6 +205,67 @@ Locked by `verify_cli.py` (CLI channel), `verify_mcp_stdio.py` (MCP channel) and
 See [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md).
 
 ---
+
+## Gameplay layer: same rules, four ways to play
+
+World-swapping is only the first layer. What actually decides *how this game plays* is the `playbook`:
+
+| Field | Values | Effect |
+|---|---|---|
+| `loop` | `freeform` / `choice` / `mud` / `ttrpg` | narrative loop: free input / options / location commands / declare→resolve→consequence |
+| `input` | `natural` / `choice` / `command` | player input form |
+| `progress` | `{axis, label, max}` | progress axis: `level` / `gold` / `reputation` / `knowledge` / `clock` |
+| `failure` | `{mode, label, max}` | failure condition: `hp` / `sanity` / `clock` / `deadline` / `none` |
+| `beat` | `{pattern, every}` | beat sequence (e.g. daily · friction · escalation · cost · payoff) |
+| `settlement` | tool names | which settlements this run allows |
+| `context` | `{inject, max_lore, scan_depth}` | per-turn context injection policy |
+
+`playbook_info` returns the current playbook, progress, failure clock, current beat and a **narration guide**
+for the host; `scripts/verify_gameplay.py` (60 assertions) locks these semantics.
+The four setting bundles demonstrate the four loops: xuanshu `freeform` / wuxia `ttrpg` / cyberpunk `mud` / mystery `choice`.
+
+## Questlines: objectives and pressure, never a chore list
+
+A bundle's `questlines` is a stage DAG:
+
+```json
+{
+  "id": "fog_lighthouse",
+  "title": "Keep the lighthouse dark",
+  "visibility": {"flag": "unsigned_letter"},
+  "stages": [
+    {"id": "letter", "title": "The letter", "objectives": ["find out who wrote it"],
+     "exit_if": {"visited": "fog_harbor"}, "next": ["keeper"]},
+    {"id": "keeper", "title": "The keeper", "objectives": ["find old Shen"], "next": []}
+  ],
+  "reward": {"flags": ["lighthouse_truth"]}
+}
+```
+
+- **Predicates read world state only**: `flag` / `visited` / `gold_gte` / `karma_gte` / `tier_gte` / `relation_gte` / `item_gte` / `counter_gte` / `stage_done`, composable with `all` / `any` / `not`.
+- **dormant is hidden**: quests whose `visibility` is unmet do not take up panel space.
+- **Only `exit_if` advances**: a stage without `exit_if` never advances automatically — the host calls `quest_advance`.
+- **Failure wins**: `fail_if` or `deadline_tick` short-circuits any progress.
+- **Rewards pay once**: repeated ticks after completion cannot pay again.
+- Loading validates the DAG: cycles and dangling `next` are rejected.
+
+## Lorebook: tavern semantics, deterministic per tick
+
+| Semantics | Status |
+|---|---|
+| `keys` / `secondary_keys` / `selective` | supported |
+| `selectiveLogic` (AND_ANY / NOT_ALL / NOT_ANY / AND_ALL) | supported |
+| `constant` / `insertion_order` / `enabled` | supported |
+| `probability` / `use_probability` | supported (derived from `sha256(seed|tick|entry)`) |
+| `sticky` / `cooldown` / `delay` | supported (tick-based, persisted in state) |
+| `group` / `group_weight` / `group_override` | supported (one entry per group) |
+| `scan_depth` / `match_whole_words` / `exclude_recursion` | supported |
+| Recursive scanning | supported but **off by default** |
+| `position` / `depth` / `role` / `outlet` | not supported: prompt layout belongs to the host |
+| `vectorized` / `automationId` / `characters` filters | not supported: needs embeddings or front-end scripts |
+
+The panel's lorebook drawer shows trigger counts and remaining sticky/cooldown per entry.
+`lore_lookup` previews a trigger for arbitrary text.
 
 ## Setting bundles: swap worlds without code
 
@@ -216,33 +282,33 @@ Format: [settings/README.md](settings/README.md).
 
 ## Quality
 
-No pytest suite by design—verification is 13 executable self-checks plus a mutation suite
+No pytest suite by design—verification is 14 executable self-checks plus a mutation suite
 (assertions must be *killable*, not merely *covered*).
 
 | Suite | Assertions | Locks |
 |---|---|---|
 | `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
-| `verify_branches.py` | 159 | exception paths and state branches of low-coverage modules |
+| `verify_branches.py` | 188 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
 | `verify_panel.py` | 72 | view-model contract, legacy saves, static whitelist, inbox guards |
 | `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | 16 | version single-source / tool count / asset references |
-| `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
+| `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 13 | real Edge render, drawers, responsive, zero JS errors |
-| `verify_tests.py` | 596 audits | AST-level rejection of tautological assertions |
+| `verify_tests.py` | 626 audits | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 36 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 17 checks, same criteria as GitHub Actions
+bash scripts/pre_push_gate.sh     # 22 checks, same criteria as GitHub Actions
 ```
 
-Coverage gate: core ≥70% (currently 88%); bandit High/Medium/Low = 0; pyflakes = 0.
+Coverage gate: core ≥70% (currently 88%); pyflakes = 0. bandit is clean on the engine core; the repository-wide scan still reports findings confined to test scripts.
 
 ---
 

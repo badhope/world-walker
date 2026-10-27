@@ -174,7 +174,7 @@ def check_world_emergent_events(state: Dict) -> List[Dict]:
                        "desc": "你的名声已在%d个圈子传开" % len(unique_relations),
                        "probability": round(p, 3)})
 
-    total = sum(e.get("amount", 0) for e in state.get("karma_ledger", [])
+    total = sum(int(e.get("amount", 0) or 0) for e in state.get("karma_ledger", [])
                 if not e.get("settled"))
     if total >= 300 and fresh("karma_collapse"):
         p = min(0.95, total / 300.0 * mult / 1.2)

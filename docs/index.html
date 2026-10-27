@@ -4,9 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>万界·行者 World Walker — AI 负责叙述，引擎负责世界</title>
-<meta name="description" content="世界观无关的 AI 文字互动游戏内核：确定性规则结算 + 34 个 MCP 工具 + 只读实况主舞台。四套可直接开玩的设定包。" />
+<meta name="description" content="世界观无关的 AI 文字互动游戏内核：确定性规则结算 + 39 个 MCP 工具 + 只读实况主舞台。四套可直接开玩的设定包。" />
 <meta property="og:title" content="万界·行者 World Walker" />
-<meta property="og:description" content="AI 负责叙述，引擎负责世界。144 个规则函数、34 个 MCP 工具、4 套设定包。" />
+<meta property="og:description" content="AI 负责叙述，引擎负责世界。162 个规则函数、39 个 MCP 工具、4 套设定包。" />
 <meta property="og:image" content="screenshots/stage-xuanshu.png" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f13'/%3E%3Ctext x='16' y='22.5' font-size='17' text-anchor='middle' fill='%23e8b04b' font-family='serif'%3E%E8%A1%8C%3C/text%3E%3C/svg%3E" />
 <style>
@@ -144,17 +144,17 @@
 
 <header class="hero">
   <div class="wrap">
-    <p class="eyebrow">World Walker · v1.1.0</p>
+    <p class="eyebrow">World Walker · v1.1.1</p>
     <h1>AI 负责叙述，<span class="accent">引擎负责世界</span></h1>
     <p class="lede">
-      世界观无关的文字互动游戏内核：144 个规则函数结算每一次行动，34 个 MCP 工具供任意 Agent 调用，
+      世界观无关的文字互动游戏内核：162 个规则函数结算每一次行动，39 个 MCP 工具供任意 Agent 调用，
       四套设定包换世界不改一行代码，一块只读实况主舞台把真实状态摆在你面前。
       同一个存档、同一个种子，永远得到同一个世界。
     </p>
     <div class="badges">
       <span class="badge"><b>零</b>运行时依赖</span>
-      <span class="badge"><b>34</b> MCP 工具</span>
-      <span class="badge"><b>144</b> 规则函数</span>
+      <span class="badge"><b>39</b> MCP 工具</span>
+      <span class="badge"><b>162</b> 规则函数</span>
       <span class="badge"><b>4</b> 套世界观</span>
       <span class="badge"><b>36/36</b> 变异测试</span>
       <span class="badge"><b>88%</b> 覆盖率</span>
@@ -227,7 +227,7 @@
       <div class="card"><h3>世界书</h3><p>selectiveLogic 四值、概率、sticky/cooldown、同组互斥、递归开关——与酒馆语义对齐，但时间是 tick，可复现。</p></div>
       <div class="card"><h3>失败钟</h3><p>不是"扣血才算失败"：债主上门、被盯上、理智耗尽都是可配置的失败条件，由 <code>failure_tick</code> 推进。</p></div>
     </div>
-    <p class="sub" style="margin-top:16px">完整字段、DAG 规则与"不支持项及理由"见 <a href="../GAMEPLAY.md">docs/GAMEPLAY.md</a>。</p>
+    <p class="sub" style="margin-top:16px">完整字段、DAG 规则与"不支持项及理由"见 <a href="GAMEPLAY.md">docs/GAMEPLAY.md</a>。</p>
   </div>
 </section>
 
@@ -275,15 +275,15 @@
   <div class="wrap">
     <h2>质量是<span class="accent">可验证的</span></h2>
     <p class="sub">
-      没有 pytest 套件，取而代之的是 13 个可执行自检 + 一套变异测试：
+      没有 pytest 套件，取而代之的是 14 个可执行自检 + 一套变异测试：
       断言必须能被"改坏代码"杀死，而不是只被覆盖率统计到。
     </p>
     <div class="metrics">
-      <div class="metric"><div class="n">530</div><div class="l">断言审计（0 可疑）</div></div>
+      <div class="metric"><div class="n">626</div><div class="l">断言审计（0 可疑）</div></div>
       <div class="metric"><div class="n">36/36</div><div class="l">变异测试全杀</div></div>
       <div class="metric"><div class="n">88%</div><div class="l">核心域覆盖率</div></div>
-      <div class="metric"><div class="n">17</div><div class="l">推前门禁项</div></div>
-      <div class="metric"><div class="n">0</div><div class="l">bandit 告警</div></div>
+      <div class="metric"><div class="n">22</div><div class="l">推前门禁项</div></div>
+      <div class="metric"><div class="n">0</div><div class="l">核心依赖</div></div>
       <div class="metric"><div class="n">500</div><div class="l">轮真实压测（0 违规）</div></div>
     </div>
   </div>
@@ -309,7 +309,7 @@
         <pre><code>load_setting(path="settings/玄枢界.setting.json")</code></pre>
         <h3 style="margin-top:18px">4 · 走一步</h3>
         <pre><code>trade(location="临川城", item="ningyuan_dan",
-      direction="buy", quantity=2)
+      direction="buy", quantity=1)
 social(actor="player", target="shi_sanniang",
        event="cooperate")
 narration_context(scene_text="万石商行")
@@ -338,7 +338,7 @@ tick()</code></pre>
       <a href="https://github.com/badhope/world-walker">GitHub</a> ·
       <a href="https://gitee.com/badhope/world-walker">Gitee</a> ·
       <a href="https://gitcode.com/badhope/world-walker">GitCode</a> ·
-      <a href="../README.md">README</a>
+      <a href="https://github.com/badhope/world-walker">README</a>
     </p>
   </div>
 </footer>

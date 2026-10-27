@@ -272,11 +272,17 @@ def model(name: str, **params) -> dict:
     """统一入口: model('lotka_volterra', prey=8, predator=3) -> {model, value, formula, desc}。
 
     未知模型名 -> KeyError(带可用清单)。返回把闭式结果包一层, 宿主可直接读"效果"。
+    非有限结果（如 Lerner 在弹性 <=1 时的 inf）直接报错：JSON 的 Infinity
+    不是合法 JSON，严格客户端解析会失败，也会污染 Agent 的判断。
     """
     if name not in MODELS:
         raise KeyError("未知模型 %r; 可用: %s" % (name, ", ".join(sorted(MODELS))))
     meta = MODELS[name]
     value = meta["fn"](**params)
+    _nums = list(value) if isinstance(value, (list, tuple)) else [value]
+    for v in _nums:
+        if isinstance(v, float) and (v != v or v in (float("inf"), float("-inf"))):
+            raise ValueError("模型 %s 的参数产生了非有限结果（%r），请检查输入" % (name, v))
     return {"model": name, "domain": meta["domain"], "formula": meta["formula"],
             "desc": meta["desc"], "value": value}
 

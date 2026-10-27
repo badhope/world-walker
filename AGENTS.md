@@ -8,12 +8,12 @@ AI 驱动的文字互动游戏引擎：规则结算内核（Python）+ MCP 服�
 
 - 仓库根即 `game_engine` 包（`pyproject.toml` 中 `package-dir = { "game_engine" = "." }`，内部统一 `import game_engine.*`）
 - `engine.py` — 规则结算内核
-- `mcp_server.py` — MCP 工具入口（34 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
+- `mcp_server.py` — MCP 工具入口（39 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
 - `panel.py` / `panel.html` / `panel.css` / `panel.js` — 只读主舞台（面板不许写状态；
   行动队列只写 `<state>.inbox.jsonl` 侧写，状态仍由 MCP 单点写入）
 - `state_schema.py` — 状态模型（原子写 / 世代归档 / 种子）
 - `settings_loader.py` — 设定包 → 状态（**纯标准库**；MCP 与零依赖自检共用，不要在这里引 mcp）
-- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（13 个 `verify_*.py` + 素材流水线）
+- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（14 个 `verify_*.py` + 素材流水线）
 
 ## 运行
 
@@ -48,11 +48,11 @@ bash scripts/pre_push_gate.sh   # 推送前门禁，与 GitHub Actions 同判据
 - 面板严格只读：`panel.*` 不得写 `game_state.json`
 - 零依赖原则：新增第三方依赖前必须先说明必要性（MCP 之外）
 - 改数据模型必须同步 `ARCHITECTURE.md` 与 `state_schema.py`
-- `game_state.json` / `demo_state.json` / `audit_state.json` 是演示与审计快照，改动会破坏 `audit_ui.py` 的 18 项断言
+- `game_state.json` / `demo_state.json` / `audit_state.json` 是演示与审计快照；`demo_state.json` 被 `verify_cli.py` 当作 CLI 基准存档，改动会让断言失真
 
 ## 不要碰
 
 - `__pycache__/`、`*.egg-info/`、`.venv/`
-- `docs/screenshots/` 里的截图（由 `scripts/audit_ui.py` 断言后入库）
+- `docs/screenshots/` 里的截图（由 `scripts/shots.py` 断言后入库）
 - `requirements-mcp.lock.txt`（经 OSV 扫描，加依赖需重扫）
 - `game_state.json` 的真实存档（调试请用副本）

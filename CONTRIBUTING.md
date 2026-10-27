@@ -23,7 +23,7 @@ python -m playwright install msedge                     # 可选：跑界面巡�
 ## 验证
 
 ```bash
-bash scripts/pre_push_gate.sh    # 17 项，与 GitHub Actions 同判据
+bash scripts/pre_push_gate.sh    # 22 项，与 GitHub Actions 同判据
 ```
 
 单项：

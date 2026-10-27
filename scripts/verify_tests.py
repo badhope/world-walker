@@ -41,19 +41,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 期望的断言数量下限（低于此值视为"断言被删除/清空"）
 # 静态 check() 调用点数的精确基线：少一条就报 R6（删除断言/整段检查都拦得住）
 EXPECTED = {
-    'scripts/verify_cli.py': 7,
-    'scripts/verify_panel.py': 50,
-    'scripts/verify_mcp_stdio.py': 53,
+    'scripts/verify_cli.py': 9,
+    'scripts/verify_panel.py': 66,
+    'scripts/verify_mcp_stdio.py': 64,
     'scripts/verify_near_death.py': 7,
     'scripts/verify_formulas.py': 119,
-    'scripts/verify_branches.py': 147,
+    'scripts/verify_branches.py': 171,
     'scripts/verify_injection.py': 9,
-    'scripts/verify_memory.py': 6,
+    'scripts/verify_memory.py': 7,
     'scripts/user_playtest.py': 43,
     'scripts/stress_freeplay.py': 10,
     'scripts/verify_world.py': 48,
     'scripts/verify_settings.py': 6,
-    'scripts/verify_docs.py': 16,
+    'scripts/verify_docs.py': 22,
     'scripts/verify_gameplay.py': 45,
 }
 CHECK_FUNCS = {'check', 'ux', 'check_true'}

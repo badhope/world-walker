@@ -83,7 +83,7 @@ def save_state(state, path):
     不会截断/删除任何已写下的归档。已有归档永久只增不减。
     """
     cfg = state.get("config") or {}
-    keep = int(cfg.get("event_log_keep", 200))
+    keep = max(1, int(cfg.get("event_log_keep", 200)))
     log = state.get("event_log") or []
     if len(log) > keep:
         overflow, state["event_log"] = log[:-keep], log[-keep:]
@@ -206,6 +206,7 @@ def _prune_settled(state, ledger, cap):
     为什么不能直接截断：用户明确反对「按计数截断会物理删历史」
     （见 ARCHIVE_GENERATION 决策）。合并保留总额，因此业债机制与风险等级不变。
     """
+    cap = max(1, int(cap))
     if len(ledger) <= cap:
         return
     settled = [i for i, e in enumerate(ledger) if e.get("settled")]
@@ -215,21 +216,35 @@ def _prune_settled(state, ledger, cap):
         del ledger[i]
     if len(ledger) <= cap:
         return
-    # 仍有超额：把最旧的若干条未结算条目合并成一条
-    over = len(ledger) - cap + 1
-    head = ledger[:over]
-    tail = ledger[over:]
-    merged_amount = sum(int(e.get("amount", 0) or 0) for e in head)
-    merged = {
-        "from": head[0].get("from", ""),
-        "to": head[-1].get("to", ""),
-        "type": "merged",
-        "amount": merged_amount,
-        "tick": head[0].get("tick", 0),
-        "settled": False,
-        "merged": len(head),
-    }
-    ledger[:] = [merged] + tail
+    # 仍有超额：把所有未结算条目**按债务人分组**各合并成一条。
+    # 不能直接取前 N 条合并——那会把 A/B/C 的债全挂到第一个人的头上
+    # （实测 B 的 100 变成 A 的，总额守恒但归属错乱，业债/天劫按错误的人计算）。
+    # 分组后条目数 = 债务人种类数，是"不丢归属"前提下的最小上界；
+    # 单债务人长局（最常见）就是一条汇总，与旧行为一致。
+    buckets = {}
+    order = []
+    for e in ledger:
+        debtor = e.get("from", "")
+        if debtor not in buckets:
+            buckets[debtor] = []
+            order.append(debtor)
+        buckets[debtor].append(e)
+    merged_rows = []
+    for debtor in order:
+        rows = buckets[debtor]
+        if len(rows) == 1 and rows[0].get("type") != "merged":
+            merged_rows.append(rows[0])
+            continue
+        merged_rows.append({
+            "from": debtor,
+            "to": rows[-1].get("to", ""),
+            "type": "merged",
+            "amount": sum(int(e.get("amount", 0) or 0) for e in rows),
+            "tick": rows[0].get("tick", 0),
+            "settled": False,
+            "merged": sum(int(e.get("merged", 1) or 1) for e in rows),
+        })
+    ledger[:] = merged_rows
 
 def get_unsettled_karma(state, entity):
     """获取某实体未偿还的因果债总额"""

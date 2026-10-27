@@ -22,10 +22,27 @@ def daily_cognitive_budget(realm_level: int, mental_state: str) -> float:
     state_mod = {"充沛": 1.2, "正常": 1.0, "疲惫": 0.6, "走火入魔边缘": 0.2}
     return 100.0 * (1.0 + realm_level * 0.3) * state_mod.get(mental_state, 1.0)
 
-def should_use_system2(inhibition_budget: float, mental_clarity: float, noise: float = 0.0) -> bool:
-    """判定当前是否启用 System 2（慢思考）"""
+def should_use_system2(inhibition_budget: float, mental_clarity: float, noise: float = 0.0,
+                      roll: float | None = None) -> bool:
+    """判定当前是否启用 System 2（慢思考）。
+
+    预算必须参与判定：旧实现完全忽略 inhibition_budget，导致"预算耗尽强制退化"
+    的设计从未生效（实测 budget=1 与 budget=100000 输出分布相同）。
+    这里把预算映射成 0..1 的可用度乘到抑制能力上。
+
+    `roll` 供只读查询使用：传入 0..1 的确定性伪随机量后不再读全局 random，
+    这样 `status` 在同一状态上多次查询得到同一答案（只读工具不该有抖动）。
+    """
     ability = inhibition_ability(mental_clarity, mental_clarity * 0.8, 0.3)
-    return (random.random() + noise) < (ability / (ability + 1.0))  # nosec B311 —— 游戏骰子，非密码学用途
+    try:
+        budget = max(0.0, float(inhibition_budget))
+    except (TypeError, ValueError):
+        budget = 0.0
+    # 预算 0 → 0 倍；100 及以上视为充足；对数尺度避免高等级瞬间封顶
+    budget_factor = min(1.0, math.log1p(budget) / math.log1p(100.0))
+    p_system2 = (ability * budget_factor) / (ability * budget_factor + 1.0)
+    sample = random.random() if roll is None else max(0.0, min(1.0, float(roll)))
+    return (sample + noise) < p_system2  # nosec B311 —— 游戏骰子，非密码学用途
 
 # ============================================================
 # 2. 前景理论 (Prospect Theory, Kahneman & Tversky 1979)

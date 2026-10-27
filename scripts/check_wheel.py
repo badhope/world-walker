@@ -25,9 +25,20 @@ REQUIRED = [
     'settings/折剑行.setting.json',
     'settings/霓虹深渊.setting.json',
     'settings/雾港.setting.json',
+    'settings/README.md',
+    'README.md',
+    'README.en.md',
     'ARCHITECTURE.md',
     'BRAND.md',
+    'GAME_MASTER_PROTOCOL.md',
+    'docs/GAMEPLAY.md',
+    'docs/BENCHMARK.md',
     'docs/demo/玄枢界.save.json',
+    'docs/demo/折剑行.save.json',
+    'docs/demo/霓虹深渊.save.json',
+    'docs/demo/雾港.save.json',
+    'docs/screenshots/stage-xuanshu.png',
+    'docs/screenshots/walkthrough.mp4',
 ]
 
 

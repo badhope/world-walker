@@ -103,7 +103,8 @@ def evaluate(state, pred):
     if "relation_gte" in pred:
         target = pred["relation_gte"] or {}
         who = str(target.get("with", ""))
-        key = ":".join(sorted(["player", who])) if who else ""
+        from game_engine.state_schema import entity_key
+        key = entity_key("player", who) if who else ""
         rel = (state.get("relations") or {}).get(key) or {}
         field = "respect" if target.get("respect") is not None else "affinity"
         want = int(target.get(field, 0))
@@ -271,6 +272,18 @@ def _step_quest(state, quest, row, tick):
     cur = _stage_of(quest, row["stage"]) or {}
     if cur.get("exit_if") is None or not evaluate(state, cur["exit_if"]):
         return changes
+    if cur["id"] in row["done_stages"]:
+        # 已完成但 next 的 enter_if 一直不满足：不能每回合重记 stage_done（实测连续 3 回合都报），
+        # 但仍要每回合重试 _next_stage —— 条件满足时自动进入下一幕。
+        nxt = _next_stage(state, quest, row)
+        if nxt is not None:
+            _enter_stage(state, quest, row, nxt, tick)
+            changes.append({"quest": qid, "change": "stage",
+                            "stage": nxt["id"], "title": nxt.get("title")})
+        elif not (cur.get("next") or []):
+            _finish_quest(state, quest, row, tick)
+            changes.append({"quest": qid, "change": "done"})
+        return changes
     row["done_stages"].append(cur["id"])
     row["history"].append({"tick": tick, "stage": cur["id"], "event": "complete"})
     changes.append({"quest": qid, "change": "stage_done",
@@ -283,6 +296,8 @@ def _step_quest(state, quest, row, tick):
     elif not (cur.get("next") or []):
         _finish_quest(state, quest, row, tick)
         changes.append({"quest": qid, "change": "done"})
+    # 有 next 但 enter_if 都还不满足：保持在当前幕（done_stages 已记录），
+    # 下一个 tick 走上面的"已完成 → 重试 _next_stage"分支，不重复记 stage_done。
     return changes
 
 
@@ -318,6 +333,11 @@ def _ensure_row(state, quest, quest_id, stage_id=None):
         "status": "active", "stage": stage_id, "done_stages": [],
         "entered_at": {}, "history": [],
     })
+    # 旧存档/旧设定包的行可能缺字段：逐字段补齐，避免 KeyError
+    row.setdefault("stage", stage_id)
+    row.setdefault("done_stages", [])
+    row.setdefault("entered_at", {})
+    row.setdefault("history", [])
     if row.get("status") == "dormant":
         row["status"] = "active"
     return row
@@ -334,6 +354,8 @@ def _enter_stage(state, quest, row, stage, tick):
 
 
 def _finish_quest(state, quest, row, tick):
+    if row.get("status") == "done":
+        return          # 幂等：重复 complete_stage / 重复 tick 不许重复发奖励
     row["status"] = "done"
     row["history"].append({"tick": tick, "stage": row.get("stage"), "event": "done"})
     reward = quest.get("reward") or {}
@@ -375,6 +397,8 @@ def complete_stage(state, quests, quest_id, stage_id, tick=None):
         raise ValueError("事业线 %s 没有 stage: %s" % (quest_id, stage_id))
 
     row = _ensure_row(state, quest, quest_id, stage_id)
+    if row.get("status") == "done":
+        return row
     if stage_id not in row["done_stages"]:
         row["done_stages"].append(stage_id)
         row["history"].append({"tick": tick, "stage": stage_id, "event": "complete"})

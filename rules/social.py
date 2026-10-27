@@ -8,6 +8,7 @@ respect: 敬重/畏惧
 不同世界观共用同一社交公式，只是事件描写不同。
 """
 
+import math
 from game_engine.state_schema import set_relation, get_relation
 
 def resolve_social_event(state, actor_id, target_id, event_type, intensity=1):
@@ -49,6 +50,16 @@ def resolve_social_event(state, actor_id, target_id, event_type, intensity=1):
         "murder":     (-40, 0),
     }
     
+    try:
+        intensity = float(intensity)
+    except (TypeError, ValueError):
+        raise ValueError("intensity 必须是数字")
+    if not math.isfinite(intensity) or intensity <= 0:
+        raise ValueError("intensity 必须是有限正数（收到 %r）" % intensity)
+    if event_type not in BEFORE:
+        raise ValueError("未知社交事件: %s（可用: %s）"
+                         % (event_type, " / ".join(sorted(BEFORE))))
+
     affinity_delta, respect_delta = BEFORE.get(event_type, (0, 0))
     affinity_delta *= intensity
     respect_delta *= intensity
@@ -64,6 +75,7 @@ def resolve_social_event(state, actor_id, target_id, event_type, intensity=1):
         else:
             affinity_delta *= moral_mult
         affinity_delta = int(round(affinity_delta))
+        respect_delta = int(round(respect_delta))
     except Exception:  # aqg: top-level boundary —— 道德是辅助输入，坏了退回原始增量
         moral_mult = 1.0
 

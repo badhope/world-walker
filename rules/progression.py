@@ -30,9 +30,15 @@ def level_tier(state: dict, entity: dict) -> int:
     tiers = level_tiers(state)
     level = str(ent.get("level") or "")
     if tiers and level:
+        # 最长匹配优先：阶梯里同时有「练气」和「练气三层」时，
+        # "练气三层" 必须命中更具体的项，否则层级被低估（实测返回 0）。
+        best = None
         for i, name in enumerate(tiers):
             if level.startswith(name) or name in level:
-                return i
+                if best is None or len(name) > len(tiers[best]):
+                    best = i
+        if best is not None:
+            return best
     attrs = ent.get("attrs") or {}
     for key in ("level_num", "tier", "rank"):
         val = attrs.get(key)
@@ -64,10 +70,12 @@ def validate_next_level(state: dict, next_level: str, current_level: str = "") -
     def match(value: str):
         if not value:
             return None
+        best = None
         for i, t in enumerate(tiers):
             if value == t or value.startswith(t) or t in value:
-                return i
-        return None
+                if best is None or len(t) > len(tiers[best]):
+                    best = i
+        return best
 
     idx = match(name)
     if idx is None:

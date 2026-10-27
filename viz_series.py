@@ -79,15 +79,31 @@ def record_sample(state_path, state):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 lines = f.read().splitlines()
-            if lines:
-                last = json.loads(lines[-1])
-        except Exception:  # aqg: top-level boundary —— 侧写文件损坏时不抛，退回空历史
+        except OSError:
             lines = []
-    if isinstance(last, dict) and int(last.get("tick", -1)) == s["tick"]:
+        # 只对**最后一行**做容错：进程被杀会留下半行 JSON。
+        # 旧实现一旦 json.loads 抛异常就把 lines 清空，随后覆盖写入 → 整段长局曲线丢失。
+        while lines:
+            try:
+                cand = json.loads(lines[-1])
+            except Exception:  # nosec B112; aqg: top-level boundary —— 半行/坏行丢弃，保留更早的样本
+                lines.pop()
+                continue
+            if isinstance(cand, dict):
+                last = cand
+            break
+    last_tick = None
+    if isinstance(last, dict):
+        try:
+            last_tick = int(last.get("tick", -1))
+        except (TypeError, ValueError):
+            last_tick = None
+            lines.pop() if lines else None
+    if last_tick == s["tick"]:
         if last == s:
             return          # 值未变：不重复写盘（轮询下的常规路径）
         lines[-1] = json.dumps(s, ensure_ascii=False)
-    elif isinstance(last, dict) and int(last.get("tick", -1)) > s["tick"]:
+    elif last_tick is not None and last_tick > s["tick"]:
         return              # 快照回退：不把旧 tick 追回来
     else:
         lines.append(json.dumps(s, ensure_ascii=False))

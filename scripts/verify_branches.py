@@ -325,6 +325,11 @@ def cognition_branches():
     samples = {CG.should_use_system2(100, 0.9) for _ in range(20)}
     check_true('should_use_system2 恒定返回布尔值',
                samples <= {True, False}, str(samples))
+    # 预算必须参与判定：0 预算强制 System 1，高预算才可能 System 2
+    check('should_use_system2 预算为 0 时必然退化', CG.should_use_system2(0, 0.9, roll=0.0), False)
+    check('should_use_system2 高预算下 roll=0 可启用', CG.should_use_system2(10000, 0.9, roll=0.0), True)
+    check('should_use_system2 roll 参数可复现（同输入同结果）',
+          CG.should_use_system2(50, 0.5, roll=0.42), CG.should_use_system2(50, 0.5, roll=0.42))
 
 
 # ───────────────────── social_extended 补 ─────────────────────
@@ -573,6 +578,158 @@ def remaining_formulas():
 
 
 
+# ───────────────────── 边界与回归（2026-10-27 审计） ─────────────────────
+def audit_regressions():
+    """本轮审计修复的回归断言：每条对应一个实测过的缺陷，防止回潮。"""
+    from game_engine.rules import combat as CB
+    from game_engine.rules import karma as KA
+    from game_engine.rules import playbook as PB
+    from game_engine.rules import questline as QL
+    from game_engine.settings_loader import normalize_lore_entry, normalize_market, normalize_entity
+    from game_engine.state_schema import get_unsettled_karma
+
+    def base():
+        return {'tick': 1, 'rng_seed': 1, 'rng_counter': 0, 'config': {},
+                'entities': {'player': {'name': '甲', 'hp': 100, 'hp_max': 100, 'mp': 10,
+                                        'gold': 100, 'attrs': {'str': 10, 'dex': 0, 'con': 10}},
+                             'npc': {'name': '乙', 'hp': 100, 'hp_max': 100, 'gold': 0,
+                                     'attrs': {'str': 10, 'dex': 0, 'con': 10}}},
+                'relations': {}, 'event_log': [], 'karma_ledger': [], 'world_flags': []}
+
+    # 逃跑：双方 dex=0 不许除零；必须给出 fled 与 draw（不污染心流胜负统计）
+    st = base()
+    st['rng_counter'] = 0
+    from game_engine.state_schema import seed_rng
+    seed_rng(st)
+    # 双方 dex=0 是旧实现的 ZeroDivisionError 触发点；现在必须返回结果而不是抛
+    r = CB.resolve_combat(st, 'player', 'npc', 'flee')
+    check('逃跑在双方 dex=0 时不崩溃（outcome=draw）', r.get('outcome'), 'draw')
+    # dex 10 vs 0 时逃跑率 0.95，多次抽样必须同时出现成功与失败
+    st = base()
+    st['entities']['player']['attrs']['dex'] = 10
+    fled_values = set()
+    for i in range(30):
+        st['rng_counter'] = i
+        seed_rng(st)
+        fled_values.add(CB.resolve_combat(st, 'player', 'npc', 'flee').get('fled'))
+    check('逃跑结果由随机决定（成功与失败都出现）', fled_values, {True, False})
+
+    # social：NaN/未知事件必须拒绝，关系不得被写入 NaN
+    from game_engine.rules.social import resolve_social_event
+    st = base()
+    for bad in (float('nan'), float('inf'), 0, -1):
+        check_raises('social intensity=%r 被拒绝' % bad,
+                     lambda b=bad: resolve_social_event(st, 'player', 'npc', 'help', intensity=b))
+    check_raises('social 未知事件被拒绝（不静默加 0）',
+                 lambda: resolve_social_event(st, 'player', 'npc', '不存在的动作'))
+    check('social 被拒后关系表未被污染', st['relations'], {})
+
+    # karma：无受害者也要记账（victim=None 不是免罪）
+    st = base()
+    out = KA.resolve_karma(st, 'player', None, 'mass_murder')
+    check('karma 无受害者仍记账（+200）', get_unsettled_karma(st, 'player'), 200)
+    check_true('karma 无受害者风险等级非 low', out.get('risk_level') != 'low', out.get('risk_level'))
+
+    # playbook：normalize 不得让调用方污染 DEFAULT_PLAYBOOK
+    pb, _ = PB.normalize({})
+    pb['beat']['pattern'].append('污染')
+    check_true('playbook normalize 深拷贝（默认剧本不被污染）',
+               '污染' not in PB.DEFAULT_PLAYBOOK['beat']['pattern'],
+               str(PB.DEFAULT_PLAYBOOK['beat']['pattern']))
+    check('beat_at 对空 pattern 回退默认（不除零）',
+          PB.beat_at({'beat': {'pattern': [], 'every': 0}}, 3).get('name'),
+          PB.DEFAULT_PLAYBOOK['beat']['pattern'][0])
+
+    # questline：重复 complete_stage 只发一次奖励
+    quest = QL.normalize({'id': 'q', 'stages': [{'id': 'a', 'next': []}],
+                          'reward': {'gold': 100}})
+    st = {'tick': 0, 'entities': {'player': {'gold': 0}}, 'world_flags': [],
+          'quests': {}, 'event_log': [], 'karma_ledger': []}
+    QL.complete_stage(st, [quest], 'q', 'a')
+    QL.complete_stage(st, [quest], 'q', 'a')
+    check('事业线奖励只发一次（重复 complete_stage）', st['entities']['player']['gold'], 100)
+
+    # questline：exit_if 满足但 next 的 enter_if 未满足时不得重复记 stage_done
+    q2 = QL.normalize({'id': 'q2', 'stages': [
+        {'id': 'a', 'exit_if': {'flag': 'go'}, 'next': ['b']},
+        {'id': 'b', 'enter_if': {'flag': 'never'}}]})
+    st2 = {'tick': 0, 'entities': {'player': {}}, 'world_flags': ['go'],
+           'quests': {}, 'event_log': [], 'karma_ledger': []}
+    QL.advance(st2, [q2])
+    QL.advance(st2, [q2])
+    QL.advance(st2, [q2])
+    check('等待下一幕期间 done_stages 不重复累积',
+          st2['quests']['q2']['done_stages'], ['a'])
+
+    # lorebook：probability=1 是 1%，0.9 是 90%，id 保留
+    e1 = normalize_lore_entry({'keys': ['灯'], 'content': 'x', 'probability': 1})
+    e2 = normalize_lore_entry({'keys': ['灯'], 'content': 'x', 'probability': 0.9})
+    check('lore probability=1 按 1% 解释（scale=100）',
+          e1.get('probability_scale'), 100)
+    check('lore probability=0.9 保留小数（90%）', e2.get('probability'), 0.9)
+    check('lore 条目 id 保留', normalize_lore_entry({'id': 'abc', 'keys': ['k'], 'content': 'c'}).get('id'), 'abc')
+
+    # 设定包：负价格/越界 hp 必须被规范化
+    m = normalize_market([{'location': 'L', 'items': [{'key': 'x', 'price': -5, 'supply': -3}]}])
+    check('normalize_market 价格下限 1', m['L']['x']['price'], 1)
+    check('normalize_market 库存下限 0', m['L']['x']['supply'], 0)
+    ent = normalize_entity('e', {'name': 'E', 'hp': -10, 'hp_max': -5, 'gold': -1})
+    check('normalize_entity hp_max 下限 1', ent['hp_max'], 1)
+    check('normalize_entity hp/gold 非负', (ent['hp'], ent['gold']), (0, 0))
+
+    # 经济：负价商品买入不得反向加钱
+    from game_engine.rules.economy import resolve_trade
+    st = base()
+    st['market'] = {'L': {'x': {'name': 'X', 'price': -10, 'base_price': -10, 'supply': 5}}}
+    r = resolve_trade(st, 'L', 'x', 1, True, 'player')
+    check_true('负价商品交易被拒（不反向加钱）',
+               r.get('success') is False and st['entities']['player']['gold'] == 100,
+               str(r.get('events'))[:50])
+
+    # 大宗买入后立即卖出不得净赚（成交价与事后挂价必须对齐）
+    st = base()
+    st['entities']['player']['gold'] = 10000
+    st['market'] = {'L': {'x': {'name': 'X', 'price': 50, 'base_price': 50, 'supply': 200}}}
+    gold0 = st['entities']['player']['gold']
+    resolve_trade(st, 'L', 'x', 100, True, 'player')
+    resolve_trade(st, 'L', 'x', 100, False, 'player')
+    check_true('大宗买入后立即卖出不产生无风险套利',
+               st['entities']['player']['gold'] <= gold0,
+               '%d -> %d' % (gold0, st['entities']['player']['gold']))
+
+    # 台账合并必须保留每个债务人的归属（旧实现把 A/B/C 的债全挂到 A 名下）
+    from game_engine.state_schema import _prune_settled
+    ledger = [
+        {'from': 'A', 'to': 'x', 'amount': 100, 'settled': False},
+        {'from': 'B', 'to': 'x', 'amount': 100, 'settled': False},
+        {'from': 'C', 'to': 'y', 'amount': 100, 'settled': False},
+        {'from': 'D', 'to': 'z', 'amount': 50, 'settled': False},
+    ]
+    st = {'karma_ledger': ledger, 'entities': {}}
+    _prune_settled(st, ledger, 2)
+    check('台账合并后各债务人的未清债额度',
+          {d: get_unsettled_karma(st, d) for d in 'ABCD'},
+          {'A': 100, 'B': 100, 'C': 100, 'D': 50})
+
+    # 部分消业必须留下可审计的已还记录，原条目保留剩余额
+    from game_engine.rules.karma import resolve_karma as _rk
+    st = {'tick': 1, 'entities': {'player': {'name': 'P'}}, 'karma_ledger': []}
+    _rk(st, 'player', 'v', 'murder_innocent')      # +50
+    _rk(st, 'player', None, 'help_innocent')       # -10
+    totals = [e['amount'] for e in st['karma_ledger']]
+    check('部分消业保留剩余额且总额可审计',
+          (get_unsettled_karma(st, 'player'), sum(totals)), (40, 50))
+
+    # 事件保留量 <=0 必须被当成 1（不许把最新事件归档掉）
+    from game_engine.state_schema import save_state, load_state
+    import tempfile as _tf
+    tmp = _tf.mkdtemp(prefix='ww-keep-')
+    p = os.path.join(tmp, 's.json')
+    save_state({'tick': 1, 'event_log': ['0', '1', '2'], 'config': {'event_log_keep': -1},
+                'entities': {}, 'karma_ledger': [], 'flags': []}, p)
+    check('event_log_keep=-1 被夹到 1（保留最新一条）', load_state(p)['event_log'], ['2'])
+
+
 # ───────────────────── 状态文件原子写入 ─────────────────────
 def atomic_write():
     """F-001：状态文件必须原子写入，且保留 .bak 可回退。
@@ -616,6 +773,8 @@ def main():
     economy()
     print('\n── 剩余公式补测 ──')
     remaining_formulas()
+    print('\n── 审计回归 ──')
+    audit_regressions()
     print('\n── 状态文件原子写入 ──')
     atomic_write()
 

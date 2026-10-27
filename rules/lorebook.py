@@ -172,10 +172,20 @@ def _probability_ok(entry, state, tick):
         p = float(p)
     except (TypeError, ValueError):
         return True
-    if p >= 100 or p >= 1.0 and p > 1:
-        pass
-    # 酒馆里 probability 是 0-100 的百分比；也接受 0-1
-    ratio = p / 100.0 if p > 1 else p
+    try:
+        scale = float(entry.get("probability_scale", 0) or 0)
+    except (TypeError, ValueError):
+        scale = 0.0
+    # 酒馆语义：probability 是 0-100 的百分比。历史实现把 0<p<=1 当成"比例"，
+    # 导致 probability=1（1%）变成 100% 恒触发——与酒馆语义相反。
+    # normalize 会写入 probability_scale（百分比=100，旧比例=1）；手写条目没有该字段时
+    # 按"1 及以上=百分比、小于 1=比例"解释，兼容旧配置。
+    if scale == 1:
+        ratio = p
+    elif scale == 100:
+        ratio = p / 100.0
+    else:
+        ratio = p / 100.0 if p >= 1 else p
     if ratio >= 1.0:
         return True
     if ratio <= 0.0:

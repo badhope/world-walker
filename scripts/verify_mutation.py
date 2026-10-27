@@ -50,7 +50,7 @@ MUTATIONS = [
      '        _add_items(ent, item, quantity)', '        pass',
      'scripts/verify_mcp_stdio.py'),
     ('M06', '买入不减库存', 'rules/economy.py',
-     '        item_data["supply"] -= quantity', '        pass',
+     '        item_data["supply"] = supply - quantity', '        pass',
      'scripts/verify_cli.py'),
 
     # ── 社交 / 因果 ──
@@ -177,9 +177,9 @@ MUTATIONS = [
      '        return [int(vec.get(k, 0)) for k in ENGINE_DIMS]',
      '        return [int(vec.get(d, 0)) for d in MORAL_DIMS]',
      'scripts/verify_world.py'),
-    ('M25', '台账重新只裁已结算（未结算无上限）', 'state_schema.py',
-     '    over = len(ledger) - cap + 1', '    over = 0',
-     'scripts/verify_world.py'),
+    ('M25', '台账合并丢失债务人归属（A 的债挂到 B 名下）', 'state_schema.py',
+     '        debtor = e.get("from", "")', '        debtor = "player"',
+     'scripts/verify_branches.py'),
 ]
 
 

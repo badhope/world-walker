@@ -3,7 +3,34 @@
 # ./play.sh           运行所有命令演示
 # ./play.sh --state F  指定状态文件 (默认 game_state.json)
 
-STATE="${2:-game_state.json}"
+# 参数解析：支持 `./play.sh combat`、`./play.sh combat --state F`、
+# `./play.sh --state F combat` 三种写法（旧实现固定取 $2，会把 `--state` 当文件名）。
+STATE="game_state.json"
+ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --state)
+      STATE="${2:-game_state.json}"
+      shift 2 || shift
+      ;;
+    --state=*)
+      STATE="${1#--state=}"
+      shift
+      ;;
+    *)
+      ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+set -- "${ARGS[@]}"
+CMD="${1:-}"
+shift || true
+
+if [ ! -f "$STATE" ]; then
+  echo "状态文件不存在: $STATE（先跑 ./play.sh init 生成）" >&2
+  exit 1
+fi
 
 PY=python3
 command -v python3 >/dev/null 2>&1 || PY=python
@@ -12,7 +39,7 @@ export PYTHONPATH=.
 echo "=== 万界 · 行者 | 第 $("$PY" -c "import json;print(json.load(open('$STATE')).get('tick',0))") 回合 ==="
 echo ""
 
-case "$1" in
+case "$CMD" in
   combat)
     "$PY" engine.py combat --state "$STATE" --attacker player --defender "${3:-goblin}"
     ;;

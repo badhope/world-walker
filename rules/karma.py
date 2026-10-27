@@ -83,9 +83,10 @@ def resolve_karma(state, actor_id, victim_id=None, action_type="normal"):
     actor = state["entities"].get(actor_id, {})
     actor_name = actor.get("name", actor_id)
     
-    if delta > 0 and victim_id:
-        # 添加债务条目
-        add_karma(state, actor_id, victim_id, action_type, delta)
+    if delta > 0:
+        # 无具体受害者（屠城/纵火等）也必须记账：victim=None 不是"没有业"，
+        # 只是没有可指向的对象。用 "world" 占位，保证业债、风险等级与天劫机制不被绕过。
+        add_karma(state, actor_id, victim_id or "world", action_type, delta)
         result["events"].append(f"{actor_name}因{KARMA_LABELS.get(action_type, action_type)}背负{delta}业")
     elif delta < 0:
         # 消业: 寻找未偿还的 karma 条目并部分结算
@@ -112,16 +113,33 @@ def resolve_karma(state, actor_id, victim_id=None, action_type="normal"):
     return result
 
 def _settle_karma(state, entity_id, amount):
-    """结算 karma: 从最早的条目开始消"""
+    """结算 karma: 从最早的条目开始消。
+
+    部分结算不再直接改写原条目金额（那会让"这笔债最初是多少"永久不可考），
+    而是把已还部分拆成一条 settled 记录，原条目保留剩余未清金额。
+    """
     remaining = amount
-    for entry in state.get("karma_ledger", []):
+    ledger = state.get("karma_ledger") or []
+    paid_parts = []
+    for entry in ledger:
         if entry["from"] == entity_id and not entry["settled"] and remaining > 0:
             if entry["amount"] <= remaining:
                 remaining -= entry["amount"]
                 entry["settled"] = True
             else:
-                entry["amount"] -= remaining
+                paid = remaining
+                paid_parts.append({
+                    "from": entry["from"],
+                    "to": entry.get("to", ""),
+                    "type": entry.get("type", ""),
+                    "amount": paid,
+                    "tick": entry.get("tick", 0),
+                    "settled": True,
+                    "partial_of": entry.get("tick"),
+                })
+                entry["amount"] = entry["amount"] - paid
                 remaining = 0
+    ledger.extend(paid_parts)
 
 def get_karma_consequence(state, entity_id):
     """

@@ -194,7 +194,11 @@ def _do_cognition(state, args, result):
         "entity": args.entity,
         "realm_level": realm_level,
         "cognitive_budget": budget,
-        "system2_likely": should_use_system2(budget, 0.7),
+        "system2_likely": should_use_system2(
+            budget, 0.7,
+            roll=(int.from_bytes(__import__("hashlib").sha256(
+                ("%s|%s|cognition" % (state.get("rng_seed") or 0, state.get("tick") or 0)
+                 ).encode("utf-8")).digest()[:8], "big") / float(1 << 64))),
     })
     return False
 

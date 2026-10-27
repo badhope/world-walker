@@ -2,8 +2,8 @@
 #
 # 推送前门禁（pre-push gate）
 #
-# 为什么需要：GitHub Actions 已在三个账号上跑（8 作业 / 85 步全绿），
-# 但 GitCode 与 Gitee 不提供可编程 CI（API 全部 404，无 Actions / Pipelines 服务）。
+# 为什么需要：GitHub Actions 是主 CI（core / mcp / package / showcase / gate 五个作业）。
+# Gitee 走 .workflow/ci.yml（同一批检查的 stage/step 声明），GitCode 无 CI 服务。
 # 为保证三平台代码质量一致，所有推送前在本机跑同一套判据——推上去的代码
 # 必然已经通过 GitHub Actions 会跑的那些检查。
 #
@@ -47,14 +47,14 @@ step "多世界观设定包（四种世界各跑一遍载入与演化）" "$PY" 
 step "文档一致性（版本/工具数/截图引用/演示存档/CHANGELOG）" "$PY" scripts/verify_docs.py
 step "玩法层（剧本/事业线/世界书语义）" "$PY" scripts/verify_gameplay.py
 
-# 覆盖率门禁：核心域 ≥70%（当前 76%，含本轮新增的 world_evolution/progression）。装了 coverage 才跑。
+# 覆盖率门禁：核心域 ≥70%。覆盖率是 CI 的硬判据，本机缺工具时不能算绿。
 if "$PY" -c "import coverage" >/dev/null 2>&1; then
   say $'
 === 覆盖率门禁（核心域 ≥70%）==='
   rm -rf "$ROOT/.cov-gate"
-  COV_OK=1
+  COV_FAIL=0
   for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay; do
-    "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema,settings_loader "$ROOT/scripts/$suite.py" >/dev/null 2>&1 || COV_OK=0
+    "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema,settings_loader "$ROOT/scripts/$suite.py" >/dev/null 2>&1 || COV_FAIL=1
   done
   PCT=$("$PY" -m coverage report --data-file="$ROOT/.cov-gate" 2>/dev/null         | awk '/^TOTAL/ {gsub("%","",$NF); print $NF}')
   rm -rf "$ROOT/.cov-gate"
@@ -65,10 +65,15 @@ if "$PY" -c "import coverage" >/dev/null 2>&1; then
     say "  FAIL（覆盖率 ${PCT:-未知}% < 70%）"
     FAILED=1
   fi
+  if [ "$COV_FAIL" -ne 0 ]; then
+    say "  FAIL（至少一个覆盖率采样套件运行失败，覆盖率数字不完整）"
+    FAILED=1
+  fi
 else
   say $'
 === 覆盖率门禁 ===
-  SKIP（未安装 coverage）'
+  FAIL（未安装 coverage：CI 会跑这项，本机不能跳过）'
+  FAILED=1
 fi
 
 # MCP 相关：只有装了 mcp SDK 才跑（与 CI 的 mcp 作业对应）

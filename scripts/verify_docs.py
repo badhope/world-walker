@@ -20,6 +20,7 @@
 """
 
 import ast
+import json
 import os
 import re
 import sys
@@ -157,6 +158,105 @@ def main():
                      if f.endswith('.setting.json'))
     check('D10 全部设定包在 settings/README 中登记',
           all(b in settings_readme for b in bundles), str(bundles))
+
+    # D11 规则函数数：文档宣称值必须等于 rules/ 顶层公开函数数
+    rule_funcs = 0
+    rules_dir = os.path.join(ROOT, 'rules')
+    for name in sorted(os.listdir(rules_dir)):
+        if not name.endswith('.py'):
+            continue
+        tree = ast.parse(read(os.path.join('rules', name)))
+        rule_funcs += sum(1 for n in tree.body
+                          if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                          and not n.name.startswith('_'))
+    claimed_funcs = []
+    for doc in ('README.md', 'README.en.md', 'docs/index.html'):
+        text = read(doc)
+        claimed_funcs += [int(x) for x in re.findall(r'(\d+)\s*个规则函数', text)]
+        claimed_funcs += [int(x) for x in re.findall(r'(\d+)\s*rule functions', text)]
+    check('D11 文档宣称的规则函数数与源码一致',
+          bool(claimed_funcs) and all(c == rule_funcs for c in claimed_funcs),
+          'docs=%s actual=%d' % (sorted(set(claimed_funcs)), rule_funcs))
+
+    # D12 自检脚本数：README 宣称值必须等于 scripts/verify_*.py 实际数量
+    verify_scripts = [f for f in os.listdir(os.path.join(ROOT, 'scripts'))
+                      if f.startswith('verify_') and f.endswith('.py')]
+    claimed_checks = []
+    for doc in ('README.md', 'README.en.md', 'docs/index.html'):
+        text = read(doc)
+        claimed_checks += [int(x) for x in re.findall(r'(\d+)\s*个可执行自检', text)]
+        claimed_checks += [int(x) for x in re.findall(r'(\d+)\s*executable self-checks', text)]
+    check('D12 文档宣称的自检脚本数与 scripts 实际一致',
+          bool(claimed_checks) and all(c == len(verify_scripts) for c in claimed_checks),
+          'docs=%s actual=%d' % (sorted(set(claimed_checks)), len(verify_scripts)))
+
+    # D13 英文 README 与展示站的工具数也必须一致（D2c 只查中文 README）
+    en_claimed = [int(x) for x in re.findall(r'(\d+)\s*MCP tools', en)]
+    site_tools = [int(x) for x in re.findall(r'<b>(\d+)</b>\s*MCP 工具', read('docs/index.html'))]
+    check('D13 英文 README / 展示站的工具数与源码一致',
+          all(c == tool_count for c in en_claimed + site_tools),
+          'en=%s site=%s actual=%d' % (en_claimed, site_tools, tool_count))
+
+    # D14 全仓 Markdown 引用的 scripts/*.py 必须存在（此前 __init__.py 的幽灵引用漏检）
+    ghost = []
+    for base, _dirs, files in os.walk(ROOT):
+        if '.git' in base.split(os.sep):
+            continue
+        for fname in files:
+            if fname.endswith('.md'):
+                path = os.path.join(base, fname)
+                rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
+                text = open(path, encoding='utf-8').read()
+                # 历史审计报告（docs/AUDIT_*、docs/PROJECT_AUDIT_*）是带日期的快照，
+                # 里面引用的旧脚本名允许不存在；其余文档必须全部可解析。
+                if rel.startswith('docs/AUDIT_') or rel.startswith('docs/PROJECT_AUDIT_'):
+                    continue
+                for ref in set(re.findall(r'scripts/([A-Za-z0-9_]+\.py)', text)):
+                    if not os.path.exists(os.path.join(ROOT, 'scripts', ref)):
+                        ghost.append('%s → scripts/%s' % (rel, ref))
+    check('D14 所有 Markdown 引用的脚本都存在（全仓扫描）', not ghost, str(ghost[:3]))
+
+    # D15 展示站的相对链接必须在仓库内可解析（部署到 Pages 后 `../` 会越出站点根）
+    site = read('docs/index.html')
+    bad_links = []
+    for ref in re.findall(r'href="([^"#:]+)"', site):
+        if ref.startswith(('http', 'mailto')):
+            continue
+        if ref.startswith('../'):
+            bad_links.append(ref)
+            continue
+        if not os.path.exists(os.path.join(ROOT, 'docs', ref)):
+            bad_links.append(ref)
+    check('D15 展示站相对链接全部可解析且不越出站点根', not bad_links, str(bad_links[:3]))
+
+    # D16 README 的快速上手命令必须真的可执行（至少商品存在且买得起）
+    quick = read('README.md')
+    m = re.search(r'trade\(location="([^"]+)", item="([^"]+)", direction="(buy|sell)", quantity=(\d+)\)', quick)
+    bundle = None
+    if m:
+        for f in os.listdir(os.path.join(ROOT, 'settings')):
+            if f.endswith('.setting.json'):
+                data = json.loads(read(os.path.join('settings', f)))
+                if (data.get('world') or {}).get('name') == '玄枢界':
+                    bundle = data
+                    break
+    ok_quick = False
+    note = '未找到示例'
+    if m and bundle:
+        loc, item, direction, qty = m.group(1), m.group(2), m.group(3), int(m.group(4))
+        market = {x.get('location'): x for x in bundle.get('market') or []}
+        items = {i.get('key'): i for i in (market.get(loc) or {}).get('items') or []}
+        it = items.get(item)
+        gold = int((bundle.get('player') or {}).get('gold', 0) or 0)
+        if it and direction == 'buy':
+            ok_quick = gold >= int(it.get('price', 0)) * qty
+            note = 'gold=%d price=%s qty=%d' % (gold, it.get('price'), qty)
+        elif it and direction == 'sell':
+            held = int(((bundle.get('player') or {}).get('items') or {}).get(item, 0))
+            ok_quick = held >= qty
+            note = 'held=%d qty=%d' % (held, qty)
+    check('D16 README 快速上手交易示例可执行（商品存在且买得起/卖得出）',
+          ok_quick, note)
 
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))

@@ -341,13 +341,13 @@ No pytest suite by design—verification is 15 executable self-checks plus a mut
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | 16 | version single-source / tool count / asset references |
 | `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
-| `verify_generic.py` | 85 | generic checks, game profile, context ledger, save library, brand |
+| `verify_generic.py` | 87 | generic checks, game profile, context ledger, save library, brand |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 17 | real Edge render, new cards/drawers, responsive, zero JS errors |
-| `verify_tests.py` | 709 audits | AST-level rejection of tautological assertions |
+| `verify_tests.py` | 711 audits | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 40 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash

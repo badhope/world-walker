@@ -127,6 +127,18 @@ def n1_checks():
                    out.get('level') in ('critical_success', 'success', 'partial', 'failure'),
                    str(out.get('level')))
 
+    # 游戏档案里定义的自定义属性必须能直接用于判定（否则只是面板装饰）
+    stp = base_state()
+    GS.set_profile(stp, {'attributes': [{'key': 'per', 'label': '感知', 'value': 13}]})
+    stp['rng_counter'] = 5
+    seed_rng(stp)
+    rp = CK.resolve_check(stp, 'player', 'per', difficulty=0, dice='2d6', record=False)
+    check('N1 档案自定义属性参与判定（按 key）', rp['attr_mod'], 13)
+    stp['rng_counter'] = 6
+    seed_rng(stp)
+    rl = CK.resolve_check(stp, 'player', '感知', difficulty=0, dice='2d6', record=False)
+    check('N1 档案自定义属性参与判定（按 label）', rl['attr_mod'], 13)
+
     # 对抗判定：margin = 我 - 对方
     st['rng_counter'] = 3
     seed_rng(st)

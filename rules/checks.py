@@ -97,11 +97,26 @@ def level_for(margin: int, bands=None, natural_max=False, natural_min=False):
     return {"key": band.get("key", "success"), "label": band.get("label", band.get("key", ""))}
 
 
-def _attr_modifier(actor: dict, attribute: str, default: int = 0) -> int:
-    attrs = (actor or {}).get("attrs") or {}
+def _attr_modifier(actor: dict, attribute: str, default: int = 0, profile=None) -> int:
+    """属性修正：实体 attrs → 实体 sheet → 游戏档案 attributes（按 key 或 label 匹配）。
+
+    游戏档案里定义的自定义属性（如 `{key:"per", label:"感知"}`）必须能直接用于判定，
+    否则 `game_profile` 只是面板装饰——这是通用层最容易犯的"配了但不生效"错误。
+    """
     if attribute in ("", None):
         return 0
-    value = attrs.get(attribute, (actor or {}).get("sheet", {}).get(attribute, default))
+    actor = actor or {}
+    attrs = actor.get("attrs") or {}
+    if attribute in attrs:
+        value = attrs[attribute]
+    elif attribute in (actor.get("sheet") or {}):
+        value = actor["sheet"][attribute]
+    else:
+        value = default
+        for item in (profile or {}).get("attributes") or []:
+            if attribute in (item.get("key"), item.get("label")):
+                value = item.get("value", default)
+                break
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -136,7 +151,8 @@ def resolve_check(state: dict, actor_id: str, attribute: str = "", difficulty: i
             except (TypeError, ValueError):
                 continue
     mod_total = sum(m["value"] for m in mod_list)
-    attr_mod = _attr_modifier(actor, attribute)
+    profile = state.get("game") if isinstance(state.get("game"), dict) else None
+    attr_mod = _attr_modifier(actor, attribute, profile=profile)
     try:
         difficulty = int(difficulty)
     except (TypeError, ValueError):
@@ -199,7 +215,7 @@ def resolve_check(state: dict, actor_id: str, attribute: str = "", difficulty: i
         if not opponent:
             raise ValueError("对抗方不存在: %s" % opposed_by)
         o_rolls, o_rolled, o_spec = roll_dice(dice, pool_size=pool_size)
-        o_attr = _attr_modifier(opponent, attribute)
+        o_attr = _attr_modifier(opponent, attribute, profile=profile)
         if mode == MODE_POOL:
             o_total = sum(1 for r in o_rolls if r >= 5) + o_attr
         else:

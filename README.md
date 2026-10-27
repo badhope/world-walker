@@ -110,6 +110,83 @@ python panel.py --state game_state.json   # 打开只读主舞台
 
 ---
 
+## 游玩行动一览（54 个工具）
+
+宿主 AI 支持 MCP 协议即可；玩家的每次行动都由这些工具结算或记账。
+
+### 开局与存档（9）
+
+| 工具 | 做什么 |
+|---|---|
+| `session_new` | 新建一局并存进存档库（可用设定包或直接给初始状态） |
+| `session_list` / `session_switch` | 列出所有局 / 按局名切换 |
+| `session_snapshot` / `session_manage` | 拍快照 / 归档、还原、清空回收站 |
+| `session_import` | 把已有状态 JSON 导入存档库 |
+| `load_setting` | 从内置设定包一键开局 |
+| `world_init` / `world_open` | 手工建世界 / 打开任意状态文件 |
+
+### 每回合核心（5）
+
+| 工具 | 做什么 |
+|---|---|
+| `pending_actions` | 取走玩家在面板排的行动（双向通道） |
+| `context_pack` | 按预算打包本回合该给 AI 的材料 |
+| `narration_context` | 世界书触发 + 在场角色卡面 + 编年史 |
+| `publish_prose` | 把本回合正文写进状态（面板主舞台显示） |
+| `tick` | 推进一回合（市场 + 世界演化 + 事业线） |
+
+### 判定与数值（11）
+
+| 工具 | 做什么 |
+|---|---|
+| `roll` | **通用判定**：d20/2d6/3d6/d100/4dF/骰池、四种模式、对抗 |
+| `combat` / `trade` / `social` / `karma` | 战斗 / 交易 / 社交 / 因果债 |
+| `advance` / `use_item` | 突破 / 用物 |
+| `game_profile` / `game_adjust` / `game_tag` / `game_sheet` | 自定义档案 / 改数值 / 标签 / 表格 |
+
+### 世界与位置（9）
+
+`travel` `world_state` `narrative` `status` `playbook_info` `quest_status` `quest_advance` `lore_lookup` `failure_tick`
+
+### 记忆与检索（7）
+
+`context_remember` `context_search` `context_forget` `recall` `write_summary` `recap` `read_state`
+
+### 生态与工具（13）
+
+`character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `world_schema`
+
+---
+
+## 一回合实际长什么样
+
+以「雾港调查」为例（真实返回值）：
+
+**玩家说**：我去码头问门房，灯塔最近有没有亮过。
+
+```
+1. context_pack(scene_text="码头 灯塔 门房")
+   → 拿回：玩法（choice · 线索 0/24）、未结案线索、最近事件
+
+2. roll(attribute="per", difficulty=9, dice="2d6", reason="向门房打听灯塔")
+   → {"rolls":[1,1], "total":2, "difficulty":9, "margin":-7, "level":"failure"}
+
+3. context_remember("门房说昨夜灯塔亮过三分钟，随后灭了",
+                     kind="clue", keys=["灯塔","门房"], source="门房")
+   → {"fact":{"id":"f0001", ...}, "created":true}
+
+4. game_adjust("clue", delta=1)   → {"after":1, "at_max":false}
+   game_adjust("sanity", delta=-1) → {"after":7, "at_min":false}
+
+5. publish_prose("雨没停。门房把烟摁在窗台上，说昨夜灯塔亮了三分钟。")
+6. tick()  → 世界演化一回合
+```
+
+全部落在同一份状态文件里：判定在 `checks`、事实在 `context.facts`、资源在 `game`、
+正文在 `prose`、世界在 `panarchy/factions/...`。面板只读这些字段。
+
+---
+
 ## 界面
 
 全部截图来自**真实对局的真实状态**，由 `scripts/shots.py` 在 Edge 中逐项断言后现场拍摄
@@ -344,13 +421,13 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
 | `verify_docs.py` | 16 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
 | `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
-| `verify_generic.py` | 85 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
+| `verify_generic.py` | 87 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
 | `verify_injection.py` | 21 | 外部文本的注入特征识别与 untrusted 标记 |
 | `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 17 | 真实 Edge 渲染 + 新卡片/抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | 709 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `verify_tests.py` | 711 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
 | `verify_mutation.py` | 40 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），

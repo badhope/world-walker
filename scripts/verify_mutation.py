@@ -183,7 +183,7 @@ MUTATIONS = [
 
     # ── 通用游戏层（v1.2.0）──
     ('M37', '判定忽略属性修正', 'rules/checks.py',
-     '    attr_mod = _attr_modifier(actor, attribute)',
+     '    attr_mod = _attr_modifier(actor, attribute, profile=profile)',
      '    attr_mod = 0',
      'scripts/verify_generic.py'),
     ('M38', '资源调整不夹紧上下限', 'rules/gamesystem.py',

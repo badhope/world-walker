@@ -72,7 +72,7 @@ MCP 工具 `context_remember` / `context_search` / `context_forget` / `context_p
 
 ### 测试
 
-- 新增 `scripts/verify_generic.py`（84 项断言）：判定四模式/自然极值/对抗/确定性/台账有界、
+- 新增 `scripts/verify_generic.py`（87 项断言）：判定四模式/自然极值/对抗/确定性/台账有界、
   档案回退与 clamp、上下文检索与预算、存档库全生命周期与路径安全、MCP 集成、品牌默认值。
 - `verify_tests.py` 审计 705 条 0 可疑；`verify_panel.py` 品牌断言切到 World Games。
 - `verify_docs.py` 的 D11/D12/D13 自动跟随新的函数数/自检数/工具数。

@@ -287,6 +287,44 @@ Format: [settings/README.md](settings/README.md).
 
 ---
 
+## Generic layer: any game, not just cultivation
+
+v1.2.0 renamed the product to **World Games**: the engine no longer assumes HP/qi/cultivation tiers.
+Four generic layers carry any genre:
+
+| Layer | What it gives you | Module |
+|---|---|---|
+| Generic checks | `d20` / `2d6` / `d100` / `4dF` / dice pool, roll-under, opposed rolls, success bands | `rules/checks.py` |
+| Game profile | custom attributes / resources / progress tracks / tags / free-form sheet | `rules/gamesystem.py` |
+| Context ledger | clues, promises, facts with confidence + TTL, budgeted packing | `rules/context.py` |
+| Save library | multi-save list/new/switch/snapshot/trash/restore | `sessions.py` |
+
+Minimal loop for a non-RPG game:
+
+```
+session_new(name="my table")
+game_profile({title:"Investigation", kind:"investigation",
+              resources:[{key:"sanity", label:"Sanity", value:8, min:0, max:10}],
+              meters:[{key:"clue", label:"Clues", value:0, min:0, max:12}]})
+roll(attribute="per", difficulty=12, dice="2d6", reason="search the archive")
+context_remember("The janitor says the lighthouse lit last night", kind="clue", keys=["lighthouse"])
+context_pack(scene_text="lighthouse")
+```
+
+Old saves need no migration: without an explicit profile the panel derives one from
+`hp` / `mp` / `gold` / `attrs` / `playbook`.
+
+### What the panel now shows
+
+| Area | Question it answers |
+|---|---|
+| Game profile card | which resources/attributes/tracks does this game track? |
+| Check log card | what was rolled recently, against what difficulty, with what success rate? |
+| Context ledger drawer | which clues and promises does the AI remember? which are closed? |
+| Save library drawer | how many saves, at which turn, which one is active? |
+
+---
+
 ## Quality
 
 No pytest suite by design—verification is 15 executable self-checks plus a mutation suite
@@ -308,7 +346,7 @@ No pytest suite by design—verification is 15 executable self-checks plus a mut
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
-| `smoke_ui.py` | 13 | real Edge render, drawers, responsive, zero JS errors |
+| `smoke_ui.py` | 17 | real Edge render, new cards/drawers, responsive, zero JS errors |
 | `verify_tests.py` | 708 audits | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 40 mutants | **break the code, require tests to go red**; survival must be 0% |
 

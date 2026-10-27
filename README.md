@@ -349,7 +349,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
-| `smoke_ui.py` | 13 | 真实 Edge 渲染 + 抽屉 + 响应式 + 零 JS 错误 |
+| `smoke_ui.py` | 17 | 真实 Edge 渲染 + 新卡片/抽屉 + 响应式 + 零 JS 错误 |
 | `verify_tests.py` | 708 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
 | `verify_mutation.py` | 40 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
@@ -376,7 +376,11 @@ world-walker/                  # 仓库根即 game_engine 包
 ├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
 ├── panel.html / .css / .js    # 主舞台（原生三件套，无构建链）
 ├── viz_series.py              # 长局态势侧写（<state>.viz.jsonl）
+├── sessions.py                # 存档库（多局 / 快照 / 回收站）
 ├── rules/                     # 180 个公开规则函数（含通用判定/游戏档案/上下文台账）
+│   ├── checks.py              # 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
+│   ├── gamesystem.py          # 游戏档案（自定义属性/资源/进度轨/标签/表格）
+│   ├── context.py             # 上下文台账（线索/承诺/事实 + 预算打包）
 │   ├── combat.py economy.py social.py karma.py
 │   ├── cognition.py narrative_engine.py progression.py
 │   ├── world_dynamics.py world_evolution.py

@@ -680,3 +680,17 @@ dialog.carddlg button {
 
 /* 时间线全部被过滤时的空态（filter-empty 复用 .empty 样式，单独声明避免误删） */
 .timeline li.filter-empty { color: var(--text-faint); font-size: 12.5px; }
+
+/* ── 体系卡 ─────────────────────────────────────── */
+.sys-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px;
+  align-items: baseline; padding: 5px 0; border-bottom: 1px dotted var(--line);
+  font-size: 13px;
+}
+.sys-row:last-child { border-bottom: none; }
+.sys-row .n { color: var(--text); }
+.sys-row .k {
+  font-size: 11px; color: var(--accent-dim); border: 1px solid var(--line-strong);
+  border-radius: 999px; padding: 0 6px; margin-left: 6px;
+}
+.sys-row .sum { color: var(--text-dim); font-size: 12px; font-variant-numeric: tabular-nums; }

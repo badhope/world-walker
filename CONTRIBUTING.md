@@ -34,7 +34,7 @@ python scripts/verify_panel.py       # 视图模型 / 行动队列
 python scripts/verify_world.py       # 世界演化
 python scripts/verify_settings.py    # 四套设定包
 python scripts/verify_generic.py     # 通用游戏层（判定/档案/上下文/存档库）
-python scripts/verify_mutation.py    # 40 个变异必须全杀
+python scripts/verify_mutation.py    # 44 个变异必须全杀
 ```
 
 ## 写测试的硬规则

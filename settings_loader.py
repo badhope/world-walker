@@ -14,8 +14,10 @@
 所有函数都是纯函数（除非显式接收 state 并原地更新），不读写文件、不依赖时间。
 """
 
+from game_engine.rules import gamesystem as game_rules
 from game_engine.rules import playbook as playbook_rules
 from game_engine.rules import questline as questline_rules
+from game_engine.rules import systems as system_rules
 from game_engine.state_schema import entity_key, log_event
 
 ATTR_KEYS = ("str", "dex", "int", "con", "cha")
@@ -154,6 +156,17 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
     playbook, pb_notes = playbook_rules.normalize(bundle.get("playbook"))
     quests = questline_rules.normalize_all(bundle.get("questlines"))         if bundle.get("questlines") else []
 
+    # 游戏档案与体系定义在**建局时**就落盘：面板第一帧与 status 立刻可用。
+    # 模板库（templates.py）产出的 bundle 直接带这两块；老设定包没有也不影响。
+    profile = game_rules.normalize(bundle.get("game")) if bundle.get("game") else {}
+    system_defs = {}
+    for raw in bundle.get("systems") or []:
+        try:
+            normalized = system_rules.normalize_system(raw)
+        except ValueError as exc:
+            raise ValueError("systems 定义非法: %s" % exc)
+        system_defs[normalized["id"]] = normalized
+
     state = {
         "tick": 0,
         "rng_seed": int(seed if seed is not None else bundle.get("seed", DEFAULT_SEED)),
@@ -174,6 +187,10 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
         "questlines": quests,
         "quests": {},
     }
+    if profile:
+        state["game"] = profile
+    if system_defs:
+        state["systems"] = {"defs": system_defs, "rt": {}}
     return state
 
 
@@ -201,6 +218,16 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
     if bundle.get("questlines"):
         state["questlines"] = questline_rules.normalize_all(bundle["questlines"])
         state.setdefault("quests", {})
+    if bundle.get("game"):
+        state["game"] = game_rules.normalize(bundle["game"])
+    if bundle.get("systems"):
+        defs = state.setdefault("systems", {}).setdefault("defs", {})
+        for raw in bundle["systems"]:
+            try:
+                normalized = system_rules.normalize_system(raw)
+            except ValueError as exc:
+                raise ValueError("systems 定义非法: %s" % exc)
+            defs[normalized["id"]] = normalized
     if bundle.get("currency"):
         state["currency"] = str(bundle["currency"])
     terms = bundle.get("terms")

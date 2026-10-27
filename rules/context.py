@@ -101,6 +101,10 @@ def remember(state: dict, text: str, kind: str = "fact", keys=None,
         "status": "open",
     }
     facts.append(fact)
+    # 线索计数：模板/成就常用 counter_gte:{key:"clues"} 判断"找到第一条线索"
+    if kind == "clue":
+        from game_engine.state_schema import bump
+        bump(state, "clues")
     if len(facts) > MAX_FACTS:
         # 先淘汰已结案/过期，再淘汰最旧的低置信度条目；绝不动未结案的高置信度
         closed = [i for i, f in enumerate(facts) if f.get("status") != "open"]

@@ -43,6 +43,9 @@ EXPECTED_TOOLS = {
     'context_remember', 'context_search', 'context_forget', 'context_pack',
     'session_list', 'session_new', 'session_switch', 'session_snapshot',
     'session_manage', 'session_import', 'close_panel',
+    # v1.4.0 体系与模板层
+    'system_define', 'system_run', 'system_status', 'system_remove', 'system_schema',
+    'templates_list', 'template_info', 'template_apply', 'template_start',
 }
 
 RESULTS = []

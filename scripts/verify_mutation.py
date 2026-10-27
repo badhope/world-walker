@@ -199,6 +199,24 @@ MUTATIONS = [
      '    text = SAFE_NAME.sub("_", text).strip("._-")',
      '    text = text.strip()',
      'scripts/verify_generic.py'),
+
+    # ── 体系与模板层（v1.4.0）──
+    ('M41', '声望不再 clamp 上下限', 'rules/systems.py',
+     '    after = max(-100, min(100, before + delta))',
+     '    after = before + delta',
+     'scripts/verify_systems.py'),
+    ('M42', '成长体系不检查等级上限', 'rules/systems.py',
+     '    while level < cfg["max_level"] and rt["xp"] >= need_for_level(system, level):',
+     '    while level < 999 and rt["xp"] >= need_for_level(system, level):',
+     'scripts/verify_systems.py'),
+    ('M43', '成就重复解锁', 'rules/systems.py',
+     '        if a["id"] in unlocked:\n            continue',
+     '        if False:\n            continue',
+     'scripts/verify_systems.py'),
+    ('M44', '自定义效果白名单失效（任意 op 都能定义）', 'rules/systems.py',
+     '            if op not in EFFECT_OPS:',
+     '            if False:',
+     'scripts/verify_systems.py'),
 ]
 
 

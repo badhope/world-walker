@@ -30,6 +30,8 @@ REQUIRED = [
     'README.en.md',
     'ARCHITECTURE.md',
     'BRAND.md',
+    'templates.py',
+    'rules/systems.py',
     'GAME_MASTER_PROTOCOL.md',
     'docs/GAMEPLAY.md',
     'docs/BENCHMARK.md',

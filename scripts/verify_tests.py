@@ -56,6 +56,7 @@ EXPECTED = {
     'scripts/verify_docs.py': 22,
     'scripts/verify_gameplay.py': 45,
     'scripts/verify_generic.py': 76,
+    'scripts/verify_systems.py': 90,
 }
 CHECK_FUNCS = {'check', 'ux', 'check_true'}
 FINDINGS = []

@@ -9,7 +9,7 @@
 
 - 仓库根即 `game_engine` 包（`pyproject.toml` 中 `package-dir = { "game_engine" = "." }`，内部统一 `import game_engine.*`）
 - `engine.py` — 规则结算内核
-- `mcp_server.py` — MCP 工具入口（55 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
+- `mcp_server.py` — MCP 工具入口（64 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
 - `panel.py` / `panel.html` / `panel.css` / `panel.js` — 只读主舞台（面板不许写状态；
   行动队列只写 `<state>.inbox.jsonl` 侧写，状态仍由 MCP 单点写入）
 - `state_schema.py` — 状态模型（原子写 / 世代归档 / 种子）
@@ -17,8 +17,10 @@
 - `rules/checks.py` — 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
 - `rules/gamesystem.py` — 游戏档案（自定义属性/资源/进度轨/标签/表格；旧存档自动回退）
 - `rules/context.py` — 上下文台账（事实/线索/承诺 + 预算打包）
+- `rules/systems.py` — 七类可插拔体系（时间/掉落/制造/声望/成就/成长/自定义）
+- `templates.py` — 八套完整游戏模板（开箱即用，可 overrides 覆盖）
 - `settings_loader.py` — 设定包 → 状态（**纯标准库**；MCP 与零依赖自检共用，不要在这里引 mcp）
-- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（15 个 `verify_*.py` + 素材流水线）
+- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（16 个 `verify_*.py` + 素材流水线）
 
 ## 运行
 
@@ -37,7 +39,7 @@ bash scripts/pre_push_gate.sh   # 推送前门禁，与 GitHub Actions 同判据
 
 分项可跑：`verify_formulas.py`、`verify_memory.py`、`verify_mcp_stdio.py`、`verify_panel.py`、
 `verify_injection.py`、`verify_branches.py`、`verify_cli.py`、`verify_near_death.py`、
-`verify_world.py`、`verify_settings.py`、`verify_docs.py`、`verify_generic.py`、`verify_mutation.py`、`smoke_ui.py`。
+`verify_world.py`、`verify_settings.py`、`verify_docs.py`、`verify_generic.py`、`verify_systems.py`、`verify_mutation.py`、`smoke_ui.py`。
 
 **CI 的 core 作业不装 mcp**：任何要在 core 里跑的脚本都不得 import `mcp_server`（会 ModuleNotFoundError）。
 设定包相关逻辑一律走 `settings_loader.py`。

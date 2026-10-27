@@ -1027,6 +1027,7 @@
     renderQuests(v);
     renderLorebook(v);
     renderGame(v);
+    renderSystems(v);
     renderStory(v);
     refreshSeries(v);
   }
@@ -1597,6 +1598,72 @@
       div.appendChild(num);
       box.appendChild(div);
     });
+  }
+
+  /* ── 体系：时间/掉落/制造/声望/成就/成长/自定义 ── */
+  const SYS_KIND_LABEL = {
+    time: "时间", loot: "掉落", craft: "制造", reputation: "声望",
+    achievement: "成就", progression: "成长", custom: "自定义",
+  };
+
+  function sysSummary(kind, s) {
+    if (!s) return "";
+    if (kind === "time") {
+      return [s.clock, "第 " + (s.day || 0) + " 天", s.season, s.weather].filter(Boolean).join(" · ");
+    }
+    if (kind === "reputation") {
+      const facs = Object.entries(s.factions || {});
+      return facs.length
+        ? facs.slice(0, 3).map(([k, v]) => k + " " + v.value + "(" + v.tier + ")").join(" · ")
+        : "（无势力）";
+    }
+    if (kind === "achievement") return "已解锁 " + (s.unlocked || 0) + " / " + (s.total || 0);
+    if (kind === "progression") return "Lv." + (s.level || 1) + " · " + (s.xp || 0) + "/" + (s.need || 0) + " XP";
+    if (kind === "loot") return (s.tables || []).length + " 张表";
+    if (kind === "craft") return (s.recipes || 0) + " 个配方";
+    if (kind === "custom") return (s.actions || []).length + " 个动作";
+    return "";
+  }
+
+  function renderSystems(v) {
+    const box = $("system-rows");
+    if (!box) return;
+    const sys = v.systems || {};
+    const rows = sys.rows || [];
+    setText($("systems-hint"), rows.length ? (rows.length + " 套体系") : "");
+    box.textContent = "";
+    if (!rows.length) {
+      const s = document.createElement("span");
+      s.className = "empty";
+      s.textContent = sys.error
+        ? ("体系读取失败：" + sys.error)
+        : "这一局还没配置体系——宿主可用 system_define 或 template_start 载入";
+      box.appendChild(s);
+      return;
+    }
+    rows.forEach((r) => {
+      const div = document.createElement("div");
+      div.className = "sys-row";
+      const left = document.createElement("div");
+      const n = document.createElement("span");
+      n.className = "n";
+      n.textContent = r.label || r.id;
+      const k = document.createElement("span");
+      k.className = "k";
+      k.textContent = SYS_KIND_LABEL[r.kind] || r.kind;
+      left.appendChild(n);
+      left.appendChild(k);
+      const sum = document.createElement("span");
+      sum.className = "sum";
+      sum.textContent = sysSummary(r.kind, r.summary);
+      div.appendChild(left);
+      div.appendChild(sum);
+      box.appendChild(div);
+    });
+    const note = $("systems-note");
+    if (note) {
+      note.textContent = "体系动作由宿主执行（system_run）：时间推进、掉落、制造、声望、成就、成长、自定义动作。";
+    }
   }
 
   /* ── 剧情回放：完整正文（vm.prose） + 归档检索（/history） ── */

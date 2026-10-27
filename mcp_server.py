@@ -67,6 +67,7 @@ from game_engine.rules.social_extended import merit_quality
 from game_engine.rules.world_dynamics import event_information
 from game_engine.rules import checks as check_rules
 from game_engine.rules import context as context_rules
+from game_engine.rules import systems as system_rules
 from game_engine.rules import gamesystem as game_rules
 from game_engine.rules import lorebook as lore_engine
 from game_engine.rules import playbook as playbook_rules
@@ -74,7 +75,7 @@ from game_engine.rules import questline as quest_rules
 from game_engine.rules.world_evolution import evolve as evolve_world, world_summary
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
 from game_engine import settings_loader
-from game_engine.state_schema import load_state, log_event, save_state, seed_rng
+from game_engine.state_schema import bump, load_state, log_event, save_state, seed_rng
 from game_engine.viz_series import record_sample
 from game_engine import sessions as session_store
 
@@ -459,6 +460,8 @@ def _remember(state: dict, kind: str, value: str) -> bool:
     lst.append(v)
     if len(lst) > 200:
         del lst[0]
+    # 图鉴首次收录即计数：模板/成就的 counter_gte 谓词依赖它
+    bump(state, kind)
     return True
 
 
@@ -603,6 +606,15 @@ def world_schema() -> dict:
             "spawn_npc": "现场生成一个 NPC（无角色卡也能入局；有卡请用 add_character）",
             "open_panel": "打开实况主舞台（只读网页：叙事/HUD/时间线/抽屉，自动刷新）",
             "close_panel": "关闭实况主舞台（释放端口与 SSE 连接）",
+            "system_define": "定义游戏体系（time/loot/craft/reputation/achievement/progression/custom）",
+            "system_run": "执行体系动作（推进时间/掉落/制造/声望/成就/成长/自定义）",
+            "system_status": "列出全部体系或查看单个体系的配置与运行态",
+            "system_remove": "删除一个体系定义与运行态",
+            "system_schema": "体系与模板的字段说明（建自定义游戏前查一次）",
+            "templates_list": "列出 8 套开箱即用的游戏模板",
+            "template_info": "查看模板完整内容与结构校验结果",
+            "template_apply": "把模板转成设定包（不落盘）",
+            "template_start": "用模板直接开一局（建状态 + 写盘 + 设为当前对局）",
             "pending_actions": "取走面板「行动队列」里玩家排的行动（唯一双向通道；状态仍只由 MCP 写）",
             "playbook_info": "这一局的玩法剧本（循环/进度/失败/节拍/宿主指南）",
             "quest_status": "事业线进度（当前幕、目标、期限）",
@@ -732,6 +744,7 @@ def combat(attacker: str, defender: str, action_type: str = "attack",
     _remember(state, "people", state.get("entities", {}).get(defender, {}).get("name", defender))
     if result.get("defender_dead"):
         _milestone(state, "击杀", "%s 击败了 %s" % (attacker, result.get("defender", defender)))
+        bump(state, "kills")
     result["attacker_hp"] = state.get("entities", {}).get(attacker, {}).get("hp", 0)
     return _finish(state, result)
 
@@ -1394,7 +1407,7 @@ def travel(location: str, note: str = "", desc: str = "") -> dict:
         raise ValueError("location 不能为空")
     known = (set(state.get("market", {}))
              | {e.get("location", "") for k, e in state.get("entities", {}).items() if k != "player"})
-    first = _remember(state, "locations", loc)
+    first = _remember(state, "locations", loc)   # 内部会 bump("locations")
     player["location"] = loc
     here = [k for k, e in state.get("entities", {}).items() if k != "player" and e.get("location") == loc]
     for k in here:
@@ -1668,6 +1681,7 @@ def roll(attribute: str = "", difficulty: int = 10, dice: str = "d20",
     log_event(state, "check", "%s 判定 %s → %s（%s）" % (
         actor, result["dice"], result["level_label"],
         result.get("reason") or attribute or "无属性"))
+    bump(state, "checks")
     return _finish(state, result)
 
 
@@ -1933,6 +1947,197 @@ def session_import(path: str, name: str = "", overwrite: bool = False) -> dict:
     _active["path"] = os.path.abspath(dst)
     return {"state_path": _active["path"], "name": session_store.safe_name(target_name),
             "tick": state.get("tick", 0), "root": root}
+
+
+# ══════════════════════════ 体系与模板层（v1.4）══════════════════════════
+
+def _load_templates_module():
+    """按路径加载 templates.py（与 panel 加载器同思路，避免包名冲突）。"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "ww_templates", os.path.join(_SCRIPT_DIR, "templates.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@server.tool()
+def system_define(system: dict, replace: bool = True) -> dict:
+    """定义一个游戏体系（Chinese: kind 取 time/loot/craft/reputation/achievement/progression/custom。
+    config 按 kind 不同，先 system_schema 查结构；replace=False 时同名已存在会报错。
+    Define a data-driven subsystem (time / loot / craft / reputation / achievement / progression / custom)."""
+
+    state = _load()
+    sid = str((system or {}).get("id") or "").strip()
+    if not sid:
+        raise ValueError("system.id 不能为空")
+    existing = (state.get("systems") or {}).get("defs") or {}
+    if sid in existing and not replace:
+        raise ValueError("体系已存在: %s（replace=True 才覆盖）" % sid)
+    result = system_rules.define(state, system)
+    log_event(state, "system", "定义体系「%s」（%s）"
+              % (result["system"]["label"], result["system"]["kind"]))
+    return _finish(state, result)
+
+
+@server.tool()
+def system_run(system_id: str, action: str = "status", params: dict | None = None) -> dict:
+    """执行体系动作（Chinese: 每种体系支持的动作不同——
+    time: status/advance(minutes)；loot: list/roll(table,times,grant)；
+    craft: list/craft(recipe)；reputation: status/adjust(faction,delta)；
+    achievement: list/check；progression: status/grant(amount)；
+    custom: list/<动作名>。params 是对象。
+    Run one subsystem action. Each kind supports its own action set."""
+
+    state = _load()
+    if action not in ("status", "list", ""):
+        _seed_rng(state)
+    result = system_rules.run(state, system_id, action, params or {})
+    if action not in ("status", "list", ""):
+        label = system_id
+        box = state.get("systems") or {}
+        target = (box.get("defs") or {}).get(system_id)
+        if target:
+            label = target.get("label") or system_id
+        log_event(state, "system", "体系「%s」执行 %s" % (label, action))
+        return _finish(state, result)
+    return _read(result)
+
+
+@server.tool()
+def system_status(system_id: str = "") -> dict:
+    """查看体系（Chinese: 不传 system_id 列出全部体系与摘要；传了就返回该体系的完整配置与运行态。
+    List all subsystems, or inspect one with full config and runtime."""
+
+    state = _load()
+    return _read(system_rules.status(state, system_id))
+
+
+@server.tool()
+def system_remove(system_id: str) -> dict:
+    """删除一个体系定义与运行态（Chinese: 不可恢复；模板/设定包里的定义可用 system_define 重新加回）。
+    Remove a subsystem definition and its runtime state."""
+
+    state = _load()
+    result = system_rules.remove(state, system_id)
+    log_event(state, "system", "删除体系 %s" % system_id)
+    return _finish(state, result)
+
+
+@server.tool()
+def system_schema() -> dict:
+    """体系与模板的结构说明（Chinese: 每种 kind 的 config 字段、可选动作、以及模板字段清单。
+    建自定义游戏前先查一次，避免瞎猜字段名。
+    Schema reference for all subsystem kinds and the template library."""
+
+    return {
+        "kinds": [
+            {"kind": "time", "label": "时间体系",
+             "config": {"start": "{day,hour,minute,season,weather}",
+                        "seasons": "[str]", "days_per_season": "int",
+                        "weathers": "[{name,weight}]", "log_cap": "int"},
+             "actions": ["status", "advance(minutes)"]},
+            {"kind": "loot", "label": "掉落体系",
+             "config": {"tables": "{name: {rolls, empty_weight, entries:[{item,name,weight,qty:[min,max]}]}}"},
+             "actions": ["list", "roll(table, times, grant)"]},
+            {"kind": "craft", "label": "制造体系",
+             "config": {"recipes": "[{id,name,inputs:{item:qty},output:{item,name,qty},difficulty,attribute,fail_consume}]"},
+             "actions": ["list", "craft(recipe)"]},
+            {"kind": "reputation", "label": "声望体系",
+             "config": {"factions": "[name | {name,start}]", "tiers": "[{min,label}]", "default": "int"},
+             "actions": ["status", "adjust(faction, delta, reason)"]},
+            {"kind": "achievement", "label": "成就体系",
+             "config": {"items": "[{id,name,desc,condition:<questline 谓词>,reward:{gold,flags,xp}}]"},
+             "actions": ["list", "check"]},
+            {"kind": "progression", "label": "成长体系",
+             "config": {"base_xp": "int", "growth": "float", "max_level": "int",
+                        "per_level": "{attr:delta}", "level_label": "str"},
+             "actions": ["status", "grant(amount)"]},
+            {"kind": "custom", "label": "自定义体系",
+             "config": {"actions": "{name: {label, effects:[{op,...}]}}"},
+             "actions": ["list", "<action name>"],
+             "effect_ops": ["resource", "attribute", "meter", "flag", "fact",
+                            "reputation", "xp", "advance_time"]},
+        ],
+        "template_fields": ["id", "name", "genre", "loop", "world", "player", "entities",
+                            "market", "relations", "world_flags", "level_tiers", "terms",
+                            "places", "lore", "currency", "ui", "playbook", "questlines",
+                            "systems", "game", "notes"],
+        "workflow": [
+            "templates_list 挑模板 → template_info 看细节",
+            "template_start(template=..., name=..., overrides={...}) 直接开局",
+            "或 template_apply(template) 只取 bundle 自己改造（不落盘）",
+            "system_define / system_run 逐个微调体系",
+        ],
+    }
+
+
+# ────────────────────────────── 模板库 ──────────────────────────────
+
+@server.tool()
+def templates_list() -> dict:
+    """列出模板库（Chinese: 8 套开箱即用骨架，覆盖奇幻/推理/经营/生存/叙事/田园/跑团/潜入。
+    每套都自带世界、角色、市场、地点、世界书、事业线、玩法剧本、体系与游戏档案。
+    List built-in game templates (complete skeletons, not just settings)."""
+
+    tpl = _load_templates_module()
+    return {"templates": tpl.list_templates(), "total": len(tpl.list_templates())}
+
+
+@server.tool()
+def template_info(template: str) -> dict:
+    """查看模板完整内容（Chinese: 含所有字段与 validate 结果；用它决定要覆盖哪些字段。
+    Inspect a template's full content plus structural validation."""
+
+    tpl = _load_templates_module()
+    data = tpl.get(template)
+    return {"template": data, "problems": tpl.validate(data),
+            "bundle_preview": tpl.to_bundle(template)}
+
+
+@server.tool()
+def template_apply(template: str, overrides: dict | None = None,
+                   name: str = "", player_name: str = "") -> dict:
+    """把模板转成设定包但不落盘（Chinese: 返回 bundle，宿主可继续改再交给 world_init / session_new。
+    overrides 深合并 dict、列表整体替换。
+    Render a template into a setting bundle without writing any state."""
+
+    tpl = _load_templates_module()
+    bundle = tpl.to_bundle(template, overrides=overrides, name=name, player_name=player_name)
+    return {"bundle": bundle, "problems": tpl.validate(tpl.get(template))}
+
+
+@server.tool()
+def template_start(template: str, name: str = "", overrides: dict | None = None,
+                   player_name: str = "", state_path: str = "") -> dict:
+    """用模板直接开一局（Chinese: 一步完成 — 取模板 → 建状态 → 写盘 → 设为当前对局。
+    name 不传则用模板名；overrides 可覆盖任意字段（见 template_info）。
+    Start a new game straight from a template (template → state → disk → active)."""
+
+    tpl = _load_templates_module()
+    bundle = tpl.to_bundle(template, overrides=overrides, name=name, player_name=player_name)
+    problems = tpl.validate(tpl.get(template))
+    if problems:
+        raise ValueError("模板 %s 结构不完整: %s" % (template, "; ".join(problems[:4])))
+    path = state_path or (session_store.save_path(
+        session_store.saves_root(os.path.dirname(os.path.abspath(_active.get("path") or os.getcwd()))),
+        name or bundle["name"], create_dir=True))
+    state = settings_loader.build_state(bundle)
+    settings_loader.apply_runtime_fields(state, bundle)
+    log_event(state, "system", "模板「%s」开局：%s" % (template, bundle["name"]))
+    _active["path"] = os.path.abspath(path)
+    save_state(state, _active["path"])
+    return {
+        "state_path": _active["path"],
+        "template": template,
+        "name": bundle["name"],
+        "world": state["world_info"]["name"],
+        "entities": len(state["entities"]),
+        "systems": sorted((state.get("systems") or {}).get("defs", {}).keys()),
+        "questlines": len(state.get("questlines") or []),
+        "game_kind": (state.get("game") or {}).get("kind", ""),
+        "hint": "已设为当前对局；open_panel 看主舞台，system_run 跑体系动作。",
+    }
 
 
 def main() -> None:

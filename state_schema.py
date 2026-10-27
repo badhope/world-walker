@@ -155,6 +155,34 @@ def seed_rng(state) -> None:
     if np is not None:
         np.random.seed(mixed)
 
+def bump(state, key, n=1):
+    """累加一个计数器（`state["counters"]`）。模板与成就的 counter_gte 谓词靠它。
+
+    约定键名：
+      locations / people / items / lore —— 图鉴首次收录时 +1
+      clues     —— context_remember(kind="clue") 时 +1
+      checks    —— 每次 roll 判定 +1
+      kills     —— 每次击杀 +1
+    有界：只保留整数，值封顶 1e9，键数封顶 200（超了丢最旧的）。
+    """
+    key = str(key or "").strip()
+    if not key:
+        return 0
+    counters = state.setdefault("counters", {})
+    if not isinstance(counters, dict):
+        counters = {}
+        state["counters"] = counters
+    try:
+        value = int(counters.get(key, 0) or 0) + max(0, int(n))
+    except (TypeError, ValueError):
+        value = max(0, int(n))
+    counters[key] = min(10 ** 9, value)
+    if len(counters) > 200:
+        for old_key in list(counters)[:len(counters) - 200]:
+            counters.pop(old_key, None)
+    return counters[key]
+
+
 def entity_key(a, b):
     """生成关系键——保证对称性，始终按字母顺序"""
     return f"{min(a,b)}:{max(a,b)}"

@@ -1,10 +1,10 @@
 # World Games
 
-**版本 v1.3.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**版本 v1.4.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
 > **AI 负责叙述，引擎负责世界 —— 而且什么游戏都能装进去。**
 > 通用互动游戏框架：任意题材、任意骰型、任意资源轨，一套确定性规则内核。
-> 180 个规则函数、55 个 MCP 工具、内置四套可直接开玩的设定包、
+> 188 个规则函数、64 个 MCP 工具、内置四套可直接开玩的设定包、
 > 上下文台账（AI 该记住什么可核对）、存档库与一块离线只读主舞台。
 > 同一份存档、同一个种子，永远得到同一个世界。
 
@@ -42,7 +42,7 @@
 - **面板见证**：一块只读网页主舞台实时显示真实状态、最近判定与上下文台账——它不能改对局，因此每个数字都可核对。
 
 它不是又一个"AI 跑团提示词"，而是一层**可以被任何 Agent 调用的游戏内核**：
-MCP 服务器（stdio，55 个工具）、命令行（14 条命令）、HTTP 只读面板，三条通道共用同一套规则与同一份状态文件。
+MCP 服务器（stdio，64 个工具）、命令行（14 条命令）、HTTP 只读面板，三条通道共用同一套规则与同一份状态文件。
 
 ### 面板现在能干什么
 
@@ -110,7 +110,7 @@ python panel.py --state game_state.json   # 打开只读主舞台
 
 ---
 
-## 游玩行动一览（55 个工具）
+## 游玩行动一览（64 个工具）
 
 宿主 AI 支持 MCP 协议即可；玩家的每次行动都由这些工具结算或记账。
 
@@ -187,6 +187,52 @@ python panel.py --state game_state.json   # 打开只读主舞台
 
 ---
 
+## 体系与模板（v1.4）
+
+### 七类可插拔体系
+
+游戏不只是"判定 + 数值"。World Games 把常见玩法机制拆成**数据驱动**的体系，宿主随时可增删改：
+
+| 体系 | kind | 管什么 | 动作 |
+|---|---|---|---|
+| 时间 | `time` | 日/时/分、季节、天气 | `advance(minutes)`、`status` |
+| 掉落 | `loot` | 加权掉落表、数量区间、空掉落 | `roll(table, times, grant)`、`list` |
+| 制造 | `craft` | 配方、材料校验、技能判定、失败返还 | `craft(recipe)`、`list` |
+| 声望 | `reputation` | 势力声望 −100..100 + 分档 | `adjust(faction, delta)`、`status` |
+| 成就 | `achievement` | 条件（复用事业线谓词）+ 奖励 | `check`、`list` |
+| 成长 | `progression` | XP 曲线、等级、每级属性成长 | `grant(amount)`、`status` |
+| 自定义 | `custom` | 受限效果列表（资源/属性/进度轨/标签/事实/声望/XP/时间/掉落） | `<动作名>`、`list` |
+
+全部**确定性**：时间/掉落/制造的随机都由 `sha256(seed|tick|...)` 派生，不消耗 `rng_counter`；
+同存档同 tick 必然复现。运行态写进 `state["systems"]["rt"]`，快照回退会连体系一起回退。
+
+### 八套开箱即用的模板
+
+`templates.py` 提供完整骨架（世界/角色/市场/地点/世界书/事业线/玩法剧本/体系/游戏档案）：
+
+| 模板 | 题材 | 玩法循环 | 体系数 |
+|---|---|---|---|
+| `jrpg` | 日式奇幻冒险 | freeform | 7 |
+| `mystery` | 本格推理调查 | choice | 5 |
+| `management` | 店铺经营 | mud | 4 |
+| `survival` | 末日生存 | mud | 4 |
+| `narrative` | 情感叙事 | freeform | 4 |
+| `cozy` | 田园生活 | freeform | 4 |
+| `tabletop` | 桌面跑团 | ttrpg | 5 |
+| `immersive` | 沉浸模拟 | ttrpg | 4 |
+
+一条命令开局：
+
+```
+template_start(template="mystery", name="我的调查局",
+               overrides={"world": {"name": "雨港"}, "player": {"name": "陆离"}})
+```
+
+模板是**起点不是锁死**：`overrides` 深合并 dict、列表整体替换；
+`template_apply` 只返回 bundle 不落盘，可继续改再交给 `world_init` / `session_new`。
+
+---
+
 ## 界面
 
 全部截图来自**真实对局的真实状态**，由 `scripts/shots.py` 在 Edge 中逐项断言后现场拍摄
@@ -239,7 +285,7 @@ python panel.py --state game_state.json   # 打开只读主舞台
 | 长局记忆 | 上下文窗口 + 摘要，旧事常丢 | **三层记忆**：摘要 + 大事记 + 逐条归档（`recall` 跨世代回捞） |
 | 生态兼容 | 各自为政 | 直接吃 SillyTavern **角色卡**（PNG/JSON，V1–V3）与**世界书**（含 selective/constant/disable 语义） |
 | 界面 | 聊天流为主 | **只读实况主舞台**：叙事 + HUD + 长局曲线 + 图鉴 + 市场 + 世界脉搏 |
-| 可核对性 | 难以复核 | 每条事件有结构化字段；`status` / `world_state` 只读不落盘；变异测试 40/40 |
+| 可核对性 | 难以复核 | 每条事件有结构化字段；`status` / `world_state` 只读不落盘；变异测试 44/44 |
 
 我们**不**做的事：图像生成、多人联机、云端账号体系、插件市场。
 这些是取舍不是遗漏，理由写在 [ROADMAP.md](ROADMAP.md)。
@@ -300,7 +346,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 ---
 
-## MCP 工具一览（55 个）
+## MCP 工具一览（64 个）
 
 | 组 | 工具 |
 |---|---|
@@ -407,7 +453,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 ## 质量与验证
 
-项目没有 `pytest` 套件，验证靠 15 个可执行自检脚本 + 1 套变异测试（这是设计选择：
+项目没有 `pytest` 套件，验证靠 16 个可执行自检脚本 + 1 套变异测试（这是设计选择：
 断言必须能被变异测试杀死，而不是只被覆盖率统计到）。
 
 | 自检 | 断言数 | 锁住什么 |
@@ -422,13 +468,14 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_docs.py` | 16 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
 | `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_generic.py` | 87 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
+| `verify_systems.py` | 161 | 七类体系行为 + 八套模板完整性 + 计数器 + 面板契约 |
 | `verify_injection.py` | 21 | 外部文本的注入特征识别与 untrusted 标记 |
 | `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 20 | 真实 Edge 渲染 + 新卡片/抽屉 + 响应式 + 零 JS 错误 |
 | `verify_tests.py` | 726 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
-| `verify_mutation.py` | 40 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
+| `verify_mutation.py` | 44 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
 全程走真实 MCP stdio。最近一次 500 轮结果：0 意外错误、0 不变量破坏。
@@ -436,7 +483,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 推前门禁一条命令：
 
 ```bash
-bash scripts/pre_push_gate.sh     # 23 项，与 GitHub Actions 同判据
+bash scripts/pre_push_gate.sh     # 24 项，与 GitHub Actions 同判据
 ```
 
 覆盖率门禁：核心域 ≥70%（当前实测 88%，含通用游戏层）；`pyflakes` 0。`bandit` 只在核心引擎源码上为 0，仓库级扫描仍会在测试脚本里报低危项。
@@ -448,13 +495,13 @@ bash scripts/pre_push_gate.sh     # 23 项，与 GitHub Actions 同判据
 ```
 world-walker/                  # 仓库根即 game_engine 包
 ├── engine.py                  # CLI（14 条命令，命令表驱动）
-├── mcp_server.py              # MCP 服务器（55 个工具）
+├── mcp_server.py              # MCP 服务器（64 个工具）
 ├── state_schema.py            # 状态模型 / 原子写 / 世代归档 / 种子
 ├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
 ├── panel.html / .css / .js    # 主舞台（原生三件套，无构建链）
 ├── viz_series.py              # 长局态势侧写（<state>.viz.jsonl）
 ├── sessions.py                # 存档库（多局 / 快照 / 回收站）
-├── rules/                     # 180 个公开规则函数（含通用判定/游戏档案/上下文台账）
+├── rules/                     # 188 个公开规则函数（含通用判定/游戏档案/上下文台账）
 │   ├── checks.py              # 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
 │   ├── gamesystem.py          # 游戏档案（自定义属性/资源/进度轨/标签/表格）
 │   ├── context.py             # 上下文台账（线索/承诺/事实 + 预算打包）
@@ -464,7 +511,7 @@ world-walker/                  # 仓库根即 game_engine 包
 │   ├── models.py              # 16 个命名闭式模型
 │   └── social_extended.py cultural_evolution.py systems_feedback.py
 ├── settings/                  # 4 套可直接开玩的设定包
-├── scripts/                   # 15 个自检 + 变异测试 + 截图/视频/演示存档流水线
+├── scripts/                   # 16 个自检 + 变异测试 + 截图/视频/演示存档流水线
 ├── docs/demo/                 # 真实演示存档（截图与视频的数据源）
 ├── docs/screenshots/          # README 预览（真实渲染 + 逐项断言）
 └── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）

@@ -75,11 +75,14 @@ jobs:
       - name: 通用游戏层（判定/档案/上下文/存档库）
         run: python scripts/verify_generic.py
 
+      - name: 体系与模板（七类体系/八套模板）
+        run: python scripts/verify_systems.py
+
       - name: 覆盖率门禁（核心域 ≥70%）
         run: |
           python -m pip install --quiet coverage
           rm -f .coverage
-          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay verify_generic; do
+          for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay verify_generic verify_systems; do
             python -m coverage run --append --source=rules,panel,state_schema,settings_loader,sessions "scripts/$suite.py"
           done
           python -m coverage report | tee /tmp/cov.txt

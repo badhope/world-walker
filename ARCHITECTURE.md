@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-27 ｜ 文档版本：v1.17
+> 最后更新：2026-10-27 ｜ 文档版本：v1.18
 
 ## 1. 概述与目标
 
@@ -30,7 +30,7 @@
 玩家(人) ──对话/行动──> 宿主 AI Agent（Claude Code / Codex / 自建）
                               │  MCP (stdio)
                               ▼
-                     World Games MCP 服务器 (mcp_server.py, 55 工具)
+                     World Games MCP 服务器 (mcp_server.py, 64 工具)
                               │  规则结算 (rules/*)
                               ▼
                      状态文件 ww_state.json ◄──只读── 实况主舞台 (panel.py + panel.html/css/js)
@@ -45,7 +45,7 @@
 | 容器 | 职责 | 关键约束 |
 |---|---|---|
 | `rules/*` | 纯规则结算（战斗/经济/社交/因果/叙事/模型层） | 无副作用，状态由调用方传入传出 |
-| `mcp_server.py` | 55 个 MCP 工具；读写状态文件；tick 推进 | 唯一写入源（第一阶段） |
+| `mcp_server.py` | 64 个 MCP 工具；读写状态文件；tick 推进 | 唯一写入源（第一阶段） |
 | `state_schema.py` | 状态结构、事件日志、归档、业债裁剪 | `save_state` 统一归档 |
 | `engine.py` | CLI 14 命令（手动结算/调试） | 与 MCP 共用 rules |
 | `panel.py` | 只读视图模型 + HTTP/SSE 服务 | 不写状态；静态资源白名单 |
@@ -65,11 +65,13 @@
 
 ```
 world-walker/                      # 仓库根即 game_engine 包
-├── mcp_server.py                  # MCP 服务器（55 工具；MCP 1.x/2.x 双布局）
+├── mcp_server.py                  # MCP 服务器（64 工具；MCP 1.x/2.x 双布局）
 ├── sessions.py                    # 存档库（多局/快照/回收站，只碰文件系统）
 ├── rules/checks.py                # 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
 ├── rules/gamesystem.py            # 游戏档案（自定义属性/资源/进度轨/标签/表格 + 旧存档回退）
 ├── rules/context.py               # 上下文台账（事实/线索/承诺 + 预算打包）
+├── rules/systems.py               # 七类可插拔体系（时间/掉落/制造/声望/成就/成长/自定义）
+├── templates.py                   # 八套完整游戏模板（世界→体系→事业线→游戏档案）
 ├── engine.py                      # CLI 入口（14 命令）
 ├── state_schema.py                # 状态结构 + 归档 + 业债裁剪
 ├── panel.py                       # 实况主舞台：只读视图模型 + HTTP/SSE
@@ -84,7 +86,7 @@ world-walker/                      # 仓库根即 game_engine 包
 ├── settings/                      # 设定包（玄枢界 / 折剑行 / 霓虹深渊 / 雾港）
 ├── docs/demo/                     # 真实演示存档（截图与视频的数据源）
 ├── docs/screenshots/              # README 预览（真实渲染 + 逐项断言 + 交互录屏）
-└── scripts/                       # 15 个自检 + 变异测试 + 演示存档 / 截图视频流水线
+└── scripts/                       # 16 个自检 + 变异测试 + 演示存档 / 截图视频流水线
 ```
 
 ## 6. 核心数据模型
@@ -122,6 +124,40 @@ view_model = {
 
 - `events.id = "tick:type:sha1(desc)[:8]"`，确定性去重键。
 - 事件分类（kind/severity/title/icon）只由 `panel.py` 决定；前端不做关键词判断。
+
+### 6.1d 体系与模板契约（v1.4.0）
+
+**状态形状**
+
+```text
+state["systems"] = {
+  defs: {system_id: {id, kind, label, note, config}},     # 声明式定义（有界 40）
+  rt:   {system_id: {...}}                                 # 运行态（随快照回退）
+}
+state["game"] = {title, kind, attributes[], resources[], meters[], tags[], sheet{}}
+state["counters"] = {key: int}                             # 成就/模板谓词计数器（有界 200 键）
+```
+
+**七类 kind 的动作集**
+
+| kind | 动作 | 随机源 |
+|---|---|---|
+| time | status / advance(minutes) | `sha256(seed,tick,"weather",day)` |
+| loot | list / roll(table,times,grant) | `sha256(seed,tick,"loot",table,i,slot)` |
+| craft | list / craft(recipe) | `sha256(seed,tick,"craft",recipe)` |
+| reputation | status / adjust | 无 |
+| achievement | list / check | 无（谓词求值） |
+| progression | status / grant | 无 |
+| custom | list / `<action>` | 内部效果各自决定 |
+
+**模板契约**：`templates.to_bundle()` 产出与 `settings/*.setting.json` 同构的 bundle，
+因此 `load_setting` / `world_init` / `session_new` / `template_start` 共用同一条建局路径。
+`templates.validate()` 强制检查：必填字段、`places[].market` 必须指向存在的市场、
+事业线 `visited` 必须指向存在的地点。
+
+**计数器写入点**（成就与模板谓词的数据来源）：
+图鉴首次收录（`locations/people/items/lore`）、`context_remember(kind="clue")`（`clues`）、
+`roll`（`checks`）、击杀（`kills`）。
 
 ### 6.1c 面板运行时契约（v1.3.0）
 
@@ -326,10 +362,11 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
 | 2026-10-22 | 可视化真修（三图从"画了"到"看得懂"）：物价指数图因 OU sigma=0 恒为 1.0 平线→加按 (rng_seed,tick,地点,商品) 派生的确定性扰动（4% 基准价，不耗 rng_counter、可 `configure(market_jitter=False)` 关）；气血/内力曲线图例按实际标注"几乎恒定/100% 回合为 100%"；纵轴自适应；图鉴累计 codex_total 作为第 4 系列上图；修面板端口被抢占（HTTPServer.allow_reuse_address=False 端口冲突抛错顺延）；修击杀不给战利品（接管 `loot_gold`） | §5、§7、§9 T25 | T25 | 门禁 17 项绿 + verify_* 七套全过 + 图表数据实测 price_index 442 种(0.93–1.09)/gold 30→6040/codex 8→19 + pyflakes 0 |
 | 2026-10-22 | 第二轮全维度审查 3 个 High（见 docs/AUDIT_ROUND2_2026-10-22.md）：F-001 状态文件非原子写入→临时文件+fsync+os.replace 原子替换并保留 .bak（4 条回归断言）；F-002 补 X-Content-Type-Options/X-Frame-Options/Referrer-Policy/CSP 四安全头（静态核验 0 内联 script/style/事件处理器，curl -D 四头齐全，六端点 200）；F-003 时间线条目可点击（click+Enter/Space 复用 #eventdlg）；新增 21 项 UI 逐元素巡检 | §4、§6.2、§7、§9 T26 | T26 | verify_branches 159/159（含 4 条原子写断言）+ 其余六套全过 + bandit High/Med/Low 0 + 门禁全绿 |
 
+| 2026-10-27 | **v1.4.0 体系与模板**：新增 `rules/systems.py`（七类数据驱动体系：time/loot/craft/reputation/achievement/progression/custom，21 个公开函数，统一 `system_run` 入口，运行态随快照回退）；新增 `templates.py`（八套完整模板：jrpg/mystery/management/survival/narrative/cozy/tabletop/immersive，每套含世界/角色/市场/地点/世界书/剧本/事业线/体系/游戏档案 + `validate()` 结构校验 + `overrides` 深合并）；新增 9 个 MCP 工具（system_define/run/status/remove/schema + templates_list/info/apply/start）；修复 `counters` 从未写入导致模板成就是死条件（新增 `state_schema.bump()` 并接到图鉴/线索/判定/击杀）；面板新增体系卡与 `/state.systems` | §5、§6.1d | v1.4.0 | verify_systems 161/161 · 断言审计 816 条 |
 | 2026-10-27 | **v1.3.0 面板加固**：修复多面板串台（state_path 从 Handler 类属性改为 server 实例）、并发排队丢数据（进程内锁 + 跨进程文件锁 + 原子替换，20 线程/3 进程零丢失）、读状态撞上原子替换（3 次退避重试）；新增剧情回放（`/history` 检索正文与归档、`/state.prose` 完整正文、面板抽屉 + `S` 快捷键）；新增脏数据归一、超大状态下发上限（商品 400/图鉴 200/剧情 20）、HTTP 分级错误码、DNS rebinding 防护、SSE 寿命、ETag、`/health`、`close_panel` 与优雅停止 | §5、§6.1c | v1.3.0 | verify_panel 89/89（含 12 组并发/脏数据/超大状态场景）· smoke_ui 20/20 · 断言审计 726 条 |
 | 2026-10-27 | **v1.2.0 World Games**：产品从"修仙文字游戏"升级为通用互动游戏框架。新增 `rules/checks.py`（6 个函数：d20/2d6/d100/4dF/骰池、roll_under、对抗、成功等级、有界台账）、`rules/gamesystem.py`（6 个函数：自定义属性/资源/进度轨/标签/自由表格，旧存档自动回退推导）、`rules/context.py`（6 个函数：八类事实、confidence/ttl、预算打包）、`sessions.py`（存档库：列表/新建/切换/快照/回收站/导入/清空）；新增 15 个 MCP 工具（roll / game_* / context_* / session_*）；面板新增游戏档案卡、判定记录卡、上下文台账抽屉、存档库抽屉；品牌默认值切到 World Games，`world-walker` 命令保留为兼容别名 | §5、§6.1、§6.2、§9 | v1.2.0 | verify_generic 87/87 · 断言审计 705 条 0 可疑 |
 | 2026-10-27 | **v1.1.1 审计修复**：全量审计 22 项门禁基线后修复 9 类真实缺陷——逃跑除零/语义、social 非有限输入、无受害者业债漏记、台账合并跨债务人串账、Panarchy α 期 hold 不落盘、事业线重复奖励与 stage_done 重复、世界书 probability=1 被当成 100%、侧写半行导致整段曲线丢失、event_log_keep<=0 归档最新事件；另修 playbook 浅拷贝污染默认值、负价商品反向加钱、model 非有限结果、面板重复 open_panel 泄漏线程。文档层统一工具数 39 / 规则函数 162 / 自检 14 / 门禁 22，并把 verify_docs 扩到覆盖中英文 README 与展示站 | §5、§6.2、§9 | v1.1.1 | verify_branches 192/192 · verify_tests 632 条 0 可疑 · 门禁 22 项绿 |
-| 2026-10-24 | **v1.1.0 玩法层**：新增 `playbook`（四种循环/五种进度轴/五种失败模式/节拍序列）、`questline`（stage DAG + 世界状态谓词 + 奖励，失败优先、dormant 不显示、无 exit_if 不自动推进）、`lorebook`（selectiveLogic 四值、概率确定性、sticky/cooldown/delay 按 tick、同组互斥、递归默认关闭）；新增 5 个 MCP 工具（playbook_info / quest_status / quest_advance / lore_lookup / failure_tick）；面板新增玩法卡、事业线卡、世界书抽屉；四套设定包配四种循环；`load_setting` 与 `build_state` 统一委托 `settings_loader`（此前 playbook/questlines 会在载入时被静默丢弃） | §5、§6.1b、§6.2 | v1.1.0 | verify_gameplay 60/60 · 变异 40/40 · 断言 614 条 0 可疑 |
+| 2026-10-24 | **v1.1.0 玩法层**：新增 `playbook`（四种循环/五种进度轴/五种失败模式/节拍序列）、`questline`（stage DAG + 世界状态谓词 + 奖励，失败优先、dormant 不显示、无 exit_if 不自动推进）、`lorebook`（selectiveLogic 四值、概率确定性、sticky/cooldown/delay 按 tick、同组互斥、递归默认关闭）；新增 5 个 MCP 工具（playbook_info / quest_status / quest_advance / lore_lookup / failure_tick）；面板新增玩法卡、事业线卡、世界书抽屉；四套设定包配四种循环；`load_setting` 与 `build_state` 统一委托 `settings_loader`（此前 playbook/questlines 会在载入时被静默丢弃） | §5、§6.1b、§6.2 | v1.1.0 | verify_gameplay 60/60 · 变异 44/44 · 断言 614 条 0 可疑 |
 | 2026-10-24 | **v1.0.0 交付版**：修 MCP SDK 布局不兼容（1.x `fastmcp` / 2.x `mcpserver` 双支持）、`seed_rng` 裸 import numpy 导致 MCP 子进程挂死、包元数据未执行三个阻断级缺陷；CLI `tick` 补齐世界演化（INV-E12）；只读工具零副作用（INV-E11）；死目标不再写编年史；势力演化改为禀赋上限 + 温和 LV + 挑战者回流（INV-E14）；新增行动队列双向通道（INV-E13）、世界脉搏卡、命令面板、分享模式、导出、时间线搜索、角色卡详情；新增三套设定包与 `verify_settings.py`；`engine.py` / `panel.py` / `mcp_server.py` 复杂度治理；变异测试 30/30 | §5、§6.2、§7、§9 | v1.0.0 | 门禁 17 项绿 · 变异 30/30 · 覆盖率 88% · 截图 17 张 + 录屏 |
 | 2026-10-23 | **定位闭环（v1.12）**：修复定位审计指出的三处塌陷——① 世界不自演化（500 回合只有市价在动）：新增 `rules/world_evolution.py`（势力 logistic+Lotka-Volterra、谣言 SIR、风气 Deffuant、NPC 走动、Panarchy 四段状态机 r→K→Ω→α），挂进 `tick`；② 派生指标只展示不结算：相位调制事件概率与战斗伤害、心流调制命中、六维道德由业债累加并调制社交；③ 世界观无关只到引擎不到界面：`ui.terms` 覆盖面板词、`level_tiers` 定义阶梯并由 `advance` 逐阶校验、`places`/`publish_prose` 让正文落盘。同时修 3 个真 bug（暴击被当失败、道德映射恒 0、涌现事件重复落盘）与 1 处无界增长（未结算业债台账改合并保留总额）。新增 verify_world.py（46 项）与变异 M20-M25；门禁 18 项、覆盖率 88%。ARCHITECTURE 新增 §6.3 公式调用路径，明确哪些公式在回路里、哪些是宿主按需 | §6.1、§6.2（INV-E6..E10）、§6.3 | T27 | verify_world 46/46 · 全量回归 12 套绿 · 门禁 18 项绿 · 变异 25/25 杀死 |
 

@@ -5,6 +5,72 @@
 
 ---
 
+## v1.4.0 — 2026-10-27
+
+**体系与模板层：把"一款游戏"变成"一套可组合的机制积木 + 八套完整骨架"。**
+
+### 新增：七类可插拔体系（`rules/systems.py`，21 个公开函数）
+
+| kind | 能力 | 关键约束 |
+|---|---|---|
+| `time` | 日/时/分、季节轮转、按天派生天气 | 日志有界；天气由 `sha256(seed,tick,day)` 派生 |
+| `loot` | 加权掉落表、`rolls` 多次、数量区间、空掉落权重 | 抽样确定性；`grant` 才入库 |
+| `craft` | 配方、材料校验、属性驱动成功率、失败按比例返还 | 概率 logistic；材料不足不改库存 |
+| `reputation` | 势力声望 −100..100、五档、未知势力自动建档 | clamp + 上限 40 势力 |
+| `achievement` | 条件复用事业线谓词、奖励金币/flag/XP、只解锁一次 | 坏条件视为未达成 |
+| `progression` | XP 曲线（base×growth^n）、跨级、每级属性成长、等级上限 | 满级不再溢出 |
+| `custom` | 受限效果白名单（resource/attribute/meter/flag/fact/reputation/xp/advance_time/loot） | **定义期就拒绝非法 op** |
+
+- 统一入口 `system_define` / `system_run` / `system_status` / `system_remove` / `system_schema`
+- 运行态落 `state["systems"]["rt"]`，**快照回退连体系状态一起回退**（INV-E4）
+- 定义数上限 40、时间日志 100、成就 200、配方 80、势力 40、效果 12
+
+### 新增：八套完整模板（`templates.py`）
+
+| 模板 | 题材 | 循环 | 体系 |
+|---|---|---|---|
+| `jrpg` | 日式奇幻冒险 | freeform | 7 |
+| `mystery` | 本格推理调查 | choice | 5 |
+| `management` | 店铺经营 | mud | 4 |
+| `survival` | 末日生存 | mud | 4 |
+| `narrative` | 情感叙事 | freeform | 4 |
+| `cozy` | 田园生活 | freeform | 4 |
+| `tabletop` | 桌面跑团 | ttrpg | 5 |
+| `immersive` | 沉浸模拟 | ttrpg | 4 |
+
+每套模板都自带：世界、主角、NPC（含卡面文字）、市场、关系、等级阶梯、术语、
+地点（含市场绑定）、世界书、玩法剧本、事业线（含 `exit_if` 谓词）、体系、游戏档案。
+
+- `templates_list` / `template_info` / `template_apply` / `template_start`
+- `validate()` 结构校验：缺件、`places[].market` 悬空、事业线 `visited` 指向不存在地点都会被拦下
+- `overrides` 深合并 dict、列表整体替换；`template_apply` 不落盘
+
+### 修复：计数器从未被写入（模板成就原本是死条件）
+
+`counter_gte` 谓词一直存在，但 `state["counters"]` 没有任何代码写入——模板里
+"探索三处地点""找到第一条线索"这类成就在任何对局里都不可能解锁。现在：
+
+- `state_schema.bump()` 统一累加（有界 200 键、值封顶 1e9）
+- 图鉴首次收录 → `locations/people/items/lore`
+- `context_remember(kind="clue")` → `clues`
+- 每次 `roll` → `checks`；每次击杀 → `kills`
+
+### 面板
+
+- 新增「体系」卡：列出每套体系与实时摘要（时间/声望/成就进度/等级 XP/掉落表数/配方数）
+- `/state` 新增 `systems` 区块（含 `kinds` 元数据）
+- 模板开局后面板第一帧就能看到体系
+
+### 测试
+
+- 新增 `scripts/verify_systems.py`（161 项断言，S1–S10 + S8b）：
+  七类体系行为、八套模板完整性、覆盖合并、计数器驱动成就、MCP 端到端、有界性、旧设定包兼容
+- 断言审计 726 → 816 条 0 可疑
+- 门禁 23 → 24 项；GitHub / Gitee CI 同步接入
+- 变异测试 40 → 44（M41–M44：声望 clamp、等级上限、成就重复解锁、效果白名单），全杀
+
+---
+
 ## v1.3.0 — 2026-10-27
 
 **面板加固：让"所有剧情、所有内容"都能在面板上过一遍，并且扛得住并发与复杂状态。**

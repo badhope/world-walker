@@ -730,6 +730,7 @@ def view_model(state_path):
         "quests": _build_quests(state),
         "lorebook": _build_lorebook(state),
         "game": _build_game(state),
+        "systems": _build_systems(state),
         "sessions": _build_sessions(state_path),
     }
 
@@ -770,6 +771,18 @@ def _build_sessions(state_path):
                 "trash": len(session_store.list_trash(root))}
     except Exception as exc:  # aqg: top-level boundary —— 存档库读不到不影响主舞台
         return {"root": "", "saves": [], "count": 0, "trash": 0, "error": str(exc)[:120]}
+
+
+def _build_systems(state):
+    """体系概览（面板「体系」卡）：每套体系的紧凑摘要，不含完整 config。"""
+    try:
+        from game_engine.rules import systems as system_rules
+        data = system_rules.summary(state)
+        data["kinds"] = [{"kind": k, "label": system_rules.KIND_LABELS[k]}
+                         for k in system_rules.KINDS]
+        return data
+    except Exception as exc:  # aqg: top-level boundary —— 体系坏了不影响主舞台其余部分
+        return {"rows": [], "total": 0, "kinds": [], "error": str(exc)[:120]}
 
 
 def _derived_moral(state):

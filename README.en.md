@@ -1,10 +1,10 @@
 # World Games
 
-**v1.3.0** · [中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Gameplay layer](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
+**v1.4.0** · [中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Gameplay layer](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
 
 > **The AI narrates. The engine owns the world — and any game can live inside it.**
 > A general interactive-game framework: any genre, any dice system, any resource track, one deterministic rule core.
-> 180 rule functions, 55 MCP tools, four playable bundles shipped,
+> 188 rule functions, 64 MCP tools, four playable bundles shipped,
 > a context ledger the AI must not forget, a save library, and a read-only live stage.
 > Same save, same seed—always the same world.
 
@@ -127,7 +127,7 @@ Full method and evidence: **[docs/BENCHMARK.md](docs/BENCHMARK.md)**. One-line v
 | Long-game memory | Context window + summary | **Three layers**: summaries + milestones + generational archive (`recall`) |
 | Ecosystem | Proprietary | Reads SillyTavern **character cards** (PNG/JSON, V1–V3) and **world info** |
 | Interface | Chat stream | **Read-only live stage**: narrative + HUD + long-run charts + codex + market |
-| Auditable | Hard | Structured event fields; read-only tools never write; mutation suite 40/40 |
+| Auditable | Hard | Structured event fields; read-only tools never write; mutation suite 44/44 |
 
 We deliberately **do not** do: image generation, multiplayer, cloud accounts, plugin marketplaces.
 Reasons are in [ROADMAP.md](ROADMAP.md).
@@ -189,7 +189,7 @@ Locked by `verify_cli.py` (CLI channel), `verify_mcp_stdio.py` (MCP channel) and
 
 ---
 
-## MCP tools (55)
+## MCP tools (64)
 
 | Group | Tools |
 |---|---|
@@ -325,9 +325,49 @@ Old saves need no migration: without an explicit profile the panel derives one f
 
 ---
 
+## Systems and templates (v1.4)
+
+### Seven pluggable subsystems
+
+| Kind | Manages | Actions |
+|---|---|---|
+| `time` | day/hour/minute, season, weather | `advance(minutes)`, `status` |
+| `loot` | weighted drop tables, quantity ranges, empty rolls | `roll(table, times, grant)`, `list` |
+| `craft` | recipes, material checks, skill roll, partial refund | `craft(recipe)`, `list` |
+| `reputation` | faction standing −100..100 with tiers | `adjust(faction, delta)`, `status` |
+| `achievement` | conditions (questline predicate language) + rewards | `check`, `list` |
+| `progression` | XP curve, levels, per-level attribute growth | `grant(amount)`, `status` |
+| `custom` | restricted effect list (resource/attribute/meter/flag/fact/reputation/xp/time/loot) | `<action>`, `list` |
+
+All deterministic: time/loot/craft randomness derives from `sha256(seed|tick|...)` and never
+consumes `rng_counter`. Runtime lives in `state["systems"]["rt"]`, so snapshots roll it back too.
+
+### Eight playable templates
+
+| Template | Genre | Loop | Systems |
+|---|---|---|---|
+| `jrpg` | fantasy adventure | freeform | 7 |
+| `mystery` | investigation | choice | 5 |
+| `management` | shop management | mud | 4 |
+| `survival` | post-apocalypse | mud | 4 |
+| `narrative` | emotional story | freeform | 4 |
+| `cozy` | rural life | freeform | 4 |
+| `tabletop` | tabletop RPG | ttrpg | 5 |
+| `immersive` | immersive sim | ttrpg | 4 |
+
+```
+template_start(template="mystery", name="my case",
+               overrides={"world": {"name": "Rain Harbor"}})
+```
+
+Templates are starting points: `overrides` deep-merges dicts and replaces lists;
+`template_apply` returns the bundle without writing any state.
+
+---
+
 ## Quality
 
-No pytest suite by design—verification is 15 executable self-checks plus a mutation suite
+No pytest suite by design—verification is 16 executable self-checks plus a mutation suite
 (assertions must be *killable*, not merely *covered*).
 
 | Suite | Assertions | Locks |
@@ -342,16 +382,17 @@ No pytest suite by design—verification is 15 executable self-checks plus a mut
 | `verify_docs.py` | 16 | version single-source / tool count / asset references |
 | `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
 | `verify_generic.py` | 87 | generic checks, game profile, context ledger, save library, brand |
+| `verify_systems.py` | 161 | seven subsystem kinds + eight templates + counters + panel contract |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 20 | real Edge render, new cards/drawers, responsive, zero JS errors |
 | `verify_tests.py` | 726 audits | AST-level rejection of tautological assertions |
-| `verify_mutation.py` | 40 mutants | **break the code, require tests to go red**; survival must be 0% |
+| `verify_mutation.py` | 44 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 23 checks, same criteria as GitHub Actions
+bash scripts/pre_push_gate.sh     # 24 checks, same criteria as GitHub Actions
 ```
 
 Coverage gate: core ≥70% (currently 88%, incl. the generic layer); pyflakes = 0. bandit is clean on the engine core; the repository-wide scan still reports findings confined to test scripts.

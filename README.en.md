@@ -1,10 +1,10 @@
 # World Games
 
-**v1.2.0** · [中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Gameplay layer](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
+**v1.3.0** · [中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Gameplay layer](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
 
 > **The AI narrates. The engine owns the world — and any game can live inside it.**
 > A general interactive-game framework: any genre, any dice system, any resource track, one deterministic rule core.
-> 180 rule functions, 54 MCP tools, four playable bundles shipped,
+> 180 rule functions, 55 MCP tools, four playable bundles shipped,
 > a context ledger the AI must not forget, a save library, and a read-only live stage.
 > Same save, same seed—always the same world.
 
@@ -189,7 +189,7 @@ Locked by `verify_cli.py` (CLI channel), `verify_mcp_stdio.py` (MCP channel) and
 
 ---
 
-## MCP tools (54)
+## MCP tools (55)
 
 | Group | Tools |
 |---|---|
@@ -202,7 +202,7 @@ Locked by `verify_cli.py` (CLI channel), `verify_mcp_stdio.py` (MCP channel) and
 | World | `read_state` `world_state` `status` |
 | Ecosystem | `character_card_read` `add_character` `import_lorebook` `spawn_npc` |
 | Models | `model` `model_list` (16 named closed-form models) |
-| Panel | `open_panel` `pending_actions` |
+| Panel | `open_panel` `close_panel` `pending_actions` |
 | Movement | `travel` |
 | Generic checks | `roll` |
 | Game profile | `game_profile` `game_adjust` `game_tag` `game_sheet` |
@@ -335,7 +335,7 @@ No pytest suite by design—verification is 15 executable self-checks plus a mut
 | `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
 | `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
-| `verify_panel.py` | 75 | view-model contract, legacy saves, static whitelist, inbox guards |
+| `verify_panel.py` | 89 | view-model contract, legacy saves, static whitelist, inbox guards |
 | `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
@@ -346,8 +346,8 @@ No pytest suite by design—verification is 15 executable self-checks plus a mut
 | `verify_near_death.py` | 7 | near-death protection |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
-| `smoke_ui.py` | 17 | real Edge render, new cards/drawers, responsive, zero JS errors |
-| `verify_tests.py` | 711 audits | AST-level rejection of tautological assertions |
+| `smoke_ui.py` | 20 | real Edge render, new cards/drawers, responsive, zero JS errors |
+| `verify_tests.py` | 726 audits | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 40 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash

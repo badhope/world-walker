@@ -42,7 +42,7 @@ EXPECTED_TOOLS = {
     'roll', 'game_profile', 'game_adjust', 'game_tag', 'game_sheet',
     'context_remember', 'context_search', 'context_forget', 'context_pack',
     'session_list', 'session_new', 'session_switch', 'session_snapshot',
-    'session_manage', 'session_import',
+    'session_manage', 'session_import', 'close_panel',
 }
 
 RESULTS = []
@@ -579,7 +579,8 @@ async def main():
                   pv['url'] + ' | 编年史 %d 条' % len(vm['chronicle']))
             check('面板视图含引擎推导（心流/相位/图鉴/市场）',
                   'flow' in vm['insights'] and 'phase' in vm['insights']
-                  and set(vm['codex']) == {'locations', 'people', 'items', 'lore'} and bool(vm['market']))
+                  and {'locations', 'people', 'items', 'lore'} <= set(vm['codex'])
+                  and bool(vm['market']))
 
     # 14. CLI 冒烟（验证导入别名让任意目录名都能跑）
     cli = subprocess.run([sys.executable, os.path.join(ROOT, 'engine.py'),

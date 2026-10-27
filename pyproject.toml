@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "world-walker"
-version = "1.2.0"
+version = "1.3.0"
 description = "World Games — 通用 AI 互动游戏框架（任意题材的规则内核 + 上下文管理 + MCP 服务器 + 只读主舞台）"
 readme = "README.md"
 requires-python = ">=3.10"

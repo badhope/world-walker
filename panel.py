@@ -10,18 +10,28 @@ World Games · 实况面板 (World Games Live Panel)
 由 MCP 拉起: 调工具 open_panel（会自动指向当前对局的状态文件）
 
 端点:
-    GET /        面板页面（panel.html）
-    GET /state   视图模型 JSON（状态 + 引擎推导的心流/相位/身份 + 图鉴）
-    GET /events  SSE：状态文件一变就推送
+    GET /          面板页面（panel.html）
+    GET /state     视图模型 JSON（状态 + 引擎推导 + 图鉴/判定/上下文/存档库/剧情）
+    GET /series    长局态势侧写（图表数据）
+    GET /history   剧情回放与归档检索（?q=关键词&scope=all|prose|archive&limit=N）
+    GET /actions   行动队列（只读）
+    GET /export    导出状态 JSON（只读）
+    GET /health    健康检查（面板版本、状态文件大小、队列长度）
+    GET /events    SSE：状态文件一变就推送（连接有最长寿命，客户端自动重连）
+    POST /action   排队一条行动（写 <state>.inbox.jsonl 侧写，状态文件仍然只读）
+
+面板严格只读状态文件：唯一的写入是行动队列侧写（带进程内锁 + 跨进程文件锁 + 原子替换）。
 """
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import sys
 import threading
 import time
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -44,6 +54,7 @@ from game_engine.rules.narrative_engine import (  # noqa: E402
     flow_channel_status, panarchy_phase_check, player_identity_vector)
 from game_engine.state_schema import load_state  # noqa: E402
 
+_PANEL_VERSION = "1.3.0"
 HTML_FILE = os.path.join(_SCRIPT_DIR, "panel.html")
 HTML_DIR = _SCRIPT_DIR
 MORAL_DIMS = ("关怀", "公平", "忠诚", "权威", "圣洁", "自由")
@@ -144,7 +155,7 @@ def classify_event(ev, milestone_ticks=()):
     digest = hashlib.sha1(desc.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
     return {"id": "%d:%s:%s" % (tick, etype, digest), "tick": tick, "type": etype,
             "kind": kind, "severity": severity, "title": title, "desc": desc,
-            "icon": icon, "milestone": tick in set(milestone_ticks or ()),
+            "icon": icon, "milestone": tick in milestone_ticks,
             "repeat": int(ev.get("repeat", 1) or 1)}
 
 
@@ -243,6 +254,41 @@ def build_scene(state, events, player):
             "prose_tick": prose_tick, "full_length": len(desc)}
 
 
+MAX_INVENTORY = 60
+MAX_MODIFIERS = 40
+MAX_SESSIONS_SHOWN = 50
+MAX_MARKET_ITEMS = 400          # /state 里最多下发的商品条目（超出按价格排序截断并标记）
+MAX_CODEX_ITEMS = 200           # 图鉴每类最多下发
+MAX_PROSE_ITEMS = 20            # 主舞台剧情回放保留的正文段数（完整文本）
+MAX_HISTORY_PAGE = 200          # /history 单页上限
+
+
+def _int_or(value, default=0):
+    """宽松整数：None/字符串/浮点/NaN 都不许把面板打崩。"""
+    try:
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, float):
+            if value != value or value in (float("inf"), float("-inf")):
+                return default
+            return int(value)
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _num_or(value, default=0.0):
+    try:
+        if isinstance(value, bool):
+            return float(value)
+        out = float(value)
+        if out != out or out in (float("inf"), float("-inf")):
+            return default
+        return out
+    except (TypeError, ValueError):
+        return default
+
+
 def build_inventory(state, player):
     """随身物品：以 player.items 为准，用市场元数据补显示名与类别。"""
     items = player.get("items")
@@ -255,11 +301,8 @@ def build_inventory(state, player):
                 if isinstance(it, dict) and k not in meta:
                     meta[k] = it
     out = []
-    for k in sorted(items):
-        try:
-            n = int(items[k])
-        except (TypeError, ValueError):
-            continue
+    for k in sorted(items, key=lambda x: str(x))[:MAX_INVENTORY]:
+        n = _int_or(items[k], 0)
         if n <= 0:
             continue
         it = meta.get(k) or {}
@@ -284,8 +327,8 @@ def build_relations(state, player_id="player"):
         other = parts[0] if parts[1] == player_id else parts[1]
         ent = ents.get(other) or {}
         out.append({"id": other, "name": str(ent.get("name") or other),
-                    "affinity": int(val.get("affinity", 0) or 0),
-                    "respect": int(val.get("respect", 0) or 0)})
+                    "affinity": _int_or(val.get("affinity", 0), 0),
+                    "respect": _int_or(val.get("respect", 0), 0)})
     out.sort(key=lambda r: r["id"])
     return out
 
@@ -299,6 +342,8 @@ def _merge_adjacent(events):
     """
     out = []
     for e in events:
+        if not isinstance(e, dict):
+            continue
         desc = str(e.get("desc", ""))
         if out and str(out[-1].get("desc", "")) == desc:
             out[-1]["repeat"] = int(out[-1].get("repeat", 1)) + 1
@@ -315,47 +360,62 @@ def _build_market(state):
     按 location / item_key 排序，保证同一状态每次渲染顺序一致（面板每次刷新不该跳）。
     """
     out = []
-    for loc, items in sorted((state.get("market") or {}).items()):
+    market = state.get("market") if isinstance(state.get("market"), dict) else {}
+    for loc, items in sorted(market.items(), key=lambda kv: str(kv[0])):
         rows = []
-        for key, it in sorted((items or {}).items()):
-            base = it.get("base_price") or it.get("price") or 0
-            price = it.get("price", 0)
-            rows.append({
-                "key": key, "name": it.get("name", key), "price": price,
-                "base_price": base, "supply": it.get("supply", 0),
-                "delta": price - base, "type": it.get("type", ""),
-            })
-        out.append({"location": loc, "items": rows})
+        if isinstance(items, dict):
+            for key, it in sorted(items.items(), key=lambda kv: str(kv[0])):
+                if not isinstance(it, dict):
+                    continue
+                price = _int_or(it.get("price", 0), 0)
+                base = _int_or(it.get("base_price") or price, price)
+                rows.append({
+                    "key": str(key), "name": str(it.get("name") or key), "price": price,
+                    "base_price": base, "supply": _int_or(it.get("supply", 0), 0),
+                    "delta": price - base, "type": str(it.get("type") or ""),
+                })
+        out.append({"location": str(loc), "items": rows})
+    total = sum(len(m["items"]) for m in out)
+    if total > MAX_MARKET_ITEMS:
+        # 超出上限时按"价格偏离基准最大"排序保留，其余标记截断（完整数据仍在状态文件）
+        flat = [(abs(it["delta"]), m["location"], it) for m in out for it in m["items"]]
+        flat.sort(key=lambda x: (-x[0], x[1], x[2]["key"]))
+        keep = {(loc, it["key"]) for _d, loc, it in flat[:MAX_MARKET_ITEMS]}
+        for m in out:
+            m["items"] = [it for it in m["items"] if (m["location"], it["key"]) in keep]
+        out = [m for m in out if m["items"]]
     return out
 
 
 def _build_events(state):
     """时间线事件：滤掉 tick 心跳、合并相邻重复、再分类。
 
-    返回 (events, milestone_ticks)。里程碑集合要给 classify_event 打标用，
-    因此一并返回，避免调用方重复遍历。
+    返回 (events, milestone_ticks, merged)。`merged` 是合并后的原始事件，
+    编年史直接复用，避免对同一份 event_log 再做一次 O(n) 合并。
     """
-    milestone_ticks = {int(m.get("tick", 0) or 0) for m in (state.get("milestones") or [])}
+    milestones = state.get("milestones") if isinstance(state.get("milestones"), list) else []
+    milestone_ticks = {_int_or(m.get("tick", 0), 0) for m in milestones if isinstance(m, dict)}
     # tick 是心跳、prose 是正文（已在主舞台整段显示）：两者都不该占时间线。
-    raw = [e for e in (state.get("event_log") or [])
-           if e.get("type") not in ("tick", "prose")]
-    events = [classify_event(e, milestone_ticks)
-              for e in _merge_adjacent(raw)[-EVENTS_CAP:]]
-    return events, milestone_ticks
+    log = state.get("event_log") if isinstance(state.get("event_log"), list) else []
+    raw = [e for e in log
+           if isinstance(e, dict) and e.get("type") not in ("tick", "prose")]
+    merged = _merge_adjacent(raw)
+    events = [classify_event(e, milestone_ticks) for e in merged[-EVENTS_CAP:]]
+    return events, milestone_ticks, merged
 
 
 def _build_player(state, player, loc, karma):
     """HUD 用的玩家切片：所有数值保持为数字，格式化留给前端（千分位/百分比）。"""
     return {
-        "name": player.get("name", "玩家"), "level": player.get("level", ""),
-        "stage": int(player.get("stage", 0) or 0),
-        "stage_max": int((state.get("config") or {}).get("stage_max", 20) or 20),
-        "mind_scars": int(player.get("mind_scars", 0) or 0),
-        "near_death_count": int(player.get("near_death_count", 0) or 0),
-        "hp": player.get("hp", 0), "hp_max": player.get("hp_max", 1),
-        "mp": player.get("mp", 0), "mp_max": player.get("mp_max", 0),
-        "gold": player.get("gold", 0), "location": loc,
-        "currency": str(state.get("currency", "灵石")),
+        "name": str(player.get("name") or "玩家"), "level": str(player.get("level") or ""),
+        "stage": _int_or(player.get("stage", 0), 0),
+        "stage_max": max(1, _int_or((state.get("config") or {}).get("stage_max", 20), 20)),
+        "mind_scars": _int_or(player.get("mind_scars", 0), 0),
+        "near_death_count": _int_or(player.get("near_death_count", 0), 0),
+        "hp": _int_or(player.get("hp", 0), 0), "hp_max": max(1, _int_or(player.get("hp_max", 1), 1)),
+        "mp": _int_or(player.get("mp", 0), 0), "mp_max": max(0, _int_or(player.get("mp_max", 0), 0)),
+        "gold": _int_or(player.get("gold", 0), 0), "location": str(loc or ""),
+        "currency": str(state.get("currency") or "灵石"),
         "karma": karma,
         "attrs": player.get("attrs", {}),
         "inventory": build_inventory(state, player),
@@ -432,21 +492,27 @@ def _build_cast(state, loc):
     而不是只有被截断的一行简介（角色卡生态里这三段才是人物）。
     """
     present, others = [], []
-    for eid, ent in (state.get("entities") or {}).items():
-        if eid == "player":
+    entities = state.get("entities") if isinstance(state.get("entities"), dict) else {}
+    for eid, ent in entities.items():
+        if str(eid) == "player" or not isinstance(ent, dict):
             continue
         if not loc or ent.get("location") == loc:
-            present.append({"id": eid, "name": ent.get("name", eid),
-                            "level": ent.get("level", ""),
-                            "faction": ent.get("faction", ""),
-                            "hp": ent.get("hp"), "hp_max": ent.get("hp_max"),
-                            "desc": (ent.get("desc") or "")[:240],
-                            "personality": (ent.get("personality") or "")[:240],
-                            "speech": (ent.get("speech") or "")[:240],
-                            "mind_scars": int(ent.get("mind_scars", 0) or 0)})
+            hp = _int_or(ent.get("hp"), 0)
+            hp_max = _int_or(ent.get("hp_max"), 0)
+            present.append({"id": str(eid), "name": str(ent.get("name") or eid),
+                            "level": str(ent.get("level") or ""),
+                            "faction": str(ent.get("faction") or ""),
+                            "hp": hp, "hp_max": hp_max,
+                            "hp_pct": round(hp * 100.0 / hp_max, 1) if hp_max > 0 else None,
+                            "desc": str(ent.get("desc") or "")[:240],
+                            "personality": str(ent.get("personality") or "")[:240],
+                            "speech": str(ent.get("speech") or "")[:240],
+                            "mind_scars": _int_or(ent.get("mind_scars", 0), 0)})
         else:
-            others.append({"id": eid, "name": ent.get("name", eid),
-                           "location": ent.get("location", "")})
+            others.append({"id": str(eid), "name": str(ent.get("name") or eid),
+                           "location": str(ent.get("location") or "")})
+    present.sort(key=lambda r: (-(r["hp_pct"] if r["hp_pct"] is not None else 0), r["id"]))
+    others.sort(key=lambda r: r["id"])
     return present, others
 
 
@@ -463,10 +529,42 @@ def _build_insights(state):
 
 
 def _build_codex(state):
-    """探索图鉴四类（地点/人物/物品/设定词条）。"""
-    c = state.get("codex") or {}
-    return {"locations": c.get("locations", []), "people": c.get("people", []),
-            "items": c.get("items", []), "lore": c.get("lore", [])}
+    """探索图鉴四类（地点/人物/物品/设定词条）。
+
+    每类都有下发上限：2000 轮存档的图鉴可能有几千条，全量塞进 /state 会让
+    每次刷新都传几 MB。超出部分在面板里提示"还有 N 条"，完整数据仍在状态文件。
+    """
+    c = state.get("codex") if isinstance(state.get("codex"), dict) else {}
+    out, truncated = {}, {}
+    for key in ("locations", "people", "items", "lore"):
+        rows = c.get(key) if isinstance(c.get(key), list) else []
+        out[key] = [str(x) for x in rows[:MAX_CODEX_ITEMS]]
+        if len(rows) > MAX_CODEX_ITEMS:
+            truncated[key] = len(rows) - MAX_CODEX_ITEMS
+    out["truncated"] = truncated
+    return out
+
+
+def _build_prose(state):
+    """主舞台剧情回放：最近若干段正文的**完整文本**（不截断），供"过一遍剧情"。
+
+    旧实现只把最新一段塞进 scene 并按 700 字截断，玩家看不到前因。
+    这里额外下发最近 MAX_PROSE_ITEMS 段完整正文（含地点与回合），
+    面板用可滚动列表呈现；更早的正文仍在状态文件/归档与 /history 里。
+    """
+    rows = state.get("prose") if isinstance(state.get("prose"), list) else []
+    out = []
+    for entry in rows[-MAX_PROSE_ITEMS:]:
+        if not isinstance(entry, dict):
+            continue
+        out.append({
+            "tick": _int_or(entry.get("tick", 0), 0),
+            "location": str(entry.get("location") or ""),
+            "text": str(entry.get("text") or ""),
+            "chars": len(str(entry.get("text") or "")),
+        })
+    return {"items": out, "shown": len(out), "total": len(rows),
+            "truncated": max(0, len(rows) - len(out))}
 
 
 def _build_playbook(state):
@@ -500,20 +598,75 @@ def _build_lorebook(state):
 
 
 def _unsettled_karma(state):
-    return sum(e.get("amount", 0) for e in (state.get("karma_ledger") or [])
-               if e.get("from") == "player" and not e.get("settled"))
+    ledger = state.get("karma_ledger") if isinstance(state.get("karma_ledger"), list) else []
+    return sum(_int_or(e.get("amount", 0), 0) for e in ledger
+               if isinstance(e, dict) and e.get("from") == "player" and not e.get("settled"))
 
 
-def _chronicle(state):
-    """编年史：同样是"滤心跳/正文 + 合并重复"，只取最近 24 条并倒序（最新在上）。"""
-    raw = [e for e in (state.get("event_log") or [])
-           if e.get("type") not in ("tick", "prose")]
-    return _merge_adjacent(raw)[-24:][::-1]
+def _chronicle(state, merged=None):
+    """编年史：复用 `_build_events` 已合并的序列，只取最近 24 条并倒序（最新在上）。"""
+    if merged is None:
+        log = state.get("event_log") if isinstance(state.get("event_log"), list) else []
+        raw = [e for e in log
+               if isinstance(e, dict) and e.get("type") not in ("tick", "prose")]
+        merged = _merge_adjacent(raw)
+    return merged[-24:][::-1]
 
 
 def _milestones(state):
-    return ["第%d回合·%s" % (m.get("tick", 0), m.get("desc", ""))
-            for m in (state.get("milestones") or [])[-10:]][::-1]
+    rows = state.get("milestones") if isinstance(state.get("milestones"), list) else []
+    out = []
+    for m in rows[-10:]:
+        if not isinstance(m, dict):
+            continue
+        out.append("第%d回合·%s" % (_int_or(m.get("tick", 0), 0), str(m.get("desc") or "")))
+    return out[::-1]
+
+
+_DICT_FIELDS = ("entities", "relations", "market", "config", "ui", "codex", "places",
+                "world_info", "playbook", "game", "context")
+_LIST_FIELDS = ("event_log", "karma_ledger", "world_flags", "milestones", "summaries",
+                "prose", "lore", "questlines", "checks", "factions")
+
+
+def _coerce_state(state: dict) -> dict:
+    """把顶层字段的类型归一：脏存档（手改/旧版本/截断恢复）也能渲染，不崩整页。
+
+    只修**容器类型**与 tick，不动业务数值——具体数值由各 _build_* 自己宽松转换。
+    """
+    out = dict(state)
+    for key in _DICT_FIELDS:
+        if out.get(key) is not None and not isinstance(out.get(key), dict):
+            out[key] = {}
+    for key in _LIST_FIELDS:
+        if out.get(key) is not None and not isinstance(out.get(key), list):
+            out[key] = []
+    out["tick"] = _int_or(out.get("tick", 0), 0)
+    words = out.get("world_info") or {}
+    out["world_info"] = {k: str(words.get(k) or "") for k in ("name", "era", "location_desc")}
+    return out
+
+
+def load_state_retry(state_path, attempts=3, delay=0.02):
+    """读状态文件；MCP 正在原子替换时可能短暂读到半截/空文件，这里重试几次。
+
+    与 MCP 的 save_state（临时文件 + os.replace）配合：正常情况下 replace 是原子的，
+    但在 Windows 上杀毒/索引器短暂持有句柄时 open 会失败或读到旧 inode，
+    面板不该因此把整页打成错误态。
+    """
+    last = None
+    for i in range(max(1, int(attempts))):
+        try:
+            with open(state_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                return data
+            last = ValueError("状态文件顶层必须是 JSON 对象")
+        except (OSError, ValueError) as exc:
+            last = exc
+        if i + 1 < attempts:
+            time.sleep(delay * (i + 1))
+    raise last if last else ValueError("状态文件不可读")
 
 
 def view_model(state_path):
@@ -522,12 +675,16 @@ def view_model(state_path):
     本函数只做"取数 + 组装"：每个子块由一个 `_build_*` 负责，
     因此单函数复杂度保持低位，也让每块能独立测试。
     """
-    state = load_state(state_path)
+    state = load_state_retry(state_path)
+    if not isinstance(state, dict):
+        raise ValueError("状态文件顶层必须是 JSON 对象")
+    state = _coerce_state(state)
     record_sample(state_path, state)   # 侧写：态势采样（写 <state>.viz.jsonl，不碰状态文件）
-    player = (state.get("entities") or {}).get("player") or {}
+    entities = state.get("entities") if isinstance(state.get("entities"), dict) else {}
+    player = entities.get("player") if isinstance(entities.get("player"), dict) else {}
     loc = player.get("location", "")
     karma = _unsettled_karma(state)
-    events, _ = _build_events(state)
+    events, _, merged_events = _build_events(state)
     present, others = _build_cast(state, loc)
 
     return {
@@ -561,7 +718,8 @@ def view_model(state_path):
         "codex": _build_codex(state),
         "lore_total": len(state.get("lore", [])),
         "market": _build_market(state),
-        "chronicle": _chronicle(state),
+        "chronicle": _chronicle(state, merged_events),
+        "prose": _build_prose(state),
         "milestones": _milestones(state),
         "summaries": len(state.get("summaries") or []),
         "archived_events": int(state.get("archived_events", 0)),
@@ -639,6 +797,84 @@ def _derived_moral(state):
 #   · 宿主不在线时行动只是"排队"，不会凭空改世界。
 INBOX_MAX_TEXT = 2000
 INBOX_MAX_PENDING = 100
+INBOX_LOCK_TIMEOUT = 5.0
+INBOX_MAX_BYTES = 512 * 1024
+
+# 进程内锁：HTTP handler 是线程池，同进程多线程也要串行化读-改-写。
+_INBOX_TLOCK = threading.Lock()
+
+
+@contextlib.contextmanager
+def _file_lock(path, timeout=INBOX_LOCK_TIMEOUT):
+    """跨进程文件锁（Windows msvcrt / POSIX fcntl）。
+
+    为什么需要：收件箱是"读全部 → 改 → 整文件重写"的读-改-写。两个浏览器标签页
+    同时提交会互相覆盖——实测 20 个并发提交只剩 1 条。文件锁把临界区串起来。
+    """
+    lock_path = path + ".lock"
+    deadline = time.time() + max(0.1, float(timeout))
+    fh = open(lock_path, "a+")
+    try:
+        locked = False
+        while time.time() <= deadline:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    fh.seek(0)
+                    msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                locked = True
+                break
+            except (OSError, IOError):
+                time.sleep(0.02)
+        if not locked:
+            raise TimeoutError("收件箱被其他进程占用（%.1fs 超时）" % timeout)
+        try:
+            yield
+        finally:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    fh.seek(0)
+                    msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+            except OSError:
+                pass
+    finally:
+        try:
+            fh.close()
+        except OSError:
+            pass
+
+
+def _atomic_write_text(path, text):
+    """同目录临时文件 + os.replace：写到一半被杀也不会留下半个文件。"""
+    import tempfile as _tf
+    folder = os.path.dirname(os.path.abspath(path)) or "."
+    fd, tmp = _tf.mkstemp(prefix=".ww_inbox_", suffix=".tmp", dir=folder)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        for attempt in range(5):
+            try:
+                os.replace(tmp, path)
+                return
+            except PermissionError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.05 * (attempt + 1))
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def inbox_path(state_path):
@@ -675,56 +911,61 @@ def inbox_pending(state_path):
 
 
 def _rewrite_inbox(state_path, records):
-    path = inbox_path(state_path)
-    with open(path, 'w', encoding='utf-8') as f:
-        for rec in records:
-            f.write(json.dumps(rec, ensure_ascii=False) + '\n')
+    """整文件重写（原子 replace）。调用方必须已持有收件箱锁。"""
+    body = "".join(json.dumps(rec, ensure_ascii=False) + "\n" for rec in records)
+    _atomic_write_text(inbox_path(state_path), body)
 
 
 def inbox_append(state_path, text, source='panel'):
-    """追加一条行动；超出上限时丢弃最旧的未处理条目（侧写保持有界）。"""
+    """追加一条行动；超出上限时丢弃最旧的未处理条目（有界 + 并发安全）。"""
+    body = str(text or "").strip()
+    if not body:
+        raise ValueError("行动不能为空")
+    body = body[:INBOX_MAX_TEXT]
     rec = {
-        'id': hashlib.sha1(('%s|%s' % (time.time_ns(), text)).encode('utf-8'),
+        'id': hashlib.sha1(('%s|%s|%s' % (time.time_ns(), os.getpid(), body)).encode('utf-8'),
                            usedforsecurity=False).hexdigest()[:12],
         'ts': time.strftime('%Y-%m-%dT%H:%M:%S'),
         'tick': None,
         'source': str(source)[:24],
-        'text': text,
+        'text': body,
         'done': False,
     }
     try:
         with open(state_path, 'r', encoding='utf-8') as f:
-            rec['tick'] = int(json.load(f).get('tick', 0) or 0)
+            rec['tick'] = _int_or(json.load(f).get('tick', 0), 0)
     except (OSError, ValueError, TypeError):
         pass
-    records = inbox_read_all(state_path)
-    records.append(rec)
-    pending = [r for r in records if not r.get('done')]
-    if len(pending) > INBOX_MAX_PENDING:
-        drop = len(pending) - INBOX_MAX_PENDING
-        keep = []
-        for r in records:
-            if drop > 0 and not r.get('done'):
-                drop -= 1
-                continue
-            keep.append(r)
-        records = keep
-    _rewrite_inbox(state_path, records)
+    with _INBOX_TLOCK, _file_lock(inbox_path(state_path)):
+        records = inbox_read_all(state_path)
+        records.append(rec)
+        pending_idx = [i for i, r in enumerate(records) if not r.get('done')]
+        if len(pending_idx) > INBOX_MAX_PENDING:
+            drop = set(pending_idx[:len(pending_idx) - INBOX_MAX_PENDING])
+            records = [r for i, r in enumerate(records) if i not in drop]
+        # 字节上限兜底：已处理条目长期堆积也不能让侧写无限长
+        while records and len("".join(json.dumps(r, ensure_ascii=False)
+                                      for r in records)) > INBOX_MAX_BYTES:
+            records.pop(0)
+        _rewrite_inbox(state_path, records)
     return rec
 
 
 def inbox_mark_done(state_path, ids):
-    """把指定 id 标为已处理；返回实际标记条数。"""
+    """把指定 id 标为已处理；返回实际标记条数（与 append 共用同一把锁）。"""
     wanted = {str(i) for i in ids}
-    records = inbox_read_all(state_path)
+    if not wanted:
+        return 0
     n = 0
-    for r in records:
-        if str(r.get('id')) in wanted and not r.get('done'):
-            r['done'] = True
-            r['done_ts'] = time.strftime('%Y-%m-%dT%H:%M:%S')
-            n += 1
-    if n:
-        _rewrite_inbox(state_path, records)
+    with _INBOX_TLOCK, _file_lock(inbox_path(state_path)):
+        records = inbox_read_all(state_path)
+        for r in records:
+            if str(r.get('id')) in wanted and not r.get('done'):
+                r['done'] = True
+                r['done_ts'] = time.strftime('%Y-%m-%dT%H:%M:%S')
+                n += 1
+        if n:
+            _rewrite_inbox(state_path, records)
     return n
 
 
@@ -791,7 +1032,14 @@ def skin_for_world(state):
 
 
 class Handler(BaseHTTPRequestHandler):
+    # 状态路径由 server 实例持有（见 _PanelServer.state_path）。
+    # 旧实现把 state_path 写成**类属性**，于是同一进程里起第二个面板（换一局/换存档）
+    # 会把第一个面板也指向新文件——实测两个面板同时开着时都显示后启动那一局。
+    # 这里改成从 self.server 读取，每个面板互不干扰；类属性只作为兜底默认值。
     state_path = None
+
+    def _state(self):
+        return getattr(self.server, "state_path", None) or Handler.state_path
 
     def log_message(self, *args):  # 静音访问日志
         pass
@@ -834,26 +1082,79 @@ class Handler(BaseHTTPRequestHandler):
         fname, ctype = entry
         try:
             with open(os.path.join(HTML_DIR, fname), "rb") as f:
-                self._send(200, ctype, f.read())
+                body = f.read()
         except OSError:
             self._send(404, "text/plain; charset=utf-8", b"not found")
+            return
+        # 静态资源带 ETag：浏览器刷新时命中 304，省掉 1MB 的 ECharts 重传
+        etag = '"%s"' % hashlib.sha1(body, usedforsecurity=False).hexdigest()[:16]
+        if (self.headers.get("If-None-Match") or "").strip() == etag:
+            self.send_response(304)
+            for name, val in self._SECURITY_HEADERS:
+                self.send_header(name, val)
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("ETag", etag)
+        for name, val in self._SECURITY_HEADERS:
+            self.send_header(name, val)
+        self.end_headers()
+        self.wfile.write(body)
 
-    def _json_body(self, limit=8192):
+    MAX_BODY = 8192
+
+    def _json_body(self, limit=None):
+        """读请求体并解析 JSON。返回 (data, error)。error 为 None 表示成功。
+
+        显式区分"超限/缺长度/编码错/JSON 错"四种失败，供调用方回 413/411/415/400；
+        旧实现一律返回 None，客户端只能猜自己错在哪。
+        """
+        limit = self.MAX_BODY if limit is None else int(limit)
+        raw_len = self.headers.get('Content-Length')
+        if raw_len is None:
+            return None, ('411', '缺少 Content-Length')
         try:
-            n = int(self.headers.get('Content-Length') or 0)
+            n = int(raw_len)
+        except (TypeError, ValueError):
+            return None, ('400', 'Content-Length 不是数字')
+        if n <= 0:
+            return None, ('400', '请求体为空')
+        if n > limit:
+            return None, ('413', '请求体过大（上限 %d 字节）' % limit)
+        try:
+            body = self.rfile.read(n)
+        except OSError:
+            return None, ('400', '读取请求体失败')
+        if len(body) < n:
+            return None, ('400', '请求体不完整（声明 %d，实收 %d）' % (n, len(body)))
+        try:
+            return json.loads(body.decode('utf-8')), None
+        except UnicodeDecodeError:
+            return None, ('415', '请求体必须是 UTF-8')
         except ValueError:
-            return None
-        if n <= 0 or n > limit:
-            return None
-        try:
-            return json.loads(self.rfile.read(n).decode('utf-8'))
-        except (ValueError, UnicodeDecodeError):
-            return None
+            return None, ('400', '请求体不是合法 JSON')
+
+    _LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "[::1]", "::1")
+
+    def _host_ok(self):
+        """Host 头必须是本机回环名（防 DNS rebinding：恶意域名解析到 127.0.0.1 后读面板）。"""
+        raw = (self.headers.get("Host") or "").strip()
+        if not raw:
+            return True                      # HTTP/1.0 客户端可能不带 Host，不因此拒绝
+        host = raw.rsplit(":", 1)[0] if not raw.endswith("]") else raw
+        if host.startswith("[") and "]" not in host:
+            host = raw.rsplit(":", 1)[0]
+        allow = getattr(self.server, "host_allow", None) or self._LOOPBACK_HOSTS
+        return host.lower() in {h.lower() for h in allow}
 
     def do_POST(self):
         """唯一写入口：行动收件箱（状态文件仍然只读，INV-V1 不变）。
 
         本机服务不等于没有攻击面，因此：
+          · Host 必须是回环名（防 DNS rebinding）；
           · 带 Origin 时必须与 Host 同源（跨站表单伪造会被拒）；
           · 只收 application/json（简单请求无法跨站伪造该 Content-Type）；
           · 请求体 ≤ 8KB、正文 ≤ 2000 字；
@@ -862,6 +1163,11 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path != '/action':
             self._send(404, 'text/plain; charset=utf-8', b'not found')
+            return
+        if not self._host_ok():
+            self._send(403, 'application/json; charset=utf-8',
+                       json.dumps({'ok': False, 'error': 'Host 不被允许'},
+                                  ensure_ascii=False).encode('utf-8'))
             return
         origin = self.headers.get('Origin') or ''
         host = self.headers.get('Host') or ''
@@ -876,10 +1182,16 @@ class Handler(BaseHTTPRequestHandler):
                        json.dumps({'ok': False, 'error': '只接受 application/json'},
                                   ensure_ascii=False).encode('utf-8'))
             return
-        body = self._json_body()
+        body, body_err = self._json_body()
+        if body_err is not None:
+            code, msg = body_err
+            self._send(int(code), 'application/json; charset=utf-8',
+                       json.dumps({'ok': False, 'error': msg},
+                                  ensure_ascii=False).encode('utf-8'))
+            return
         if not isinstance(body, dict):
             self._send(400, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': '请求体不是合法 JSON'},
+                       json.dumps({'ok': False, 'error': '请求体必须是 JSON 对象'},
                                   ensure_ascii=False).encode('utf-8'))
             return
         text = str(body.get('text') or '').strip()
@@ -895,7 +1207,7 @@ class Handler(BaseHTTPRequestHandler):
                                   ensure_ascii=False).encode('utf-8'))
             return
         try:
-            rec = inbox_append(self.state_path, text)
+            rec = inbox_append(self._state(), text)
         except OSError as exc:
             self._send(500, 'application/json; charset=utf-8',
                        json.dumps({'ok': False,
@@ -904,17 +1216,20 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._send(200, 'application/json; charset=utf-8',
                    json.dumps({'ok': True, 'queued': rec,
-                               'pending': len(inbox_pending(self.state_path))},
+                               'pending': len(inbox_pending(self._state()))},
                               ensure_ascii=False).encode('utf-8'))
 
     def do_GET(self):
-        path = self.path.split("?")[0]
+        if not self._host_ok():
+            self._send(403, 'text/plain; charset=utf-8', b'host not allowed')
+            return
+        path = urllib.parse.urlsplit(self.path).path
         if path == "/state":
             try:
-                vm = json.dumps(view_model(self.state_path), ensure_ascii=False).encode("utf-8")
+                vm = json.dumps(view_model(self._state()), ensure_ascii=False).encode("utf-8")
             except FileNotFoundError:
                 vm = json.dumps({
-                    "error": "对局状态文件不存在：%s" % self.state_path,
+                    "error": "对局状态文件不存在：%s" % self._state(),
                     "hint": "先在对话里开一局（world_init / load_setting），本页会自动接上。",
                 }, ensure_ascii=False).encode("utf-8")
             except Exception as e:  # aqg: top-level boundary —— HTTP 端点：任何读取失败都转成页面可读错误，不抛栈
@@ -924,12 +1239,12 @@ class Handler(BaseHTTPRequestHandler):
                 }, ensure_ascii=False).encode("utf-8")
             self._send(200, "application/json; charset=utf-8", vm)
         elif path == "/actions":
-            body = json.dumps({'pending': inbox_pending(self.state_path)},
+            body = json.dumps({'pending': inbox_pending(self._state())},
                               ensure_ascii=False).encode('utf-8')
             self._send(200, 'application/json; charset=utf-8', body)
         elif path == "/export":
             try:
-                with open(self.state_path, 'rb') as f:
+                with open(self._state(), 'rb') as f:
                     raw = f.read()
             except OSError as exc:
                 self._send(404, 'application/json; charset=utf-8',
@@ -940,7 +1255,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Content-Length', str(len(raw)))
             self.send_header('Content-Disposition',
-                             'attachment; filename="%s"' % os.path.basename(self.state_path))
+                             'attachment; filename="%s"' % os.path.basename(self._state()))
             for name, val in self._SECURITY_HEADERS:
                 self.send_header(name, val)
             self.end_headers()
@@ -948,20 +1263,142 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/series":
             body = json.dumps(self._series_payload(), ensure_ascii=False).encode("utf-8")
             self._send(200, "application/json; charset=utf-8", body)
+        elif path == "/health":
+            state_ok, state_note = True, ""
+            try:
+                st = os.stat(self._state())
+                state_note = "%d bytes" % st.st_size
+            except OSError as exc:
+                state_ok, state_note = False, str(exc)[:80]
+            body = json.dumps({
+                "ok": state_ok, "state": os.path.abspath(self._state()),
+                "state_note": state_note,
+                "sse_max_seconds": self.SSE_MAX_SECONDS,
+                "inbox_pending": len(inbox_pending(self._state())),
+                "version": _PANEL_VERSION,
+            }, ensure_ascii=False).encode("utf-8")
+            self._send(200, "application/json; charset=utf-8", body)
+        elif path == "/history":
+            body = json.dumps(self._history_payload(), ensure_ascii=False).encode("utf-8")
+            self._send(200, "application/json; charset=utf-8", body)
         elif path == "/events":
             self._sse()
         else:
             self._static(path)
 
+    def _history_payload(self, query=""):
+        """剧情回放 / 归档检索（只读，分页）。
+
+        数据源三层：
+          1. `state["prose"]`  —— 当前在内存里的最近正文（完整文本）
+          2. `<state>.log*.jsonl` —— 归档事件与旧正文（只读扫描，按 query 过滤）
+        返回结构固定、有上限，避免长局把响应打爆。
+        查询参数：q（关键词）、limit（默认 50，上限 200）、scope（prose|archive|all）
+        """
+        params = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+        q = str((params.get("q") or [query or ""])[0]).strip().lower()
+        try:
+            limit = int((params.get("limit") or ["50"])[0])
+        except (TypeError, ValueError):
+            limit = 50
+        limit = max(1, min(MAX_HISTORY_PAGE, limit))
+        scope = str((params.get("scope") or ["all"])[0]).lower()
+        if scope not in ("prose", "archive", "all"):
+            scope = "all"
+
+        state = {}
+        state_error = ""
+        try:
+            state = load_state(self._state())
+        except (OSError, ValueError, TypeError) as exc:
+            state_error = str(exc)[:160]
+
+        prose_rows, prose_total = [], 0
+        if state and scope in ("prose", "all"):
+            rows = state.get("prose") if isinstance(state.get("prose"), list) else []
+            prose_total = len(rows)
+            for entry in rows:
+                if not isinstance(entry, dict):
+                    continue
+                text = str(entry.get("text") or "")
+                if q and q not in text.lower():
+                    continue
+                prose_rows.append({"tick": _int_or(entry.get("tick", 0), 0),
+                                   "location": str(entry.get("location") or ""),
+                                   "text": text, "chars": len(text)})
+            prose_rows = prose_rows[-limit:][::-1]
+
+        archive_rows, archive_scanned, archive_total = [], 0, 0
+        if scope in ("archive", "all"):
+            base = self._state()
+            folder = os.path.dirname(os.path.abspath(base)) or "."
+            prefix = os.path.basename(base) + ".log"
+            files = []
+            try:
+                files = sorted(f for f in os.listdir(folder)
+                               if f.startswith(prefix) and f.endswith(".jsonl"))
+            except OSError:
+                files = []
+            # 从最新世代往前扫；命中 limit 条即停，避免长局扫穿几个 GB
+            for fname in reversed(files):
+                path = os.path.join(folder, fname)
+                try:
+                    with open(path, "r", encoding="utf-8") as fh:
+                        for line in fh:
+                            archive_scanned += 1
+                            line = line.strip()
+                            if not line:
+                                continue
+                            try:
+                                rec = json.loads(line)
+                            except ValueError:
+                                continue
+                            if not isinstance(rec, dict):
+                                continue
+                            if rec.get("type") not in (None, "prose", "combat", "social",
+                                                       "trade", "karma", "travel", "world",
+                                                       "quest", "context", "sheet", "check"):
+                                continue
+                            text = str(rec.get("text") or rec.get("desc") or "")
+                            if not text:
+                                continue
+                            if q and q not in text.lower():
+                                continue
+                            archive_total += 1
+                            if len(archive_rows) < limit:
+                                archive_rows.append({
+                                    "tick": _int_or(rec.get("tick", 0), 0),
+                                    "type": str(rec.get("type") or ""),
+                                    "text": text,
+                                })
+                            if len(archive_rows) >= limit and q:
+                                break
+                except OSError:
+                    continue
+                if len(archive_rows) >= limit and q:
+                    break
+            archive_rows.reverse()
+            archive_rows = archive_rows[:limit]
+
+        return {
+            "query": q, "limit": limit, "scope": scope,
+            "prose": {"items": prose_rows, "total": prose_total,
+                      "returned": len(prose_rows)},
+            "archive": {"items": archive_rows, "scanned": archive_scanned,
+                        "matched": archive_total, "returned": len(archive_rows)},
+            "state_error": state_error,
+            "read_only": True,
+        }
+
     def _series_payload(self):
         """长局态势序列：直接读侧写文件（不读也不写状态文件）。"""
         try:
-            samples = load_series(self.state_path)
+            samples = load_series(self._state())
         except (OSError, ValueError, TypeError):
             samples = []          # 侧写坏行/缺文件 → 图表空态，接口照常 200
         skin = SKINS["neutral"]
         try:
-            skin = skin_for_world(load_state(self.state_path))
+            skin = skin_for_world(load_state_retry(self._state(), attempts=2))
         except (OSError, ValueError, TypeError):
             pass                  # 状态不可读时调色板退回 neutral；错误态由 /state 负责展示
         return {"samples": samples, "cap": SERIES_CAP, "palette": skin.get("palette", {})}
@@ -969,10 +1406,10 @@ class Handler(BaseHTTPRequestHandler):
     def _state_payload(self):
         """SSE 每帧的 JSON：状态不可读时不是断流，而是把原因推给页面显示。"""
         try:
-            return json.dumps(view_model(self.state_path), ensure_ascii=False)
+            return json.dumps(view_model(self._state()), ensure_ascii=False)
         except FileNotFoundError:
             return json.dumps({
-                "error": "对局状态文件不存在：%s" % self.state_path,
+                "error": "对局状态文件不存在：%s" % self._state(),
                 "hint": "先在对话里开一局（world_init / load_setting），本页会自动接上。",
             }, ensure_ascii=False)
         except Exception as e:  # aqg: top-level boundary —— SSE 端点：状态不可读时推错误帧而不是断流
@@ -981,17 +1418,35 @@ class Handler(BaseHTTPRequestHandler):
                 "hint": "文件可能正在写入或格式不合法；稍候重试，或先用 snapshot 校验存档。",
             }, ensure_ascii=False)
 
+    SSE_TICK = 0.5
+    SSE_MAX_SECONDS = 1800        # 单条连接最长 30 分钟；浏览器 EventSource 会自动重连
+    SSE_MAX_FRAMES = 3600
+
     def _sse(self):
+        """SSE 推送：状态文件一变就发一帧 state；无变化时只发心跳注释。
+
+        资源护栏：
+          · 连接有最长寿命与最大帧数，不会永久占用线程；
+          · 状态没变时不重复序列化整个视图模型（长局里 /state 可能几百 KB）；
+          · 任何写失败立刻返回，交给 socketserver 回收线程。
+        """
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
         last = object()
+        started = time.time()
+        frames = 0
         try:
-            while True:
+            while frames < self.SSE_MAX_FRAMES:
+                if time.time() - started > self.SSE_MAX_SECONDS:
+                    self.wfile.write(b"event: bye\ndata: {}\n\n")
+                    self.wfile.flush()
+                    return
                 try:
-                    st = os.stat(self.state_path)
+                    st = os.stat(self._state())
                     sig = (st.st_mtime_ns, st.st_size)
                 except OSError:
                     sig = None
@@ -999,11 +1454,13 @@ class Handler(BaseHTTPRequestHandler):
                     last = sig
                     body = self._state_payload()
                     self.wfile.write(("event: state\ndata: %s\n\n" % body).encode("utf-8"))
+                    frames += 1
                 else:
                     self.wfile.write(b": ping\n\n")
                 self.wfile.flush()
-                time.sleep(0.5)
-        except (BrokenPipeError, ConnectionResetError, OSError, ValueError):
+                time.sleep(self.SSE_TICK)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError,
+                OSError, ValueError):
             return
 
 
@@ -1015,24 +1472,59 @@ class _PanelServer(ThreadingHTTPServer):
     结果是请求被别的进程抢走、面板返回 404 而自己毫无察觉
     （实测被一个无关的 `python -m http.server 8791` 抢过）。
     关掉它，端口冲突就会正常抛 OSError，从而走下面的顺延逻辑。
+
+    `state_path` 挂在 server 实例上（不是 Handler 类属性）：同进程可以同时开
+    多个面板看不同存档，互不串台。
     """
+
     allow_reuse_address = False
+    daemon_threads = True
+    state_path = None
+
+    def __init__(self, address, handler_cls, state_path=None):
+        super().__init__(address, handler_cls)
+        self.state_path = os.path.abspath(state_path) if state_path else None
 
 
-def start(state_path, port=8765, host="127.0.0.1"):
-    """启动面板服务（后台线程），返回 (server, 实际端口)。端口被占则自动顺延。"""
-    Handler.state_path = os.path.abspath(state_path)
+def start(state_path, port=8765, host="127.0.0.1", host_allow=None,
+          bind_attempts=10):
+    """启动面板服务（后台线程），返回 (server, 实际端口)。端口被占则自动顺延。
+
+    `host_allow`：允许访问的 Host 头白名单（默认只允许本机回环名）。
+    `state_path` 绑定在 server 实例上，多个面板互不干扰。
+    """
+    resolved = os.path.abspath(state_path)
     srv = None
-    for p in range(int(port), int(port) + 10):
+    for p in range(int(port), int(port) + max(1, int(bind_attempts))):
         try:
-            srv = _PanelServer((host, p), Handler)
+            srv = _PanelServer((host, p), Handler, state_path=resolved)
             break
         except OSError:
             continue
     if srv is None:
-        raise RuntimeError("端口 %s~%s 都被占用" % (port, int(port) + 9))
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
+        raise RuntimeError("端口 %s~%s 都被占用"
+                           % (port, int(port) + max(1, int(bind_attempts)) - 1))
+    srv.host_allow = host_allow
+    threading.Thread(target=srv.serve_forever, daemon=True, name="panel-%d" % srv.server_address[1]).start()
     return srv, srv.server_address[1]
+
+
+def stop(srv, timeout=5.0):
+    """优雅停止：shutdown() 停 accept 循环，server_close() 释放端口。
+
+    只调用 shutdown() 时 socket 仍处于监听状态，紧接着在同一端口重启会失败
+    （Windows 上尤其明显）。反复 stop 是幂等的。
+    """
+    if srv is None:
+        return
+    try:
+        srv.shutdown()
+    except Exception:  # aqg: top-level boundary —— 已停止的 server 再 shutdown 会抛，忽略
+        pass
+    try:
+        srv.server_close()
+    except Exception:  # aqg: top-level boundary —— 同上
+        pass
 
 
 def main():
@@ -1050,7 +1542,7 @@ def main():
         while True:
             time.sleep(3600)
     except KeyboardInterrupt:
-        srv.shutdown()
+        stop(srv)
     return 0
 
 

@@ -102,7 +102,8 @@ MUTATIONS = [
 
     # ── 面板视图模型 ──
     ('M18', '时间线不再合并重复事件', 'panel.py',
-     'for e in _merge_adjacent(raw)[-EVENTS_CAP:]]', 'for e in raw[-EVENTS_CAP:]]',
+     '    merged = _merge_adjacent(raw)\n    events = [classify_event(e, milestone_ticks) for e in merged[-EVENTS_CAP:]]',
+     '    merged = raw\n    events = [classify_event(e, milestone_ticks) for e in merged[-EVENTS_CAP:]]',
      'scripts/verify_panel.py'),
     ('M19', '价格指数不再取均值', 'viz_series.py',
      '        "price_index": round(sum(ratios) / len(ratios), 4) if ratios else 1.0,',
@@ -129,8 +130,8 @@ MUTATIONS = [
      '    if True:\n        for e in result.get("events", []):',
      'scripts/verify_mcp_stdio.py'),
     ('M29', '行动队列不设上限（侧写无限增长）', 'panel.py',
-     '    if len(pending) > INBOX_MAX_PENDING:',
-     '    if False:',
+     '        if len(pending_idx) > INBOX_MAX_PENDING:',
+     '        if False:',
      'scripts/verify_panel.py'),
     ('M30', '行动队列接受跨站请求（去掉 Origin 校验）', 'panel.py',
      "        if origin and origin.split('//')[-1] != host:",

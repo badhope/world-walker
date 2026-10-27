@@ -1027,6 +1027,7 @@
     renderQuests(v);
     renderLorebook(v);
     renderGame(v);
+    renderStory(v);
     refreshSeries(v);
   }
 
@@ -1598,6 +1599,151 @@
     });
   }
 
+  /* ── 剧情回放：完整正文（vm.prose） + 归档检索（/history） ── */
+  const storyState = { query: "", scope: "all", archive: null, loading: false, error: "" };
+
+  function storyItem(row, current) {
+    const div = document.createElement("div");
+    div.className = "story-item" + (current ? " current" : "");
+    const head = document.createElement("div");
+    head.className = "head";
+    const tick = document.createElement("b");
+    tick.textContent = "第 " + (row.tick != null ? row.tick : "?") + " 回合";
+    head.appendChild(tick);
+    if (row.location) {
+      const loc = document.createElement("span");
+      loc.textContent = row.location;
+      head.appendChild(loc);
+    }
+    if (row.type) {
+      const t = document.createElement("span");
+      t.textContent = row.type;
+      head.appendChild(t);
+    }
+    if (row.chars != null) {
+      const c = document.createElement("span");
+      c.textContent = row.chars + " 字";
+      head.appendChild(c);
+    }
+    const body = document.createElement("div");
+    body.className = "body" + ((row.text || "").length > 320 ? " clamp" : "");
+    body.textContent = row.text || "";
+    div.appendChild(head);
+    div.appendChild(body);
+    if ((row.text || "").length > 320) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "more";
+      more.textContent = "展开全文";
+      more.addEventListener("click", () => {
+        const open = body.classList.toggle("clamp") === false;
+        more.textContent = open ? "收起" : "展开全文";
+      });
+      div.appendChild(more);
+    }
+    return div;
+  }
+
+  function renderStory(v) {
+    const box = $("story-rows");
+    if (!box) return;
+    const pr = (v.prose || {});
+    const items = (pr.items || []).slice().reverse();   // 最新在前
+    const q = storyState.query.trim().toLowerCase();
+    const matches = q ? items.filter((x) => (x.text || "").toLowerCase().indexOf(q) >= 0) : items;
+    setText($("story-hint"), pr.total
+      ? (pr.shown + " / 共 " + pr.total + " 段" + (pr.truncated ? "（更早的在归档）" : ""))
+      : "");
+    box.textContent = "";
+    if (!matches.length && storyState.scope !== "archive") {
+      const s = document.createElement("span");
+      s.className = "empty";
+      s.textContent = q ? "正文里没有匹配「" + storyState.query + "」的段落" : "还没有正文";
+      box.appendChild(s);
+    }
+    if (storyState.scope !== "archive") {
+      matches.slice(0, 60).forEach((row, i) => {
+        box.appendChild(storyItem(row, i === 0 && !storyState.archive));
+      });
+    }
+    // 归档检索结果（服务端已按 limit 截断）
+    if (storyState.scope !== "prose" && storyState.archive) {
+      const arch = storyState.archive.archive || {};
+      const rows = arch.items || [];
+      const sep = document.createElement("div");
+      sep.className = "hint";
+      sep.style.marginTop = "12px";
+      sep.textContent = "归档命中 " + (arch.matched || 0) + " 条（扫描 " + (arch.scanned || 0)
+        + " 行，显示 " + rows.length + " 条）";
+      box.appendChild(sep);
+      rows.slice().reverse().forEach((row) => box.appendChild(storyItem(row, false)));
+    }
+    const meta = $("story-meta");
+    if (meta) {
+      meta.textContent = storyState.loading
+        ? "正在检索归档…"
+        : (storyState.error ? "归档检索失败：" + storyState.error : "");
+    }
+  }
+
+  function fetchHistory() {
+    if (storyState.loading) return;
+    storyState.loading = true;
+    storyState.error = "";
+    renderStory(panelState.vm || {});
+    const params = new URLSearchParams();
+    if (storyState.query.trim()) params.set("q", storyState.query.trim());
+    params.set("scope", storyState.scope);
+    params.set("limit", "80");
+    fetch("/history?" + params.toString())
+      .then((r) => r.json())
+      .then((data) => { storyState.archive = data; })
+      .catch(() => { storyState.error = "网络错误"; })
+      .finally(() => {
+        storyState.loading = false;
+        renderStory(panelState.vm || {});
+      });
+  }
+
+  function wireStory() {
+    const search = $("story-search");
+    if (search) {
+      let t = null;
+      search.addEventListener("input", () => {
+        storyState.query = search.value || "";
+        clearTimeout(t);
+        t = setTimeout(() => {
+          if (storyState.scope !== "prose") fetchHistory();
+          else renderStory(panelState.vm || {});
+        }, 220);
+      });
+      search.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape") {
+          search.value = "";
+          storyState.query = "";
+          renderStory(panelState.vm || {});
+        }
+      });
+    }
+    const scopeBox = $("story-scope");
+    if (scopeBox) {
+      scopeBox.addEventListener("click", (ev) => {
+        const btn = ev.target.closest("[data-scope]");
+        if (!btn) return;
+        storyState.scope = btn.dataset.scope || "all";
+        scopeBox.querySelectorAll("[data-scope]").forEach((b) => {
+          b.setAttribute("aria-pressed", String(b === btn));
+        });
+        if (storyState.scope === "prose") renderStory(panelState.vm || {});
+        else fetchHistory();
+      });
+    }
+    const btn = $("story-refresh");
+    if (btn) btn.addEventListener("click", () => fetchHistory());
+    const topBtn = $("story-btn");
+    if (topBtn) topBtn.addEventListener("click", () => openDrawer("drawer-story"));
+  }
+
   function openDrawer(id) {
     const d = $(id);
     if (!d) return;
@@ -1639,6 +1785,7 @@
 
   function boot() {
     wireDrawers();
+    wireStory();
     fetchState();
 
     if (window.EventSource) {
@@ -1816,6 +1963,7 @@
       { k: "势力", run: () => openDrawer("drawer-world") },
       { k: "世界标记", run: () => openDrawer("drawer-flags") },
       { k: "世界书", run: () => openDrawer("drawer-lorebook") },
+      { k: "剧情回放", run: () => openDrawer("drawer-story") },
       { k: "上下文台账", run: () => openDrawer("drawer-context") },
       { k: "存档库", run: () => openDrawer("drawer-sessions") },
       { k: "帮助", run: () => openHelp($("help-btn")) },
@@ -1896,6 +2044,14 @@
     const helpClose = $("help-close");
     if (helpClose) helpClose.addEventListener("click", () => closeHelp());
     document.addEventListener("keydown", (ev) => {
+      const tagNow = (ev.target && ev.target.tagName) || "";
+      if (!ev.ctrlKey && !ev.metaKey && !ev.altKey
+          && (ev.key === "s" || ev.key === "S")
+          && tagNow !== "INPUT" && tagNow !== "TEXTAREA") {
+        ev.preventDefault();
+        openDrawer("drawer-story");
+        return;
+      }
       if (ev.key === "?" || (ev.key === "/" && ev.shiftKey)) {
         const tag = (ev.target && ev.target.tagName) || "";
         if (tag === "INPUT" || tag === "TEXTAREA") return;

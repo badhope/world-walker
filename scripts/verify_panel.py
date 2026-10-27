@@ -219,7 +219,7 @@ def main():
         check("relations 契约（只含与玩家有关的关系，带名字）", ok_rel, str(rel))
         check("旧字段保留（insights/codex/chronicle/milestones/market）",
               "flow" in (vm.get("insights") or {}) and "phase" in (vm.get("insights") or {})
-              and set(vm.get("codex") or {}) == {"locations", "people", "items", "lore"}
+              and {"locations", "people", "items", "lore"} <= set(vm.get("codex") or {})
               and isinstance(vm.get("chronicle"), list) and isinstance(vm.get("milestones"), list)
               and isinstance(vm.get("market"), list) and bool(vm.get("market")))
         check("/state 事件数组有界（<=40）", isinstance(events, list) and len(events) <= 40,
@@ -512,7 +512,8 @@ def main():
         check("POST /action 拒绝跨站 Origin（403）", st_x == 403 and body_x.get("ok") is False,
               "status=%s" % st_x)
         st_long, body_long = post_action({"text": "长" * (_panel.INBOX_MAX_TEXT + 10)})
-        check("POST /action 拒绝超长行动（400）", st_long == 400, "status=%s" % st_long)
+        # 正文过长由业务校验回 400；请求体字节超限由传输层回 413（两者都是拒绝）
+        check("POST /action 拒绝超长行动（400/413）", st_long in (400, 413), "status=%s" % st_long)
         st_empty, _ = post_action({"text": "   "})
         check("POST /action 拒绝空行动（400）", st_empty == 400, "status=%s" % st_empty)
         st_404, _ct, _b = http_get(inbox_base + "/action2")
@@ -538,9 +539,176 @@ def main():
           and str(vm_meta.get("meta", {}).get("inbox", "")).endswith(".inbox.jsonl"),
           "pending=%s" % vm_meta.get("inbox_pending"))
 
+    # 12. 复杂场景与并发（v1.3 面板加固）
+    _panel_scenarios()
+
     passed = sum(RESULTS)
     print("\n%d/%d passed" % (passed, len(RESULTS)))
     return 0 if passed == len(RESULTS) else 1
+
+
+def _panel_scenarios():
+    """面板的复杂场景：多实例隔离、并发写、脏数据、超大状态、SSE 生命周期、Host 校验。"""
+    import threading
+    import urllib.parse
+
+    # 12a. 两个面板指向不同存档时不得串台（旧实现用 Handler 类属性，后启动的会覆盖前者）
+    tmpA = tempfile.mkdtemp(prefix="ww-multi-")
+    pa = os.path.join(tmpA, "a.save.json")
+    pb = os.path.join(tmpA, "b.save.json")
+    for path, name in ((pa, "世界A"), (pb, "世界B")):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"tick": 1, "world_info": {"name": name},
+                       "entities": {"player": {"name": "P", "hp": 5, "hp_max": 5}},
+                       "event_log": [], "relations": {}, "market": {},
+                       "karma_ledger": [], "world_flags": []}, f, ensure_ascii=False)
+    srv_a, port_a = _panel.start(pa, PORT + 5)
+    srv_b, port_b = _panel.start(pb, PORT + 6)
+    try:
+        sa, vma = get_json("http://127.0.0.1:%d/state" % port_a)
+        sb, vmb = get_json("http://127.0.0.1:%d/state" % port_b)
+        check("多面板实例隔离（各自读自己的存档）",
+              sa == 200 and sb == 200
+              and (vma or {}).get("world", {}).get("name") == "世界A"
+              and (vmb or {}).get("world", {}).get("name") == "世界B",
+              "%s / %s" % ((vma or {}).get("world", {}).get("name"),
+                           (vmb or {}).get("world", {}).get("name")))
+    finally:
+        srv_a.shutdown()
+        srv_b.shutdown()
+
+    # 12b. 并发排队：20 线程同时提交不能互相覆盖
+    tmpB = tempfile.mkdtemp(prefix="ww-concurrent-")
+    pc = os.path.join(tmpB, "c.save.json")
+    with open(pc, "w", encoding="utf-8") as f:
+        json.dump({"tick": 1, "entities": {}, "event_log": []}, f)
+
+    def _push(i):
+        _panel.inbox_append(pc, "并发行动%d" % i)
+
+    threads = [threading.Thread(target=_push, args=(i,)) for i in range(20)]
+    [t.start() for t in threads]
+    [t.join() for t in threads]
+    kept = [r for r in _panel.inbox_read_all(pc) if not r.get("done")]
+    check("并发排队不丢条目（20 线程 → 20 条）", len(kept), 20)
+
+    # 12c. 脏数据：类型全错的状态也不能把面板打崩
+    tmpC = tempfile.mkdtemp(prefix="ww-dirty-")
+    pd = os.path.join(tmpC, "d.save.json")
+    with open(pd, "w", encoding="utf-8") as f:
+        json.dump({"tick": "abc", "world_info": "not-a-dict",
+                   "entities": {"player": "not-a-dict", "npc": {"hp": "x", "hp_max": None}},
+                   "relations": ["bad"], "market": {"L": "bad"},
+                   "karma_ledger": [{"amount": "x"}, 3], "milestones": ["bad"],
+                   "event_log": [{"desc": None}, "bad"], "prose": ["bad"],
+                   "codex": "bad", "world_flags": "bad"}, f, ensure_ascii=False)
+    try:
+        vm_d = _panel.view_model(pd)
+        ok_d = (isinstance(vm_d, dict) and vm_d.get("tick") == 0
+                and vm_d.get("player", {}).get("hp") == 0
+                and vm_d.get("player", {}).get("inventory") == []
+                and isinstance(vm_d.get("events"), list))
+        check("脏数据不崩（类型全错仍产出合法视图模型）", ok_d,
+              "tick=%s hp=%s" % (vm_d.get("tick"), (vm_d.get("player") or {}).get("hp")))
+    except Exception as exc:  # aqg: top-level boundary —— 异常本身就是要断言的失败
+        check("脏数据不崩（类型全错仍产出合法视图模型）", False, str(exc)[:70])
+
+    # 12d. 超大状态：/state 必须有上限，不能随存档线性膨胀
+    tmpD = tempfile.mkdtemp(prefix="ww-big-")
+    pe = os.path.join(tmpD, "e.save.json")
+    big = {"tick": 900, "world_info": {"name": "大世界"},
+           "entities": {"player": {"name": "P", "hp": 10, "hp_max": 10},
+                        **{"npc%d" % i: {"name": "NPC%d" % i, "hp": 5, "hp_max": 5,
+                                         "location": "L"} for i in range(300)}},
+           "market": {"L": {"item%d" % i: {"name": "物品%d" % i, "price": 10 + i,
+                                           "base_price": 10, "supply": 20}
+                            for i in range(800)}},
+           "event_log": [{"tick": i, "type": "combat", "desc": "事件%d" % i}
+                         for i in range(3000)],
+           "prose": [{"tick": i, "location": "L", "text": "正文%d" % i} for i in range(500)],
+           "relations": {}, "karma_ledger": [], "world_flags": [],
+           "codex": {"locations": ["l%d" % i for i in range(500)]}}
+    with open(pe, "w", encoding="utf-8") as f:
+        json.dump(big, f, ensure_ascii=False)
+    vm_e = _panel.view_model(pe)
+    size = len(json.dumps(vm_e, ensure_ascii=False).encode("utf-8"))
+    market_n = sum(len(m["items"]) for m in vm_e["market"])
+    check("超大状态：商品下发有条目上限", market_n, _panel.MAX_MARKET_ITEMS)
+    check("超大状态：图鉴下发有上限并被标记",
+          len(vm_e["codex"]["locations"]) == _panel.MAX_CODEX_ITEMS
+          and vm_e["codex"]["truncated"].get("locations", 0) > 0,
+          str(vm_e["codex"]["truncated"]))
+    check("超大状态：剧情回放有段数上限且保留完整文本",
+          vm_e["prose"]["shown"] == _panel.MAX_PROSE_ITEMS
+          and vm_e["prose"]["truncated"] > 0, str(vm_e["prose"]["shown"]))
+    check("超大状态：/state 体积受控（< 2MB）", size < 2_000_000, "%d bytes" % size)
+
+    # 12e. SSE：连接有寿命上限（配置存在且有限）
+    check("SSE 有寿命与帧数上限",
+          isinstance(_panel.Handler.SSE_MAX_SECONDS, (int, float))
+          and 0 < _panel.Handler.SSE_MAX_SECONDS <= 7200
+          and _panel.Handler.SSE_MAX_FRAMES > 0,
+          "%ss / %s 帧" % (_panel.Handler.SSE_MAX_SECONDS, _panel.Handler.SSE_MAX_FRAMES))
+
+    # 12f. Host 头校验（DNS rebinding）
+    srv_h, port_h = _panel.start(pc, PORT + 7)
+    try:
+        req = urllib.request.Request("http://127.0.0.1:%d/state" % port_h,
+                                     headers={"Host": "evil.example"})
+        try:
+            urllib.request.urlopen(req, timeout=5)
+            st_evil = 200
+        except urllib.error.HTTPError as exc:
+            st_evil = exc.code
+        check("拒绝非回环 Host（DNS rebinding 防护）", st_evil, 403)
+        st_ok, _vm = get_json("http://127.0.0.1:%d/state" % port_h)
+        check("回环 Host 正常放行", st_ok, 200)
+    finally:
+        srv_h.shutdown()
+
+    # 12g. /history：关键词检索与分页上限
+    tmpE = tempfile.mkdtemp(prefix="ww-hist-")
+    ph = os.path.join(tmpE, "h.save.json")
+    with open(ph, "w", encoding="utf-8") as f:
+        json.dump({"tick": 3, "entities": {"player": {"name": "P"}},
+                   "prose": [{"tick": 1, "location": "码头", "text": "雨下了一夜。"},
+                             {"tick": 2, "location": "灯塔", "text": "灯塔亮了三分钟。"}],
+                   "event_log": [], "relations": {}, "market": {},
+                   "karma_ledger": [], "world_flags": []}, f, ensure_ascii=False)
+    with open(ph + ".log.jsonl", "w", encoding="utf-8") as f:
+        for i in range(5):
+            f.write(json.dumps({"tick": i, "type": "prose", "text": "旧正文%d 灯塔" % i},
+                               ensure_ascii=False) + "\n")
+    hist_hash = hashlib.sha256(open(ph, "rb").read()).hexdigest()
+    srv_hist, port_hist = _panel.start(ph, PORT + 8)
+    try:
+        st_h, hist = get_json("http://127.0.0.1:%d/history?q=%s&limit=3"
+                              % (port_hist, urllib.parse.quote("灯塔")))
+        check("/history 按关键词检索正文与归档",
+              st_h == 200 and isinstance(hist, dict)
+              and hist.get("prose", {}).get("returned") == 1
+              and len(hist.get("archive", {}).get("items") or []) == 3,
+              "prose=%s archive=%s" % ((hist or {}).get("prose", {}).get("returned"),
+                                       len((hist or {}).get("archive", {}).get("items") or [])))
+        st_h2, hist2 = get_json("http://127.0.0.1:%d/history?limit=9999" % port_hist)
+        check("/history limit 被夹到上限",
+              st_h2 == 200 and (hist2 or {}).get("limit") == _panel.MAX_HISTORY_PAGE,
+              str((hist2 or {}).get("limit")))
+        check("/history 前后状态文件 sha256",
+              hashlib.sha256(open(ph, "rb").read()).hexdigest(), hist_hash)
+    finally:
+        srv_hist.shutdown()
+
+    # 12h. /health
+    srv_hl, port_hl = _panel.start(pc, PORT + 9)
+    try:
+        st_hl, health = get_json("http://127.0.0.1:%d/health" % port_hl)
+        check("/health 返回 ok/state/version",
+              st_hl == 200 and (health or {}).get("ok") is True
+              and bool((health or {}).get("version")),
+              str((health or {}).get("version")))
+    finally:
+        srv_hl.shutdown()
 
 
 if __name__ == "__main__":

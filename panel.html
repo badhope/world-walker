@@ -33,6 +33,8 @@
           aria-haspopup="dialog">命令 <kbd>⌘K</kbd></button>
   <button class="tbtn" id="share-btn" type="button" aria-pressed="false"
           title="分享模式：隐藏存档路径与操作提示，适合截图与直播">分享模式</button>
+  <button class="tbtn" id="story-btn" type="button" title="打开剧情回放（快捷键 S）"
+          aria-haspopup="dialog">剧情 <kbd>S</kbd></button>
   <button class="tbtn" id="export-btn" type="button" title="下载当前对局状态 JSON（只读导出）">导出</button>
   <button class="tbtn" id="motion" type="button" aria-pressed="false"
           title="暂停/恢复界面动效">动效：开</button>
@@ -216,6 +218,26 @@
 
 <!-- 抽屉：图鉴 / 市场 / 大事记 / 世界标记 -->
 <div class="drawers">
+  <details class="drawer" id="drawer-story">
+    <summary><span data-term="story">剧情回放</span> <span class="tag" id="story-hint" style="margin-left:auto"></span></summary>
+    <div class="body">
+      <div class="hint">每一次 <code>publish_prose</code> 的完整正文都在这里（不截断）。面板只读，不会改动剧情。</div>
+      <div class="story-tools">
+        <label class="sr-only" for="story-search">搜索剧情与归档</label>
+        <input id="story-search" type="search" placeholder="搜索剧情 / 归档（如：灯塔 / 沈伯）"
+               autocomplete="off" maxlength="60" />
+        <button class="tbtn" type="button" id="story-refresh">刷新</button>
+        <span class="seg" id="story-scope" role="group" aria-label="检索范围">
+          <button type="button" class="seg-btn" data-scope="all" aria-pressed="true">全部</button>
+          <button type="button" class="seg-btn" data-scope="prose" aria-pressed="false">正文</button>
+          <button type="button" class="seg-btn" data-scope="archive" aria-pressed="false">归档</button>
+        </span>
+      </div>
+      <div id="story-rows"><span class="empty">还没有正文——宿主用 publish_prose 写入后这里会出现</span></div>
+      <div class="hint" id="story-meta"></div>
+    </div>
+  </details>
+
   <details class="drawer" id="drawer-codex">
     <summary><span data-term="codex">探索图鉴</span> <span class="tag" id="lorecnt" style="margin-left:auto"></span></summary>
     <div class="body">

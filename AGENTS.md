@@ -9,7 +9,7 @@
 
 - 仓库根即 `game_engine` 包（`pyproject.toml` 中 `package-dir = { "game_engine" = "." }`，内部统一 `import game_engine.*`）
 - `engine.py` — 规则结算内核
-- `mcp_server.py` — MCP 工具入口（54 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
+- `mcp_server.py` — MCP 工具入口（55 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
 - `panel.py` / `panel.html` / `panel.css` / `panel.js` — 只读主舞台（面板不许写状态；
   行动队列只写 `<state>.inbox.jsonl` 侧写，状态仍由 MCP 单点写入）
 - `state_schema.py` — 状态模型（原子写 / 世代归档 / 种子）

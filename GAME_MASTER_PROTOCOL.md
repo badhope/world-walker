@@ -6,7 +6,7 @@
 > 前 39 个工具面向角色扮演式结算；后 15 个不假设任何题材——任何游戏都能用。
 
 > **MCP 模式**：宿主是 MCP 客户端（Claude Code / Codex / Cursor 等）时，用 `mcp_server.py`
-> 暴露的 54 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
+> 暴露的 55 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
 > `moral_update` 合并为 `status`，`info_weight` 改名为 `narrative_weight`；`world_state`
 > 仍是独立只读工具（与 `read_state` 并存：前者返回世界侧摘要，后者返回完整状态）；另增建局三件套 `world_schema` / `world_init` / `world_open`、
 > 叙事层 `narration_context`（关键词触发设定 + 在场角色卡面 + 编年史，每回合调）、

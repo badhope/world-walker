@@ -51,6 +51,11 @@ STATE = {
                         'type': '丹药', 'desc': '安神'}}},
     'karma_ledger': [],
     'world_flags': ['xuanshu'],
+    'prose': [
+        {'tick': 40, 'location': '临川城', 'text': '雾锁长街，灯影摇红。沈砚推开万石商行的门。'},
+        {'tick': 41, 'location': '临川城', 'text': '柜台上摊着一张告示：听霄学宫开山收徒，名额七十。'},
+        {'tick': 42, 'location': '临川城', 'text': '老王把茶碗往前推了推：「今年这水，浑。」'},
+    ],
     'event_log': [
         {'tick': 40, 'type': 'system', 'desc': '世界「玄枢界」开局'},
         {'tick': 41, 'type': 'combat', 'desc': '沈砚击败了山贼'},
@@ -150,7 +155,17 @@ def main():
                   page.query_selector('#checks-card') is not None
                   and ('还没有判定' in page.inner_text('#checks-card')
                        or page.query_selector('#checks .check-row') is not None))
-            for drawer in ('#drawer-context', '#drawer-sessions'):
+            # 剧情回放：三段正文都要在，且最新在前（抽屉可能折叠，先展开）
+            page.evaluate('(x) => { x.open = true; }', page.query_selector('#drawer-story'))
+            page.wait_for_timeout(400)
+            story = page.inner_text('#story-rows')
+            check('剧情回放渲染完整正文（3 段）',
+                  '听霄学宫' in story and '老王把茶碗' in story and '万石商行' in story,
+                  story[:60].replace('\n', ' '))
+            check('剧情回放按时间倒序（最新在最前）',
+                  story.index('老王把茶碗') < story.index('听霄学宫') < story.index('万石商行'),
+                  '')
+            for drawer in ('#drawer-story', '#drawer-context', '#drawer-sessions'):
                 page.evaluate('(x) => { x.open = true; }', page.query_selector(drawer))
                 page.wait_for_timeout(300)
                 ok = page.evaluate('''(sel) => { const x = document.querySelector(sel);

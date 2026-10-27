@@ -589,6 +589,7 @@ def world_schema() -> dict:
             "use_item": "用一件物品：持有则自备消耗（买入时已付）；未持有则按所在地市场价现买现用",
             "spawn_npc": "现场生成一个 NPC（无角色卡也能入局；有卡请用 add_character）",
             "open_panel": "打开实况主舞台（只读网页：叙事/HUD/时间线/抽屉，自动刷新）",
+            "close_panel": "关闭实况主舞台（释放端口与 SSE 连接）",
             "pending_actions": "取走面板「行动队列」里玩家排的行动（唯一双向通道；状态仍只由 MCP 写）",
             "playbook_info": "这一局的玩法剧本（循环/进度/失败/节拍/宿主指南）",
             "quest_status": "事业线进度（当前幕、目标、期限）",
@@ -1487,7 +1488,7 @@ def open_panel(port: int = 8765) -> dict:
             PANELS.pop("server", None)
     elif existing is not None:
         try:
-            existing.shutdown()
+            panel.stop(existing)
         except Exception:  # aqg: top-level boundary —— 旧面板关不掉也不能阻断新面板
             pass
         PANELS.pop("server", None)
@@ -1501,6 +1502,24 @@ def open_panel(port: int = 8765) -> dict:
     return {"url": "http://127.0.0.1:%d/" % actual, "port": actual,
             "state": _state_path(), "reused": False,
             "note": "面板只读；状态一变就推新数据"}
+
+
+@server.tool()
+def close_panel() -> dict:
+    """关闭实况主舞台（Chinese: 释放端口与线程；同一状态再次 open_panel 会重新起一个。
+    长时间不看了就关掉，避免浏览器标签页一直挂着 SSE 连接）。
+    Close the live panel and release its port/threads."""
+
+    srv = PANELS.pop("server", None)
+    PANELS.pop("state", None)
+    if srv is None:
+        return {"closed": False, "note": "当前没有打开的面板"}
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("ww_panel", os.path.join(_SCRIPT_DIR, "panel.py"))
+    panel = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(panel)
+    panel.stop(srv)
+    return {"closed": True}
 
 
 @server.tool()

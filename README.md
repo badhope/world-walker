@@ -1,10 +1,10 @@
 # World Games
 
-**版本 v1.2.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**版本 v1.3.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
 > **AI 负责叙述，引擎负责世界 —— 而且什么游戏都能装进去。**
 > 通用互动游戏框架：任意题材、任意骰型、任意资源轨，一套确定性规则内核。
-> 180 个规则函数、54 个 MCP 工具、内置四套可直接开玩的设定包、
+> 180 个规则函数、55 个 MCP 工具、内置四套可直接开玩的设定包、
 > 上下文台账（AI 该记住什么可核对）、存档库与一块离线只读主舞台。
 > 同一份存档、同一个种子，永远得到同一个世界。
 
@@ -42,7 +42,7 @@
 - **面板见证**：一块只读网页主舞台实时显示真实状态、最近判定与上下文台账——它不能改对局，因此每个数字都可核对。
 
 它不是又一个"AI 跑团提示词"，而是一层**可以被任何 Agent 调用的游戏内核**：
-MCP 服务器（stdio，54 个工具）、命令行（14 条命令）、HTTP 只读面板，三条通道共用同一套规则与同一份状态文件。
+MCP 服务器（stdio，55 个工具）、命令行（14 条命令）、HTTP 只读面板，三条通道共用同一套规则与同一份状态文件。
 
 ### 面板现在能干什么
 
@@ -110,7 +110,7 @@ python panel.py --state game_state.json   # 打开只读主舞台
 
 ---
 
-## 游玩行动一览（54 个工具）
+## 游玩行动一览（55 个工具）
 
 宿主 AI 支持 MCP 协议即可；玩家的每次行动都由这些工具结算或记账。
 
@@ -154,7 +154,7 @@ python panel.py --state game_state.json   # 打开只读主舞台
 
 ### 生态与工具（13）
 
-`character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `world_schema`
+`character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `close_panel` `world_schema`
 
 ---
 
@@ -300,7 +300,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 ---
 
-## MCP 工具一览（54 个）
+## MCP 工具一览（55 个）
 
 | 组 | 工具 |
 |---|---|
@@ -313,7 +313,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | 世界 | `read_state` `world_state` `status` |
 | 生态 | `character_card_read` `add_character` `import_lorebook` `spawn_npc` |
 | 模型 | `model` `model_list`（16 个命名闭式模型） |
-| 面板 | `open_panel` `pending_actions` |
+| 面板 | `open_panel` `close_panel` `pending_actions` |
 | 移动 | `travel` |
 | 通用判定 | `roll` |
 | 游戏档案 | `game_profile` `game_adjust` `game_tag` `game_sheet` |
@@ -415,7 +415,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_formulas.py` | 122 | 按 docstring 的数学式独立重算 77 个函数 |
 | `verify_branches.py` | 192 | 低覆盖模块的异常路径与状态分支 |
 | `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
-| `verify_panel.py` | 75 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
+| `verify_panel.py` | 89 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
 | `verify_mcp_stdio.py` | 64 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
 | `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
@@ -426,8 +426,8 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
-| `smoke_ui.py` | 17 | 真实 Edge 渲染 + 新卡片/抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | 711 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `smoke_ui.py` | 20 | 真实 Edge 渲染 + 新卡片/抽屉 + 响应式 + 零 JS 错误 |
+| `verify_tests.py` | 726 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
 | `verify_mutation.py` | 40 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
@@ -448,7 +448,7 @@ bash scripts/pre_push_gate.sh     # 23 项，与 GitHub Actions 同判据
 ```
 world-walker/                  # 仓库根即 game_engine 包
 ├── engine.py                  # CLI（14 条命令，命令表驱动）
-├── mcp_server.py              # MCP 服务器（54 个工具）
+├── mcp_server.py              # MCP 服务器（55 个工具）
 ├── state_schema.py            # 状态模型 / 原子写 / 世代归档 / 种子
 ├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
 ├── panel.html / .css / .js    # 主舞台（原生三件套，无构建链）

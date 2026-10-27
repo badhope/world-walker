@@ -45,7 +45,14 @@
 ### 测试
 
 - `verify_branches.py` 新增 33 条回归断言（159→192 运行时断言），覆盖上述每条修复。
-- `verify_tests.py` 的断言基线校准到静态真实值（panel 66 / mcp 64 / cli 9 / memory 7 / branches 165）。
+- `verify_docs.py` 由 16 项扩到 22 项：新增规则函数数、自检脚本数、英文 README / 展示站工具数、
+  全仓 Markdown 脚本引用、展示站相对链接、快速上手示例可执行性六类漂移检测。
+- `verify_injection.py` 由 9 项扩到 11 项：角色卡预检入口的 `untrusted` / `content_policy` 契约。
+- `verify_tests.py` 的断言基线校准到静态真实值（panel 66 / mcp 64 / cli 9 / memory 7 / branches 175 / docs 22 / injection 11）。
+- `verify_mutation.py` 的 M06 / M25 片段随实现更新（片段失效会被判为失败，不再静默跳过）。
+- `pre_push_gate.sh` 修两处假绿/假红：覆盖率采样失败标志写错导致永远 FAIL；本机缺 coverage /
+  playwright 时由 SKIP 改为 FAIL（CI 会跑这两项，本机不能跳过）。Gitee CI 补齐 `verify_world`、
+  覆盖率门禁与 wheel 安装验证，与 GitHub 判据对齐。
 - 断言审计 632 条 0 可疑；门禁 22 项全绿。
 
 ### 文档

@@ -49,6 +49,17 @@ bash scripts/pre_push_gate.sh   # 推送前门禁，与 GitHub Actions 同判据
 
 **没有 pytest 测试套件**——验证靠上述脚本，不要假设 `pytest` 可用。
 
+## 体系与模板（v1.4）
+
+- `rules/systems.py` 的七类 kind（time/loot/craft/reputation/achievement/progression/custom）
+  共用 `system_run(sid, action, params)`；新增能力时在 `KINDS` 与 `_CONFIG_NORMALIZERS` 同处扩展。
+- `custom` 的效果 op 必须先在 `EFFECT_OPS` 白名单登记，**定义期** `normalize_system` 就会拒绝非法 op。
+- `templates.py` 的模板必须通过 `validate()`：缺件、`places[].market` 悬空、
+  事业线 `visited` 指向不存在地点都会被拦下。
+- 成就/模板谓词的 `counter_gte` 依赖 `state["counters"]`；新增计数器必须在
+  `state_schema.bump()` 的调用点登记（当前：图鉴/线索/判定/击杀），否则是死条件。
+- 改体系或模板后跑 `python scripts/verify_systems.py`（161 项）+ `verify_mutation.py`。
+
 ## 硬约束
 
 - 数值确定性优先：同样的输入 + 随机种子必须复现同样结果，禁止引入不受控随机/时间依赖

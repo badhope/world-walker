@@ -152,6 +152,18 @@ python panel.py --state game_state.json   # 打开只读主舞台
 
 `context_remember` `context_search` `context_forget` `recall` `write_summary` `recap` `read_state`
 
+### 体系与模板（9）—— v1.4 新增
+
+| 工具 | 做什么 |
+|---|---|
+| `templates_list` / `template_info` | 列出 8 套模板 / 查看单套完整内容与校验结果 |
+| `template_apply` | 模板 → 设定包（不落盘，可继续改） |
+| `template_start` | 模板直接开局（建状态 + 写盘 + 设为当前对局） |
+| `system_define` / `system_remove` | 增删体系（7 类 kind） |
+| `system_run` | 执行体系动作（推进时间 / 掉落 / 制造 / 声望 / 成就 / 成长 / 自定义） |
+| `system_status` | 列出全部体系或查看单个体系的配置与运行态 |
+| `system_schema` | 体系与模板的字段说明（建自定义游戏前查一次） |
+
 ### 生态与工具（13）
 
 `character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `close_panel` `world_schema`

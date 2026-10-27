@@ -38,6 +38,59 @@
 
 ---
 
+## 0b. 体系与模板（v1.4，先读这一节再建局）
+
+### 用模板开局（最快路径）
+
+```
+templates_list()                                  # 8 套：jrpg/mystery/management/survival/
+                                                  #        narrative/cozy/tabletop/immersive
+template_info(template="mystery")                 # 看完整内容 + 结构校验结果
+template_start(template="mystery", name="我的调查局",
+               player_name="陆离",
+               overrides={"world": {"name": "雨港"}})
+```
+
+模板是**起点不是锁死**：`overrides` 深合并 dict、列表整体替换。
+只想拿骨架：`template_apply(template=...)` 返回 bundle 不落盘，改完再交给
+`world_init` / `session_new`。
+
+### 七类体系与可用动作
+
+| kind | 动作 | 典型用法 |
+|---|---|---|
+| `time` | `status` / `advance(minutes)` | 每回合推进 30–60 分钟；过夜 480 |
+| `loot` | `list` / `roll(table, times, grant)` | 击杀后 `grant=True` 直接入库 |
+| `craft` | `list` / `craft(recipe)` | 材料不足会返回 `missing`，不改库存 |
+| `reputation` | `status` / `adjust(faction, delta, reason)` | 每个势力独立 −100..100 |
+| `achievement` | `list` / `check` | 每回合结算后调一次；只解锁一次 |
+| `progression` | `status` / `grant(amount)` | 战斗/任务结束给 XP，自动跨级 |
+| `custom` | `list` / `<动作名>` | 预设动作组合（休息/训练/搜刮…） |
+
+```
+system_status()                                   # 列出所有体系与实时摘要
+system_run("clock", "advance", {"minutes": 60})
+system_run("loot_wolf", "roll", {"table": "wolf", "times": 2, "grant": True})
+system_run("xp", "grant", {"amount": 120})
+system_run("achievements", "check")
+```
+
+### 新增自定义体系
+
+```
+system_schema()                                   # 先看每类 kind 的 config 字段
+system_define({"id": "weather", "kind": "time", "config": {...}})
+system_define({"id": "moves", "kind": "custom", "config": {"actions": {
+    "pray": {"label": "祈祷", "effects": [{"op": "resource", "key": "sanity", "delta": 2}]}}}})
+```
+
+`custom` 的 `effects` 只允许 9 种 op：`resource` / `attribute` / `meter` / `flag` /
+`fact` / `reputation` / `xp` / `advance_time` / `loot`。**定义期就会拒绝白名单外的 op**。
+
+**纪律**：体系运行态随存档落盘、随快照回退；不要手改 `state["systems"]`，用 `system_*`。
+
+---
+
 ## 1. 引擎命令总览
 
 | 命令 | 用途 | 关键参数 |

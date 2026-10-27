@@ -243,6 +243,19 @@ def new_game(setting: str, state_path: str = "ww_state.json", seed: int = 202610
 
 _active = {"path": None}
 PANELS = {}
+
+
+def _load_panel_module():
+    """按文件路径加载 panel.py（避免与包内 import 循环，也兼容任意目录名）。
+
+    open_panel / close_panel / pending_actions 共用，避免各自重复 importlib 样板。
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "ww_panel", os.path.join(_SCRIPT_DIR, "panel.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 ATTR_KEYS = ("str", "dex", "int", "con", "cha")
 SOCIAL_EVENTS = ("help", "harm", "threaten", "intimidate", "gift", "betray",
                  "cooperate", "insult", "praise", "murder")
@@ -1456,10 +1469,7 @@ def pending_actions(limit: int = 20, mark_done: bool = False) -> dict:
     """取走玩家在实况面板「行动队列」里排的行动（Chinese: 宿主每回合先查这里；
     mark_done=True 时把这些行动标记为已处理，避免重复结算）。
     Drain player actions queued from the live panel (optional two-way channel)."""
-    import importlib.util as _ilu
-    spec = _ilu.spec_from_file_location("ww_panel_inbox", os.path.join(_SCRIPT_DIR, "panel.py"))
-    panel = _ilu.module_from_spec(spec)
-    spec.loader.exec_module(panel)
+    panel = _load_panel_module()
     sp = _state_path()
     items = panel.inbox_pending(sp)[:max(1, int(limit))]
     done = 0
@@ -1475,6 +1485,7 @@ def open_panel(port: int = 8765) -> dict:
     """打开实况主舞台（Chinese: 只读网页——叙事主舞台/HUD/事件时间线/分级弹窗与提示/图鉴/行情，
     状态一变自动刷新，缺档给可读横幅）。
     Open the read-only live stage (auto-refreshing web view of the game state)."""
+    panel = _load_panel_module()
     # 同一份状态已有面板在跑就复用：重复 open_panel 会每次新建线程 + 监听端口，长会话里泄漏句柄。
     # 切到另一局（state 路径不同）时必须重建，否则面板还在读上一局的状态文件。
     existing = PANELS.get("server")
@@ -1492,10 +1503,6 @@ def open_panel(port: int = 8765) -> dict:
         except Exception:  # aqg: top-level boundary —— 旧面板关不掉也不能阻断新面板
             pass
         PANELS.pop("server", None)
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("ww_panel", os.path.join(_SCRIPT_DIR, "panel.py"))
-    panel = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(panel)
     srv, actual = panel.start(_state_path(), port)
     PANELS["server"] = srv
     PANELS["state"] = _state_path()
@@ -1514,11 +1521,7 @@ def close_panel() -> dict:
     PANELS.pop("state", None)
     if srv is None:
         return {"closed": False, "note": "当前没有打开的面板"}
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("ww_panel", os.path.join(_SCRIPT_DIR, "panel.py"))
-    panel = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(panel)
-    panel.stop(srv)
+    _load_panel_module().stop(srv)
     return {"closed": True}
 
 

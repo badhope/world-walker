@@ -711,6 +711,14 @@ def audit_regressions():
           {d: get_unsettled_karma(st, d) for d in 'ABCD'},
           {'A': 100, 'B': 100, 'C': 100, 'D': 50})
 
+    # 纯公式边界：不得因数学域错误抛异常（model() 暴露给宿主任意入参）
+    from game_engine.rules import world_dynamics as WD
+    check_true('lyapunov_exponent dx_t=0 返回 -inf 而非抛错',
+               WD.lyapunov_exponent(0.0, 1.0, 5) == float('-inf'), WD.lyapunov_exponent(0.0, 1.0, 5))
+    check_true('predictability_horizon delta_max=0 返回 inf',
+               WD.predictability_horizon(0.1, 1.0, 0.0) == float('inf'), WD.predictability_horizon(0.1, 1.0, 0.0))
+    check('hawk_dove_ess_frequency C=0 返回全鹰', WD.hawk_dove_ess_frequency(0, 0), (1.0, 0.0))
+
     # 部分消业必须留下可审计的已还记录，原条目保留剩余额
     from game_engine.rules.karma import resolve_karma as _rk
     st = {'tick': 1, 'entities': {'player': {'name': 'P'}}, 'karma_ledger': []}

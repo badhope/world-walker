@@ -46,7 +46,7 @@ EXPECTED = {
     'scripts/verify_mcp_stdio.py': 64,
     'scripts/verify_near_death.py': 7,
     'scripts/verify_formulas.py': 119,
-    'scripts/verify_branches.py': 171,
+    'scripts/verify_branches.py': 174,
     'scripts/verify_injection.py': 9,
     'scripts/verify_memory.py': 7,
     'scripts/user_playtest.py': 43,

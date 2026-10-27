@@ -18,9 +18,15 @@ from typing import List, Dict, Tuple
 # ============================================================
 
 def lyapunov_exponent(dx_t: float, dx_0: float, t: float) -> float:
-    """最大李雅普诺夫指数 λ = (1/t) · ln(|δx(t)|/|δx(0)|)"""
+    """最大李雅普诺夫指数 λ = (1/t) · ln(|δx(t)|/|δx(0)|)。
+
+    |δx(t)|=0 在数学上是 -∞（轨迹完全收敛）；返回 -inf 而不是抛 math domain error，
+    因为 model() 走的是宿主任意入参，纯函数不该把异常当输入校验。
+    """
     if dx_0 <= 0 or t <= 0:
         return 0.0
+    if abs(dx_t) == 0:
+        return float("-inf")
     return (1.0 / t) * math.log(abs(dx_t) / abs(dx_0))
 
 def lorenz_step(x: float, y: float, z: float,
@@ -34,7 +40,7 @@ def lorenz_step(x: float, y: float, z: float,
 
 def predictability_horizon(lyapunov_lambda: float, delta_0: float, delta_max: float) -> float:
     """T_predict ≈ (1/λ) · ln(Δ_max/Δ_0) — 天道推演的极限时间窗口"""
-    if lyapunov_lambda <= 0 or delta_0 <= 0:
+    if lyapunov_lambda <= 0 or delta_0 <= 0 or delta_max <= 0:
         return float('inf')
     return (1.0 / lyapunov_lambda) * math.log(delta_max / delta_0)
 
@@ -163,7 +169,9 @@ def hawk_dove_payoff(my_move: str, opponent_move: str, V: float, C: float) -> fl
     return 0.0
 
 def hawk_dove_ess_frequency(V: float, C: float) -> Tuple[float, float]:
-    """混合ESS: 返回 (鹰频率, 鸽频率)"""
+    """混合ESS: 返回 (鹰频率, 鸽频率)。C=0 时没有代价，鹰派占满。"""
+    if C <= 0:
+        return (1.0, 0.0)
     if V > C:
         return (1.0, 0.0)
     p = min(1.0, max(0.0, V / C))

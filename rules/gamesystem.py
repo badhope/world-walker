@@ -185,13 +185,27 @@ def _bucket(profile: dict, kind: str):
 
 
 def adjust(state: dict, key: str, kind: str = "resources", delta=None, value=None) -> dict:
-    """调整一个资源/属性/进度轨；有 min/max 时 clamp。返回 before/after 与是否触顶。"""
+    """调整一个资源/属性/进度轨；有 min/max 时 clamp。返回 before/after 与是否触顶。
+
+    kind 缺省是 resources；若该 key 不在 resources 而在另一类里，自动定位到实际类别
+    （避免"线索明明存在却报 resources 里没有"）。多类同名时要求显式指定 kind。
+    """
     profile = profile_of(state)
     items = _bucket(profile, kind)
     target = next((x for x in items if x["key"] == str(key)), None)
     if target is None:
-        raise ValueError("%s 里没有 %r（可用: %s）"
-                         % (kind, key, ", ".join(x["key"] for x in items) or "空"))
+        candidates = [(k, x) for k in ("resources", "attributes", "meters")
+                      for x in profile[k] if x["key"] == str(key)]
+        if len(candidates) == 1:
+            kind, target = candidates[0]
+            items = profile[kind]
+        else:
+            listing = "；".join("%s: %s" % (k, ", ".join(x["key"] for x in profile[k]) or "空")
+                               for k in ("resources", "attributes", "meters"))
+            if len(candidates) > 1:
+                raise ValueError("%r 同时存在于 %s，请显式传 kind"
+                                 % (key, " / ".join(k for k, _ in candidates)))
+            raise ValueError("找不到 %r（%s）" % (key, listing))
     before = target["value"]
     if value is not None:
         after = _num(value, before)

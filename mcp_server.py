@@ -1674,8 +1674,9 @@ def game_profile(profile: dict | None = None) -> dict:
 def game_adjust(key: str, kind: str = "resources", delta: float | None = None,
                 value: float | None = None) -> dict:
     """调整一个资源/属性/进度轨（Chinese: delta 加数值，value 直接设值；有 min/max 时自动夹紧。
+    kind 缺省 resources；key 只存在于另一类时会自动定位（不必记它属于哪一类）。
     例：game_adjust(key="理智", delta=-5) / game_adjust(key="声望", value=30)。
-    Adjust one tracked value; clamped to its declared min/max."""
+    Adjust one tracked value; clamped to its declared min/max. Auto-detects the bucket."""
 
     state = _load()
     _seed_rng(state)

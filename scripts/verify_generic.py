@@ -197,6 +197,8 @@ def n2_gamesystem():
     check('N2 资源上限夹紧', up2['after'], 10)
     up3 = GS.adjust(st, 'per', kind='attributes', delta=2)
     check('N2 属性可调整', up3['after'], 15)
+    auto = GS.adjust(st, 'clue', delta=1)
+    check('N2 不传 kind 时自动定位到 meters', (auto['kind'], auto['after']), ('meters', 3))
     check_raises('N2 不存在的资源被拒绝', lambda: GS.adjust(st, 'mana', delta=1))
 
     tag = GS.add_tag(st, '空袭')

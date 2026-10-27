@@ -39,6 +39,7 @@ MCP 工具 `roll`；面板新增「判定记录」卡（成功率 + 最近 10 �
 - `tags`（戒严/雨季/被通缉）与自由 `sheet`（职业、目标、住所……）任意题材可用；
 - **旧存档零迁移**：没有显式档案时自动从 `hp`/`mp`/`gold`/`attrs`/`playbook` 推导；
 - 全部条目有上限（32 条 / 40 字段 / 24 标签），写入前 clamp。
+- `game_adjust` 的 `kind` 可省：key 只属于另一类时自动定位（`线索` 在 meters、`力量` 在 attributes 都能直接改）。
 
 MCP 工具 `game_profile` / `game_adjust` / `game_tag` / `game_sheet`；面板新增「游戏档案」卡。
 

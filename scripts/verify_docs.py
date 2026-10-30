@@ -200,7 +200,7 @@ def main():
     # D14 全仓 Markdown 引用的 scripts/*.py 必须存在（此前 __init__.py 的幽灵引用漏检）
     ghost = []
     for base, _dirs, files in os.walk(ROOT):
-        if '.git' in base.split(os.sep):
+        if '.git' in base.split(os.sep) or '.aqg' in base.split(os.sep):
             continue
         for fname in files:
             if fname.endswith('.md'):

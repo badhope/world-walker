@@ -1627,7 +1627,10 @@ def snapshot(label: str = "") -> dict:
     Save a state snapshot (for undo / branching)."""
     import shutil, time
     src = _state_path()
-    suffix = (".%s" % label) if label else (".%d" % int(time.time()))
+    # label 会直接拼进快照文件名：不清洗的话 `..\..\x` 能把快照写到任意目录
+    # （实测 4 层 .. 落到仓库外）。与存档库同一套清洗规则。
+    tag = session_store.safe_name(label)[:24] if label else ""
+    suffix = (".%s" % tag) if tag else (".%d" % int(time.time()))
     dst = src + ".snap" + suffix
     shutil.copyfile(src, dst)
     return {"snapshot": dst, "tick": load_state(src).get("tick", 0)}

@@ -39,7 +39,7 @@
 }
 """
 
-import json, os, random, sys
+import json, os, random, sys, time
 import shutil as _shutil
 
 def new_game():
@@ -131,6 +131,66 @@ def save_state(state, path):
         except OSError:
             pass
         raise
+
+_STATE_TLOCK = None  # 惰性初始化的进程内锁（线程安全地创建一次）
+
+def _state_tlock():
+    global _STATE_TLOCK
+    if _STATE_TLOCK is None:
+        import threading as _threading
+        _STATE_TLOCK = _threading.Lock()
+    return _STATE_TLOCK
+
+def _state_flock(path, timeout=10.0):
+    """跨进程文件锁：同目录 <state>.lock 上的排它锁（Windows msvcrt / POSIX fcntl）。
+
+    为什么需要：save_state 的原子替换只保证"读者看不到半截 JSON"，
+    不保证"先读后写"不丢更新——两个进程同时 load → 各自改 → 各自 save，
+    后写的把先写的整个覆盖（实测 8 进程并发只活下来 1 条事件）。
+    MCP 宿主可能为同一存档开多个会话，这是真实发生的场景，不是理论竞态。
+    """
+    import msvcrt as _msvcrt
+    lock_path = path + ".lock"
+    d = os.path.dirname(os.path.abspath(lock_path)) or "."
+    os.makedirs(d, exist_ok=True)
+    f = open(lock_path, "a+")
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            try:
+                _msvcrt.locking(f.fileno(), _msvcrt.LK_NBLCK, 1)
+                return f
+            except OSError:
+                if time.monotonic() >= deadline:
+                    f.close()
+                    raise TimeoutError("状态文件锁等待超时: %s" % lock_path)
+                time.sleep(0.05)
+    except Exception:  # aqg: top-level boundary —— 加锁路径上任何异常都要先关句柄再上抛
+        f.close()
+        raise
+
+def transact_state(edit, path, timeout=10.0):
+    """原子读-改-写：在排它锁内 load → edit(state) → save_state。
+
+    edit 在锁内同步执行，抛错则不落盘（锁释放，状态保持原样）。
+    同进程多线程由 _STATE_TLOCK 串行化，跨进程由 <state>.lock 串行化；
+    两者叠加后，"先读后写丢更新"在两条路径上都不可能发生。
+    """
+    with _state_tlock():
+        f = _state_flock(path, timeout)
+        try:
+            state = load_state(path) if os.path.exists(path) else new_game()
+            edit(state)
+            save_state(state, path)
+            return state
+        finally:
+            try:
+                import msvcrt as _msvcrt
+                f.seek(0)
+                _msvcrt.locking(f.fileno(), _msvcrt.LK_UNLCK, 1)
+            except OSError:  # aqg: top-level boundary —— 锁已随进程消亡或文件句柄失效，释锁失败无需阻断
+                pass
+            f.close()
 
 def seed_rng(state) -> None:
     """按状态里的 rng_seed + rng_counter 重置全局随机源（带种子可复现）。

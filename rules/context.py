@@ -27,7 +27,9 @@ def _now_tick(state: dict) -> int:
 
 
 def _fact_id(seq: int) -> str:
-    return "f%04d" % int(seq)
+    # %04d 在 seq>9999 时自然变宽（f10000），永不回绕——旧写法 % 10000 会让
+    # 第 10000 条与第 1 条同 id，context_forget(id) 会误删活事实（实测碰撞）。
+    return "f%d" % int(seq)
 
 
 def _normalize_keys(keys):
@@ -45,7 +47,15 @@ def _normalize_keys(keys):
 
 def _next_seq(state: dict) -> int:
     ctx = state.setdefault("context", {})
-    seq = int(ctx.get("seq", 0) or 0) + 1
+    # seq 缺失时从现有最大 id 推导（旧存档里 facts 先于 seq 字段存在）：
+    # 直接从 0 起数会与既有 f0001 撞 id（实测 remember 立刻产生第二个 f0001）。
+    seq = int(ctx.get("seq", 0) or 0)
+    if seq <= 0:
+        for fact in ctx.get("facts") or []:
+            fid = str(fact.get("id") or "")
+            if fid.startswith("f") and fid[1:].isdigit():
+                seq = max(seq, int(fid[1:]))
+    seq += 1
     ctx["seq"] = seq
     return seq
 

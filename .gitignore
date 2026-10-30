@@ -5,6 +5,7 @@ __pycache__/
 .DS_Store
 # 合并用临时块（生成后即并入源文件，不许入库）
 .tmp_*
+.tmp/
 
 # Python
 __pycache__/

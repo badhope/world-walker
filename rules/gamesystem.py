@@ -33,9 +33,14 @@ def _num(value, default=0):
     try:
         if isinstance(value, bool):
             return default
-        return float(value) if isinstance(value, float) else int(value)
+        out = float(value) if isinstance(value, float) else int(value)
     except (TypeError, ValueError):
         return default
+    # NaN/Infinity 一律回退 default：json.dump 会把它们写成 NaN/Infinity，
+    # 浏览器 JSON.parse 遇到直接抛错，面板整页挂掉（实测 game_adjust(inf) 后 /state 500）。
+    if isinstance(out, float) and (out != out or out in (float("inf"), float("-inf"))):
+        return default
+    return out
 
 
 def _label(value, fallback=""):
@@ -216,6 +221,9 @@ def adjust(state: dict, key: str, kind: str = "resources", delta=None, value=Non
     lo, hi = target.get("min", 0), target.get("max", 0)
     if hi and hi > lo:
         after = max(lo, min(hi, after))
+    # 无界条目（max=0）没有 clamp 兜底：inf/nan 混进 delta 会原样写入档案。
+    if isinstance(after, float) and (after != after or after in (float("inf"), float("-inf"))):
+        after = before
     if isinstance(before, int) and isinstance(after, float) and after.is_integer():
         after = int(after)
     target["value"] = round(after, 3) if isinstance(after, float) else after

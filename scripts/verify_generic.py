@@ -234,7 +234,7 @@ def n2_gamesystem():
 def n3_context():
     st = base_state()
     a = CTX.remember(st, '沈伯说灯塔三年前就熄了', kind='clue', keys=['灯塔', '沈伯'])
-    check('N3 事实写入并分配 id', a['fact']['id'], 'f0001')
+    check('N3 事实写入并分配 id', a['fact']['id'], 'f1')
     dup = CTX.remember(st, '沈伯说灯塔三年前就熄了', kind='clue', keys=['灯塔'])
     check('N3 重复正文刷新而非重复追加', dup['created'], False)
     check('N3 重复后总数仍为 1', dup['total'], 1)

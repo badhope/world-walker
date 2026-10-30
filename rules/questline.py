@@ -360,12 +360,18 @@ def _finish_quest(state, quest, row, tick):
     row["history"].append({"tick": tick, "stage": row.get("stage"), "event": "done"})
     reward = quest.get("reward") or {}
     player = (state.get("entities") or {}).get("player") or {}
-    if isinstance(reward.get("gold"), int) and player:
-        player["gold"] = int(player.get("gold", 0) or 0) + reward["gold"]
+    gold = reward.get("gold")
+    # 数字一律发：int 直接加，float 取整后加。旧实现 isinstance(gold, int) 会把
+    # "gold": 200.0（设定包里很常见的写法）静默丢掉——任务完成却一无所得。
+    if isinstance(gold, (int, float)) and not isinstance(gold, bool) and player:
+        player["gold"] = int(player.get("gold", 0) or 0) + int(gold)
     for flag in reward.get("flags") or []:
-        flags = state.setdefault("world_flags", [])
-        if flag not in flags:
-            flags.append(flag)
+        # world_flags 全仓按"字符串集合"消费（谓词 flag: / 面板 chip / 叙事），
+        # 数字或对象混进去只会产生永远匹配不上的死旗标——宁可拒绝。
+        if isinstance(flag, str) and flag.strip():
+            flags = state.setdefault("world_flags", [])
+            if flag not in flags:
+                flags.append(flag)
 
 
 def _next_stage(state, quest, row):

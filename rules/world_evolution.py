@@ -283,6 +283,10 @@ def panarchy_step(state: dict) -> Dict:
     stress = float(pan.get("stress", 0.0))
     phase = str(pan.get("phase") or "r")
     hold = int(pan.get("hold", 0) or 0)
+    # 手改状态/坏存档里可能出现未知相位（实测 phase="X" 直接 KeyError 炸掉整个 tick）：
+    # fail-closed 归位到 r（增长期，最温和的默认），坏数据不再阻断世界演化。
+    if phase not in ("r", "K", "Ω", "α"):
+        phase, hold = "r", 0
 
     dest_capital = 0.36 + avg_power / 90.0          # 势力越强，世界存量天花板越高
     dest_conn = min(1.0, 0.30 + rel_n / (ent_n * 1.5) + flag_n / 20.0)

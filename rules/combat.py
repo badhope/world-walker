@@ -93,6 +93,21 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
         result["target_already_dead"] = True
         result["outcome"] = "draw"
         return result
+
+    # 死攻击方守卫：与死目标同一条不变量——尸体连挥拳都不该有（实测 hp=0 的
+    # 攻击者能把活人打到掉血）。防御性结算不改变正常对局。
+    if int(atk_ent.get("hp", 0) or 0) <= 0:
+        result["events"].append(f"{atk_ent.get('name', attacker_id)}已无力出手")
+        result["attacker_unable"] = True
+        result["outcome"] = "draw"
+        return result
+
+    # 自攻击守卫：attacker==defender 时"命中自己"会在下面把 outcome 判成
+    # win（attacker 是 player）——自己打自己还判胜，心流被刷成无聊。
+    if attacker_id == defender_id:
+        result["events"].append(f"{atk_ent.get('name', attacker_id)}收回了挥向自己的攻击")
+        result["outcome"] = "draw"
+        return result
     
     # 计算命中（含等级差与相位/心流修正）
     atk_power = atk_attrs.get("str", 10) + atk_attrs.get("dex", 10) * 0.5
@@ -159,7 +174,13 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
             mp_cost = float(skill.get("mp_cost", 0) or 0)
         except (TypeError, ValueError):
             raise ValueError("skill.power / skill.mp_cost 必须是数字")
-        if not (skill_bonus > 0) or mp_cost < 0:
+        # inf/nan 走到 int(damage) 必 OverflowError/ValueError，一次坏技能炸掉整回合结算；
+        # 按缺省倍率处理（技能生效但不炸），宿主从 events 里能看到实际用的倍率。
+        if skill_bonus != skill_bonus or skill_bonus in (float("inf"), float("-inf")):
+            skill_bonus = 1.5
+        if mp_cost != mp_cost or mp_cost in (float("inf"), float("-inf")) or mp_cost < 0:
+            mp_cost = 0.0
+        if not (skill_bonus > 0):
             raise ValueError("skill.power 必须为正、skill.mp_cost 不能为负")
         if float(atk_ent.get("mp", 0) or 0) >= mp_cost:
             atk_ent["mp"] = float(atk_ent.get("mp", 0) or 0) - mp_cost

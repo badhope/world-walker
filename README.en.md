@@ -367,7 +367,7 @@ Templates are starting points: `overrides` deep-merges dicts and replaces lists;
 
 ## Quality
 
-No pytest suite by design—verification is 16 executable self-checks plus a mutation suite
+No pytest suite by design—verification is 17 executable self-checks plus a mutation suite
 (assertions must be *killable*, not merely *covered*).
 
 | Suite | Assertions | Locks |
@@ -385,6 +385,7 @@ No pytest suite by design—verification is 16 executable self-checks plus a mut
 | `verify_systems.py` | 161 | seven subsystem kinds + eight templates + counters + panel contract |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
+| `verify_audit_fix.py` | 16 | audit-fix regressions: snapshot traversal / concurrent RMW / NaN persistence / reward & combat boundaries |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 20 | real Edge render, new cards/drawers, responsive, zero JS errors |

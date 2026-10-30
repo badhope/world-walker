@@ -86,6 +86,13 @@ def validate_next_level(state: dict, next_level: str, current_level: str = "") -
         # 同阶内的段位递进（淬体七段 → 淬体八段）合法；跨阶只能 +1；倒退与跳阶都拒
         if idx == cur_idx and name == current_level:
             raise ValueError("next_level 与当前等级相同（%r），没有可突破的目标" % name)
+        if idx == cur_idx:
+            # 同阶里比较段位序号（"七段"的七）：拿得到序号时倒退要拒
+            # （实测"淬体七段 -> 淬体一段"旧实现直接放行）；拿不到序号维持放行，
+            # 因为段位写法（三层/三重/三层天）没有跨世界通用的解析规则。
+            a, b = _stage_ordinal(current_level), _stage_ordinal(name)
+            if a is not None and b is not None and b < a:
+                raise ValueError("突破不能倒退：当前 %r，收到 %r" % (current_level, name))
         if idx < cur_idx:
             raise ValueError("突破不能倒退：当前 %r，收到 %r" % (current_level, name))
         if idx > cur_idx + 1:
@@ -96,3 +103,26 @@ def validate_next_level(state: dict, next_level: str, current_level: str = "") -
         raise ValueError("当前等级 %r 不在本世界阶梯上，无法判断是否递进；"
                          "阶梯为：%s" % (current_level, " / ".join(tiers)))
     return name
+
+
+def _stage_ordinal(level: str):
+    """取等级里的段位序号：中文（一~十/一段~九段）或阿拉伯数字；取不到返回 None。"""
+    text = str(level or "")
+    import re as _re
+    m = _re.search(r"[一二三四五六七八九十]+(?=段|层|重|阶|品|星)", text)
+    if m:
+        token = m.group(0)
+        # 组合写法（"十一"→11、"二十"→20）先算；单字直接查表。
+        if len(token) > 1:
+            units = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+                     "六": 6, "七": 7, "八": 8, "九": 9}
+            if "十" in token:
+                head, _, tail = token.partition("十")
+                return (units.get(head, 1) if head else 1) * 10 + units.get(tail, 0)
+        table = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+                 "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+        return table.get(token)
+    m2 = _re.search(r"(\d+)(?=段|层|重|阶|品|星)", text)
+    if m2:
+        return int(m2.group(1))
+    return None

@@ -125,7 +125,10 @@ async def main():
     tmp = tempfile.mkdtemp(prefix='ww-verify-')
     state_a = os.path.join(tmp, 'a.save.json')
 
-    params = StdioServerParameters(command=sys.executable, args=[SERVER], cwd=ROOT)
+    params = StdioServerParameters(
+        command=sys.executable, args=[SERVER], cwd=ROOT,
+        env={**os.environ, "WORLD_GAMES_STATE_ROOT": tempfile.gettempdir()},
+    )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

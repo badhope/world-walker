@@ -20,7 +20,7 @@
 - `rules/systems.py` — 七类可插拔体系（时间/掉落/制造/声望/成就/成长/自定义）
 - `templates.py` — 八套完整游戏模板（开箱即用，可 overrides 覆盖）
 - `settings_loader.py` — 设定包 → 状态（**纯标准库**；MCP 与零依赖自检共用，不要在这里引 mcp）
-- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（16 个 `verify_*.py` + 素材流水线）
+- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（17 个 `verify_*.py` + 素材流水线）
 
 ## 运行
 

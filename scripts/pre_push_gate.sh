@@ -31,6 +31,30 @@ step() {
   fi
 }
 
+module_status() {
+  "$PY" - "$1" <<'PYMODULE'
+import importlib
+import sys
+
+name = sys.argv[1]
+try:
+    importlib.import_module(name)
+except ModuleNotFoundError as exc:
+    if exc.name == name or (exc.name or '').startswith(name + '.'):
+        print('MODULE_MISSING %s: %s' % (name, exc), file=sys.stderr)
+        raise SystemExit(10)
+    print('MODULE_IMPORT_ERROR %s: missing transitive module %s: %s' %
+          (name, exc.name, exc), file=sys.stderr)
+    raise SystemExit(11)
+except Exception as exc:
+    print('MODULE_IMPORT_ERROR %s: %s: %s' %
+          (name, type(exc).__name__, exc), file=sys.stderr)
+    raise SystemExit(11)
+else:
+    print('MODULE_PRESENT %s' % name)
+PYMODULE
+}
+
 say "推送前门禁：判据与 GitHub Actions 一致（含 500 轮压测 + 打包校验）"
 say "仓库：$ROOT"
 
@@ -78,16 +102,23 @@ else
   FAILED=1
 fi
 
-# MCP 相关：只有装了 mcp SDK 才跑（与 CI 的 mcp 作业对应）
-if "$PY" -c "import mcp" >/dev/null 2>&1; then
+# MCP 相关：必须先确认 SDK 可导入；缺失或真实导入错误都不能算绿。
+MCP_STATUS=0
+MCP_OUTPUT=$(module_status mcp 2>&1) || MCP_STATUS=$?
+if [ "$MCP_STATUS" -eq 0 ]; then
+  say "  $MCP_OUTPUT"
+  step "审计修复回归" "$PY" scripts/verify_audit_fix.py
   step "MCP 端到端自检" "$PY" scripts/verify_mcp_stdio.py
   step "提示词注入防护（角色卡/世界书 untrusted 标记）" "$PY" scripts/verify_injection.py
   step "玩家视角试玩" "$PY" scripts/user_playtest.py
   step "长局压力测试（500 轮，对齐 CI 的 mcp 作业）" "$PY" scripts/stress_freeplay.py 500
+elif [ "$MCP_STATUS" -eq 10 ]; then
+  say $'\n=== MCP 作业 ===\n  FAIL（未安装 mcp SDK，相关检查未执行）'
+  say '  安装后重跑：python -m pip install -r requirements-mcp.lock.txt && python -m pip install --no-deps -e ".[mcp]"'
+  FAILED=1
 else
-  say $'\n=== MCP 作业 ===\n  SKIP（未安装 mcp SDK）'
-  say '  注意：MCP 端到端 / 试玩 / 压测本次未执行，绿灯不代表这三项通过。'
-  say '  安装后重跑：python -m pip install -e ".[mcp]"'
+  say $'\n=== MCP 作业 ===\n  FAIL（mcp SDK 导入时发生真实环境错误，相关检查未执行）'
+  say "  $MCP_OUTPUT"
   FAILED=1
 fi
 
@@ -103,7 +134,8 @@ if "$PY" -c "import playwright" >/dev/null 2>&1; then
 else
   say $'
 === 界面巡检 ===
-  SKIP（未安装 playwright）'
+  FAIL（未安装 playwright，界面巡检未执行）'
+  FAILED=1
 fi
 
 # 真变异测试：把实现改坏，确认测试会红（静态审计之外的唯一硬证据）

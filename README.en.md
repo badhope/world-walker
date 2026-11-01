@@ -379,21 +379,21 @@ No pytest suite by design—verification is 17 executable self-checks plus a mut
 | `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
-| `verify_docs.py` | 16 | version single-source / tool count / asset references |
+| `verify_docs.py` | 17 | version single-source / tool count / asset references |
 | `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
 | `verify_generic.py` | 87 | generic checks, game profile, context ledger, save library, brand |
 | `verify_systems.py` | 161 | seven subsystem kinds + eight templates + counters + panel contract |
 | `verify_injection.py` | 21 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
-| `verify_audit_fix.py` | 16 | audit-fix regressions: snapshot traversal / concurrent RMW / NaN persistence / reward & combat boundaries |
+| `verify_audit_fix.py` | 22 | audit-fix regressions: snapshot restore / concurrent RMW / finite JSON / input boundaries / read-only side effects |
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 20 | real Edge render, new cards/drawers, responsive, zero JS errors |
-| `verify_tests.py` | 726 audits | AST-level rejection of tautological assertions |
+| `verify_tests.py` | 817 audits | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 44 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 24 checks, same criteria as GitHub Actions
+bash scripts/pre_push_gate.sh     # 25 checks, same criteria as GitHub Actions
 ```
 
 Coverage gate: core ≥70% (currently 88%, incl. the generic layer); pyflakes = 0. bandit is clean on the engine core; the repository-wide scan still reports findings confined to test scripts.

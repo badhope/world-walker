@@ -10,9 +10,11 @@
 
 ```bash
 git clone <repo> && cd world-walker
-pip install -e ".[mcp]"          # 可选：只有改 MCP 层需要
-pip install coverage pyflakes bandit radon playwright   # 可选：跑门禁的额外工具
-python -m playwright install msedge                     # 可选：跑界面巡检
+pip install -e ".[mcp]"          # MCP 门禁需要；版本基线见 requirements-mcp.lock.txt
+pip install -r requirements-mcp.lock.txt
+pip install coverage pyflakes bandit radon playwright   # 门禁所需工具
+python -m pip check
+python -m playwright install msedge                     # 界面巡检所需浏览器
 ```
 
 ## 修改前
@@ -23,7 +25,7 @@ python -m playwright install msedge                     # 可选：跑界面巡�
 ## 验证
 
 ```bash
-bash scripts/pre_push_gate.sh    # 23 项，与 GitHub Actions 同判据
+bash scripts/pre_push_gate.sh    # 25 项，与 GitHub Actions 同判据；缺 MCP/Playwright 时 fail-closed
 ```
 
 单项：

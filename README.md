@@ -477,17 +477,17 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_mcp_stdio.py` | 64 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
 | `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
-| `verify_docs.py` | 16 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
+| `verify_docs.py` | 17 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
 | `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_generic.py` | 87 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
 | `verify_systems.py` | 161 | 七类体系行为 + 八套模板完整性 + 计数器 + 面板契约 |
 | `verify_injection.py` | 21 | 外部文本的注入特征识别与 untrusted 标记 |
 | `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
-| `verify_audit_fix.py` | 16 | 审计修复回归：快照穿越 / 并发读改写 / NaN 落盘 / 奖励与战斗边界 |
+| `verify_audit_fix.py` | 22 | 审计修复回归：快照恢复 / 并发读改写 / 严格 JSON / 输入边界 / 只读零副作用 |
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 20 | 真实 Edge 渲染 + 新卡片/抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | 726 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `verify_tests.py` | 817 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
 | `verify_mutation.py` | 44 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
@@ -496,7 +496,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 推前门禁一条命令：
 
 ```bash
-bash scripts/pre_push_gate.sh     # 24 项，与 GitHub Actions 同判据
+bash scripts/pre_push_gate.sh     # 25 项，与 GitHub Actions 同判据
 ```
 
 覆盖率门禁：核心域 ≥70%（当前实测 88%，含通用游戏层）；`pyflakes` 0。`bandit` 只在核心引擎源码上为 0，仓库级扫描仍会在测试脚本里报低危项。
@@ -509,7 +509,7 @@ bash scripts/pre_push_gate.sh     # 24 项，与 GitHub Actions 同判据
 world-walker/                  # 仓库根即 game_engine 包
 ├── engine.py                  # CLI（14 条命令，命令表驱动）
 ├── mcp_server.py              # MCP 服务器（64 个工具）
-├── state_schema.py            # 状态模型 / 原子写 / 世代归档 / 种子
+├── state_schema.py            # 状态模型 / 原子写 / 事务锁 / 世代归档 / 种子
 ├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
 ├── panel.html / .css / .js    # 主舞台（原生三件套，无构建链）
 ├── viz_series.py              # 长局态势侧写（<state>.viz.jsonl）
@@ -524,7 +524,7 @@ world-walker/                  # 仓库根即 game_engine 包
 │   ├── models.py              # 16 个命名闭式模型
 │   └── social_extended.py cultural_evolution.py systems_feedback.py
 ├── settings/                  # 4 套可直接开玩的设定包
-├── scripts/                   # 16 个自检 + 变异测试 + 截图/视频/演示存档流水线
+├── scripts/                   # 17 个自检 + 变异测试 + 截图/视频/演示存档流水线
 ├── docs/demo/                 # 真实演示存档（截图与视频的数据源）
 ├── docs/screenshots/          # README 预览（真实渲染 + 逐项断言）
 └── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）

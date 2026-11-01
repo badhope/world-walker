@@ -44,6 +44,7 @@ from game_engine.state_schema import save_state, seed_rng  # noqa: E402
 from game_engine import sessions as SS            # noqa: E402
 
 RESULTS = []
+STRICT_FAILURES = []
 
 
 def check(name, got, want, tol=1e-9):
@@ -344,8 +345,14 @@ def _double_restore(root):
 def n5_integration():
     try:
         import game_engine.mcp_server as MS
-    except Exception as exc:
-        print('SKIP  N5 需要 mcp SDK：%s' % str(exc)[:60])
+    except Exception as exc:  # aqg: top-level boundary —— 可选 MCP 依赖在 core 路径允许缺失
+        message = 'N5 需要 mcp SDK：%s' % str(exc)[:60]
+        if os.environ.get('WORLD_GAMES_STRICT') == '1':
+            RESULTS.append(False)
+            STRICT_FAILURES.append(message)
+            print('FAIL  %s' % message)
+        else:
+            print('SKIP  %s' % message)
         return
     import game_engine.panel as PANEL
 
@@ -426,7 +433,7 @@ def main():
 
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))
-    return 0 if passed == len(RESULTS) else 1
+    return 0 if passed == len(RESULTS) and not STRICT_FAILURES else 1
 
 
 if __name__ == '__main__':

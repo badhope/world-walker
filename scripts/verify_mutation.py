@@ -24,6 +24,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -87,10 +88,10 @@ MUTATIONS = [
      'scripts/verify_formulas.py'),
 
     # ── 归档/回退（数据完整性）──
-    ('M15', '回退后 archived_events 不校正（历史计数退步）', 'mcp_server.py',
-     '    state["archived_events"] = max(int(state.get("archived_events", 0) or 0), total)',
-     '    state["archived_events"] = int(state.get("archived_events", 0) or 0)',
-     'scripts/verify_mcp_stdio.py'),
+    ('M15', '回退后 archive_generation 不递增（快照世代回退）', 'mcp_server.py',
+     '        restored["archive_generation"] = gen',
+     '        restored["archive_generation"] = int(restored.get("archive_generation", 0) or 0)',
+     'scripts/verify_audit_fix.py'),
 
     # ── 注入防护 ──
     ('M16', '注入扫描永不放行（全返回空）', 'mcp_server.py',
@@ -112,11 +113,10 @@ MUTATIONS = [
 
     # ── 世界演化（本轮新增；每条对应一个曾经的"展示但不生效"缺陷）──
     ('M20', 'tick 不再驱动世界演化', 'mcp_server.py',
-     '    world = evolve_world(state)', '    world = {}',
+     '    world = evolve_world(state)\n    for desc in world.get("events", []):',
+     '    world = {"events": []}\n    for desc in world.get("events", []):',
      'scripts/verify_world.py'),
-    # 注意：M20 曾经**存活**——verify_world 的 W11 走了 in-process 调用，而变异点
-    # 在 stdio 之外的同名文件里，两处都能命中；真正让它变红的是同一条断言在本文件
-    # （MCP tick 工具）里跑，因此 M20 的目标脚本必须是 verify_world（含 W11 in-process）。
+    # M20 的目标脚本含 W11 MCP tick 集成断言；变异运行时启用 strict，缺 MCP 不能假绿。
     ('M26', '只读工具偷偷落盘（status 顺手 save_state）', 'mcp_server.py',
      '    result["_tick"] = int((_load().get("tick", 0)) or 0)\n    return result',
      '    result["_tick"] = int((_load().get("tick", 0)) or 0)\n    save_state(_load(), _state_path())\n    return result',
@@ -234,10 +234,64 @@ def purge_pycache(target_path):
         _sh.rmtree(d, ignore_errors=True)
 
 
-def run_script(rel):
+def _make_mcp_stub():
+    """为无依赖环境的 in-process MCP 变异测试提供最小导入桩。"""
+    holder = tempfile.TemporaryDirectory(prefix='.mcp-stub-', dir=ROOT)
+    root = holder.name
+    files = {
+        'mcp/__init__.py': '',
+        'mcp/server/__init__.py': '',
+        'mcp/server/fastmcp/__init__.py': (
+            'class FastMCP:\n'
+            '    def __init__(self, *args, **kwargs):\n'
+            '        self.tools = {}\n'
+            '    def tool(self, *args, **kwargs):\n'
+            '        def decorate(fn):\n'
+            '            self.tools[fn.__name__] = fn\n'
+            '            return fn\n'
+            '        return decorate\n'
+            '    def prompt(self, *args, **kwargs):\n'
+            '        return lambda fn: fn\n'
+            '    def run(self, *args, **kwargs):\n'
+            '        raise RuntimeError("MCP stub cannot run a server")\n'),
+        'mcp/server/fastmcp/exceptions.py': 'class ToolError(Exception):\n    pass\n',
+        'pydantic.py': (
+            'class BaseModel:\n'
+            '    def __init__(self, **values):\n'
+            '        hints = getattr(self.__class__, "__annotations__", {})\n'
+            '        for key in hints:\n'
+            '            if key in values:\n'
+            '                value = values[key]\n'
+            '            elif hasattr(self.__class__, key):\n'
+            '                value = getattr(self.__class__, key)\n'
+            '                value = value() if callable(value) else value\n'
+            '            else:\n'
+            '                value = None\n'
+            '            setattr(self, key, value)\n'
+            '    def model_dump(self, exclude_none=False):\n'
+            '        out = dict(self.__dict__)\n'
+            '        return ({k: v for k, v in out.items() if v is not None}\n'
+            '                if exclude_none else out)\n'
+            '    def dict(self, **kwargs):\n'
+            '        return self.model_dump(exclude_none=kwargs.get("exclude_none", False))\n'
+            'def Field(default=None, default_factory=None, **kwargs):\n'
+            '    return default_factory if default_factory is not None else default\n'),
+    }
+    for rel, content in files.items():
+        path = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as handle:
+            handle.write(content)
+    return holder, root
+
+
+def run_script(rel, env=None):
     """跑一个验证脚本，返回是否通过（exit 0）。"""
+    child_env = os.environ.copy()
+    if env:
+        child_env.update(env)
     r = subprocess.run([sys.executable, os.path.join(ROOT, rel)],
-                       cwd=ROOT, capture_output=True, text=True,
+                       cwd=ROOT, env=child_env, capture_output=True, text=True,
                        encoding='utf-8', errors='replace')
     return r.returncode == 0, (r.stdout or '')[-300:]
 
@@ -300,21 +354,32 @@ def main():
             continue
 
         total += 1
+        stub_holder = None
         try:
             with open(path, 'w', encoding='utf-8', newline='') as f:
                 f.write(src.replace(old, new, 1))
             purge_pycache(path)          # 变异前清缓存，确保跑到变异版
-            passed, tail = run_script(script)
+            run_env = None
+            if mid == 'M20':
+                stub_holder, stub_root = _make_mcp_stub()
+                old_pythonpath = os.environ.get('PYTHONPATH', '')
+                run_env = {
+                    'WORLD_GAMES_STRICT': '1',
+                    'PYTHONPATH': stub_root + (os.pathsep + old_pythonpath if old_pythonpath else ''),
+                }
+            passed, tail = run_script(script, env=run_env)
             if passed:
                 survivors.append((mid, desc, script))
-                print('SURVIVED  %s  %-46s → %s 仍全绿' % (mid, desc, script))
+                print('SURVIVED  %s  %-46s -> %s 仍全绿' % (mid, desc, script))
             else:
                 killed += 1
-                print('KILLED    %s  %-46s → %s 变红 ✓' % (mid, desc, script))
+                print('KILLED    %s  %-46s -> %s 变红 OK' % (mid, desc, script))
         finally:
             with open(path, 'w', encoding='utf-8', newline='') as f:
                 f.write(src)
             purge_pycache(path)          # 还原后清缓存，避免残留变异字节码
+            if stub_holder is not None:
+                stub_holder.cleanup()
 
     print('\n变异：%d 个 · 杀死 %d · 存活 %d' % (total, killed, len(survivors)))
     if total and survivors:

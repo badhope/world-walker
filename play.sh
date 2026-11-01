@@ -3,18 +3,29 @@
 # ./play.sh           运行所有命令演示
 # ./play.sh --state F  指定状态文件 (默认 game_state.json)
 
-# 参数解析：支持 `./play.sh combat`、`./play.sh combat --state F`、
-# `./play.sh --state F combat` 三种写法（旧实现固定取 $2，会把 `--state` 当文件名）。
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENGINE="$ROOT/engine.py"
+INIT="$ROOT/init_game.py"
 STATE="game_state.json"
+STATE_EXPLICIT=0
 ARGS=()
+
+# 参数解析：支持 `./play.sh combat`、`./play.sh combat --state F`、
+# `./play.sh --state F combat` 三种写法。
 while [ $# -gt 0 ]; do
   case "$1" in
     --state)
-      STATE="${2:-game_state.json}"
-      shift 2 || shift
+      if [ $# -lt 2 ]; then
+        echo "--state 需要文件路径" >&2
+        exit 2
+      fi
+      STATE="$2"
+      STATE_EXPLICIT=1
+      shift 2
       ;;
     --state=*)
       STATE="${1#--state=}"
+      STATE_EXPLICIT=1
       shift
       ;;
     *)
@@ -23,67 +34,82 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
-set -- "${ARGS[@]}"
-CMD="${1:-}"
-shift || true
+
+CMD="${ARGS[0]:-}"
+CMD_ARGS=("${ARGS[@]:1}")
+PY=python3
+command -v python3 >/dev/null 2>&1 || PY=python
+
+if [ "$CMD" = "init" ]; then
+  if [ "$STATE_EXPLICIT" -eq 1 ]; then
+    exec "$PY" "$INIT" "$STATE"
+  fi
+  exec "$PY" "$INIT"
+fi
 
 if [ ! -f "$STATE" ]; then
   echo "状态文件不存在: $STATE（先跑 ./play.sh init 生成）" >&2
   exit 1
 fi
 
-PY=python3
-command -v python3 >/dev/null 2>&1 || PY=python
-export PYTHONPATH=.
+TICK=$("$PY" - "$STATE" <<'PY'
+import json
+import sys
 
-echo "=== 万界 · 行者 | 第 $("$PY" -c "import json;print(json.load(open('$STATE')).get('tick',0))") 回合 ==="
+with open(sys.argv[1], encoding="utf-8") as state_file:
+    print(json.load(state_file).get("tick", 0))
+PY
+)
+if [ "$?" -ne 0 ]; then
+  echo "状态文件无法读取: $STATE" >&2
+  exit 1
+fi
+
+echo "=== 万界 · 行者 | 第 $TICK 回合 ==="
 echo ""
 
 case "$CMD" in
   combat)
-    "$PY" engine.py combat --state "$STATE" --attacker player --defender "${3:-goblin}"
+    "$PY" "$ENGINE" combat --state "$STATE" --attacker "${CMD_ARGS[0]:-player}" --defender "${CMD_ARGS[1]:-goblin}"
     ;;
   trade)
-    "$PY" engine.py trade --state "$STATE" --location "${3:-bamboo_tea_booth}" --item "${4:-an_zhen_san}" --quantity "${5:-1}" --direction "${6:-buy}" --entity player
+    "$PY" "$ENGINE" trade --state "$STATE" --location "${CMD_ARGS[0]:-bamboo_tea_booth}" --item "${CMD_ARGS[1]:-an_zhen_san}" --quantity "${CMD_ARGS[2]:-1}" --direction "${CMD_ARGS[3]:-buy}" --entity "${CMD_ARGS[4]:-player}"
     ;;
   social)
-    "$PY" engine.py social --state "$STATE" --actor player --target "${3:-old_chen}" --event "${4:-help}"
+    "$PY" "$ENGINE" social --state "$STATE" --actor "${CMD_ARGS[0]:-player}" --target "${CMD_ARGS[1]:-old_chen}" --event "${CMD_ARGS[2]:-help}"
     ;;
   karma)
-    "$PY" engine.py karma --state "$STATE" --actor player --karma_type "${3:-help_innocent}"
+    "$PY" "$ENGINE" karma --state "$STATE" --actor "${CMD_ARGS[0]:-player}" --karma_type "${CMD_ARGS[1]:-help_innocent}"
     ;;
   tick)
-    "$PY" engine.py tick --state "$STATE"
+    "$PY" "$ENGINE" tick --state "$STATE"
     ;;
   world)
-    "$PY" engine.py world_state --state "$STATE"
+    "$PY" "$ENGINE" world_state --state "$STATE"
     ;;
   narrative)
-    "$PY" engine.py narrative --state "$STATE"
+    "$PY" "$ENGINE" narrative --state "$STATE"
     ;;
   flow)
-    "$PY" engine.py flow --state "$STATE"
+    "$PY" "$ENGINE" flow --state "$STATE"
     ;;
   panarchy)
-    "$PY" engine.py panarchy --state "$STATE"
+    "$PY" "$ENGINE" panarchy --state "$STATE"
     ;;
   identity)
-    "$PY" engine.py identity --state "$STATE"
+    "$PY" "$ENGINE" identity --state "$STATE"
     ;;
   moral)
-    "$PY" engine.py moral_update --state "$STATE"
+    "$PY" "$ENGINE" moral_update --state "$STATE"
     ;;
   cognition)
-    "$PY" engine.py cognition --state "$STATE" --entity player
+    "$PY" "$ENGINE" cognition --state "$STATE" --entity "${CMD_ARGS[0]:-player}"
     ;;
   merit)
-    "$PY" engine.py merit --state "$STATE" --aid "${3:-1.0}" --sincerity "${4:-1.0}"
+    "$PY" "$ENGINE" merit --state "$STATE" --aid "${CMD_ARGS[0]:-1.0}" --sincerity "${CMD_ARGS[1]:-1.0}"
     ;;
   info)
-    "$PY" engine.py info_weight --state "$STATE" --probability "${3:-0.1}"
-    ;;
-  init)
-    "$PY" init_game.py
+    "$PY" "$ENGINE" info_weight --state "$STATE" --probability "${CMD_ARGS[0]:-0.1}"
     ;;
   *)
     echo "用法: ./play.sh <command> [--state FILE] [args]"

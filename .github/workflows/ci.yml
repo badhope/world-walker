@@ -29,8 +29,29 @@ jobs:
 
       - name: 确认没有第三方依赖被装上
         run: |
-          python -c "import numpy" 2>/dev/null && { echo "::error::numpy 存在，零依赖宣称不成立"; exit 1; } || echo "numpy 不存在：符合预期"
-          python -c "import mcp" 2>/dev/null && { echo "::error::mcp 存在，应留到 mcp 作业"; exit 1; } || echo "mcp 不存在：符合预期"
+          python - <<'PY'
+          import importlib
+          import sys
+
+          failed = False
+          for name in ("numpy", "mcp"):
+              try:
+                  importlib.import_module(name)
+              except ModuleNotFoundError as exc:
+                  if exc.name == name or (exc.name or "").startswith(name + "."):
+                      print(f"{name} 不存在：符合预期")
+                  else:
+                      print(f"::error::{name} 导入时缺少传递依赖 {exc.name}: {exc}", file=sys.stderr)
+                      failed = True
+              except Exception as exc:
+                  print(f"::error::{name} 导入发生真实环境错误 {type(exc).__name__}: {exc}", file=sys.stderr)
+                  failed = True
+              else:
+                  print(f"::error::{name} 存在，零依赖宣称不成立" if name == "numpy"
+                        else "::error::mcp 存在，应留到 mcp 作业")
+                  failed = True
+          raise SystemExit(1 if failed else 0)
+          PY
 
       - name: 编译全部 Python 源
         run: python scripts/compile_all.py
@@ -112,8 +133,35 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: 安装 MCP 可选依赖
-        run: python -m pip install --upgrade pip && python -m pip install -e ".[mcp]"
+      - name: 安装锁定的 MCP 依赖并验证 pyproject extra
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-mcp.lock.txt
+          python -m pip install --no-deps -e ".[mcp]"
+          python -m pip check
+
+      - name: 确认 MCP SDK 可导入
+        run: |
+          python - <<'PY'
+          import importlib
+          import sys
+
+          try:
+              importlib.import_module("mcp")
+          except ModuleNotFoundError as exc:
+              if exc.name == "mcp" or (exc.name or "").startswith("mcp."):
+                  print("::error::mcp 模块不存在", file=sys.stderr)
+              else:
+                  print(f"::error::mcp 导入时缺少传递依赖 {exc.name}: {exc}", file=sys.stderr)
+              raise SystemExit(1)
+          except Exception as exc:
+              print(f"::error::mcp 导入发生真实环境错误 {type(exc).__name__}: {exc}", file=sys.stderr)
+              raise SystemExit(1)
+          print("mcp SDK 可导入")
+          PY
+
+      - name: 审计修复回归
+        run: python scripts/verify_audit_fix.py
 
       - name: MCP 端到端自检
         run: python scripts/verify_mcp_stdio.py

@@ -139,7 +139,10 @@ async def main():
     tmp = tempfile.mkdtemp(prefix='ww-play-')
     state_path = os.path.join(tmp, 'aji.save.json')
 
-    params = StdioServerParameters(command=sys.executable, args=[SERVER], cwd=ROOT)
+    params = StdioServerParameters(
+        command=sys.executable, args=[SERVER], cwd=ROOT,
+        env={**os.environ, 'WORLD_GAMES_STATE_ROOT': tempfile.gettempdir()},
+    )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

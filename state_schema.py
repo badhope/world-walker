@@ -39,8 +39,16 @@
 }
 """
 
-import json, os, random, sys, time
+import contextlib
+import json, math, os, random, sys, time
+import threading as _threading
 import shutil as _shutil
+
+try:
+    from game_engine import input_policy as _input_policy
+except ImportError:  # pragma: no cover - direct source-module loading
+    import input_policy as _input_policy
+
 
 def new_game():
     """返回一个初始状态"""
@@ -54,10 +62,36 @@ def new_game():
         "event_log": []
     }
 
+def _require_finite(value):
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("状态 JSON 不允许 NaN 或 Infinity")
+    if isinstance(value, dict):
+        for child in value.values():
+            _require_finite(child)
+    elif isinstance(value, list):
+        for child in value:
+            _require_finite(child)
+
+
 def load_state(path):
-    """从路径加载状态 JSON"""
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    """从路径加载状态 JSON；拒绝非有限 JSON 数值。"""
+    checked = _ensure_no_links(path)
+    def reject_constant(value):
+        raise ValueError("状态 JSON 不允许 NaN 或 Infinity")
+
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(checked, flags)
+    try:
+        with os.fdopen(fd, "r", encoding="utf-8") as f:
+            fd = None
+            state = json.load(f, parse_constant=reject_constant)
+    finally:
+        if fd is not None:
+            os.close(fd)
+    _require_finite(state)
+    return state
 
 def _archive_file(path, state):
     """按归档世代选择归档文件：`<path>.log.jsonl` 或 `<path>.log.<gen>.jsonl`。
@@ -71,126 +105,276 @@ def _archive_file(path, state):
     return path + ".log.jsonl" if gen == 0 else "%s.log.%d.jsonl" % (path, gen)
 
 
-def save_state(state, path):
-    """保存状态 JSON 到路径。
+_STATE_TLOCK = _threading.RLock()
+_STATE_LOCAL = _threading.local()
 
-    长局保护：写入前把超出保留量的旧事件归档到 `<path>.log.jsonl`（追加式），
-    保留量见 state.config.event_log_keep（默认 200）。这样状态文件与上下文都不会被历史撑爆，
-    旧事仍可按关键词用 recall 回捞。
 
-    回退安全：归档按 archive_generation 分文件（见 _archive_file）。快照回退时
-    状态的 generation 与 archived_events 一起退到旧值，因此只会切回旧世代文件，
-    不会截断/删除任何已写下的归档。已有归档永久只增不减。
-    """
+def _state_tlock():
+    return _STATE_TLOCK
+
+
+def _state_local():
+    return _STATE_LOCAL
+
+
+def _ensure_no_links(path):
+    return _input_policy.ensure_no_links(path)
+
+
+def _state_flock(path, timeout=10.0):
+    lock_path = os.path.abspath(os.fspath(path)) + ".lock"
+    directory = os.path.dirname(lock_path) or "."
+    _ensure_no_links(lock_path)
+    os.makedirs(directory, exist_ok=True)
+    _ensure_no_links(lock_path)
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_BINARY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(lock_path, flags, 0o600)
+    handle = os.fdopen(fd, "a+b")
+    deadline = time.monotonic() + float(timeout)
+    try:
+        if os.name == "nt":
+            import msvcrt as _msvcrt
+            if os.fstat(handle.fileno()).st_size == 0:
+                handle.write(b"0")
+                handle.flush()
+            while True:
+                try:
+                    handle.seek(0)
+                    _msvcrt.locking(handle.fileno(), _msvcrt.LK_NBLCK, 1)
+                    return handle
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("状态文件锁等待超时: %s" % lock_path)
+                    time.sleep(0.05)
+        else:
+            import fcntl as _fcntl
+            while True:
+                try:
+                    _fcntl.flock(handle.fileno(), _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+                    return handle
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError("状态文件锁等待超时: %s" % lock_path)
+                    time.sleep(0.05)
+    except Exception:  # aqg: top-level boundary —— 加锁失败必须关闭句柄并传播
+        handle.close()
+        raise
+
+
+def _state_funlock(handle):
+    try:
+        if os.name == "nt":
+            import msvcrt as _msvcrt
+            handle.seek(0)
+            _msvcrt.locking(handle.fileno(), _msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl as _fcntl
+            _fcntl.flock(handle.fileno(), _fcntl.LOCK_UN)
+    except OSError:  # aqg: top-level boundary —— 句柄失效时关闭即可
+        pass
+    finally:
+        handle.close()
+
+
+@contextlib.contextmanager
+def state_lock(path, timeout=10.0):
+    key = os.path.abspath(os.fspath(path))
+    local = _state_local()
+    held = getattr(local, "held", None)
+    if held is None:
+        held = local.held = {}
+    if key in held:
+        held[key] += 1
+        try:
+            yield
+        finally:
+            held[key] -= 1
+            if held[key] == 0:
+                del held[key]
+        return
+    with _state_tlock():
+        handle = _state_flock(key, timeout)
+        held[key] = 1
+        try:
+            yield
+        finally:
+            held.pop(key, None)
+            _state_funlock(handle)
+
+
+def _restore_state(target, original):
+    target.clear()
+    target.update(original)
+
+
+def _rollback_archive(record):
+    if record is None:
+        return
+    archive_path, existed, offset = record
+    try:
+        _ensure_no_links(archive_path)
+        if existed:
+            flags = os.O_RDWR | getattr(os, "O_BINARY", 0)
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(archive_path, flags)
+            with os.fdopen(fd, "r+b") as handle:
+                fd = None
+                handle.truncate(offset)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if fd is not None:
+                os.close(fd)
+        elif os.path.lexists(archive_path):
+            _ensure_no_links(archive_path)
+            os.unlink(archive_path)
+    except OSError as exc:
+        raise RuntimeError("归档回滚失败: %s" % archive_path) from exc
+
+
+def _atomic_backup(path, backup_path):
+    _ensure_no_links(path)
+    _ensure_no_links(backup_path)
+    import tempfile as _tf
+    directory = os.path.dirname(os.path.abspath(backup_path)) or "."
+    fd, tmp = _tf.mkstemp(prefix=".ww_backup_", suffix=".tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "wb") as dst:
+            fd = None
+            flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            src_fd = os.open(path, flags)
+            try:
+                with os.fdopen(src_fd, "rb") as src:
+                    _shutil.copyfileobj(src, dst)
+            finally:
+                src_fd = None
+            dst.flush()
+            os.fsync(dst.fileno())
+        _ensure_no_links(backup_path)
+        os.replace(tmp, backup_path)
+        tmp = None
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if tmp is not None:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+
+def _append_archive(path, entries):
+    _ensure_no_links(path)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_BINARY", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags, 0o600)
+    try:
+        with os.fdopen(fd, "a", encoding="utf-8") as handle:
+            fd = None
+            for entry in entries:
+                handle.write(json.dumps(entry, ensure_ascii=False, allow_nan=False) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if fd is not None:
+            os.close(fd)
+
+
+def _save_state_unlocked(state, path):
+    _ensure_no_links(path)
     cfg = state.get("config") or {}
     keep = max(1, int(cfg.get("event_log_keep", 200)))
     log = state.get("event_log") or []
-    if len(log) > keep:
-        overflow, state["event_log"] = log[:-keep], log[-keep:]
+    overflow = log[:-keep] if len(log) > keep else []
+    archive_record = None
+    if overflow:
+        state["event_log"] = log[-keep:]
         if cfg.get("archive", True):
-            with open(_archive_file(path, state), "a", encoding="utf-8") as f:
-                for e in overflow:
-                    f.write(json.dumps(e, ensure_ascii=False) + "\n")
-        else:
-            # 不落文件的归档不计入计数，否则计数与归档行数从第一天起就不一致
-            pass
-        if cfg.get("archive", True):
-            state["archived_events"] = int(state.get("archived_events", 0)) + len(overflow)
-    # 原子写入：先写同目录临时文件，再 os.replace 覆盖。
-    # 直接 open(path,'w') 的话，进程在任何时刻被杀都会留下半截 JSON，
-    # 下一次 load_state 直接 JSONDecodeError —— 存档不可恢复（已用截断文件验证）。
-    # 同时保留一份 .bak：即便原子替换本身失败，也还有上一版可回退。
+            state["archived_events"] = int(state.get("archived_events", 0) or 0) + len(overflow)
+
+    directory = os.path.dirname(os.path.abspath(path)) or "."
     import tempfile as _tf
-    d = os.path.dirname(os.path.abspath(path)) or "."
-    fd, tmp = _tf.mkstemp(prefix=".ww_state_", suffix=".tmp", dir=d)
+    fd, tmp = _tf.mkstemp(prefix=".ww_state_", suffix=".tmp", dir=directory)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
-        if os.path.exists(path):
+        if overflow and cfg.get("archive", True):
+            archive_path = _archive_file(path, state)
+            _ensure_no_links(archive_path)
+            existed = os.path.exists(archive_path)
+            offset = os.path.getsize(archive_path) if existed else 0
+            archive_record = (archive_path, existed, offset)
             try:
-                _shutil.copyfile(path, path + ".bak")
-            except OSError:  # aqg: top-level boundary —— 备份失败不该阻断本次保存
+                _append_archive(archive_path, overflow)
+            except Exception:
+                _rollback_archive(archive_record)
+                archive_record = None
+                raise
+
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = None
+            json.dump(state, handle, ensure_ascii=False, indent=2, allow_nan=False)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if os.path.exists(path):
+            backup_path = path + ".bak"
+            try:
+                _atomic_backup(path, backup_path)
+            except _input_policy.PolicyError:
+                raise
+            except OSError:  # aqg: top-level boundary —— 备份失败不阻断主状态替换
                 pass
-        # Windows 上 os.replace 可能被瞬时占用挡住（杀毒软件扫描、编辑器读取、备份代理）。
-        # 这不是逻辑错误，重试几次就好；直接抛 PermissionError 会让一次正常回合莫名其妙失败。
-        import time as _time
+        _ensure_no_links(path)
         for attempt in range(5):
             try:
                 os.replace(tmp, path)
+                tmp = None
                 break
             except PermissionError:
                 if attempt == 4:
                     raise
-                _time.sleep(0.05 * (attempt + 1))
-
+                time.sleep(0.05 * (attempt + 1))
     except Exception:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
-
-_STATE_TLOCK = None  # 惰性初始化的进程内锁（线程安全地创建一次）
-
-def _state_tlock():
-    global _STATE_TLOCK
-    if _STATE_TLOCK is None:
-        import threading as _threading
-        _STATE_TLOCK = _threading.Lock()
-    return _STATE_TLOCK
-
-def _state_flock(path, timeout=10.0):
-    """跨进程文件锁：同目录 <state>.lock 上的排它锁（Windows msvcrt / POSIX fcntl）。
-
-    为什么需要：save_state 的原子替换只保证"读者看不到半截 JSON"，
-    不保证"先读后写"不丢更新——两个进程同时 load → 各自改 → 各自 save，
-    后写的把先写的整个覆盖（实测 8 进程并发只活下来 1 条事件）。
-    MCP 宿主可能为同一存档开多个会话，这是真实发生的场景，不是理论竞态。
-    """
-    import msvcrt as _msvcrt
-    lock_path = path + ".lock"
-    d = os.path.dirname(os.path.abspath(lock_path)) or "."
-    os.makedirs(d, exist_ok=True)
-    f = open(lock_path, "a+")
-    deadline = time.monotonic() + timeout
-    try:
-        while True:
+        if fd is not None:
             try:
-                _msvcrt.locking(f.fileno(), _msvcrt.LK_NBLCK, 1)
-                return f
+                os.close(fd)
             except OSError:
-                if time.monotonic() >= deadline:
-                    f.close()
-                    raise TimeoutError("状态文件锁等待超时: %s" % lock_path)
-                time.sleep(0.05)
-    except Exception:  # aqg: top-level boundary —— 加锁路径上任何异常都要先关句柄再上抛
-        f.close()
+                pass
+        if tmp is not None:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+        _rollback_archive(archive_record)
         raise
+
+
+def save_state(state, path):
+    """保存状态 JSON 到路径，并在失败时恢复归档与调用方对象。"""
+    original = json.loads(json.dumps(state, ensure_ascii=False, allow_nan=False))
+    try:
+        with state_lock(path):
+            _save_state_unlocked(state, path)
+    except Exception:
+        _restore_state(state, original)
+        raise
+
 
 def transact_state(edit, path, timeout=10.0):
-    """原子读-改-写：在排它锁内 load → edit(state) → save_state。
-
-    edit 在锁内同步执行，抛错则不落盘（锁释放，状态保持原样）。
-    同进程多线程由 _STATE_TLOCK 串行化，跨进程由 <state>.lock 串行化；
-    两者叠加后，"先读后写丢更新"在两条路径上都不可能发生。
-    """
-    with _state_tlock():
-        f = _state_flock(path, timeout)
+    """原子读-改-写：在同一排它锁内完成 load、edit、save。"""
+    with state_lock(path, timeout):
+        state = load_state(path) if os.path.exists(path) else new_game()
+        original = json.loads(json.dumps(state, ensure_ascii=False, allow_nan=False))
         try:
-            state = load_state(path) if os.path.exists(path) else new_game()
             edit(state)
-            save_state(state, path)
+            _save_state_unlocked(state, path)
             return state
-        finally:
-            try:
-                import msvcrt as _msvcrt
-                f.seek(0)
-                _msvcrt.locking(f.fileno(), _msvcrt.LK_UNLCK, 1)
-            except OSError:  # aqg: top-level boundary —— 锁已随进程消亡或文件句柄失效，释锁失败无需阻断
-                pass
-            f.close()
+        except Exception:
+            _restore_state(state, original)
+            raise
 
 def seed_rng(state) -> None:
     """按状态里的 rng_seed + rng_counter 重置全局随机源（带种子可复现）。

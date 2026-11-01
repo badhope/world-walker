@@ -114,7 +114,10 @@ async def run(turns: int, quiet: bool = False):
     tmp = tempfile.mkdtemp(prefix='ww-stress-')
     state_path = os.path.join(tmp, 'xuanshu.save.json')
 
-    params = StdioServerParameters(command=sys.executable, args=[SERVER], cwd=ROOT)
+    params = StdioServerParameters(
+        command=sys.executable, args=[SERVER], cwd=ROOT,
+        env={**os.environ, 'WORLD_GAMES_STATE_ROOT': tempfile.gettempdir()},
+    )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()

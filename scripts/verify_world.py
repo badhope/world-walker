@@ -49,6 +49,7 @@ from game_engine.state_schema import add_karma, get_unsettled_karma, log_event, 
 import game_engine.panel as PANEL                               # noqa: E402
 
 RESULTS = []
+STRICT_FAILURES = []
 
 
 def check(name, ok, note=''):
@@ -428,8 +429,14 @@ def w11_tick_tool_drives_world():
     """
     try:
         import game_engine.mcp_server as MS
-    except Exception as exc:  # mcp SDK 未安装时跳过（CI 的 core 作业不装 mcp）
-        print('SKIP  W11 需要 mcp SDK：%s' % str(exc)[:60])
+    except Exception as exc:  # aqg: top-level boundary —— 可选 MCP 依赖在 core 路径允许缺失
+        message = 'W11 需要 mcp SDK：%s' % str(exc)[:60]
+        if os.environ.get('WORLD_GAMES_STRICT') == '1':
+            RESULTS.append(False)
+            STRICT_FAILURES.append(message)
+            print('FAIL  %s' % message)
+        else:
+            print('SKIP  %s' % message)
         return
 
     from game_engine.state_schema import save_state
@@ -472,7 +479,7 @@ def main():
     w11_tick_tool_drives_world()
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))
-    return 0 if passed == len(RESULTS) else 1
+    return 0 if passed == len(RESULTS) and not STRICT_FAILURES else 1
 
 
 if __name__ == '__main__':

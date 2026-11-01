@@ -53,12 +53,14 @@ from game_engine.rules import questline as quest_rules  # noqa: E402
 from game_engine.rules.narrative_engine import (  # noqa: E402
     flow_channel_status, panarchy_phase_check, player_identity_vector)
 from game_engine.state_schema import load_state  # noqa: E402
+from game_engine import input_policy  # noqa: E402
 
 _PANEL_VERSION = "1.3.0"
 HTML_FILE = os.path.join(_SCRIPT_DIR, "panel.html")
 HTML_DIR = _SCRIPT_DIR
 MORAL_DIMS = ("关怀", "公平", "忠诚", "权威", "圣洁", "自由")
 EVENTS_CAP = 40
+MAX_VIZ_SIDECAR_BYTES = 4 * 1024 * 1024
 
 # 唯一的事件分级表（前端不得再维护关键词表；未知类型走 EVENT_LABELS 兜底）
 EVENT_LABELS = {
@@ -679,7 +681,14 @@ def view_model(state_path):
     if not isinstance(state, dict):
         raise ValueError("状态文件顶层必须是 JSON 对象")
     state = _coerce_state(state)
-    record_sample(state_path, state)   # 侧写：态势采样（写 <state>.viz.jsonl，不碰状态文件）
+    try:
+        sidecar = input_policy.validate_path(
+            series_path(state_path), (".jsonl",), must_exist=False,
+            root=os.path.dirname(os.path.abspath(state_path)))
+        if not os.path.exists(sidecar) or os.path.getsize(sidecar) <= MAX_VIZ_SIDECAR_BYTES:
+            record_sample(state_path, state)
+    except (UnicodeError, ValueError, OSError):
+        pass
     entities = state.get("entities") if isinstance(state.get("entities"), dict) else {}
     player = entities.get("player") if isinstance(entities.get("player"), dict) else {}
     loc = player.get("location", "")
@@ -1406,8 +1415,12 @@ class Handler(BaseHTTPRequestHandler):
     def _series_payload(self):
         """长局态势序列：直接读侧写文件（不读也不写状态文件）。"""
         try:
-            samples = load_series(self._state())
-        except (OSError, ValueError, TypeError):
+            sidecar = series_path(self._state())
+            if os.path.lexists(sidecar) and os.path.getsize(sidecar) > MAX_VIZ_SIDECAR_BYTES:
+                samples = []
+            else:
+                samples = load_series(self._state())
+        except (OSError, UnicodeError, ValueError, TypeError):
             samples = []          # 侧写坏行/缺文件 → 图表空态，接口照常 200
         skin = SKINS["neutral"]
         try:

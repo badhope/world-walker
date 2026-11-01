@@ -190,6 +190,16 @@ def main():
           bool(claimed_checks) and all(c == len(verify_scripts) for c in claimed_checks),
           'docs=%s actual=%d' % (sorted(set(claimed_checks)), len(verify_scripts)))
 
+    # D12b 审计回归/断言基线/门禁计数必须与当前交付口径一致。
+    audit_text = read('README.md')
+    audit_claims = [int(x) for x in re.findall(r'`verify_audit_fix\.py` \| (\d+)', audit_text)]
+    test_claims = [int(x) for x in re.findall(r'`verify_tests\.py` \| (\d+)', audit_text)]
+    contributing = read('CONTRIBUTING.md')
+    gate_claims = [int(x) for x in re.findall(r'pre_push_gate\.sh\s+#\s*(\d+)\s*项', audit_text + contributing)]
+    check('D12b 审计回归/断言/门禁数字与基线一致',
+          audit_claims == [22] and test_claims == [817] and gate_claims == [25, 25],
+          'audit=%s tests=%s gate=%s' % (audit_claims, test_claims, gate_claims))
+
     # D13 英文 README 与展示站的工具数也必须一致（D2c 只查中文 README）
     en_claimed = [int(x) for x in re.findall(r'(\d+)\s*MCP tools', en)]
     site_tools = [int(x) for x in re.findall(r'<b>(\d+)</b>\s*MCP 工具', read('docs/index.html'))]

@@ -24,8 +24,10 @@ import subprocess
 import sys
 import tempfile
 import threading
+import types
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.environ.setdefault('WORLD_GAMES_STATE_ROOT', ROOT)
 sys.path.insert(0, ROOT)
 
 # 仓库根即 game_engine 包（与 engine.py 同样的包别名引导，任意目录名可跑）
@@ -60,12 +62,7 @@ def fresh_state():
 
 # ── R1 快照 label 路径穿越 ────────────────────────────────
 def r1_snapshot_label_traversal():
-    import importlib
-    if 'game_engine.mcp_server' in sys.modules:
-        mcp = importlib.import_module('game_engine.mcp_server')
-    else:
-        sys.path.insert(0, ROOT)
-        mcp = importlib.import_module('game_engine.mcp_server')
+    mcp = _load_mcp_for_audit()
     d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
     sp = os.path.join(d, 'a.json')
     mcp.world_init(state_path=sp, world=mcp.WorldInfo(name='W'),
@@ -236,7 +233,207 @@ def r7_context_id_unique():
           sorted(seen)[:3])
 
 
+def _install_mcp_stubs():
+    if 'mcp' in sys.modules and 'pydantic' in sys.modules:
+        return
+    class _Server:
+        def __init__(self, *args, **kwargs):
+            self.tools = {}
+        def tool(self, *args, **kwargs):
+            def decorate(fn):
+                self.tools[fn.__name__] = fn
+                return fn
+            return decorate
+        def prompt(self, *args, **kwargs):
+            return lambda fn: fn
+        def run(self, *args, **kwargs):
+            raise RuntimeError('MCP stub cannot run a server')
+    class _Model:
+        def __init_subclass__(cls, **kwargs):
+            return super().__init_subclass__()
+        def __init__(self, **values):
+            hints = getattr(self.__class__, '__annotations__', {})
+            for key, value in hints.items():
+                if key in values:
+                    setattr(self, key, values[key])
+                elif hasattr(self.__class__, key):
+                    default = getattr(self.__class__, key)
+                    setattr(self, key, default() if callable(default) else default)
+                else:
+                    setattr(self, key, None)
+        def model_dump(self, exclude_none=False):
+            out = dict(self.__dict__)
+            return {k: v for k, v in out.items() if v is not None} if exclude_none else out
+    def _field(default=None, default_factory=None, **kwargs):
+        if default_factory is not None:
+            return default_factory
+        return default
+    mcp = types.ModuleType('mcp')
+    server = types.ModuleType('mcp.server')
+    fast = types.ModuleType('mcp.server.fastmcp')
+    fast.FastMCP = _Server
+    exc = types.ModuleType('mcp.server.fastmcp.exceptions')
+    exc.ToolError = RuntimeError
+    fast.exceptions = exc
+    server.fastmcp = fast
+    mcp.server = server
+    sys.modules.update({'mcp': mcp, 'mcp.server': server,
+                        'mcp.server.fastmcp': fast,
+                        'mcp.server.fastmcp.exceptions': exc})
+    pyd = types.ModuleType('pydantic')
+    pyd.BaseModel = _Model
+    pyd.Field = _field
+    sys.modules['pydantic'] = pyd
+
+
+def _load_mcp_for_audit():
+    _install_mcp_stubs()
+    import importlib
+    sys.modules.pop('game_engine.mcp_server', None)
+    return importlib.import_module('game_engine.mcp_server')
+
+
+# ── R8 restore uses current disk state and snapshot atomically ───────────────
+def r8_restore_transaction():
+    mcp = _load_mcp_for_audit()
+    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    current_path = os.path.join(d, 'current.json')
+    snapshot_path = current_path + '.snap.before'
+    baseline = fresh_state()
+    baseline['tick'] = 2
+    baseline['archive_generation'] = 4
+    baseline['event_log'] = [{'tick': 2, 'type': 'x', 'desc': 'before'}]
+    mutated = json.loads(json.dumps(baseline))
+    mutated['tick'] = 9
+    mutated['entities']['npc']['name'] = 'after'
+    from game_engine.state_schema import save_state, load_state
+    save_state(baseline, snapshot_path)
+    save_state(mutated, current_path)
+    mcp._active['path'] = current_path
+    restored = mcp.restore(snapshot_path)
+    disk = load_state(current_path)
+    check('R8 restore 将快照状态原子写回当前磁盘状态',
+          disk['tick'] == 2 and disk['entities']['npc']['name'] == 'N'
+          and restored['tick'] == 2 and restored['archive_generation'] > 4,
+          'tick=%s gen=%s' % (disk.get('tick'), disk.get('archive_generation')))
+    mcp._active['path'] = None
+
+
+# ── R9 rejected input leaves active path and state unchanged ─────────────────
+def r9_input_rejection_isolated():
+    mcp = _load_mcp_for_audit()
+    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    state_path = os.path.join(d, 'current.json')
+    from game_engine.state_schema import save_state, load_state
+    before = fresh_state()
+    save_state(before, state_path)
+    mcp._active['path'] = state_path
+    old_path = mcp._active['path']
+    try:
+        mcp.character_card_read(os.path.join(d, '..', 'escape.json'))
+    except Exception:
+        pass
+    after = load_state(state_path)
+    check('R9 拒绝路径输入不改变 active path/原状态',
+          mcp._active['path'] == old_path and after == before,
+          mcp._active['path'])
+    mcp._active['path'] = None
+
+
+# ── R10 state mutation uses transaction and persists behavior ────────────────
+def r10_mutation_transaction():
+    mcp = _load_mcp_for_audit()
+    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    state_path = os.path.join(d, 'current.json')
+    from game_engine.state_schema import save_state, load_state
+    save_state(fresh_state(), state_path)
+    mcp._active['path'] = state_path
+    result = mcp.travel('new-place', note='transaction')
+    disk = load_state(state_path)
+    check('R10 mutating tool 事务后行为落盘',
+          result.get('location') == 'new-place'
+          and disk['entities']['player']['location'] == 'new-place'
+          and disk['event_log'][-1]['type'] == 'travel',
+          str(result))
+    mcp._active['path'] = None
+
+
+# ── R11 backup exists after replacement ─────────────────────────────────────
+def r11_backup_behavior():
+    from game_engine.state_schema import save_state, load_state
+    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    path = os.path.join(d, 'backup.json')
+    first = fresh_state()
+    save_state(first, path)
+    second = json.loads(json.dumps(first))
+    second['tick'] = 7
+    save_state(second, path)
+    backup = path + '.bak'
+    check('R11 状态替换保留上一版 backup',
+          os.path.exists(backup) and load_state(backup)['tick'] == first['tick']
+          and load_state(path)['tick'] == 7,
+          'current=%s backup=%s' % (load_state(path)['tick'], load_state(backup)['tick']))
+
+
+# ── R12 failed transaction restores in-memory state and disk ─────────────────
+def r12_transaction_rollback():
+    from game_engine.state_schema import load_state, save_state, transact_state
+    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    path = os.path.join(d, 'rollback.json')
+    original = fresh_state()
+    save_state(original, path)
+    box = []
+    def edit(state):
+        state['tick'] = 999
+        state['event_log'].append({'tick': 999, 'type': 'bad', 'desc': 'must rollback'})
+        box.append(state)
+        raise ValueError('forced transaction failure')
+    try:
+        transact_state(edit, path)
+    except ValueError:
+        pass
+    disk = load_state(path)
+    check('R12 事务失败回滚磁盘与内存状态且不留坏事件',
+          disk == original and box and box[0]['tick'] == original['tick']
+          and not box[0]['event_log'],
+          'tick=%s events=%s' % (disk['tick'], len(disk['event_log'])))
+
+
+def r13_read_only_tools_do_not_save():
+    mcp = _load_mcp_for_audit()
+    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    path = os.path.join(d, 'readonly.json')
+    from game_engine.state_schema import load_state, save_state
+    state = fresh_state()
+    state['systems'] = {'defs': {}, 'rt': {}}
+    save_state(state, path)
+    mcp._active['path'] = path
+    try:
+        mcp.system_define({'id': 'clock', 'kind': 'time', 'config': {}})
+        mcp.system_define({'id': 'loot', 'kind': 'loot', 'config': {'tables': {}}})
+        with open(path, 'rb') as handle:
+            before_bytes = handle.read()
+        before_mtime = os.stat(path).st_mtime_ns
+        for _ in range(3):
+            mcp.game_profile()
+            mcp.game_profile(profile=None)
+            mcp.system_run('clock')
+            mcp.system_run('clock', action='status')
+            mcp.system_run('clock', action='')
+            mcp.system_run('loot', action='list')
+        with open(path, 'rb') as handle:
+            after_bytes = handle.read()
+        after_mtime = os.stat(path).st_mtime_ns
+        check('R13 只读 game_profile/system_run 连续调用不落盘',
+              after_bytes == before_bytes and after_mtime == before_mtime,
+              'bytes=%s mtime=%s' % (after_bytes == before_bytes,
+                                     after_mtime == before_mtime))
+    finally:
+        mcp._active['path'] = None
+
+
 def main():
+
     r1_snapshot_label_traversal()
     r2_concurrent_rmw()
     r3_gamesystem_finite()
@@ -244,6 +441,12 @@ def main():
     r5_combat_boundary()
     r6_progression_no_downgrade()
     r7_context_id_unique()
+    r8_restore_transaction()
+    r9_input_rejection_isolated()
+    r10_mutation_transaction()
+    r11_backup_behavior()
+    r12_transaction_rollback()
+    r13_read_only_tools_do_not_save()
     failed = RESULTS.count(False)
     print('\n%d/%d 通过' % (len(RESULTS) - failed, len(RESULTS)))
     return 1 if failed else 0

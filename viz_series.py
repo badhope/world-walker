@@ -13,12 +13,40 @@
 
 import json
 import os
+import tempfile
+
+try:
+    from game_engine import input_policy
+except ImportError:  # pragma: no cover - direct source-module loading
+    import input_policy
 
 SERIES_CAP = 600
+MAX_SERIES_BYTES = 4 * 1024 * 1024
 
 
 def series_path(state_path):
     return state_path + ".viz.jsonl"
+
+
+def _sidecar_safe(path):
+    try:
+        absolute = input_policy.ensure_no_links(path)
+    except (OSError, ValueError):
+        return False
+    try:
+        return os.path.getsize(absolute) <= MAX_SERIES_BYTES
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+
+
+def _series_lock(path):
+    try:
+        from game_engine.state_schema import state_lock
+    except ImportError:  # pragma: no cover - direct source-module loading
+        from state_schema import state_lock
+    return state_lock(path)
 
 
 def sample_of(state):
@@ -64,6 +92,30 @@ def sample_of(state):
     }
 
 
+def _atomic_write(path, payload):
+    directory = os.path.dirname(os.path.abspath(path)) or "."
+    fd, tmp = tempfile.mkstemp(prefix=".ww_viz_", suffix=".tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+            fd = None
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if not _sidecar_safe(path):
+            return False
+        os.replace(tmp, path)
+        tmp = None
+        return True
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if tmp is not None:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+
 def record_sample(state_path, state):
     """追加（或同 tick 覆盖）一条态势样本；回退/恢复到旧 tick 时丢弃，保持 tick 升序唯一。"""
     if not state_path:
@@ -73,46 +125,54 @@ def record_sample(state_path, state):
     except Exception:  # aqg: top-level boundary —— 侧写是观测数据，异常绝不影响对局结算
         return
     path = series_path(state_path)
-    lines = []
-    last = None
-    if os.path.exists(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                lines = f.read().splitlines()
-        except OSError:
-            lines = []
-        # 只对**最后一行**做容错：进程被杀会留下半行 JSON。
-        # 旧实现一旦 json.loads 抛异常就把 lines 清空，随后覆盖写入 → 整段长局曲线丢失。
-        while lines:
-            try:
-                cand = json.loads(lines[-1])
-            except Exception:  # nosec B112; aqg: top-level boundary —— 半行/坏行丢弃，保留更早的样本
-                lines.pop()
-                continue
-            if isinstance(cand, dict):
-                last = cand
-            break
-    last_tick = None
-    if isinstance(last, dict):
-        try:
-            last_tick = int(last.get("tick", -1))
-        except (TypeError, ValueError):
-            last_tick = None
-            lines.pop() if lines else None
-    if last_tick == s["tick"]:
-        if last == s:
-            return          # 值未变：不重复写盘（轮询下的常规路径）
-        lines[-1] = json.dumps(s, ensure_ascii=False)
-    elif last_tick is not None and last_tick > s["tick"]:
-        return              # 快照回退：不把旧 tick 追回来
-    else:
-        lines.append(json.dumps(s, ensure_ascii=False))
-    if len(lines) > SERIES_CAP:
-        lines = lines[-SERIES_CAP:]
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines) + "\n")
-    except OSError:
+        with _series_lock(path):
+            if not _sidecar_safe(path):
+                return
+            lines = []
+            last = None
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        lines = f.read().splitlines()
+                except UnicodeError:
+                    return
+                except OSError:
+                    lines = []
+                while lines:
+                    try:
+                        cand = json.loads(lines[-1])
+                    except Exception:  # nosec B112; aqg: top-level boundary —— 半行/坏行丢弃，保留更早的样本
+                        lines.pop()
+                        continue
+                    if isinstance(cand, dict):
+                        last = cand
+                    break
+            last_tick = None
+            if isinstance(last, dict):
+                try:
+                    last_tick = int(last.get("tick", -1))
+                except (TypeError, ValueError):
+                    last_tick = None
+                    lines.pop() if lines else None
+            if last_tick == s["tick"]:
+                if last == s:
+                    return
+                lines[-1] = json.dumps(s, ensure_ascii=False)
+            elif last_tick is not None and last_tick > s["tick"]:
+                return
+            else:
+                lines.append(json.dumps(s, ensure_ascii=False))
+            if len(lines) > SERIES_CAP:
+                lines = lines[-SERIES_CAP:]
+            payload = "\n".join(lines) + "\n"
+            try:
+                if len(payload.encode("utf-8")) > MAX_SERIES_BYTES:
+                    return
+            except UnicodeError:
+                return
+            _atomic_write(path, payload)
+    except (OSError, UnicodeError, ValueError):
         return
 
 
@@ -120,17 +180,17 @@ def load_series(state_path):
     """读回样本（tick 升序、封顶 SERIES_CAP）；坏行跳过，永不抛。"""
     path = series_path(state_path)
     out = []
-    if state_path and os.path.exists(path):
+    if state_path and os.path.exists(path) and _sidecar_safe(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 for line in f:
                     try:
                         s = json.loads(line)
-                    except Exception:  # nosec B112; aqg: top-level boundary —— 单行坏样本跳过，不打断整段历史
+                    except (UnicodeError, ValueError):
                         continue
                     if isinstance(s, dict) and "tick" in s:
                         out.append(s)
-        except OSError:
+        except (OSError, UnicodeError):
             pass
     out.sort(key=lambda x: int(x.get("tick", 0)))
     return out[-SERIES_CAP:]

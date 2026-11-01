@@ -20,73 +20,107 @@ stages:
         name: setup-python
         displayName: 准备 Python
         script: |
+          set -euo pipefail
           python --version
       - step: deps-check
         name: assert-no-third-party
         displayName: 确认零第三方依赖
         script: |
-          python -c "import numpy" 2>/dev/null && { echo "numpy 存在，零依赖宣称不成立"; exit 1; } || echo "OK: no numpy"
-          python -c "import mcp" 2>/dev/null && { echo "mcp 应为可选依赖"; exit 1; } || echo "OK: no mcp"
+          set -euo pipefail
+          python - <<'PY'
+          import importlib
+          import sys
+
+          failed = False
+          for name in ("numpy", "mcp"):
+              try:
+                  importlib.import_module(name)
+              except ModuleNotFoundError as exc:
+                  if exc.name == name or (exc.name or "").startswith(name + "."):
+                      print(f"{name} 不存在：符合预期")
+                  else:
+                      print(f"ERROR: {name} 导入时缺少传递依赖 {exc.name}: {exc}", file=sys.stderr)
+                      failed = True
+              except Exception as exc:
+                  print(f"ERROR: {name} 导入发生真实环境错误 {type(exc).__name__}: {exc}", file=sys.stderr)
+                  failed = True
+              else:
+                  print(f"ERROR: {name} 存在，core 不应安装可选依赖", file=sys.stderr)
+                  failed = True
+          raise SystemExit(1 if failed else 0)
+          PY
       - step: compile
         name: compileall
         displayName: 编译全部 Python 源
         script: |
+          set -euo pipefail
           python scripts/compile_all.py
       - step: audit
         name: verify-tests
         displayName: 断言审计
         script: |
+          set -euo pipefail
           python scripts/verify_tests.py
       - step: cli
         name: verify-cli
         displayName: CLI 通道自检
         script: |
+          set -euo pipefail
           python scripts/verify_cli.py
       - step: panel
         name: verify-panel
         displayName: 面板契约自检
         script: |
+          set -euo pipefail
           python scripts/verify_panel.py
       - step: neardeath
         name: verify-near-death
         displayName: 濒死保护自检
         script: |
+          set -euo pipefail
           python scripts/verify_near_death.py
       - step: formulas
         name: verify-formulas
         displayName: 规则内核公式对拍
         script: |
+          set -euo pipefail
           python scripts/verify_formulas.py
       - step: branches
         name: verify-branches
         displayName: 模块分支补测
         script: |
+          set -euo pipefail
           python scripts/verify_branches.py
       - step: memory
         name: verify-memory
         displayName: 长局内存稳定性
         script: |
+          set -euo pipefail
           python -m pip install --quiet psutil
           python scripts/verify_memory.py 300
       - step: settings
         name: verify-settings
         displayName: 多世界观设定包
         script: |
+          set -euo pipefail
           python scripts/verify_settings.py
       - step: docs
         name: verify-docs
         displayName: 文档一致性
         script: |
+          set -euo pipefail
           python scripts/verify_docs.py
       - step: world
         name: verify-world
         displayName: 世界演化与结算耦合
         script: |
+          set -euo pipefail
           python scripts/verify_world.py
       - step: coverage
         name: coverage
         displayName: 覆盖率门禁（核心域 ≥70%）
         script: |
+          set -euo pipefail
           python -m pip install --quiet coverage
           rm -f .coverage
           for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay verify_generic verify_systems; do
@@ -99,21 +133,25 @@ stages:
         name: verify-gameplay
         displayName: 玩法层（剧本/事业线/世界书）
         script: |
+          set -euo pipefail
           python scripts/verify_gameplay.py
       - step: generic
         name: verify-generic
         displayName: 通用游戏层（判定/档案/上下文/存档库）
         script: |
+          set -euo pipefail
           python scripts/verify_generic.py
       - step: systems
         name: verify-systems
         displayName: 体系与模板（七类体系/八套模板）
         script: |
+          set -euo pipefail
           python scripts/verify_systems.py
       - step: smoke
         name: engine-smoke
         displayName: 引擎烟测
         script: |
+          set -euo pipefail
           python engine.py --help > /dev/null
           python init_game.py "$PWD/smoke.json"
           python engine.py world_state --state "$PWD/smoke.json" > /dev/null
@@ -125,34 +163,70 @@ stages:
     steps:
       - step: install
         name: install-mcp
-        displayName: 安装 MCP 依赖
+        displayName: 安装锁定的 MCP 依赖并验证 pyproject extra
         script: |
+          set -euo pipefail
           python -m pip install --upgrade pip
-          python -m pip install -e ".[mcp]"
+          python -m pip install -r requirements-mcp.lock.txt
+          python -m pip install --no-deps -e ".[mcp]"
+          python -m pip check
+      - step: import-check
+        name: assert-mcp-import
+        displayName: 确认 MCP SDK 可导入
+        script: |
+          set -euo pipefail
+          python - <<'PY'
+          import importlib
+          import sys
+
+          try:
+              importlib.import_module("mcp")
+          except ModuleNotFoundError as exc:
+              if exc.name == "mcp" or (exc.name or "").startswith("mcp."):
+                  print("ERROR: mcp 模块不存在", file=sys.stderr)
+              else:
+                  print(f"ERROR: mcp 导入时缺少传递依赖 {exc.name}: {exc}", file=sys.stderr)
+              raise SystemExit(1)
+          except Exception as exc:
+              print(f"ERROR: mcp 导入发生真实环境错误 {type(exc).__name__}: {exc}", file=sys.stderr)
+              raise SystemExit(1)
+          print("mcp SDK 可导入")
+          PY
+      - step: audit-fix
+        name: verify-audit-fix
+        displayName: 审计修复回归
+        script: |
+          set -euo pipefail
+          python scripts/verify_audit_fix.py
       - step: e2e
         name: verify-mcp
         displayName: MCP 端到端自检
         script: |
+          set -euo pipefail
           python scripts/verify_mcp_stdio.py
       - step: injection
         name: verify-injection
         displayName: 提示词注入防护
         script: |
+          set -euo pipefail
           python scripts/verify_injection.py
       - step: mutation
         name: verify-mutation
         displayName: 变异测试
         script: |
+          set -euo pipefail
           python scripts/verify_mutation.py
       - step: playtest
         name: user-playtest
         displayName: 玩家视角试玩
         script: |
+          set -euo pipefail
           python scripts/user_playtest.py
       - step: stress
         name: stress
         displayName: 长局压力测试
         script: |
+          set -euo pipefail
           python scripts/stress_freeplay.py 500
 
   - name: showcase
@@ -162,6 +236,7 @@ stages:
         name: verify-assets
         displayName: 截图/演示存档/展示站齐全
         script: |
+          set -euo pipefail
           python - <<'PY'
           import os, sys, json
           need = ["docs/index.html", "docs/BENCHMARK.md",
@@ -188,17 +263,20 @@ stages:
         name: build-dist
         displayName: 构建 sdist + wheel
         script: |
+          set -euo pipefail
           python -m pip install --upgrade pip build
           python -m build
       - step: verify-wheel
         name: verify-wheel
         displayName: 校验 wheel 资源
         script: |
+          set -euo pipefail
           python scripts/check_wheel.py dist
       - step: install-wheel
         name: install-wheel
         displayName: 从 wheel 安装并跑起来
         script: |
+          set -euo pipefail
           python -m venv "$PWD/.venv-wheel"
           "$PWD/.venv-wheel/bin/python" -m pip install --quiet dist/*.whl
           "$PWD/.venv-wheel/bin/python" -c "import game_engine, os; root = os.path.dirname(game_engine.__file__); assert os.path.exists(os.path.join(root, 'panel.html'))"

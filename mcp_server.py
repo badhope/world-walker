@@ -15,11 +15,13 @@ World Walker rule engine exposed over MCP. The host agent narrates; the engine d
 """
 
 import functools
+import inspect
 import json
 import os
 import random
 import re
 import sys
+import threading
 
 # 引擎内部用 `import game_engine.*`，要求仓库目录名恰好是 game_engine。
 # 这里注册包别名，使任意克隆目录名 / pip 安装方式都能工作。
@@ -75,9 +77,11 @@ from game_engine.rules import questline as quest_rules
 from game_engine.rules.world_evolution import evolve as evolve_world, world_summary
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
 from game_engine import settings_loader
-from game_engine.state_schema import bump, load_state, log_event, save_state, seed_rng
+from game_engine.state_schema import (bump, load_state, log_event, save_state, seed_rng,
+                                      state_lock, transact_state)
 from game_engine.viz_series import record_sample
 from game_engine import sessions as session_store
+from game_engine import input_policy
 
 from pydantic import BaseModel, Field
 
@@ -172,6 +176,94 @@ except ImportError:  # 兼容旧版 SDK 布局
             pass
 
 _raw_tool = server.tool
+_LIFECYCLE_LOCK = threading.RLock()
+_TRANSACTION_LOCAL = threading.local()
+
+_LIFECYCLE_TOOLS = frozenset({
+    "world_init", "world_open", "session_new", "session_switch",
+    "session_import", "session_manage", "restore", "template_start", "load_setting",
+})
+_STATE_TRANSACTION_TOOLS = frozenset({
+    "combat", "trade", "social", "karma", "tick", "narrative", "quest_advance",
+    "lore_lookup", "failure_tick", "add_character", "import_lorebook",
+    "narration_context", "advance", "write_summary", "configure", "travel",
+    "publish_prose", "use_item", "spawn_npc", "roll", "game_profile", "game_adjust",
+    "game_tag", "game_sheet", "context_remember", "context_forget", "system_define",
+    "system_run", "system_remove",
+})
+
+
+def _transaction_context():
+    return getattr(_TRANSACTION_LOCAL, "context", None)
+
+
+def _set_transaction_context(context):
+    if context is None:
+        if hasattr(_TRANSACTION_LOCAL, "context"):
+            del _TRANSACTION_LOCAL.context
+    else:
+        _TRANSACTION_LOCAL.context = context
+
+
+def _should_state_transaction(fn, args, kwargs):
+    name = fn.__name__
+    if name == "game_profile":
+        bound = inspect.signature(fn).bind_partial(*args, **kwargs)
+        return bound.arguments.get("profile") is not None
+    if name == "system_run":
+        bound = inspect.signature(fn).bind_partial(*args, **kwargs)
+        action = str(bound.arguments.get("action", "") or "").strip().lower()
+        return action not in ("status", "list", "")
+    return name in _STATE_TRANSACTION_TOOLS
+
+
+def _bound_tool_path(fn, args, kwargs):
+    bound = inspect.signature(fn).bind_partial(*args, **kwargs)
+    if "state_path" in bound.arguments and bound.arguments["state_path"]:
+        return bound.arguments["state_path"]
+    if "snapshot_path" in bound.arguments and bound.arguments["snapshot_path"]:
+        return _active["path"]
+    return _active["path"]
+
+
+def _record_transaction_sample(path, state):
+    try:
+        input_policy.validate_path(
+            path + ".viz.jsonl", (".jsonl",), must_exist=False,
+            root=os.path.dirname(os.path.abspath(path)))
+        record_sample(path, state)
+    except Exception:  # nosec B110; aqg: top-level boundary —— 观测侧写失败不影响已提交事务
+        pass
+
+
+def _run_state_transaction(fn, args, kwargs):
+    existing = _transaction_context()
+    path = _bound_tool_path(fn, args, kwargs)
+    if not path:
+        return fn(*args, **kwargs)
+    active_path = _active.get("path")
+    path = input_policy.validate_state_path(
+        path, must_exist=False,
+        root=os.path.dirname(os.path.abspath(active_path)) if active_path else None)
+    if existing is not None:
+        if os.path.abspath(existing["path"]) != os.path.abspath(path):
+            raise ValueError("状态事务路径冲突")
+        return fn(*args, **kwargs)
+    result_box = {}
+
+    def edit(state):
+        input_policy.validate_state_data(state)
+        context = {"path": path, "state": state}
+        _set_transaction_context(context)
+        try:
+            result_box["value"] = fn(*args, **kwargs)
+            input_policy.validate_state_data(state)
+        finally:
+            _set_transaction_context(None)
+
+    committed = transact_state(edit, path)
+    _record_transaction_sample(path, committed)
+    return result_box["value"]
 
 
 def _guarded_tool(*dargs, **dkwargs):
@@ -180,13 +272,21 @@ def _guarded_tool(*dargs, **dkwargs):
     def _wrap(fn):
         @functools.wraps(fn)
         def _guarded(*args, **kwargs):
+            transactional = _should_state_transaction(fn, args, kwargs)
+            lock = _LIFECYCLE_LOCK if (fn.__name__ in _LIFECYCLE_TOOLS
+                                       or fn.__name__ in _STATE_TRANSACTION_TOOLS) else None
             try:
-                return fn(*args, **kwargs)
+                if lock is None:
+                    return fn(*args, **kwargs)
+                with lock:
+                    if transactional:
+                        return _run_state_transaction(fn, args, kwargs)
+                    return fn(*args, **kwargs)
             except _ToolError:
                 raise
-            except (ValueError, KeyError) as exc:
+            except (ValueError, KeyError, OSError, UnicodeError, json.JSONDecodeError) as exc:
                 msg = exc.args[0] if (isinstance(exc, KeyError) and exc.args) else str(exc)
-                raise _ToolError(str(msg)) from exc
+                raise _ToolError(input_policy.redact_message(msg)) from exc
         return _decorate(_guarded)
     return _wrap
 
@@ -274,7 +374,8 @@ _CARD_PNG_KEYS = ("chara", "ccv3")
 def _read_png_card(path):
     """从 PNG 的 tEXt/iTXt 块里取嵌卡（base64 JSON）。"""
     import base64, struct
-    data = open(path, "rb").read()
+    checked = input_policy.validate_path(path, (".png",), must_exist=True)
+    data = input_policy.read_bounded_file(checked, "card", extensions=(".png",))
     if data[:8] != b"\x89PNG\r\n\x1a\n":
         return None
     pos = 8
@@ -295,16 +396,16 @@ def _read_png_card(path):
 
 def _load_card(path):
     """读角色卡并返回 data 段（V1 平铺 / V2、V3 的 data 均可）。"""
-    if path.lower().endswith(".png"):
-        raw = _read_png_card(path)
+    checked = input_policy.validate_card_path(path)
+    if checked.lower().endswith(".png"):
+        raw = _read_png_card(checked)
         if raw is None:
-            raise ValueError("PNG 里没有嵌卡（tEXt 关键字 chara/ccv3）: %s" % path)
+            raise ValueError("PNG 里没有可识别角色卡")
     else:
-        raw = json.load(open(path, encoding="utf-8"))
+        raw = input_policy.load_json(checked, "card")
+    input_policy.validate_card_data(raw)
     nested = isinstance(raw, dict) and isinstance(raw.get("data"), dict)
     data = raw["data"] if nested else raw
-    if not isinstance(data, dict) or not data.get("name"):
-        raise ValueError("不是可识别的角色卡（缺 name）: %s" % path)
     spec = (raw.get("spec_version") or raw.get("spec")) if nested else "v1"
     return data, (spec or "unknown")
 
@@ -358,7 +459,8 @@ def _normalize_lore_entry(entry):
 
 def _load_lorebook(path):
     """读世界书文件；支持 ST world-info 与角色卡自带 book。"""
-    d = json.load(open(path, encoding="utf-8"))
+    checked = input_policy.validate_path(path, (".json",), must_exist=True)
+    d = input_policy.load_lore(checked)
     if isinstance(d, dict) and isinstance(d.get("data"), dict):
         d = d["data"]
     entries = None
@@ -398,24 +500,51 @@ def _trigger_lore_state(state, text, entries=None):
 
 
 def _state_path() -> str:
+    context = _transaction_context()
+    if context is not None:
+        return context["path"]
     if not _active["path"]:
         raise ValueError("当前没有进行中的对局：先调用 world_init（新建）或 world_open（续跑）")
     return _active["path"]
 
 
 def _load() -> dict:
-    return load_state(_state_path())
+    context = _transaction_context()
+    if context is not None:
+        return context["state"]
+    path = _state_path()
+    return input_policy.load_state(path, root=os.path.dirname(os.path.abspath(path)))
 
 
 def _finish(state: dict, result: dict) -> dict:
-    """状态落盘（save_state 里顺带归档旧事件），并在返回给 Agent 的结果上标注当前 tick。"""
-    save_state(state, _state_path())
-    try:
-        record_sample(_state_path(), state)   # 长局态势侧写（写 <state>.viz.jsonl，不碰状态文件）
-    except Exception:  # nosec B110; aqg: top-level boundary —— 侧写是观测数据，任何异常都不许影响对局结算
-        pass
+    """状态落盘并在返回给 Agent 的结果上标注当前 tick。"""
+    context = _transaction_context()
+    if context is None:
+        path = _state_path()
+        save_state(state, path)
+        _record_transaction_sample(path, state)
+    else:
+        if state is not context["state"]:
+            raise ValueError("状态事务使用了未绑定的状态对象")
     result["_tick"] = state.get("tick", 0)
     return result
+
+
+def _commit_state_file(path: str, state: dict, root=None) -> str:
+    """在事务内替换整个状态；调用方在成功后才切换 active path。"""
+    target = input_policy.validate_state_path(path, must_exist=False, root=root)
+    input_policy.validate_state_data(state)
+    directory = os.path.dirname(target) or "."
+    os.makedirs(directory, exist_ok=True)
+    payload = json.loads(json.dumps(state, ensure_ascii=False, allow_nan=False))
+
+    def replace(current):
+        current.clear()
+        current.update(payload)
+
+    committed = transact_state(replace, target)
+    _record_transaction_sample(target, committed)
+    return target
 
 
 def _seed_rng(state: dict) -> None:
@@ -682,14 +811,15 @@ def world_init(state_path: str, world: WorldInfo, player: EntityIn,
     }
     # 规范化逻辑与纯标准库路径共用（settings_loader），避免"MCP 建局"与"设定包校验"
     # 两套字段处理悄悄漂移。
+    target = input_policy.validate_state_path(state_path, must_exist=False)
     state = settings_loader.build_state(bundle, seed=int(seed))
     log_event(state, "system", "世界「%s」开局：%s" % (state["world_info"]["name"],
                                                   state["world_info"]["location_desc"] or "旅程开始"))
     _remember(state, "locations", state["entities"]["player"].get("location", ""))
-    _active["path"] = os.path.abspath(state_path)
-    save_state(state, _active["path"])
+    _commit_state_file(target, state, root=os.path.dirname(target))
+    _active["path"] = target
     return {
-        "state_path": _active["path"],
+        "state_path": target,
         "world": state["world_info"]["name"],
         "entities": len(state["entities"]),
         "market_locations": sorted(state["market"]),
@@ -703,12 +833,11 @@ def world_init(state_path: str, world: WorldInfo, player: EntityIn,
 def world_open(state_path: str) -> dict:
     """打开已有状态文件继续对局（Chinese: 断点续跑）。Resume a saved game state."""
 
-    if not os.path.exists(state_path):
-        raise ValueError("状态文件不存在: %s" % state_path)
-    state = load_state(state_path)
-    _active["path"] = os.path.abspath(state_path)
+    target = input_policy.validate_state_path(state_path, must_exist=True)
+    state = input_policy.load_state(target, root=os.path.dirname(target))
+    _active["path"] = target
     return {
-        "state_path": _active["path"],
+        "state_path": target,
         "tick": state.get("tick", 0),
         "world": (state.get("world_info") or {}).get("name", ""),
         "entities": sorted(state.get("entities", {})),
@@ -1337,24 +1466,23 @@ def configure(event_log_keep: int | None = None, recap_budget_chars: int | None 
 
 
 def _apply_bundle_extras(state_path: str, bundle: dict) -> int:
-    """把设定包里"建局之外的字段"写进状态，返回导入的世界书条目数。
+    """把设定包运行时字段在单一状态事务内写入。"""
+    target = input_policy.validate_state_path(state_path, must_exist=True)
+    result_box = {}
 
-    实现**委托**给 `settings_loader.apply_runtime_fields`——这是纯标准库模块，
-    MCP 与零依赖自检共用同一套字段处理。此前这里有一份独立实现，
-    结果 `load_setting` 认的字段（currency/terms/level_tiers/places/lore）
-    与 `build_state` 认的字段（playbook/questlines）不是同一批，
-    设定包里的玩法剧本与事业线会在载入时被静默丢掉。
-    """
-    import importlib
-    loader = importlib.import_module("game_engine.settings_loader")
-    state = load_state(state_path)
-    lore_n = loader.apply_runtime_fields(state, bundle)
-    save_state(state, state_path)
-    try:
-        record_sample(state_path, state)
-    except Exception:  # nosec B110; aqg: top-level boundary —— 侧写失败不影响载入
-        pass
-    return lore_n
+    def edit(state):
+        input_policy.validate_state_data(state)
+        context = {"path": target, "state": state}
+        _set_transaction_context(context)
+        try:
+            result_box["lore"] = settings_loader.apply_runtime_fields(state, bundle)
+            input_policy.validate_state_data(state)
+        finally:
+            _set_transaction_context(None)
+
+    committed = transact_state(edit, target)
+    _record_transaction_sample(target, committed)
+    return result_box["lore"]
 
 
 @server.tool()
@@ -1362,33 +1490,29 @@ def load_setting(path: str, state_path: str = "", seed: int | None = None) -> di
     """从「设定包」一键开一局（Chinese: 包里含 world/player/entities/market/relations/lore，
     示例见 settings/ 目录，格式见 settings/README.md）。
     Boot a full game from a setting bundle in one call."""
-    # 安装后的 wheel 里，设定包在包目录下（与 mcp_server.py 同级），
-    # 而 README 的示例是相对仓库根的 "settings/xxx.setting.json"。
-    # 原路径不存在时回退到包内同名路径，并保留原始报错信息便于排查。
-    raw_path = path
-    if not os.path.exists(path) and not os.path.isabs(path):
-        bundled = os.path.join(_SCRIPT_DIR, path)
-        if os.path.exists(bundled):
-            path = bundled
-    try:
-        with open(path, encoding="utf-8") as f:
-            bundle = json.load(f)
-    except OSError as exc:
-        raise ValueError("设定包不存在或不可读: %s（也尝试了包内路径）" % raw_path) from exc
-    if not isinstance(bundle, dict) or "world" not in bundle or "player" not in bundle:
-        raise ValueError("不是合法的设定包（缺 world/player）: %s" % raw_path)
+    resolved = input_policy.validate_setting_path(path, package_root=_SCRIPT_DIR)
+    bundle = input_policy.load_setting(resolved, package_root=_SCRIPT_DIR)
     sp = state_path or bundle.get("state_path_hint") or "ww_state.json"
-    res = world_init(state_path=sp,
-                     world=WorldInfo(**bundle["world"]),
-                     player=EntityIn(**bundle["player"]),
-                     entities=[EntityIn(**e) for e in bundle.get("entities", [])],
-                     market=[MarketIn(**m) for m in bundle.get("market", [])],
-                     relations=[RelationIn(**r) for r in bundle.get("relations", [])],
-                     world_flags=list(bundle.get("world_flags", [])),
-                     ui=dict(bundle.get("ui") or {}),
-                     seed=int(seed if seed is not None else bundle.get("seed", 20261014)))
-    lore_n = _apply_bundle_extras(sp, bundle)
-    return {**res, "setting": bundle.get("name", ""), "lore_entries": lore_n,
+    target = input_policy.validate_state_path(sp, must_exist=False)
+    game_seed = int(seed if seed is not None else bundle.get("seed", 20261014))
+    state = settings_loader.build_state(bundle, seed=game_seed)
+    settings_loader.apply_runtime_fields(state, bundle)
+    log_event(state, "system", "世界「%s」开局：%s" % (
+        state["world_info"]["name"], state["world_info"].get("location_desc") or "旅程开始"))
+    _remember(state, "locations", state["entities"]["player"].get("location", ""))
+    _commit_state_file(target, state, root=os.path.dirname(target))
+    _active["path"] = target
+    result = {
+        "state_path": target,
+        "world": state["world_info"]["name"],
+        "entities": len(state["entities"]),
+        "market_locations": sorted(state["market"]),
+        "relations": len(state["relations"]),
+        "seed": game_seed,
+        "message": "世界已创建。玩家所在位置: %s" % state["entities"]["player"].get("location", ""),
+    }
+    return {**result, "setting": bundle.get("name", ""),
+            "lore_entries": len(bundle.get("lore") or []),
             "player_level": (bundle.get("player") or {}).get("level", ""),
             "hint": "开局前可先 open_panel 把实况主舞台给玩家；行动用 combat/trade/social/karma 结算，移动用 travel。"}
 
@@ -1631,35 +1755,51 @@ def snapshot(label: str = "") -> dict:
     # （实测 4 层 .. 落到仓库外）。与存档库同一套清洗规则。
     tag = session_store.safe_name(label)[:24] if label else ""
     suffix = (".%s" % tag) if tag else (".%d" % int(time.time()))
-    dst = src + ".snap" + suffix
-    shutil.copyfile(src, dst)
-    return {"snapshot": dst, "tick": load_state(src).get("tick", 0)}
+    dst = input_policy.validate_snapshot_path(
+        src + ".snap" + suffix, root=os.path.dirname(src), state_path=src,
+        must_exist=False)
+    with state_lock(src):
+        shutil.copyfile(src, dst)
+        tick = input_policy.load_state(src, root=os.path.dirname(src)).get("tick", 0)
+    return {"snapshot": dst, "tick": tick}
 
 
 @server.tool()
 def restore(snapshot_path: str) -> dict:
     """从快照恢复状态（Chinese: 回退到某个存档点）。Restore state from a snapshot."""
-    if not os.path.exists(snapshot_path):
-        raise ValueError("快照不存在: %s" % snapshot_path)
-    state = load_state(snapshot_path)
-    # 回退到一个分叉点：后续归档写进新世代文件，不覆盖也不删除既有归档。
-    # 同时把 archived_events 校正为"所有世代归档文件的实际行数之和"——
-    # 归档是只增不减的总账，回退分支不该让它变小。
-    current = _load()
-    gen = max(int(state.get("archive_generation", 0) or 0),
-              int(current.get("archive_generation", 0) or 0)) + 1
-    state["archive_generation"] = gen
-    total = 0
-    for af in _all_archive_files():
-        try:
-            total += sum(1 for _ in open(af, encoding="utf-8"))
-        except OSError:
-            pass
-    state["archived_events"] = max(int(state.get("archived_events", 0) or 0), total)
-    save_state(state, _state_path())
-    return {"restored": snapshot_path, "tick": state.get("tick", 0),
-            "entities": sorted(state.get("entities", {})),
-            "archive_generation": state["archive_generation"]}
+    target = input_policy.validate_state_path(
+        _state_path(), must_exist=True, root=os.path.dirname(_state_path()))
+    try:
+        snapshot = input_policy.load_snapshot(
+            snapshot_path, root=os.path.dirname(target), state_path=target)
+    except input_policy.PolicyError as exc:
+        raise ValueError("快照不存在或不符合当前状态") from exc
+    result_box = {}
+
+    def edit(current):
+        input_policy.validate_state_data(current)
+        restored = json.loads(json.dumps(snapshot, ensure_ascii=False, allow_nan=False))
+        gen = max(int(restored.get("archive_generation", 0) or 0),
+                  int(current.get("archive_generation", 0) or 0)) + 1
+        restored["archive_generation"] = gen
+        total = 0
+        for archive in _all_archive_files():
+            try:
+                with open(archive, encoding="utf-8") as handle:
+                    total += sum(1 for _ in handle)
+            except OSError:
+                pass
+        restored["archived_events"] = max(int(restored.get("archived_events", 0) or 0), total)
+        current.clear()
+        current.update(restored)
+        result_box["value"] = {"restored": input_policy.redact_message(snapshot_path),
+                                "tick": restored.get("tick", 0),
+                                "entities": sorted(restored.get("entities", {})),
+                                "archive_generation": restored["archive_generation"]}
+
+    committed = transact_state(edit, target)
+    _record_transaction_sample(target, committed)
+    return result_box["value"]
 
 
 # ══════════════════════════ 通用游戏层（任何游戏都能用）══════════════════════════
@@ -1817,11 +1957,18 @@ def context_pack(scene_text: str = "", recent: int = 8, budget_chars: int = 0) -
 
 def _saves_root() -> str:
     """存档库根目录：当前对局所在目录的 saves/；没有对局时用工作目录。"""
+    configured = os.environ.get("WORLD_GAMES_SAVES", "").strip()
+    if configured:
+        return input_policy.validate_root(configured)
     try:
         base = os.path.dirname(_state_path())
     except ValueError:
         base = os.getcwd()
-    return session_store.saves_root(base)
+    if os.path.basename(os.path.normpath(base)).lower() == "saves":
+        candidate = base
+    else:
+        candidate = session_store.saves_root(base)
+    return input_policy.validate_root(candidate)
 
 
 @server.tool()
@@ -1848,27 +1995,29 @@ def session_new(name: str, setting_path: str = "", seed: int | None = None,
     返回存档路径并把这一局设为当前对局。
     Create a new saved game from a setting bundle or an explicit initial state."""
 
+    safe = session_store.safe_name(name)
     root = _saves_root()
-    path = session_store.save_path(root, name, create_dir=True)
+    path = session_store.save_path(root, safe, create_dir=False)
     if os.path.exists(path):
-        raise ValueError("同名存档已存在: %s（换一个局名，或先 session_manage(action='archive')）" % name)
+        raise ValueError("同名存档已存在（换一个局名，或先 session_manage(action='archive')）")
     if state is not None:
-        if not isinstance(state, dict) or "entities" not in state:
-            raise ValueError("state 必须是含 entities 的状态对象")
-        built = state
+        input_policy.validate_state_data(state)
+        built = json.loads(json.dumps(state, ensure_ascii=False, allow_nan=False))
     elif setting_path:
-        with open(setting_path, encoding="utf-8") as f:
-            bundle = json.load(f)
-        if not isinstance(bundle, dict) or "world" not in bundle or "player" not in bundle:
-            raise ValueError("不是合法的设定包（缺 world/player）: %s" % setting_path)
+        bundle = input_policy.load_setting(setting_path, package_root=_SCRIPT_DIR)
         built = settings_loader.build_state(bundle, seed=seed)
         settings_loader.apply_runtime_fields(built, bundle)
     else:
         raise ValueError("session_new 需要 setting_path 或 state 之一")
-    log_event(built, "system", "新局「%s」创建" % name)
-    _active["path"] = os.path.abspath(path)
-    save_state(built, _active["path"])
-    return {"state_path": _active["path"], "name": session_store.safe_name(name),
+    input_policy.validate_state_data(built)
+    log_event(built, "system", "新局「%s」创建" % safe)
+    target = input_policy.validate_state_path(path, must_exist=False, root=root)
+    with state_lock(target):
+        if os.path.lexists(target):
+            raise ValueError("同名存档已存在（换一个局名，或先 session_manage(action='archive')）")
+        _commit_state_file(target, built, root=root)
+    _active["path"] = target
+    return {"state_path": target, "name": safe,
             "world": (built.get("world_info") or {}).get("name", ""),
             "tick": built.get("tick", 0), "root": root,
             "hint": "之后所有工具都作用在这一局；session_switch 可切换。"}
@@ -1880,12 +2029,12 @@ def session_switch(name: str) -> dict:
     Switch the active game by save name."""
 
     root = _saves_root()
-    path = session_store.save_path(root, name)
-    if not os.path.exists(path):
-        raise ValueError("存档不存在: %s（可用 session_list 查看）" % name)
-    state = load_state(path)
-    _active["path"] = os.path.abspath(path)
-    return {"state_path": _active["path"], "name": session_store.safe_name(name),
+    safe = session_store.safe_name(name)
+    path = input_policy.validate_state_path(
+        session_store.save_path(root, safe), must_exist=True, root=root)
+    state = input_policy.load_state(path, root=root)
+    _active["path"] = path
+    return {"state_path": path, "name": safe,
             "tick": state.get("tick", 0),
             "world": (state.get("world_info") or {}).get("name", ""),
             "entities": sorted(state.get("entities", {}))}
@@ -1936,19 +2085,19 @@ def session_import(path: str, name: str = "", overwrite: bool = False) -> dict:
     默认不覆盖同名存档；导入后设为当前对局。
     Import an existing state JSON into the save library."""
 
-    if not os.path.exists(path):
-        raise ValueError("状态文件不存在: %s" % path)
-    state = load_state(path)
-    if not isinstance(state, dict) or "entities" not in state:
-        raise ValueError("不是合法的状态文件: %s" % path)
+    source = input_policy.validate_state_path(path, must_exist=True)
+    state = input_policy.load_state(source)
     root = _saves_root()
-    target_name = name or os.path.basename(path).split(".")[0]
-    dst = session_store.save_path(root, target_name, create_dir=True)
-    if os.path.exists(dst) and not overwrite:
-        raise ValueError("同名存档已存在: %s（overwrite=True 才覆盖）" % target_name)
-    save_state(state, dst)
-    _active["path"] = os.path.abspath(dst)
-    return {"state_path": _active["path"], "name": session_store.safe_name(target_name),
+    target_name = name or os.path.basename(source).split(".")[0]
+    safe = session_store.safe_name(target_name)
+    dst = session_store.save_path(root, safe, create_dir=False)
+    target = input_policy.validate_state_path(dst, must_exist=False, root=root)
+    with state_lock(target):
+        if os.path.exists(target) and not overwrite:
+            raise ValueError("同名存档已存在（overwrite=True 才覆盖）")
+        _commit_state_file(target, state, root=root)
+    _active["path"] = target
+    return {"state_path": target, "name": safe,
             "tick": state.get("tick", 0), "root": root}
 
 
@@ -1992,6 +2141,7 @@ def system_run(system_id: str, action: str = "status", params: dict | None = Non
     custom: list/<动作名>。params 是对象。
     Run one subsystem action. Each kind supports its own action set."""
 
+    action = str(action or "").strip().lower()
     state = _load()
     if action not in ("status", "list", ""):
         _seed_rng(state)
@@ -2122,16 +2272,18 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
     problems = tpl.validate(tpl.get(template))
     if problems:
         raise ValueError("模板 %s 结构不完整: %s" % (template, "; ".join(problems[:4])))
-    path = state_path or (session_store.save_path(
-        session_store.saves_root(os.path.dirname(os.path.abspath(_active.get("path") or os.getcwd()))),
-        name or bundle["name"], create_dir=True))
+    save_root = session_store.saves_root(
+        os.path.dirname(os.path.abspath(_active.get("path") or os.getcwd())))
+    path = state_path or session_store.save_path(save_root, name or bundle["name"], create_dir=False)
+    target = input_policy.validate_state_path(
+        path, must_exist=False, root=(None if state_path else save_root))
     state = settings_loader.build_state(bundle)
     settings_loader.apply_runtime_fields(state, bundle)
     log_event(state, "system", "模板「%s」开局：%s" % (template, bundle["name"]))
-    _active["path"] = os.path.abspath(path)
-    save_state(state, _active["path"])
+    _commit_state_file(target, state, root=os.path.dirname(target))
+    _active["path"] = target
     return {
-        "state_path": _active["path"],
+        "state_path": target,
         "template": template,
         "name": bundle["name"],
         "world": state["world_info"]["name"],

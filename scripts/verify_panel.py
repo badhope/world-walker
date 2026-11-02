@@ -277,6 +277,12 @@ def main():
         check("/panel.css 正确 MIME", st_css == 200 and "text/css" in ct_css, "status=%s" % st_css)
         st_js, ct_js, _ = http_get(base + "/panel.js")
         check("/panel.js 正确 MIME", st_js == 200 and "javascript" in ct_js, "status=%s" % st_js)
+        st_i18n, ct_i18n, body_i18n = http_get(base + "/panel.i18n.js")
+        check("/panel.i18n.js 正确 MIME 且含翻译入口",
+              st_i18n == 200 and "javascript" in ct_i18n
+              and b"translateDom" in body_i18n, "status=%s" % st_i18n)
+        check("页面加载翻译层且提供中英切换",
+              b"panel.i18n.js" in body and b'data-set-panel-lang="zh"' in body)
         for bad in ("/panel.py", "/state.json", "/../rich.save.json", "/%2e%2e/rich.save.json",
                     "/..%2frich.save.json"):
             st_bad, _, bad_body = http_get(base + bad)

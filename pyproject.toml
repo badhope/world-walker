@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "world-walker"
-version = "1.5.0"
+version = "1.5.1"
 description = "World Games — 标准库游戏规则核心、可选 MCP 服务器与支持行动队列的状态展示面板"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,6 +39,7 @@ game_engine = [
   "panel.html",
   "panel.css",
   "panel.js",
+  "panel.i18n.js",
   "assets/*.js",
   "settings/*.json",
   "settings/*.md",

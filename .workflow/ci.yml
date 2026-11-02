@@ -116,6 +116,12 @@ stages:
         script: |
           set -euo pipefail
           python scripts/metrics.py --check
+      - step: i18n
+        name: verify-i18n
+        displayName: 面板国际化（键唯一/模板无歧义/双语接线）
+        script: |
+          set -euo pipefail
+          python scripts/verify_i18n.py
       - step: docs
         name: verify-docs
         displayName: 文档一致性

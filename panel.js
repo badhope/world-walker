@@ -173,7 +173,13 @@
     setText($("ploc"), p.location || "—");
     setText($("phpn"), fmtNum(p.hp) + "/" + fmtNum(p.hp_max));
     setText($("pmpn"), fmtNum(p.mp) + "/" + fmtNum(p.mp_max));
-    setText($("pgold"), (terms.gold || "钱财") + " " + fmtNum(p.gold) + " " + (p.currency || ""));
+    // 货币单位优先用设定包的 currency；terms.gold 只是"钱财"这类泛称，
+    // 两者同名时不再重复输出（曾出现「玄晶 19 玄晶」）。
+    const goldWord = terms.gold || "钱财";
+    const currency = (p.currency || "").trim();
+    setText($("pgold"), currency && currency !== goldWord
+      ? goldWord + " " + fmtNum(p.gold) + " " + currency
+      : goldWord + " " + fmtNum(p.gold));
 
     const hpBar = $("phpbar");
     const hpLow = p.hp_max > 0 && p.hp / p.hp_max < 0.3;
@@ -1171,8 +1177,11 @@
     const fresh = diffEvents(panelState.vm, vm);
     panelState.vm = vm;
     render(vm);
+    // 渲染完再翻译：i18n 是表现层职责，24 个 render 函数不感知语言。
+    if (window.PanelI18n) window.PanelI18n.translateDom(document.getElementById("toasts") || document.body);
     (vm.events || []).forEach((e) => panelState.shownEvents.add(e.id));
     if (panelState.primed) dispatchFeedback(fresh);
+    if (window.PanelI18n) window.PanelI18n.translateDom(document.body);
     panelState.primed = true;
   }
 
@@ -2180,9 +2189,25 @@
     helpReturn = null;
   }
 
+  /* ── 语言切换：面板主界面与 README 一样支持中英，英文为默认 ── */
+  function wireLanguage() {
+    const i18n = window.PanelI18n;
+    if (!i18n) return;
+    i18n.setLang(i18n.detect());
+    document.querySelectorAll("[data-set-panel-lang]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        i18n.setLang(btn.getAttribute("data-set-panel-lang"));
+        // 切换语言后重新渲染一次，让动态文案（回合数、空态、抽屉）也跟上
+        if (panelState.vm) render(panelState.vm);
+        if (window.PanelI18n) window.PanelI18n.translateDom(document.body);
+      });
+    });
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
+    document.addEventListener("DOMContentLoaded", () => { wireLanguage(); boot(); });
   } else {
+    wireLanguage();
     boot();
   }
 })();

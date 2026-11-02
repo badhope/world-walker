@@ -174,8 +174,8 @@ def main():
     check('D7 site screenshots and video exist', not page_missing, str(page_missing[:3]))
 
     # ── D7b bilingual assertion tables agree ────────────────────────────────
-    primary_claims = re.findall(r'`verify_[a-z_]+\.py` \| (\d+)', primary)
-    secondary_claims = re.findall(r'`verify_[a-z_]+\.py` \| (\d+)', secondary)
+    primary_claims = re.findall(r'`verify_[a-z_0-9]+\.py` \| (\d+)', primary)
+    secondary_claims = re.findall(r'`verify_[a-z_0-9]+\.py` \| (\d+)', secondary)
     check('D7b both READMEs publish identical assertion counts',
           primary_claims == secondary_claims,
           'en=%s zh=%s' % (primary_claims[:4], secondary_claims[:4]))

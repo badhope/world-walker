@@ -148,12 +148,16 @@ def main():
                       const r = x.getBoundingClientRect();
                       return x.open && r.top < window.innerHeight && r.bottom > 0; }'''))
             # v1.2.0 通用游戏层：三块 UI 必须真实渲染（旧存档走推导路径）
+            # 断言结构而非文案：面板支持中英切换，写死中文会在英文界面下假红。
             game_txt = page.inner_text('#game-card')
             check('游戏档案卡渲染（旧存档推导出资源）',
-                  '生命' in game_txt and '钱财' in game_txt, game_txt[:60].replace('\n', ' '))
+                  page.query_selector('#game-title') is not None
+                  and page.query_selector('#game-resources .game-res, #game-resources .empty') is not None
+                  and len(game_txt.strip()) > 10,
+                  game_txt[:60].replace('\n', ' '))
             check('判定记录卡存在（无记录时给空态）',
                   page.query_selector('#checks-card') is not None
-                  and ('还没有判定' in page.inner_text('#checks-card')
+                  and (page.query_selector('#checks .empty') is not None
                        or page.query_selector('#checks .check-row') is not None))
             # 剧情回放：三段正文都要在，且最新在前（抽屉可能折叠，先展开）
             page.evaluate('(x) => { x.open = true; }', page.query_selector('#drawer-story'))

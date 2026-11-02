@@ -76,6 +76,7 @@ step "长局内存稳定性（三段对照，查泄漏）" "$PY" scripts/verify_
 step "世界演化与结算耦合（自演化/相位/心流/道德/术语/正文/台账）" "$PY" scripts/verify_world.py
 step "多世界观设定包（四种世界各跑一遍载入与演化）" "$PY" scripts/verify_settings.py
 step "数字信源（docs/metrics.json 必须与源码实测一致）" "$PY" scripts/metrics.py --check
+step "面板国际化（键唯一/模板无歧义/双语接线）" "$PY" scripts/verify_i18n.py
 step "文档一致性（版本/工具数/截图引用/演示存档/CHANGELOG）" "$PY" scripts/verify_docs.py
 step "玩法层（剧本/事业线/世界书语义）" "$PY" scripts/verify_gameplay.py
 step "通用游戏层（判定/档案/上下文/存档库）" "$PY" scripts/verify_generic.py

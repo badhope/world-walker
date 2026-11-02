@@ -1016,6 +1016,7 @@ STATIC_WHITELIST = {
     "/panel.html": ("panel.html", "text/html; charset=utf-8"),
     "/panel.css": ("panel.css", "text/css; charset=utf-8"),
     "/panel.js": ("panel.js", "text/javascript; charset=utf-8"),
+    "/panel.i18n.js": ("panel.i18n.js", "text/javascript; charset=utf-8"),
     "/assets/echarts.min.js": (os.path.join("assets", "echarts.min.js"),
                                "text/javascript; charset=utf-8"),
 }

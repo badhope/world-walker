@@ -21,6 +21,7 @@ REQUIRED = [
     'panel.html',
     'panel.css',
     'panel.js',
+    'panel.i18n.js',
     'assets/echarts.min.js',
     'settings/玄枢界.setting.json',
     'settings/折剑行.setting.json',

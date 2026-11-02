@@ -38,6 +38,10 @@
   <button class="tbtn" id="export-btn" type="button" title="下载当前对局状态 JSON（只读导出）">导出</button>
   <button class="tbtn" id="motion" type="button" aria-pressed="false"
           title="暂停/恢复界面动效">动效：开</button>
+  <span class="langswitch" role="group" aria-label="Language / 语言">
+    <button type="button" class="tbtn" data-set-panel-lang="en" aria-pressed="true">EN</button>
+    <button type="button" class="tbtn" data-set-panel-lang="zh" aria-pressed="false">中文</button>
+  </span>
 </header>
 
 <div class="guide" id="guide" hidden>
@@ -406,6 +410,7 @@
 </dialog>
 
 <script src="/assets/echarts.min.js"></script>
+<script src="/panel.i18n.js"></script>
 <script src="/panel.js"></script>
 </body>
 </html>

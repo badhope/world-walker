@@ -1,6 +1,6 @@
 # World Games
 
-**v1.5.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [Gameplay](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
+**v1.5.1** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [Gameplay](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
 
 > **The AI narrates. The engine decides.**
 
@@ -35,7 +35,8 @@ Two more things most frameworks skip:
 - **The world moves on its own.** Every `tick` advances factions (logistic growth + Lotka–Volterra pressure),
   rumors (SIR), culture (Deffuant), roaming NPCs and a Panarchy `r → K → Ω → α` cycle driven by real stock.
   Do not call `tick` and the world stands still — that is intentional, not a bug.
-- **The panel is read-only.** A local web stage renders the real state. It never writes.
+- **The panel is read-only, and bilingual.** A local web stage renders the real state in
+  English by default, with a one-click Chinese switch. It never writes.
   Players can queue actions to a sidecar file; the host drains them with `pending_actions` and settles normally.
   One writer, one truth.
 
@@ -332,6 +333,7 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | — | version single source, tool count, assertion counts, asset references |
+| `verify_i18n.py` | 12 | panel dictionary: unique keys, unambiguous templates, no CJK in output, bilingual wiring |
 | `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
 | `verify_generic.py` | 87 | generic checks, game profile, context ledger, save library, brand |
 | `verify_systems.py` | 161 | seven subsystem kinds, eight templates, counters, panel contract |
@@ -377,7 +379,7 @@ world-walker/                  # repo root IS the game_engine package
 │   ├── models.py              # 16 named closed-form models
 │   └── social_extended.py cultural_evolution.py systems_feedback.py
 ├── settings/                  # 4 ready-to-play bundles
-├── scripts/                   # 17 self-checks + mutation testing + screenshot/video/demo pipeline
+├── scripts/                   # 18 self-checks + mutation testing + screenshot/video/demo pipeline
 ├── docs/demo/                 # real demo saves (the data behind the screenshots)
 ├── docs/screenshots/          # asserted renders
 └── assets/echarts.min.js      # offline chart library (Apache-2.0, shipped with the package)

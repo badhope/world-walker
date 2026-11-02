@@ -192,6 +192,15 @@ dialog.helpdlg button.primary { background: var(--accent-dim); border-color: var
   transition: background var(--speed), border-color var(--speed);
 }
 .tbtn:hover { background: var(--line); border-color: var(--accent-dim); }
+
+/* 语言切换：与顶栏其它按钮同高，选中态用主色描边，不做成下拉避免多一次点击 */
+.langswitch { display: inline-flex; gap: 0; }
+.langswitch .tbtn { border-radius: 0; padding: 5px 9px; min-width: 0; }
+.langswitch .tbtn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.langswitch .tbtn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: 0; }
+.langswitch .tbtn[aria-pressed="true"] {
+  background: var(--accent-dim); border-color: var(--accent); color: #fff; font-weight: 600;
+}
 .tbtn:focus-visible, .drawer-btn:focus-visible, dialog button:focus-visible, .chip:focus-visible {
   outline: var(--focus); outline-offset: 2px;
 }

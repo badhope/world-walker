@@ -1,6 +1,6 @@
 # World Games
 
-**v1.5.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**v1.5.1** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
 > **AI 负责叙述，引擎负责结算。**
 
@@ -34,7 +34,7 @@ World Games 是 AI 互动游戏的规则层。你的 Agent 负责写文字，确
 - **世界自己会动。** 每次 `tick` 推进势力（logistic 增长 + Lotka–Volterra 压制）、
   谣言（SIR）、风气（Deffuant）、游荡 NPC，以及由真实存量驱动的 Panarchy `r → K → Ω → α` 循环。
   不调用 `tick`，世界就静止——这是设计，不是缺陷。
-- **面板严格只读。** 本地网页主舞台渲染真实状态，从不写入。玩家可以把行动排进侧写文件，
+- **面板严格只读，且双语。** 本地网页主舞台渲染真实状态，默认英文，一键切中文，从不写入。玩家可以把行动排进侧写文件，
   宿主用 `pending_actions` 取走后照常结算。只有一个写入源，才谈得上确定性。
 
 ---
@@ -328,6 +328,7 @@ SillyTavern 角色卡（PNG/JSON，V1–V3）与世界书。
 | `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
 | `verify_docs.py` | — | 版本单一信源 / 工具数 / 断言计数 / 素材引用 |
+| `verify_i18n.py` | 12 | 面板词典：键唯一 / 模板无歧义 / 输出无中文 / 双语接线 |
 | `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_generic.py` | 87 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
 | `verify_systems.py` | 161 | 七类体系 / 八套模板 / 计数器 / 面板契约 |
@@ -373,7 +374,7 @@ world-walker/                  # 仓库根即 game_engine 包
 │   ├── models.py              # 16 个命名闭式模型
 │   └── social_extended.py cultural_evolution.py systems_feedback.py
 ├── settings/                  # 4 套可直接开玩的设定包
-├── scripts/                   # 17 个自检 + 变异测试 + 截图/视频/演示存档流水线
+├── scripts/                   # 18 个自检 + 变异测试 + 截图/视频/演示存档流水线
 ├── docs/demo/                 # 真实演示存档（截图背后的数据）
 ├── docs/screenshots/          # 逐项断言后的真实渲染
 └── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）

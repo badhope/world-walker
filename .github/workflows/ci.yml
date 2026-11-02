@@ -93,6 +93,9 @@ jobs:
       - name: 数字信源（docs/metrics.json 必须与源码实测一致）
         run: python scripts/metrics.py --check
 
+      - name: 面板国际化（键唯一/模板无歧义/双语接线）
+        run: python scripts/verify_i18n.py
+
       - name: 文档一致性
         run: python scripts/verify_docs.py
 

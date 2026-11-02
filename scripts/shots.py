@@ -64,6 +64,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="")
     ap.add_argument("--no-video", action="store_true")
+    ap.add_argument("--lang", default="en", choices=("en", "zh"),
+                    help="panel language for the captured screenshots (default en)")
+    ap.add_argument("--suffix", default="", help="filename suffix, e.g. '-zh'")
     args = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
 
@@ -101,6 +104,9 @@ def main():
                                       device_scale_factor=1,
                                       record_video_dir=video_dir if (world == "玄枢界" and not args.no_video) else None,
                                       record_video_size={"width": 1280, "height": 800})
+            # 语言在首次导航前写进 localStorage，页面加载即用该语言渲染，
+            # 避免"先中文再切英文"导致首屏闪烁被截进图里。
+            ctx.add_init_script("try { localStorage.setItem('wg-panel-lang', %r); } catch (e) {}" % args.lang)
             page = ctx.new_page()
             page.on("console", lambda m: CONSOLE_ERRORS.append(m.text) if m.type == "error" else None)
             page.on("requestfailed", lambda r: FAILED.append(r.url))
@@ -113,7 +119,7 @@ def main():
                     guide = page.query_selector("#guide")
                     if guide and page.evaluate("() => { const g = document.getElementById('guide');"
                                                " return !!g && !g.hidden; }"):
-                        page.screenshot(path=os.path.join(OUT, "first-visit.png"), full_page=False)
+                        page.screenshot(path=os.path.join(OUT, "first-visit%s.png" % args.suffix), full_page=False)
                 if page.query_selector("#guide-close"):
                     try:
                         page.click("#guide-close")
@@ -133,7 +139,7 @@ def main():
                       page.evaluate("() => { const e = document.getElementById('pulse-phase');"
                                     " return !!e && e.getBoundingClientRect().height > 10; }"),
                       str((vm0.get("world_state") or {}).get("phase")))
-                page.screenshot(path=os.path.join(OUT, "stage-%s.png" % skin), full_page=False)
+                page.screenshot(path=os.path.join(OUT, "stage-%s%s.png" % (skin, args.suffix)), full_page=False)
 
                 # 图表真的画出来了（不是空容器）
                 canv = page.evaluate("() => Array.from(document.querySelectorAll('canvas'))"
@@ -152,7 +158,7 @@ def main():
                         " return d.open && r.height > 40 && r.top < innerHeight && r.bottom > 0; }", did)
                     check("%s 抽屉可展开且在视口内：%s" % (world, tag), visible, did)
                     if world == "玄枢界":
-                        page.screenshot(path=os.path.join(OUT, "drawer-%s.png" % tag), full_page=False)
+                        page.screenshot(path=os.path.join(OUT, "drawer-%s%s.png" % (tag, args.suffix)), full_page=False)
                     page.evaluate("(id) => { document.getElementById(id).open = false; }", did)
 
                 # 帮助弹窗
@@ -162,7 +168,7 @@ def main():
                       page.evaluate("() => { const d = document.getElementById('helpdlg');"
                                     " return !!d && d.open; }"))
                 if world == "玄枢界":
-                    page.screenshot(path=os.path.join(OUT, "help.png"), full_page=False)
+                    page.screenshot(path=os.path.join(OUT, "help%s.png" % args.suffix), full_page=False)
                 page.keyboard.press("Escape")
                 page.wait_for_timeout(250)
 
@@ -173,7 +179,7 @@ def main():
                       page.evaluate("() => { const d = document.getElementById('palette');"
                                     " return !!d && d.open; }"))
                 if world == "玄枢界":
-                    page.screenshot(path=os.path.join(OUT, "command-palette.png"), full_page=False)
+                    page.screenshot(path=os.path.join(OUT, "command-palette%s.png" % args.suffix), full_page=False)
                 page.keyboard.press("Escape")
                 page.wait_for_timeout(250)
 
@@ -195,7 +201,7 @@ def main():
                           page.evaluate("() => { const d = document.getElementById('carddlg');"
                                         " return !!d && d.open && d.innerText.length > 20; }"))
                     if world == "玄枢界":
-                        page.screenshot(path=os.path.join(OUT, "character-card.png"), full_page=False)
+                        page.screenshot(path=os.path.join(OUT, "character-card%s.png" % args.suffix), full_page=False)
                     page.keyboard.press("Escape")
                     page.wait_for_timeout(250)
                 else:
@@ -211,7 +217,7 @@ def main():
                       page.inner_text("#inbox-status")[:40])
                 check("%s 排队不写状态文件" % world, os.path.getsize(state_path) == before)
                 if world == "玄枢界":
-                    page.screenshot(path=os.path.join(OUT, "action-queue.png"), full_page=False)
+                    page.screenshot(path=os.path.join(OUT, "action-queue%s.png" % args.suffix), full_page=False)
 
                 # 分享模式
                 page.click("#share-btn")
@@ -221,7 +227,7 @@ def main():
                     "() => getComputedStyle(document.getElementById('composer')).display === 'none'")
                 check("%s 分享模式隐藏操作区" % world, share_ok and composer_hidden)
                 if world == "玄枢界":
-                    page.screenshot(path=os.path.join(OUT, "share-mode.png"), full_page=False)
+                    page.screenshot(path=os.path.join(OUT, "share-mode%s.png" % args.suffix), full_page=False)
                 page.click("#share-btn")
                 page.wait_for_timeout(200)
 
@@ -233,7 +239,7 @@ def main():
                                        " - document.documentElement.clientWidth")
                     check("%s 无横向溢出 @%d" % (world, w), ov <= 1, "overflow=%s" % ov)
                     if world == "玄枢界":
-                        page.screenshot(path=os.path.join(OUT, "stage-%s.png" % tag), full_page=False)
+                        page.screenshot(path=os.path.join(OUT, "stage-%s%s.png" % (tag, args.suffix)), full_page=False)
                 page.set_viewport_size({"width": 1500, "height": 950})
                 page.wait_for_timeout(300)
 

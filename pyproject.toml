@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "world-walker"
 version = "1.4.0"
-description = "World Games — 通用 AI 互动游戏框架（任意题材的规则内核 + 上下文管理 + MCP 服务器 + 只读主舞台）"
+description = "World Games — 标准库游戏规则核心、可选 MCP 服务器与支持行动队列的状态展示面板"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

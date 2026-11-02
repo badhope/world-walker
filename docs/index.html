@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>万界·行者 World Walker — AI 负责叙述，引擎负责世界</title>
+<title>World Games — AI 负责叙述，引擎负责规则结算</title>
 <meta name="description" content="世界观无关的 AI 文字互动游戏内核：确定性规则结算 + 64 个 MCP 工具 + 只读实况主舞台。四套可直接开玩的设定包。" />
-<meta property="og:title" content="万界·行者 World Walker" />
+<meta property="og:title" content="World Games" />
 <meta property="og:description" content="AI 负责叙述，引擎负责世界。188 个规则函数、64 个 MCP 工具、4 套设定包。" />
 <meta property="og:image" content="screenshots/stage-xuanshu.png" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f13'/%3E%3Ctext x='16' y='22.5' font-size='17' text-anchor='middle' fill='%23e8b04b' font-family='serif'%3E%E8%A1%8C%3C/text%3E%3C/svg%3E" />
@@ -147,16 +147,15 @@
     <p class="eyebrow">World Games · v1.4.0</p>
     <h1>AI 负责叙述，<span class="accent">引擎负责世界</span></h1>
     <p class="lede">
-      世界观无关的文字互动游戏内核：188 个规则函数结算每一次行动，64 个 MCP 工具供任意 Agent 调用，
-      四套设定包换世界不改一行代码，一块只读实况主舞台把真实状态摆在你面前。
-      同一个存档、同一个种子，永远得到同一个世界。
+      通用文字互动游戏内核：188 个规则函数提供结算，64 个 MCP 工具供宿主调用，
+      四套设定包与实况主舞台展示游戏状态。相同初始状态、种子和操作序列可复现规则结算。
     </p>
     <div class="badges">
-      <span class="badge"><b>零</b>运行时依赖</span>
+      <span class="badge"><b>标准库</b>核心 · MCP 需额外依赖</span>
       <span class="badge"><b>64</b> MCP 工具</span>
       <span class="badge"><b>188</b> 规则函数</span>
       <span class="badge"><b>4</b> 套世界观</span>
-      <span class="badge"><b>44/44</b> 变异测试</span>
+      <span class="badge"><b>变异测试</b> 检验断言</span>
       <span class="badge"><b>88%</b> 覆盖率</span>
       <span class="badge"><b>MIT</b></span>
     </div>
@@ -172,8 +171,8 @@
   <div class="wrap">
     <h2>主舞台：<span class="accent">看世界怎么动</span></h2>
     <p class="sub">
-      不是聊天窗口，是一块只读仪表盘：叙事正文、身家状态、三张长局曲线、关系网、地点图、
-      世界脉搏、图鉴与市场。它不能改对局，所以显示的每个数字都可核对。
+      主舞台展示叙事、状态、曲线、关系网、地点图、世界脉搏、图鉴与市场。
+      面板不直接修改游戏状态；玩家可将行动写入侧写队列，由宿主取走并结算。
     </p>
     <div class="shot">
       <img src="screenshots/stage-xuanshu.png" alt="玄枢界主舞台，第 500 回合真实存档" loading="lazy" />
@@ -208,8 +207,8 @@
   <div class="wrap">
     <h2>四种<span class="accent">玩法循环</span>，同一套规则</h2>
     <p class="sub">
-      世界观可换只是第一层。真正决定"这局怎么玩"的是 <code>playbook</code>：
-      循环类型、进度轴、失败条件、节拍序列、上下文注入策略。规则函数一行不改。
+      <code>playbook</code> 配置循环类型、进度轴、失败条件、节拍和上下文策略。
+      玩法循环是宿主叙事指引，不由引擎强制执行。
     </p>
     <div class="scroll">
       <table>
@@ -235,8 +234,8 @@
   <div class="wrap">
     <h2>世界<span class="accent">自己会动</span></h2>
     <p class="sub">
-      每次 <code>tick</code> 都推进势力消长、谣言传播、风气漂移、NPC 走动与 Panarchy 适应性循环。
-      不消耗 LLM token，也不需要玩家行动。
+      宿主调用 <code>tick</code> 时推进世界演化，包括势力、谣言、风气、NPC 与 Panarchy 相位。
+      不调用时世界不会自行推进。
     </p>
     <div class="grid3">
       <div class="card"><h3>势力消长</h3><p>每个势力有确定性禀赋上限，logistic 增长 + 头部两家 Lotka–Volterra 温和压制 + 挑战者回流。长期有格局，短期有换手。</p></div>
@@ -251,23 +250,8 @@
 
 <section id="compare">
   <div class="wrap">
-    <h2>和别的 AI 文字游戏<span class="accent">有什么不同</span></h2>
-    <p class="sub">完整对标（含 7 个具名竞品、10 条差距的四类处置）见 <a href="BENCHMARK.md">docs/BENCHMARK.md</a>。</p>
-    <div class="scroll">
-      <table>
-        <thead><tr><th>维度</th><th>常见做法</th><th>万界·行者</th></tr></thead>
-        <tbody>
-          <tr><td>数值由谁决定</td><td>语言模型生成，容易漂移</td><td><b>规则函数结算</b>，同种子逐字节可复现</td></tr>
-          <tr><td>世界会不会自己动</td><td>等你行动；不行动世界静止</td><td><b>tick 自己推动</b>势力 / 谣言 / 风气 / NPC / 相位</td></tr>
-          <tr><td>换世界</td><td>换提示词与角色卡</td><td><b>设定包</b>：术语、阶梯、货币、地点、世界书、品牌、皮肤</td></tr>
-          <tr><td>换玩法</td><td>换前端或换产品</td><td><b>playbook</b>：四种循环 / 五种进度轴 / 五种失败模式 / 节拍序列</td></tr>
-          <tr><td>长局记忆</td><td>上下文窗口 + 摘要</td><td><b>三层记忆</b>：摘要 + 大事记 + 归档（recall 跨世代回捞）</td></tr>
-          <tr><td>生态兼容</td><td>各自为政</td><td>直接读 SillyTavern <b>角色卡</b>（PNG/JSON，V1–V3）与<b>世界书</b></td></tr>
-          <tr><td>界面</td><td>聊天流</td><td><b>只读实况主舞台</b>：叙事 + HUD + 长局曲线 + 图鉴 + 市场</td></tr>
-          <tr><td>可核对性</td><td>难以复核</td><td>结构化事件字段；只读工具零副作用；<b>变异测试 44/44</b></td></tr>
-        </tbody>
-      </table>
-    </div>
+    <h2>项目<span class="accent">范围</span></h2>
+    <p class="sub">提供规则结算、设定包、存档和宿主叙事指引，并支持读取 SillyTavern 角色卡与世界书。不提供图像生成、多人联机、云端账号体系或插件市场。</p>
   </div>
 </section>
 
@@ -275,14 +259,14 @@
   <div class="wrap">
     <h2>质量是<span class="accent">可验证的</span></h2>
     <p class="sub">
-      没有 pytest 套件，取而代之的是 17 个可执行自检 + 一套变异测试：
+      没有 pytest 套件，验证包括 17 个可执行自检、行为回归和变异测试：
       断言必须能被"改坏代码"杀死，而不是只被覆盖率统计到。
     </p>
     <div class="metrics">
-      <div class="metric"><div class="n">726</div><div class="l">断言审计（0 可疑）</div></div>
-      <div class="metric"><div class="n">44/44</div><div class="l">变异测试全杀</div></div>
+      <div class="metric"><div class="n">静态</div><div class="l">断言审计</div></div>
+      <div class="metric"><div class="n">行为</div><div class="l">回归测试</div></div>
       <div class="metric"><div class="n">88%</div><div class="l">核心域覆盖率</div></div>
-      <div class="metric"><div class="n">22</div><div class="l">推前门禁项</div></div>
+      <div class="metric"><div class="n">推前</div><div class="l">本地门禁</div></div>
       <div class="metric"><div class="n">0</div><div class="l">核心依赖</div></div>
       <div class="metric"><div class="n">500</div><div class="l">轮真实压测（0 违规）</div></div>
     </div>
@@ -292,7 +276,7 @@
 <section id="quickstart">
   <div class="wrap">
     <h2>三十秒<span class="accent">上手</span></h2>
-    <p class="sub">MCP 客户端（Claude Code / Codex / Cursor / opencode）里加一行即可。也可以只用命令行。</p>
+    <p class="sub">核心仅需 Python 标准库；MCP 客户端需要安装可选 MCP 依赖。旧命令 world-walker-mcp 保留为兼容别名。</p>
     <div class="grid2">
       <div class="card">
         <h3>1 · 安装</h3>
@@ -300,7 +284,7 @@
         <h3 style="margin-top:18px">2 · 接入</h3>
         <pre><code>{
   "mcpServers": {
-    "world-walker": { "command": "world-walker-mcp" }
+    "world-games": { "command": "world-games-mcp" }
   }
 }</code></pre>
       </div>
@@ -333,7 +317,7 @@ tick()</code></pre>
 
 <footer>
   <div class="wrap">
-    <p>万界·行者 World Walker · MIT · 图表库 ECharts 5.5.1（Apache-2.0）</p>
+    <p>World Games · MIT · 图表库 ECharts 5.5.1（Apache-2.0）</p>
     <p style="margin-top:8px">
       <a href="https://github.com/badhope/world-walker">GitHub</a> ·
       <a href="https://gitee.com/badhope/world-walker">Gitee</a> ·

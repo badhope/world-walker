@@ -84,7 +84,7 @@ def level_for(margin: int, bands=None, natural_max=False, natural_min=False):
     """按 margin 取成功等级；单骰自然极值可上/下调一档（由调用方决定是否启用）。"""
     table = bands or DEFAULT_BANDS
     ordered = sorted(table, key=lambda b: int(b.get("min", 0)), reverse=True)
-    idx = 0
+    idx = len(ordered) - 1
     for i, band in enumerate(ordered):
         if margin >= int(band.get("min", 0)):
             idx = i
@@ -150,7 +150,8 @@ def resolve_check(state: dict, actor_id: str, attribute: str = "", difficulty: i
                 mod_list.append({"value": int(item), "label": ""})
             except (TypeError, ValueError):
                 continue
-    mod_total = sum(m["value"] for m in mod_list)
+    mod_total = sum(m["value"] for m in mod_list
+                    if mode != MODE_POOL or m.get("label") != "success_on")
     profile = state.get("game") if isinstance(state.get("game"), dict) else None
     attr_mod = _attr_modifier(actor, attribute, profile=profile)
     try:
@@ -217,7 +218,7 @@ def resolve_check(state: dict, actor_id: str, attribute: str = "", difficulty: i
         o_rolls, o_rolled, o_spec = roll_dice(dice, pool_size=pool_size)
         o_attr = _attr_modifier(opponent, attribute, profile=profile)
         if mode == MODE_POOL:
-            o_total = sum(1 for r in o_rolls if r >= 5) + o_attr
+            o_total = sum(1 for r in o_rolls if r >= success_on) + o_attr
         else:
             o_total = o_rolled + o_attr
         result["opposed"] = {

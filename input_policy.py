@@ -344,13 +344,19 @@ def _load_json_bytes(path, kind, extensions, root=None):
 
 
 def load_state(path, root=None):
+    from game_engine.state_schema import state_lock, _recover_archive
     checked = validate_state_path(path, root=root)
-    return validate_state_data(_load_json_bytes(checked, "state", (".json",), root=root))
+    with state_lock(checked):
+        _recover_archive(checked)
+        return validate_state_data(_load_json_bytes(checked, "state", (".json",), root=root))
 
 
 def load_snapshot(path, root=None, state_path=None):
+    from game_engine.sessions import locked_states
     checked = validate_snapshot_path(path, root=root, state_path=state_path)
-    return validate_state_data(_load_json_bytes(checked, "state", (), root=root))
+    paths = (checked, state_path) if state_path else (checked,)
+    with locked_states(*paths):
+        return validate_state_data(_load_json_bytes(checked, "state", (), root=root))
 
 
 def validate_setting_data(value):

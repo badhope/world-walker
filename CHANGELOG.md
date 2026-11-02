@@ -7,10 +7,13 @@
 
 ## 未发布 — 审计加固
 
-- 状态写入增加 Windows/POSIX 可重入锁与事务读改写；严格拒绝 NaN、Infinity 和溢出数值，归档/替换失败可回滚，`.bak` 备份失败不阻断主状态保存。
+- 状态写入增加 Windows/POSIX 可重入锁与事务读改写；严格拒绝 NaN、Infinity 和溢出数值；`.bak` 备份发生普通 I/O 错误时不阻断主状态保存。
 - MCP 状态变更绑定事务路径/状态对象，生命周期切换串行化；只读 `game_profile`、`system_run` 和快照读取不触发状态保存。
 - 新增 `input_policy.py`，统一限制状态、设定、快照、角色卡和世界书的路径、符号链接、扩展名、大小、JSON 结构和基础 schema，并脱敏错误路径。
-- `verify_audit_fix.py` 扩展为 22 项语义回归；当前口径为 17 个验证脚本、817 条断言审计、25 项 pre-push 门禁。
+- CLI 与 MCP 的 tick 对齐事业线推进、当回合事件与奖励；修复失败模式 `none` 的判定。
+- 世界书 `lore_lookup` 改为无状态副作用预演，保留既有冷却规则。
+- 存档库与回收站共享排他锁；移入或还原时连同识别到的快照、备份、日志和侧写迁移。存在 `<state>.archive-pending` 或库级 `.ww-session-transaction-pending` 时拒绝相关受保护读写，不会自动恢复；异常或崩溃后应停写、保留现场并人工核对，详见[归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。保存失败时恢复调用方内存中的状态对象，不等于磁盘归档回滚；不承诺断电安全。
+- 行为回归覆盖判定、tick、变异、MCP stub 和归档中断，并接入本地及 CI 门禁。
 - GitHub/Gitee MCP 作业使用锁定依赖并执行 `pip check`；缺少 MCP/Playwright 时门禁失败而非跳过。
 
 ## v1.4.0 — 2026-10-27

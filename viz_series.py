@@ -126,7 +126,12 @@ def record_sample(state_path, state):
         return
     path = series_path(state_path)
     try:
-        with _series_lock(path):
+        from game_engine.state_schema import _recover_archive
+        with _series_lock(state_path):
+            _recover_archive(state_path)
+            _recover_archive(path)
+            if not os.path.isfile(state_path):
+                return
             if not _sidecar_safe(path):
                 return
             lines = []
@@ -178,6 +183,14 @@ def record_sample(state_path, state):
 
 def load_series(state_path):
     """读回样本（tick 升序、封顶 SERIES_CAP）；坏行跳过，永不抛。"""
+    from game_engine.state_schema import _recover_archive
+    with _series_lock(state_path):
+        _recover_archive(state_path)
+        _recover_archive(series_path(state_path))
+        return _load_series_locked(state_path)
+
+
+def _load_series_locked(state_path):
     path = series_path(state_path)
     out = []
     if state_path and os.path.exists(path) and _sidecar_safe(path):

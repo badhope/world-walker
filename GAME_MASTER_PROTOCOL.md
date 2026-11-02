@@ -3,7 +3,7 @@
 > 核心原则:**所有确定性计算交给引擎,Agent 只负责文学叙事与对话**。
 >
 > **v3 变化**：新增通用判定（`roll`）、游戏档案（`game_*`）、上下文台账（`context_*`）、存档库（`session_*`）四组工具。
-> 前 39 个工具面向角色扮演式结算；后 15 个不假设任何题材——任何游戏都能用。
+> 工具既包括角色扮演式结算，也包括适用于不同题材的通用能力。
 
 > **MCP 模式**：宿主是 MCP 客户端（Claude Code / Codex / Cursor 等）时，用 `mcp_server.py`
 > 暴露的 64 个工具，语义与本文命令一一对应：`cognition`/`flow`/`identity`/`panarchy`/
@@ -12,7 +12,7 @@
 > 叙事层 `narration_context`（关键词触发设定 + 在场角色卡面 + 编年史，每回合调）、
 > 酒馆生态 `character_card_read` / `add_character` / `import_lorebook`、回退 `snapshot` / `restore`、移动 `travel`（记图鉴）、叙事正文 `publish_prose`（把本回合正文写进状态，面板主舞台直接显示）、实况主舞台 `open_panel`（只读：叙事主舞台 + HUD + 事件时间线 + 分级弹窗/提示 + 图鉴/市场/大事记/世界脉搏抽屉；缺档可读报错并可重试）、面板行动队列 `pending_actions`（玩家在浏览器排的行动写进侧写文件，宿主取走后照常经引擎结算）、设定包 `load_setting`、长局 `advance` / `recall` / `write_summary` / `recap` / `configure`、物资 `use_item`（持有则自备消耗、买入时已付；未持有按所在地市场价现买现用，引擎结算花钱）、自由生成 `spawn_npc`（无角色卡也能入局）、模型层 `model` / `model_list`（查 16 个命名闭式模型：经济 Lerner/OU 价格、Cobb-Douglas、种群 logistic/Lotka-Volterra、流行病 SIR、风险 Poisson/生存、热力学松弛、舆论 bounded-confidence；宿主直接用公式推导效果，不再逐事件拍脑袋）。
 > 一键开局：调 `new_game` prompt（参数填设定），产出「协议 + 设定 + 状态文件」的完整开局指令。
-> 安装 `pip install -e ".[mcp]"` 后，客户端命令填 `world-walker-mcp`。
+> 核心使用 Python 标准库；MCP 模式需额外安装 `pip install -e ".[mcp]"`。客户端命令填 `world-games-mcp`，旧命令 `world-walker-mcp` 保留为兼容别名。
 
 ---
 
@@ -129,7 +129,7 @@ pending_actions(mark_done=True)
 
 ## 1c. 玩法剧本与事业线（先读这一节再带团）
 
-一局游戏除了世界观，还有"怎么玩"。开局后第一件事调 `playbook_info()`：
+一局游戏除了世界观，还有"怎么玩"。`playbook` 循环是供宿主遵循的指引，不由引擎强制执行。开局后可调用 `playbook_info()`：
 
 ```
 → {
@@ -169,7 +169,7 @@ pending_actions(mark_done=True)
 ```
 
 **关键：`tick` 是活的。** 每次 tick 都会推进势力消长、谣言传播、风气漂移与 Panarchy 相位；
-即使玩家什么都不做，世界也在变。所以**不要跳过 tick**——跳过的不是计数，是整个世界。
+即使玩家没有行动，宿主调用 tick 仍会推进世界；不调用 tick 则不会自动推进。
 
 ---
 

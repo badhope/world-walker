@@ -59,6 +59,9 @@ jobs:
       - name: 断言审计（拒绝恒真/恒假/弱断言）
         run: python scripts/verify_tests.py
 
+      - name: 行为回归（MCP 使用 stub）
+        run: python scripts/run_behavior_regressions.py
+
       - name: CLI 通道自检
         run: python scripts/verify_cli.py
 
@@ -159,6 +162,14 @@ jobs:
               raise SystemExit(1)
           print("mcp SDK 可导入")
           PY
+
+      - name: 真实 MCP SDK 严格回归
+        env:
+          WORLD_GAMES_STRICT: "1"
+        run: |
+          python scripts/verify_world.py
+          python scripts/verify_generic.py
+          python scripts/verify_systems.py
 
       - name: 审计修复回归
         run: python scripts/verify_audit_fix.py

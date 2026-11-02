@@ -656,6 +656,13 @@ def load_state_retry(state_path, attempts=3, delay=0.02):
     但在 Windows 上杀毒/索引器短暂持有句柄时 open 会失败或读到旧 inode，
     面板不该因此把整页打成错误态。
     """
+    from game_engine.state_schema import state_lock, _recover_archive
+    with state_lock(state_path):
+        _recover_archive(state_path)
+        return _load_state_retry_locked(state_path, attempts, delay)
+
+
+def _load_state_retry_locked(state_path, attempts, delay):
     last = None
     for i in range(max(1, int(attempts))):
         try:
@@ -906,6 +913,15 @@ def inbox_path(state_path):
 
 def inbox_read_all(state_path):
     """读全部收件记录（坏行跳过，永不抛）。"""
+    if not state_path:
+        return []
+    from game_engine.state_schema import state_lock, _recover_archive
+    with state_lock(state_path):
+        _recover_archive(state_path)
+        return _inbox_read_all_locked(state_path)
+
+
+def _inbox_read_all_locked(state_path):
     out = []
     path = inbox_path(state_path)
     if not state_path or not os.path.exists(path):
@@ -953,12 +969,16 @@ def inbox_append(state_path, text, source='panel'):
         'text': body,
         'done': False,
     }
-    try:
-        with open(state_path, 'r', encoding='utf-8') as f:
-            rec['tick'] = _int_or(json.load(f).get('tick', 0), 0)
-    except (OSError, ValueError, TypeError):
-        pass
-    with _INBOX_TLOCK, _file_lock(inbox_path(state_path)):
+    from game_engine.state_schema import state_lock, _recover_archive
+    with state_lock(state_path), _INBOX_TLOCK, _file_lock(inbox_path(state_path)):
+        _recover_archive(state_path)
+        if not os.path.isfile(state_path):
+            raise FileNotFoundError(state_path)
+        try:
+            with open(state_path, 'r', encoding='utf-8') as f:
+                rec['tick'] = _int_or(json.load(f).get('tick', 0), 0)
+        except (OSError, ValueError, TypeError):
+            pass
         records = inbox_read_all(state_path)
         records.append(rec)
         pending_idx = [i for i, r in enumerate(records) if not r.get('done')]
@@ -979,7 +999,11 @@ def inbox_mark_done(state_path, ids):
     if not wanted:
         return 0
     n = 0
-    with _INBOX_TLOCK, _file_lock(inbox_path(state_path)):
+    from game_engine.state_schema import state_lock, _recover_archive
+    with state_lock(state_path), _INBOX_TLOCK, _file_lock(inbox_path(state_path)):
+        _recover_archive(state_path)
+        if not os.path.isfile(state_path):
+            raise FileNotFoundError(state_path)
         records = inbox_read_all(state_path)
         for r in records:
             if str(r.get('id')) in wanted and not r.get('done'):
@@ -1085,11 +1109,46 @@ class Handler(BaseHTTPRequestHandler):
          "img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"),
     )
 
+    def _drain_rejected_body(self):
+        if self.command != 'POST' or getattr(self, '_body_consumed', False):
+            return
+        self._body_consumed = True
+        lengths = self.headers.get_all('Content-Length', [])
+        if self.headers.get('Transfer-Encoding') or len(lengths) != 1:
+            return
+        raw = lengths[0]
+        if not raw.isascii() or not raw.isdigit() or len(raw) > 5:
+            return
+        length = int(raw)
+        if length > self.MAX_BODY:
+            return
+        deadline = time.monotonic() + 0.25
+        previous_timeout = self.connection.gettimeout()
+        try:
+            while length:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                self.connection.settimeout(remaining)
+                chunk = self.rfile.read1(min(length, 4096))
+                if not chunk:
+                    break
+                length -= len(chunk)
+        except (OSError, ValueError):
+            pass
+        finally:
+            self.connection.settimeout(previous_timeout)
+
     def _send(self, code, ctype, body):
+        if self.command == 'POST':
+            self.close_connection = True
+            self._drain_rejected_body()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-cache")
+        if self.command == 'POST':
+            self.send_header("Connection", "close")
         for name, val in self._SECURITY_HEADERS:
             self.send_header(name, val)
         self.end_headers()
@@ -1146,6 +1205,7 @@ class Handler(BaseHTTPRequestHandler):
             return None, ('400', '请求体为空')
         if n > limit:
             return None, ('413', '请求体过大（上限 %d 字节）' % limit)
+        self._body_consumed = True
         try:
             body = self.rfile.read(n)
         except OSError:
@@ -1246,6 +1306,15 @@ class Handler(BaseHTTPRequestHandler):
             self._send(403, 'text/plain; charset=utf-8', b'host not allowed')
             return
         path = urllib.parse.urlsplit(self.path).path
+        if path in ('/actions', '/series', '/health'):
+            try:
+                from game_engine.state_schema import state_lock, _recover_archive
+                with state_lock(self._state()):
+                    _recover_archive(self._state())
+            except RuntimeError as exc:
+                body = json.dumps({'error': str(exc), 'pending_review': True}, ensure_ascii=False).encode('utf-8')
+                self._send(409, 'application/json; charset=utf-8', body)
+                return
         if path == "/state":
             try:
                 vm = json.dumps(view_model(self._state()), ensure_ascii=False).encode("utf-8")
@@ -1266,8 +1335,15 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, 'application/json; charset=utf-8', body)
         elif path == "/export":
             try:
-                with open(self._state(), 'rb') as f:
-                    raw = f.read()
+                from game_engine.state_schema import state_lock, _recover_archive
+                with state_lock(self._state()):
+                    _recover_archive(self._state())
+                    with open(self._state(), 'rb') as f:
+                        raw = f.read()
+            except RuntimeError as exc:
+                self._send(409, 'application/json; charset=utf-8',
+                           json.dumps({'error': str(exc), 'pending_review': True}, ensure_ascii=False).encode('utf-8'))
+                return
             except OSError as exc:
                 self._send(404, 'application/json; charset=utf-8',
                            json.dumps({'error': '状态文件不可读：%s' % str(exc)[:120]},
@@ -1301,7 +1377,12 @@ class Handler(BaseHTTPRequestHandler):
             }, ensure_ascii=False).encode("utf-8")
             self._send(200, "application/json; charset=utf-8", body)
         elif path == "/history":
-            body = json.dumps(self._history_payload(), ensure_ascii=False).encode("utf-8")
+            try:
+                body = json.dumps(self._history_payload(), ensure_ascii=False).encode("utf-8")
+            except RuntimeError as exc:
+                body = json.dumps({'error': str(exc), 'pending_review': True}, ensure_ascii=False).encode('utf-8')
+                self._send(409, 'application/json; charset=utf-8', body)
+                return
             self._send(200, "application/json; charset=utf-8", body)
         elif path == "/events":
             self._sse()
@@ -1309,6 +1390,12 @@ class Handler(BaseHTTPRequestHandler):
             self._static(path)
 
     def _history_payload(self, query=""):
+        from game_engine.state_schema import state_lock, _recover_archive
+        with state_lock(self._state()):
+            _recover_archive(self._state())
+            return self._history_payload_locked(query)
+
+    def _history_payload_locked(self, query=""):
         """剧情回放 / 归档检索（只读，分页）。
 
         数据源三层：

@@ -185,7 +185,7 @@ _LIFECYCLE_TOOLS = frozenset({
 })
 _STATE_TRANSACTION_TOOLS = frozenset({
     "combat", "trade", "social", "karma", "tick", "narrative", "quest_advance",
-    "lore_lookup", "failure_tick", "add_character", "import_lorebook",
+    "failure_tick", "add_character", "import_lorebook",
     "narration_context", "advance", "write_summary", "configure", "travel",
     "publish_prose", "use_item", "spawn_npc", "roll", "game_profile", "game_adjust",
     "game_tag", "game_sheet", "context_remember", "context_forget", "system_define",
@@ -251,9 +251,11 @@ def _run_state_transaction(fn, args, kwargs):
         return fn(*args, **kwargs)
     result_box = {}
 
+    archive_entries = []
+
     def edit(state):
         input_policy.validate_state_data(state)
-        context = {"path": path, "state": state}
+        context = {"path": path, "state": state, "archive_entries": archive_entries}
         _set_transaction_context(context)
         try:
             result_box["value"] = fn(*args, **kwargs)
@@ -261,7 +263,7 @@ def _run_state_transaction(fn, args, kwargs):
         finally:
             _set_transaction_context(None)
 
-    committed = transact_state(edit, path)
+    committed = transact_state(edit, path, archive_entries=archive_entries)
     _record_transaction_sample(path, committed)
     return result_box["value"]
 
@@ -521,7 +523,7 @@ def _finish(state: dict, result: dict) -> dict:
     context = _transaction_context()
     if context is None:
         path = _state_path()
-        save_state(state, path)
+        save_state(state, path, allow_create=False)
         _record_transaction_sample(path, state)
     else:
         if state is not context["state"]:
@@ -542,7 +544,7 @@ def _commit_state_file(path: str, state: dict, root=None) -> str:
         current.clear()
         current.update(payload)
 
-    committed = transact_state(replace, target)
+    committed = transact_state(replace, target, allow_create=True)
     _record_transaction_sample(target, committed)
     return target
 
@@ -960,21 +962,25 @@ def tick() -> dict:
     pb = state.get("playbook") or playbook_rules.DEFAULT_PLAYBOOK
     quest_changes = quest_rules.advance(state, state.get("questlines") or [],
                                         tick=int(state.get("tick", 0) or 0))
+    quest_events = []
     for ch in quest_changes:
         if ch.get("change") == "stage":
-            log_event(state, "quest", "事业线「%s」推进到：%s" % (ch.get("quest"), ch.get("title")),
-                      quest=ch.get("quest"), stage=ch.get("stage"))
+            desc = "事业线「%s」推进到：%s" % (ch.get("quest"), ch.get("title"))
+            quest_events.append(desc)
+            log_event(state, "quest", desc, quest=ch.get("quest"), stage=ch.get("stage"))
         elif ch.get("change") == "done":
-            log_event(state, "quest", "事业线「%s」完成" % ch.get("quest"), quest=ch.get("quest"))
+            desc = "事业线「%s」完成" % ch.get("quest")
+            quest_events.append(desc)
+            log_event(state, "quest", desc, quest=ch.get("quest"))
             _milestone(state, "事业线", "完成「%s」" % ch.get("quest"))
         elif ch.get("change") == "failed":
-            log_event(state, "quest", "事业线「%s」失败（%s）" % (ch.get("quest"), ch.get("reason")),
-                      quest=ch.get("quest"))
+            desc = "事业线「%s」失败（%s）" % (ch.get("quest"), ch.get("reason"))
+            quest_events.append(desc)
+            log_event(state, "quest", desc, quest=ch.get("quest"))
     log_event(state, "tick", "回合%d结束" % state["tick"])
     events = (["回合%d结束" % state["tick"]]
               + [str(e) for e in world.get("events", [])]
-              + [e.get("desc") for e in (state.get("event_log") or [])[-len(quest_changes):]
-                 if e.get("type") == "quest"])
+              + quest_events)
     return _finish(state, {
         "events": events,
         "panarchy_phase": world.get("phase"),
@@ -1077,8 +1083,10 @@ def lore_lookup(text: str) -> dict:
     Which lorebook entries would fire for this text right now (with runtime gates)."""
 
     state = _load()
-    res = _trigger_lore_state(state, text)
-    return _finish(state, {
+    preview = json.loads(json.dumps(state, ensure_ascii=False, allow_nan=False))
+    res = lore_engine.trigger(preview, preview.get("lore") or [], [text],
+                              tick=int(preview.get("tick", 0) or 0), apply_runtime=False)
+    return _read({
         "matched": [{"comment": e.get("comment"), "depth": e.get("_depth"),
                      "reason": e.get("_reason"), "keys": e.get("keys")}
                     for e in res["entries"]],
@@ -1362,6 +1370,11 @@ def advance(next_level: str, insight: float = 0.0) -> dict:
 def recall(query: str, limit: int = 8) -> dict:
     """按关键词回捞历史事件（Chinese: 长局必备——玩家提到很久以前的事时，先把旧事找回来）。
     Keyword search over the event archive and the recent log."""
+    with session_store.locked_states(_state_path()):
+        return _recall_locked(query, limit)
+
+
+def _recall_locked(query, limit):
     q = str(query or "").strip()
     if not q:
         raise ValueError("query 不能为空")
@@ -1570,14 +1583,10 @@ def publish_prose(text: str, location: str = "") -> dict:
     overflow = prose[:-keep] if keep > 0 and len(prose) > keep else []
     if overflow:
         state["prose"] = prose[-keep:]
-        arch = _archive_path()
-        try:
-            with open(arch, "a", encoding="utf-8") as f:
-                for entry in overflow:
-                    f.write(json.dumps({"type": "prose", **entry}, ensure_ascii=False) + "\n")
-            state["archived_events"] = int(state.get("archived_events", 0) or 0) + len(overflow)
-        except OSError:  # aqg: top-level boundary —— 归档失败不该阻断叙事落盘
-            pass
+        context = _transaction_context()
+        if context is None:
+            raise RuntimeError("叙事归档需要状态事务")
+        context["archive_entries"].extend({"type": "prose", **entry} for entry in overflow)
     places = state.setdefault("places", {})
     if loc:
         places.setdefault(loc, {})
@@ -1749,7 +1758,7 @@ def spawn_npc(id: str, name: str, faction: str = "", attrs: dict[str, int] | Non
 def snapshot(label: str = "") -> dict:
     """把当前状态存一个快照（Chinese: 回退/分叉剧情用；状态本身确定性，所以回退是干净的）。
     Save a state snapshot (for undo / branching)."""
-    import shutil, time
+    import time
     src = _state_path()
     # label 会直接拼进快照文件名：不清洗的话 `..\..\x` 能把快照写到任意目录
     # （实测 4 层 .. 落到仓库外）。与存档库同一套清洗规则。
@@ -1758,9 +1767,13 @@ def snapshot(label: str = "") -> dict:
     dst = input_policy.validate_snapshot_path(
         src + ".snap" + suffix, root=os.path.dirname(src), state_path=src,
         must_exist=False)
-    with state_lock(src):
-        shutil.copyfile(src, dst)
-        tick = input_policy.load_state(src, root=os.path.dirname(src)).get("tick", 0)
+    with session_store.locked_states(src, dst):
+        related = session_store._snapshot_related(dst)
+        with session_store.locked_states(*related):
+            if session_store._snapshot_related(dst) != related:
+                raise RuntimeError('快照关联文件发生变化，请重试')
+            tick = input_policy.load_state(src, root=os.path.dirname(src)).get("tick", 0)
+            session_store._copy_snapshot_atomic(src, dst)
     return {"snapshot": dst, "tick": tick}
 
 
@@ -1770,7 +1783,7 @@ def restore(snapshot_path: str) -> dict:
     target = input_policy.validate_state_path(
         _state_path(), must_exist=True, root=os.path.dirname(_state_path()))
     try:
-        snapshot = input_policy.load_snapshot(
+        source = input_policy.validate_snapshot_path(
             snapshot_path, root=os.path.dirname(target), state_path=target)
     except input_policy.PolicyError as exc:
         raise ValueError("快照不存在或不符合当前状态") from exc
@@ -1797,8 +1810,10 @@ def restore(snapshot_path: str) -> dict:
                                 "entities": sorted(restored.get("entities", {})),
                                 "archive_generation": restored["archive_generation"]}
 
-    committed = transact_state(edit, target)
-    _record_transaction_sample(target, committed)
+    with session_store.locked_states(source, target):
+        snapshot = input_policy.load_snapshot(source, root=os.path.dirname(target), state_path=target)
+        committed = transact_state(edit, target)
+        _record_transaction_sample(target, committed)
     return result_box["value"]
 
 
@@ -2086,13 +2101,13 @@ def session_import(path: str, name: str = "", overwrite: bool = False) -> dict:
     Import an existing state JSON into the save library."""
 
     source = input_policy.validate_state_path(path, must_exist=True)
-    state = input_policy.load_state(source)
     root = _saves_root()
     target_name = name or os.path.basename(source).split(".")[0]
     safe = session_store.safe_name(target_name)
     dst = session_store.save_path(root, safe, create_dir=False)
     target = input_policy.validate_state_path(dst, must_exist=False, root=root)
-    with state_lock(target):
+    with session_store.locked_states(source, target):
+        state = input_policy.load_state(source)
         if os.path.exists(target) and not overwrite:
             raise ValueError("同名存档已存在（overwrite=True 才覆盖）")
         _commit_state_file(target, state, root=root)

@@ -190,15 +190,24 @@ def main():
           bool(claimed_checks) and all(c == len(verify_scripts) for c in claimed_checks),
           'docs=%s actual=%d' % (sorted(set(claimed_checks)), len(verify_scripts)))
 
-    # D12b 审计回归/断言基线/门禁计数必须与当前交付口径一致。
-    audit_text = read('README.md')
-    audit_claims = [int(x) for x in re.findall(r'`verify_audit_fix\.py` \| (\d+)', audit_text)]
-    test_claims = [int(x) for x in re.findall(r'`verify_tests\.py` \| (\d+)', audit_text)]
-    contributing = read('CONTRIBUTING.md')
-    gate_claims = [int(x) for x in re.findall(r'pre_push_gate\.sh\s+#\s*(\d+)\s*项', audit_text + contributing)]
-    check('D12b 审计回归/断言/门禁数字与基线一致',
-          audit_claims == [22] and test_claims == [817] and gate_claims == [25, 25],
-          'audit=%s tests=%s gate=%s' % (audit_claims, test_claims, gate_claims))
+    runner = ast.parse(read('scripts/run_behavior_regressions.py'))
+    modules = set()
+    for node in runner.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'MODULES' for t in node.targets):
+            if isinstance(node.value, (ast.Tuple, ast.List)):
+                modules = {item.value for item in node.value.elts
+                           if isinstance(item, ast.Constant) and isinstance(item.value, str)}
+    required = {'tests_checks_regression', 'tests_turn_regression', 'tests_mutation_regression',
+                'tests_mcp_regression', 'tests_archive_crash_regression'}
+    missing = sorted(name for name in required
+                     if name not in modules or not os.path.isfile(os.path.join(ROOT, name + '.py')))
+    runner_path = 'scripts/run_behavior_regressions.py'
+    gates = ('scripts/pre_push_gate.sh', '.github/workflows/ci.yml', '.workflow/ci.yml')
+    missing_gates = [gate for gate in gates if not re.search(
+        r'^[^\n#]*\bpython\s+' + re.escape(runner_path) + r'\b', read(gate), re.M)
+        and not re.search(r'^step\s+[^\n]*"\$PY"\s+' + re.escape(runner_path) + r'\b', read(gate), re.M)]
+    check('D12b 关键行为回归已登记并接入门禁', not missing and not missing_gates,
+          'missing=%s gates=%s' % (missing, missing_gates))
 
     # D13 英文 README 与展示站的工具数也必须一致（D2c 只查中文 README）
     en_claimed = [int(x) for x in re.findall(r'(\d+)\s*MCP tools', en)]
@@ -267,6 +276,23 @@ def main():
             note = 'held=%d qty=%d' % (held, qty)
     check('D16 README 快速上手交易示例可执行（商品存在且买得起/卖得出）',
           ok_quick, note)
+
+    unpublished = changelog.split('## 未发布', 1)[-1].split('\n## ', 1)[0]
+    recovery_docs = {
+        'README.md': (readme, ('archive-pending', '不会自动恢复', '保留现场', '不等于磁盘归档回滚')),
+        'README.en.md': (en, ('archive-pending', 'no automatic recovery', 'preserve the evidence', 'not an archive rollback')),
+        'CHANGELOG.md': (unpublished, ('archive-pending', '不会自动恢复', '保留现场', '不等于磁盘归档回滚')),
+        'ARCHITECTURE.md': (arch, ('archive-pending', '不自动解析或恢复', '不承诺回滚磁盘归档')),
+    }
+    recovery_missing = [name for name, (text, terms) in recovery_docs.items()
+                        if not all(term in text for term in terms)
+                        or '](docs/ARCHIVE_RECOVERY.md)' not in text]
+    check('D17 归档 pending 人工处理边界及指南链接',
+          not recovery_missing and os.path.isfile(os.path.join(ROOT, 'docs', 'ARCHIVE_RECOVERY.md')),
+          str(recovery_missing))
+    site_text = re.sub(r'<[^>]+>', '', pages)
+    numeric_claims = re.findall(r'\b\d+(?:\s*/\s*\d+)?\s*(?:变异测试|推前门禁)', site_text)
+    check('D18 展示站不硬编码变异结果或推前门禁数量', not numeric_claims, str(numeric_claims))
 
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))

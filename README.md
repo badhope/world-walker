@@ -2,11 +2,11 @@
 
 **版本 v1.4.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
-> **AI 负责叙述，引擎负责世界 —— 而且什么游戏都能装进去。**
-> 通用互动游戏框架：任意题材、任意骰型、任意资源轨，一套确定性规则内核。
+> **AI 负责叙述，引擎负责规则结算。**
+> 通用互动游戏框架：可配置题材、骰型和资源轨，以确定性规则内核结算。
 > 188 个规则函数、64 个 MCP 工具、内置四套可直接开玩的设定包、
 > 上下文台账（AI 该记住什么可核对）、存档库与一块离线只读主舞台。
-> 同一份存档、同一个种子，永远得到同一个世界。
+> 相同初始状态、种子和操作序列可复现规则结算。
 
 > **v1.2.0 更名说明**：原「万界·行者 / World Walker」更名为 **World Games**。
 > 更名是产品定位从"一个修仙文字游戏"升级为"装任何游戏的框架"；
@@ -24,22 +24,22 @@
 
 ## 这是什么
 
-**World Games 是给任何互动游戏用的引擎层，不是一款具体的游戏。** 它解决三件 AI 互动游戏最容易崩的事：
+**World Games 是互动游戏的引擎层，不是一款具体的游戏。** 它提供规则结算、上下文台账和存档管理：
 
 | 问题 | 常见做法 | 本项目 |
 |---|---|---|
-| 数值会不会漂 | LLM 即兴编 | 规则函数结算，同种子逐字节可复现 |
+| 数值如何结算 | 语言模型叙述 | 规则函数结算，相同初始状态、种子和操作序列可复现 |
 | AI 会不会忘 | 靠上下文窗口 | **上下文台账**：线索/承诺/事实落盘，`context_pack` 按预算取回 |
 | 存档会不会乱 | 一个 JSON 文件手动管 | **存档库**：多局、快照、回收站，`session_*` 统一管理 |
 
-任何题材都能这样带：`session_new` 开局 → `game_profile` 定义资源 → `roll` 判定 →
+宿主可按需这样组织一局：`session_new` 开局 → `game_profile` 定义资源 → `roll` 判定 →
 `context_remember` 记账 → `context_pack` 取材料 → 叙事与对话 → `tick` 推进。
 
-三条不变量：
+建议的职责分工：
 
 - **引擎算数**：命中、伤害、价格、关系、因果、势力消长、谣言扩散，全部由确定性规则函数结算；
 - **Agent 作文**：语言模型只把引擎返回的 JSON 转写成文学描写与对话，不得编造数值；
-- **面板见证**：一块只读网页主舞台实时显示真实状态、最近判定与上下文台账——它不能改对局，因此每个数字都可核对。
+- **面板见证**：网页主舞台读取状态、判定与上下文台账，不直接修改游戏状态；玩家可将行动排入侧写文件，由宿主取走后结算。
 
 它不是又一个"AI 跑团提示词"，而是一层**可以被任何 Agent 调用的游戏内核**：
 MCP 服务器（stdio，64 个工具）、命令行（14 条命令）、HTTP 只读面板，三条通道共用同一套规则与同一份状态文件。
@@ -59,7 +59,7 @@ MCP 服务器（stdio，64 个工具）、命令行（14 条命令）、HTTP 只
 ## 三十秒上手
 
 ```bash
-pip install -e ".[mcp]"          # 仅标准库 + 可选 mcp SDK
+pip install -e ".[mcp]"          # 核心使用标准库；MCP 模式另装 mcp SDK
 ```
 
 把下面这段加进任意 MCP 客户端（Claude Code / Codex / Cursor / opencode）：
@@ -78,7 +78,7 @@ load_setting(path="settings/玄枢界.setting.json")
 在仓库根目录直接运行时按上面的相对路径即可；`pip` 安装后设定包位于包目录内，
 `load_setting` 会在原路径不存在时自动回退到包内同名路径。
 
-一局就开好了。接下来每个行动都由工具结算：
+一局就开好了。宿主可在需要数值结算时调用工具：
 
 ```
 你：我走进万石商行，把《引元诀》残页拍在柜台上，问石三娘这东西值多少。
@@ -112,7 +112,7 @@ python panel.py --state game_state.json   # 打开只读主舞台
 
 ## 游玩行动一览（64 个工具）
 
-宿主 AI 支持 MCP 协议即可；玩家的每次行动都由这些工具结算或记账。
+宿主 AI 支持 MCP 协议即可；宿主按需调用这些工具结算或记账。
 
 ### 开局与存档（9）
 
@@ -196,6 +196,10 @@ python panel.py --state game_state.json   # 打开只读主舞台
 
 全部落在同一份状态文件里：判定在 `checks`、事实在 `context.facts`、资源在 `game`、
 正文在 `prose`、世界在 `panarchy/factions/...`。面板只读这些字段。
+
+CLI 与 MCP 的 `tick` 都推进世界和事业线，并返回当回合事业线变化；完成奖励不会重复发放。`lore_lookup` 是不消耗冷却、不写状态的世界书预演；正式叙事上下文生成仍会按规则触发世界书。
+
+存档库与回收站共享排他锁；存档移入或还原时，主存档与识别到的快照、备份、日志和侧写一起迁移。存在 `<state>.archive-pending` 或库级 `.ww-session-transaction-pending` 时，相关受保护读写会被拒绝，不会自动恢复；异常或崩溃后应停止写入、保留现场并人工核对，详见[归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。保存失败时恢复调用方内存中的状态对象，不等于磁盘归档回滚；此机制不保证断电安全。
 
 ---
 
@@ -285,19 +289,19 @@ template_start(template="mystery", name="我的调查局",
 
 ---
 
-## 它和别的 AI 文字游戏有什么不同
+## 项目范围
 
-对标对象与方法（含证据链接）见 **[docs/BENCHMARK.md](docs/BENCHMARK.md)**。一句话版本：
+项目提供规则结算、设定包、存档和宿主叙事指引；支持读取 SillyTavern 角色卡与世界书。
+不提供图像生成、多人联机、云端账号体系或插件市场；参见 [ROADMAP.md](ROADMAP.md)。
 
-| 维度 | 常见做法（AI Dungeon / NovelAI / SillyTavern） | 本项目 |
-|---|---|---|
+---|---|---|
 | 数值由谁决定 | 语言模型生成，容易漂移 | **规则函数结算**，同种子逐字节可复现 |
 | 世界会不会自己动 | 通常等你行动；不行动世界静止 | **`tick` 自己推动**势力 / 谣言 / 风气 / NPC / 相位 |
 | 世界观可换性 | 换的是提示词与角色卡 | 换的是**设定包**：术语、等级阶梯、货币、地点、世界书、品牌、皮肤 |
 | 长局记忆 | 上下文窗口 + 摘要，旧事常丢 | **三层记忆**：摘要 + 大事记 + 逐条归档（`recall` 跨世代回捞） |
 | 生态兼容 | 各自为政 | 直接吃 SillyTavern **角色卡**（PNG/JSON，V1–V3）与**世界书**（含 selective/constant/disable 语义） |
 | 界面 | 聊天流为主 | **只读实况主舞台**：叙事 + HUD + 长局曲线 + 图鉴 + 市场 + 世界脉搏 |
-| 可核对性 | 难以复核 | 每条事件有结构化字段；`status` / `world_state` 只读不落盘；变异测试 44/44 |
+| 可核对性 | 难以复核 | 每条事件有结构化字段；`status` / `world_state` 只读不落盘；提供变异测试 |
 
 我们**不**做的事：图像生成、多人联机、云端账号体系、插件市场。
 这些是取舍不是遗漏，理由写在 [ROADMAP.md](ROADMAP.md)。
@@ -306,7 +310,7 @@ template_start(template="mystery", name="我的调查局",
 
 ## 核心机制（都在结算回路上，不是摆设）
 
-### 1. 世界自己会动
+### 1. 宿主调用 tick 推进世界
 
 每次 `tick` 都会推进：
 
@@ -360,23 +364,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 ## MCP 工具一览（64 个）
 
-| 组 | 工具 |
-|---|---|
-| 建局 | `world_schema` `world_init` `world_open` `load_setting` |
-| 玩法 | `playbook_info` `quest_status` `quest_advance` `failure_tick` |
-| 世界书 | `lore_lookup` |
-| 结算 | `combat` `trade` `social` `karma` `tick` `use_item` `advance` |
-| 叙事 | `narration_context` `publish_prose` `narrative` `narrative_weight` `merit` |
-| 长局 | `write_summary` `recap` `recall` `snapshot` `restore` `configure` |
-| 世界 | `read_state` `world_state` `status` |
-| 生态 | `character_card_read` `add_character` `import_lorebook` `spawn_npc` |
-| 模型 | `model` `model_list`（16 个命名闭式模型） |
-| 面板 | `open_panel` `close_panel` `pending_actions` |
-| 移动 | `travel` |
-| 通用判定 | `roll` |
-| 游戏档案 | `game_profile` `game_adjust` `game_tag` `game_sheet` |
-| 上下文台账 | `context_remember` `context_search` `context_forget` `context_pack` |
-| 存档库 | `session_list` `session_new` `session_switch` `session_snapshot` `session_manage` `session_import` |
+分类与用途见上方「游玩行动一览」。
 
 完整参数与调用约定见 [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md)。
 
@@ -384,7 +372,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 ## 玩法层：同一套规则，四种"玩起来不一样"
 
-世界观可换只是第一层。真正决定"这局怎么玩"的是 `playbook`：
+`playbook` 描述玩法配置，并为宿主提供叙事指引：
 
 | 字段 | 可选值 | 作用 |
 |---|---|---|
@@ -393,12 +381,12 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `progress` | `{axis, label, max}` | 进度轴：`level` / `gold` / `reputation` / `knowledge` / `clock` |
 | `failure` | `{mode, label, max}` | 失败条件：`hp` / `sanity` / `clock` / `deadline` / `none` |
 | `beat` | `{pattern, every}` | 节拍序列（如「日常·摩擦·升级·代价·回收」，每 N 回合循环） |
-| `settlement` | 工具名数组 | 这一局允许的结算方式 |
+| `settlement` | 工具名数组 | 建议宿主采用的结算方式 |
 | `context` | `{inject, max_lore, scan_depth}` | 每回合上下文注入策略 |
 
 `playbook_info` 会把当前剧本、进度、失败钟、当前节拍与**给宿主的叙事指南**一起返回；
 `scripts/verify_gameplay.py`（60 项断言）逐项锁定这些语义。
-四套设定包分别演示四种循环：玄幻 `freeform` / 武侠 `ttrpg` / 赛博 `mud` / 悬疑 `choice`。
+循环是给宿主的指引，不由引擎强制执行。四套设定包分别演示四种循环：玄幻 `freeform` / 武侠 `ttrpg` / 赛博 `mud` / 悬疑 `choice`。
 
 ## 事业线：任务只声明目标与压力，不声明过程
 
@@ -465,8 +453,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 
 ## 质量与验证
 
-项目没有 `pytest` 套件，验证靠 17 个可执行自检脚本 + 1 套变异测试（这是设计选择：
-断言必须能被变异测试杀死，而不是只被覆盖率统计到）。
+项目没有 `pytest` 套件；验证包括 17 个可执行自检脚本、行为回归和变异测试。断言应能被变异测试检验，而不是只被覆盖率统计到。
 
 | 自检 | 断言数 | 锁住什么 |
 |---|---|---|
@@ -477,7 +464,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_mcp_stdio.py` | 64 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
 | `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
-| `verify_docs.py` | 17 | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
+| `verify_docs.py` | — | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
 | `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_generic.py` | 87 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
 | `verify_systems.py` | 161 | 七类体系行为 + 八套模板完整性 + 计数器 + 面板契约 |
@@ -487,7 +474,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 | `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 20 | 真实 Edge 渲染 + 新卡片/抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | 817 条审计 | 静态 AST：拒绝恒真/恒假/弱断言 |
+| `verify_tests.py` | — | 静态 AST：拒绝恒真/恒假/弱断言 |
 | `verify_mutation.py` | 44 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
@@ -496,7 +483,7 @@ recap          按字符预算给出「最新摘要 + 大事记 + 最近事件�
 推前门禁一条命令：
 
 ```bash
-bash scripts/pre_push_gate.sh     # 25 项，与 GitHub Actions 同判据
+bash scripts/pre_push_gate.sh     # 包含行为回归；缺少必要依赖时失败
 ```
 
 覆盖率门禁：核心域 ≥70%（当前实测 88%，含通用游戏层）；`pyflakes` 0。`bandit` 只在核心引擎源码上为 0，仓库级扫描仍会在测试脚本里报低危项。
@@ -545,7 +532,7 @@ MIT 许可。示例设定包里的人物、势力、地名全部原创，可以�
 
 **为什么不用 pytest？**
 断言必须经得起"改坏代码看测试红不红"的检验。`verify_tests.py` 会静态拒绝恒真断言，
-`verify_mutation.py` 则真的把 36 个已知错误逐个注入源码，确认每个都能被测试杀死。
+`verify_mutation.py` 则注入变异，确认每个都能被测试杀死。
 两者都在门禁里。
 
 **为什么面板不能直接提交行动？**

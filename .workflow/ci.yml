@@ -61,6 +61,12 @@ stages:
         script: |
           set -euo pipefail
           python scripts/verify_tests.py
+      - step: regressions
+        name: behavior-regressions
+        displayName: 行为回归（MCP 使用 stub）
+        script: |
+          set -euo pipefail
+          python scripts/run_behavior_regressions.py
       - step: cli
         name: verify-cli
         displayName: CLI 通道自检
@@ -192,6 +198,15 @@ stages:
               raise SystemExit(1)
           print("mcp SDK 可导入")
           PY
+      - step: strict-regressions
+        name: strict-mcp-regressions
+        displayName: 真实 MCP SDK 严格回归
+        script: |
+          set -euo pipefail
+          export WORLD_GAMES_STRICT=1
+          python scripts/verify_world.py
+          python scripts/verify_generic.py
+          python scripts/verify_systems.py
       - step: audit-fix
         name: verify-audit-fix
         displayName: 审计修复回归

@@ -24,8 +24,10 @@
 
 ### 2.1 状态与输入边界
 
-- `state_schema.py` 提供可重入 `state_lock`：Windows 使用 `msvcrt`，POSIX 使用 `fcntl`；`transact_state` 在同一锁内完成读-改-写。
-- 状态 JSON 严格拒绝非有限数值；归档追加、状态替换失败会回滚，`.bak` 备份失败不阻断主状态原子替换。
+- `state_schema.py` 提供可重入 `state_lock`：先取得存档库共享的排他锁，再取得状态文件锁；存档库与 `.trash` 共用库锁。Windows 使用 `msvcrt`，POSIX 使用 `fcntl`；`transact_state` 在同一锁内完成读-改-写。
+- 状态 JSON 严格拒绝非有限数值；保存异常时恢复调用方内存中的状态对象，不承诺回滚磁盘归档；`.bak` 备份发生普通 I/O 错误时不阻断主状态替换。
+- `<state>.archive-pending` 或库级 `.ww-session-transaction-pending` 存在时，受保护的状态读取、写入及面板队列等操作拒绝继续；列表可标记 `pending_review`，不自动解析或恢复记录。异常或崩溃后应停写、保留现场并人工核对，详见 [归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。子进程中断回归仅覆盖部分进程崩溃窗口，不构成断电安全保证。
+- 存档移入回收站或还原时，主存档与识别到的备份、日志、快照及其侧写一起迁移；迁移先写 pending 标记，不覆盖已有目标，未完成时保留现场待人工核对。
 - MCP 状态变更工具使用事务绑定的状态路径/对象；生命周期切换串行化，避免多个存档之间串写。
 - `input_policy.py` 对状态、设定、快照、角色卡和世界书执行路径段、符号链接、扩展名、文件大小、JSON 结构与基础 schema 校验；错误信息不回显绝对路径。
 
@@ -198,7 +200,7 @@ lorebook = {rows: [{id, comment, keys, constant, enabled, fired, last_tick,
                     sticky_left, cooldown_left, order}], total: int}
 ```
 
-`status` 工具与 `/state` 返回上述三块；`tick` 额外返回 `quest_changes` 与 `playbook`。
+`status` 工具与 `/state` 返回上述三块；CLI 与 MCP 的 `tick` 均推进世界和事业线，返回 `quest_changes`、`playbook` 与当回合事业线事件，完成奖励只发放一次。`lore_lookup` 在副本上预演，不保存状态、不消耗冷却；正式叙事上下文生成仍按规则触发世界书。
 
 ### 6.2 运行时不变量（Runtime Invariants）
 

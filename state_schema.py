@@ -40,6 +40,7 @@
 """
 
 import contextlib
+import hashlib
 import json, math, os, random, sys, time
 import threading as _threading
 import shutil as _shutil
@@ -75,6 +76,12 @@ def _require_finite(value):
 
 def load_state(path):
     """从路径加载状态 JSON；拒绝非有限 JSON 数值。"""
+    with state_lock(path):
+        _recover_archive(path)
+        return _load_state_unlocked(path)
+
+
+def _load_state_unlocked(path):
     checked = _ensure_no_links(path)
     def reject_constant(value):
         raise ValueError("状态 JSON 不允许 NaN 或 Infinity")
@@ -178,9 +185,16 @@ def _state_funlock(handle):
         handle.close()
 
 
+def _library_key(path):
+    folder = os.path.dirname(os.path.abspath(os.fspath(path)))
+    if os.path.normcase(os.path.basename(folder)) == os.path.normcase('.trash'):
+        folder = os.path.dirname(folder)
+    return os.path.normcase(os.path.join(folder, '.ww-session-library'))
+
+
 @contextlib.contextmanager
-def state_lock(path, timeout=10.0):
-    key = os.path.abspath(os.fspath(path))
+def _key_lock(key, timeout=10.0):
+    key = os.path.normcase(os.path.abspath(os.fspath(key)))
     local = _state_local()
     held = getattr(local, "held", None)
     if held is None:
@@ -204,34 +218,16 @@ def state_lock(path, timeout=10.0):
             _state_funlock(handle)
 
 
+@contextlib.contextmanager
+def state_lock(path, timeout=10.0):
+    with _key_lock(_library_key(path), timeout):
+        with _key_lock(path, timeout):
+            yield
+
+
 def _restore_state(target, original):
     target.clear()
     target.update(original)
-
-
-def _rollback_archive(record):
-    if record is None:
-        return
-    archive_path, existed, offset = record
-    try:
-        _ensure_no_links(archive_path)
-        if existed:
-            flags = os.O_RDWR | getattr(os, "O_BINARY", 0)
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            fd = os.open(archive_path, flags)
-            with os.fdopen(fd, "r+b") as handle:
-                fd = None
-                handle.truncate(offset)
-                handle.flush()
-                os.fsync(handle.fileno())
-            if fd is not None:
-                os.close(fd)
-        elif os.path.lexists(archive_path):
-            _ensure_no_links(archive_path)
-            os.unlink(archive_path)
-    except OSError as exc:
-        raise RuntimeError("归档回滚失败: %s" % archive_path) from exc
 
 
 def _atomic_backup(path, backup_path):
@@ -285,40 +281,96 @@ def _append_archive(path, entries):
             os.close(fd)
 
 
-def _save_state_unlocked(state, path):
+def _read_bytes(path):
+    _ensure_no_links(path)
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    with os.fdopen(os.open(path, flags), "rb") as handle:
+        return handle.read()
+
+
+def _archive_journal(path):
+    return os.fspath(path) + ".archive-pending"
+
+
+def _recover_archive(path):
+    journal = _archive_journal(path)
+    folder = os.path.dirname(os.path.abspath(os.fspath(path)))
+    if os.path.normcase(os.path.basename(folder)) == os.path.normcase('.trash'):
+        folder = os.path.dirname(folder)
+    guard = os.path.join(folder, '.ww-session-transaction-pending')
+    for candidate in (journal, guard):
+        _ensure_no_links(candidate)
+        if os.path.lexists(candidate):
+            raise RuntimeError("存在未处理的归档记录，需要人工核对: %s" % candidate)
+
+
+def _publish_archive_journal(path, record):
+    import tempfile as _tf
+    journal = _archive_journal(path)
+    _ensure_no_links(journal)
+    fd, tmp = _tf.mkstemp(prefix=".ww_pending_", suffix=".tmp", dir=os.path.dirname(os.path.abspath(journal)))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = None
+            json.dump(record, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        _ensure_no_links(journal)
+        os.link(tmp, journal)
+    finally:
+        if fd is not None:
+            os.close(fd)
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+
+
+def _save_state_unlocked(state, path, archive_entries=None):
     _ensure_no_links(path)
     cfg = state.get("config") or {}
     keep = max(1, int(cfg.get("event_log_keep", 200)))
     log = state.get("event_log") or []
     overflow = log[:-keep] if len(log) > keep else []
-    archive_record = None
+    archive_path = None
+    archive_existed = False
+    journal = None
+    entries = list(archive_entries or [])
     if overflow:
         state["event_log"] = log[-keep:]
         if cfg.get("archive", True):
-            state["archived_events"] = int(state.get("archived_events", 0) or 0) + len(overflow)
+            entries = overflow + entries
+    if entries:
+        state["archived_events"] = int(state.get("archived_events", 0) or 0) + len(entries)
 
     directory = os.path.dirname(os.path.abspath(path)) or "."
     import tempfile as _tf
     fd, tmp = _tf.mkstemp(prefix=".ww_state_", suffix=".tmp", dir=directory)
     try:
-        if overflow and cfg.get("archive", True):
-            archive_path = _archive_file(path, state)
-            _ensure_no_links(archive_path)
-            existed = os.path.exists(archive_path)
-            offset = os.path.getsize(archive_path) if existed else 0
-            archive_record = (archive_path, existed, offset)
-            try:
-                _append_archive(archive_path, overflow)
-            except Exception:
-                _rollback_archive(archive_record)
-                archive_record = None
-                raise
-
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        with os.fdopen(fd, "w", encoding="utf-8", newline=None) as handle:
             fd = None
             json.dump(state, handle, ensure_ascii=False, indent=2, allow_nan=False)
             handle.flush()
             os.fsync(handle.fileno())
+        if entries:
+            archive_path = _archive_file(path, state)
+            _ensure_no_links(archive_path)
+            existed = os.path.exists(archive_path)
+            archive_existed = existed
+            info = os.stat(archive_path, follow_symlinks=False) if existed else None
+            if info is not None and info.st_nlink != 1:
+                raise RuntimeError("归档存在多个硬链接")
+            offset = info.st_size if info else 0
+            appended = "".join(json.dumps(entry, ensure_ascii=False, allow_nan=False) + "\n" for entry in entries)
+            appended = appended.replace("\n", os.linesep).encode("utf-8")
+            record = {"generation": int(state.get("archive_generation", 0) or 0),
+                      "existed": existed, "offset": offset, "length": len(appended),
+                      "sha256": hashlib.sha256(appended).hexdigest(),
+                      "state_before": hashlib.sha256(_read_bytes(path)).hexdigest() if os.path.exists(path) else None,
+                      "state_after": hashlib.sha256(_read_bytes(tmp)).hexdigest()}
+            _publish_archive_journal(path, record)
+            journal = _archive_journal(path)
+            _append_archive(archive_path, entries)
         if os.path.exists(path):
             backup_path = path + ".bak"
             try:
@@ -348,29 +400,46 @@ def _save_state_unlocked(state, path):
                 os.unlink(tmp)
             except OSError:
                 pass
-        _rollback_archive(archive_record)
+        if journal is not None and not archive_existed and not os.path.lexists(archive_path):
+            try:
+                _ensure_no_links(journal)
+                os.unlink(journal)
+            except (OSError, _input_policy.PolicyError):
+                pass
         raise
+    if journal is not None:
+        try:
+            _ensure_no_links(journal)
+            os.unlink(journal)
+        except (OSError, _input_policy.PolicyError):
+            pass
 
 
-def save_state(state, path):
-    """保存状态 JSON 到路径，并在失败时恢复归档与调用方对象。"""
+def save_state(state, path, allow_create=True):
+    """保存状态；失败时恢复调用方对象并保留无法安全回滚的归档证据。"""
     original = json.loads(json.dumps(state, ensure_ascii=False, allow_nan=False))
     try:
         with state_lock(path):
+            _recover_archive(path)
+            if not allow_create and not os.path.exists(path):
+                raise FileNotFoundError("状态文件不存在: %s" % path)
             _save_state_unlocked(state, path)
     except Exception:
         _restore_state(state, original)
         raise
 
 
-def transact_state(edit, path, timeout=10.0):
+def transact_state(edit, path, timeout=10.0, archive_entries=None, allow_create=False):
     """原子读-改-写：在同一排它锁内完成 load、edit、save。"""
     with state_lock(path, timeout):
+        _recover_archive(path)
+        if not os.path.exists(path) and not allow_create:
+            raise FileNotFoundError("状态文件不存在: %s" % path)
         state = load_state(path) if os.path.exists(path) else new_game()
         original = json.loads(json.dumps(state, ensure_ascii=False, allow_nan=False))
         try:
             edit(state)
-            _save_state_unlocked(state, path)
+            _save_state_unlocked(state, path, archive_entries=archive_entries)
             return state
         except Exception:
             _restore_state(state, original)

@@ -22,11 +22,12 @@ if "game_engine" not in sys.modules:
     # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
     _spec.loader.exec_module(_pkg)
 
-from game_engine.state_schema import load_state, save_state, log_event, seed_rng
+from game_engine.state_schema import load_state, save_state, log_event, seed_rng, state_lock, _recover_archive
 from game_engine.rules.combat import resolve_combat
 from game_engine.rules.economy import resolve_trade, tick_market
 from game_engine.rules.social import resolve_social_event
 from game_engine.rules.karma import resolve_karma, get_karma_consequence
+from game_engine.rules import playbook as playbook_rules, questline as quest_rules
 
 from game_engine.rules.cognition import daily_cognitive_budget, should_use_system2
 from game_engine.rules.world_dynamics import event_information
@@ -132,9 +133,40 @@ def _do_tick(state, args, result):
     world = evolve_world(state)
     for desc in world.get("events", []):
         log_event(state, "world", str(desc))
+    pb = state.get("playbook") or playbook_rules.DEFAULT_PLAYBOOK
+    quest_changes = quest_rules.advance(state, state.get("questlines") or [],
+                                        tick=int(state.get("tick", 0) or 0))
+    quest_events = []
+    for ch in quest_changes:
+        if ch.get("change") == "stage":
+            desc = "事业线「%s」推进到：%s" % (ch.get("quest"), ch.get("title"))
+            quest_events.append(desc)
+            log_event(state, "quest", desc, quest=ch.get("quest"), stage=ch.get("stage"))
+        elif ch.get("change") == "done":
+            desc = "事业线「%s」完成" % ch.get("quest")
+            quest_events.append(desc)
+            log_event(state, "quest", desc, quest=ch.get("quest"))
+            ms = state.setdefault("milestones", [])
+            ms.append({"tick": state.get("tick", 0), "kind": "事业线",
+                       "desc": ("完成「%s」" % ch.get("quest"))[:200]})
+            config = state.setdefault("config", {})
+            for key, value in {"event_log_keep": 200, "archive": True, "recap_budget_chars": 1500,
+                               "summary_keep": 30, "milestone_keep": 200, "panel_port": 8765,
+                               "karma_ledger_keep": 500, "stage_max": 20}.items():
+                config.setdefault(key, value)
+            keep = int(config.get("milestone_keep", 200))
+            if len(ms) > keep:
+                del ms[:len(ms) - keep]
+        elif ch.get("change") == "failed":
+            desc = "事业线「%s」失败（%s）" % (ch.get("quest"), ch.get("reason"))
+            quest_events.append(desc)
+            log_event(state, "quest", desc, quest=ch.get("quest"))
     log_event(state, "tick", "回合%d结束" % state["tick"])
     result.update({
-        "events": ["回合%d结束" % state["tick"]] + [str(e) for e in world.get("events", [])],
+        "events": (["回合%d结束" % state["tick"]] + [str(e) for e in world.get("events", [])]
+                   + quest_events),
+        "quest_changes": quest_changes,
+        "playbook": playbook_rules.summary(state, pb),
         "panarchy_phase": world.get("phase"),
         "capital": world.get("capital"),
         "connectedness": world.get("connectedness"),
@@ -243,13 +275,15 @@ def main():
     if handler is None:  # pragma: no cover - argparse 已限制可选值
         parser.error("未知命令: %s" % args.action)
 
-    state = load_state(args.state)
-    seed_rng(state)   # 与 MCP 共用：同一 state + 同一行动 → 同一结果
-    result = {"action": args.action}
-    dirty = handler(state, args, result)   # 只有写命令返回 True；只读命令不得改写状态文件
-    if dirty:
-        save_state(state, args.state)
-    result["_tick"] = state["tick"]
+    with state_lock(args.state):
+        _recover_archive(args.state)
+        state = load_state(args.state)
+        seed_rng(state)
+        result = {"action": args.action}
+        dirty = handler(state, args, result)
+        if dirty:
+            save_state(state, args.state, allow_create=False)
+        result["_tick"] = state["tick"]
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

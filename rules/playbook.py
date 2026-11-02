@@ -206,7 +206,7 @@ def _failure_hp(state, pb):
             "label": pb["failure"].get("label", "失败"),
             "value": hp, "max": int(player.get("hp_max", 1) or 1),
             "ratio": round(hp / max(1, int(player.get("hp_max", 1) or 1)), 3),
-            "failed": hp <= 0, "reasons": []}
+            "failed": pb["failure"].get("mode") != "none" and hp <= 0, "reasons": []}
 
 
 _FAILURE_BUILDERS = {"clock": _failure_clock, "deadline": _failure_deadline,

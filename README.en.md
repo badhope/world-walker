@@ -2,11 +2,11 @@
 
 **v1.4.0** · [中文](README.md) | **English** · [Architecture](ARCHITECTURE.md) · [Gameplay layer](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md)
 
-> **The AI narrates. The engine owns the world — and any game can live inside it.**
-> A general interactive-game framework: any genre, any dice system, any resource track, one deterministic rule core.
+> **The AI narrates. The engine resolves the rules.**
+> A general interactive-game framework with configurable genres, dice and resource tracks, backed by a deterministic rule core.
 > 188 rule functions, 64 MCP tools, four playable bundles shipped,
 > a context ledger the AI must not forget, a save library, and a read-only live stage.
-> Same save, same seed—always the same world.
+> The same initial state, seed and sequence of operations reproduce rule outcomes.
 
 > **Renamed in v1.2.0**: "World Walker" is now **World Games**. The Python package stays
 > `game_engine`; `world-walker` / `world-walker-mcp` remain as compatibility aliases.
@@ -23,15 +23,13 @@
 
 ## Why this exists
 
-Most AI text games hand the "world" to a language model: numbers drift, NPCs forget,
-the same choice gives a different outcome on replay. **World Walker inverts that**:
+**World Games** provides rule resolution, a context ledger and save management for interactive games:
 
 - **The engine does the math** — hits, damage, prices, relationships, karma, faction power,
   rumor spread are all resolved by deterministic rule functions.
 - **The agent writes the prose** — the LLM only turns returned JSON into literary text;
   it must not invent numbers.
-- **The panel bears witness** — a read-only web stage shows the real state, so every number
-  on screen is checkable.
+- **The panel bears witness** — the web stage reads game state without directly modifying it; players can queue actions in a sidecar file for the host to resolve.
 
 It is not another "AI GM prompt". It is a **world kernel any agent can call**: an MCP server (stdio),
 a CLI (14 commands), and an HTTP read-only panel sharing one rule set and one state file.
@@ -41,14 +39,16 @@ a CLI (14 commands), and an HTTP read-only panel sharing one rule set and one st
 ## Quick start (30 seconds)
 
 ```bash
-pip install -e ".[mcp]"          # stdlib only + optional mcp SDK
+pip install -e ".[mcp]"          # standard-library core; MCP mode additionally requires the mcp SDK
 ```
 
 Add to any MCP client (Claude Code / Codex / Cursor / opencode):
 
 ```json
-{ "mcpServers": { "world-walker": { "command": "world-walker-mcp" } } }
+{ "mcpServers": { "world-games": { "command": "world-games-mcp" } } }
 ```
+
+The older `world-walker-mcp` command remains a compatibility alias.
 
 The relative bundle path below works from a repo checkout; after `pip install` the bundles
 live inside the package and `load_setting` falls back to that location automatically.
@@ -59,7 +59,7 @@ Then tell your agent:
 load_setting(path="settings/玄枢界.setting.json")
 ```
 
-That boots a full game. Every action is then settled by tools:
+That boots a game. The host can call tools when numerical resolution is needed:
 
 ```
 You: I walk into the Wanshi trading house and put the torn page on the counter.
@@ -115,19 +115,19 @@ will never show "境界 / 灵石" again. `scripts/verify_settings.py` asserts th
 
 ---
 
-## How it compares
+## Project scope
 
-Full method and evidence: **[docs/BENCHMARK.md](docs/BENCHMARK.md)**. One-line version:
+The project provides rule resolution, setting bundles, saves and narration guidance for the host; it reads SillyTavern character cards and world info.
+It does not provide image generation, multiplayer, cloud accounts or a plugin marketplace; see [ROADMAP.md](ROADMAP.md).
 
-| Dimension | Typical (AI Dungeon / NovelAI / SillyTavern) | This project |
-|---|---|---|
+---|---|---|
 | Who decides numbers | The LLM, in prose | **Rule functions**, byte-identical replay per seed |
 | Does the world move on its own | No (waits for input) | **`tick` advances** factions / rumors / culture / NPCs / Panarchy |
 | Swapping worlds | Prompt + character card | **Setting bundle**: terms, tiers, currency, places, lorebook, brand, skin |
 | Long-game memory | Context window + summary | **Three layers**: summaries + milestones + generational archive (`recall`) |
 | Ecosystem | Proprietary | Reads SillyTavern **character cards** (PNG/JSON, V1–V3) and **world info** |
 | Interface | Chat stream | **Read-only live stage**: narrative + HUD + long-run charts + codex + market |
-| Auditable | Hard | Structured event fields; read-only tools never write; mutation suite 44/44 |
+| Auditable | Hard | Structured event fields; read-only tools never write; mutation tests available |
 
 We deliberately **do not** do: image generation, multiplayer, cloud accounts, plugin marketplaces.
 Reasons are in [ROADMAP.md](ROADMAP.md).
@@ -136,7 +136,7 @@ Reasons are in [ROADMAP.md](ROADMAP.md).
 
 ## Core mechanics (all on the settlement path)
 
-### 1. The world moves by itself
+### 1. The host advances the world with tick
 
 Each `tick` advances:
 
@@ -149,7 +149,9 @@ Each `tick` advances:
 - **Panarchy** — an explicit `r → K → Ω → α → r` state machine driven by real stock
   (faction mean, relation density, world flags, karma, price deviation), not a lookup table.
 
-`verify_world.py` (W1/W2/W11) asserts all four actually happen, including through the real MCP `tick` tool.
+CLI and MCP `tick` both advance the world and questlines and return the current turn's quest changes; completion rewards are not repeated. `lore_lookup` previews matches without saving state or consuming cooldown; generating narrative context still triggers the lorebook according to its rules.
+
+`verify_world.py` (W1/W2/W11) checks world evolution, including through the real MCP `tick` tool.
 
 ### 2. Derived metrics feed settlement
 
@@ -176,7 +178,7 @@ recall         keyword recall across archive generations
 recap          budgeted bundle: latest summary + milestones + recent events
 ```
 
-`snapshot` / `restore` only switch archive generations—they **never delete written history**.
+`snapshot` / `restore` switch archive generations. The save library and trash share an exclusive lock; moving a save to or from trash also moves its recognized snapshots, backups, logs and sidecars. A `<state>.archive-pending` or library-wide `.ww-session-transaction-pending` blocks affected protected reads and writes; there is no automatic recovery. After an error or crash, stop writes, preserve the evidence and review it manually using the [archive recovery guide](docs/ARCHIVE_RECOVERY.md). Restoring the caller's in-memory state after a failed save is not an archive rollback, and this does not guarantee power-loss safety.
 
 ### 5. Reproducibility
 
@@ -215,7 +217,7 @@ See [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md).
 
 ## Gameplay layer: same rules, four ways to play
 
-World-swapping is only the first layer. What actually decides *how this game plays* is the `playbook`:
+The `playbook` describes gameplay configuration and provides narration guidance for the host:
 
 | Field | Values | Effect |
 |---|---|---|
@@ -224,12 +226,12 @@ World-swapping is only the first layer. What actually decides *how this game pla
 | `progress` | `{axis, label, max}` | progress axis: `level` / `gold` / `reputation` / `knowledge` / `clock` |
 | `failure` | `{mode, label, max}` | failure condition: `hp` / `sanity` / `clock` / `deadline` / `none` |
 | `beat` | `{pattern, every}` | beat sequence (e.g. daily · friction · escalation · cost · payoff) |
-| `settlement` | tool names | which settlements this run allows |
+| `settlement` | tool names | settlement methods suggested to the host |
 | `context` | `{inject, max_lore, scan_depth}` | per-turn context injection policy |
 
 `playbook_info` returns the current playbook, progress, failure clock, current beat and a **narration guide**
 for the host; `scripts/verify_gameplay.py` (60 assertions) locks these semantics.
-The four setting bundles demonstrate the four loops: xuanshu `freeform` / wuxia `ttrpg` / cyberpunk `mud` / mystery `choice`.
+The loops guide the host; the engine does not enforce them. The four setting bundles demonstrate the four loops: xuanshu `freeform` / wuxia `ttrpg` / cyberpunk `mud` / mystery `choice`.
 
 ## Questlines: objectives and pressure, never a chore list
 
@@ -367,8 +369,7 @@ Templates are starting points: `overrides` deep-merges dicts and replaces lists;
 
 ## Quality
 
-No pytest suite by design—verification is 17 executable self-checks plus a mutation suite
-(assertions must be *killable*, not merely *covered*).
+No pytest suite by design—verification includes 17 executable self-checks, behavior regressions and mutation tests (assertions must be *killable*, not merely *covered*).
 
 | Suite | Assertions | Locks |
 |---|---|---|
@@ -379,7 +380,7 @@ No pytest suite by design—verification is 17 executable self-checks plus a mut
 | `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
-| `verify_docs.py` | 17 | version single-source / tool count / asset references |
+| `verify_docs.py` | — | version single-source / tool count / asset references |
 | `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
 | `verify_generic.py` | 87 | generic checks, game profile, context ledger, save library, brand |
 | `verify_systems.py` | 161 | seven subsystem kinds + eight templates + counters + panel contract |
@@ -389,11 +390,11 @@ No pytest suite by design—verification is 17 executable self-checks plus a mut
 | `verify_memory.py` | 7 | leak check + three bounded structures |
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 20 | real Edge render, new cards/drawers, responsive, zero JS errors |
-| `verify_tests.py` | 817 audits | AST-level rejection of tautological assertions |
+| `verify_tests.py` | — | AST-level rejection of tautological assertions |
 | `verify_mutation.py` | 44 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 25 checks, same criteria as GitHub Actions
+bash scripts/pre_push_gate.sh     # includes behavior regressions; missing required dependencies fail the gate
 ```
 
 Coverage gate: core ≥70% (currently 88%, incl. the generic layer); pyflakes = 0. bandit is clean on the engine core; the repository-wide scan still reports findings confined to test scripts.

@@ -17,16 +17,22 @@ cd "$ROOT" || exit 1
 
 PY="${PYTHON:-python}"
 FAILED=0
+umask 077
+mkdir -p "$ROOT/.tmp" || exit 1
+LOG_DIR=$(mktemp -d "$ROOT/.tmp/ww-gate-XXXXXXXX") || exit 1
+STEP_NUMBER=0
 
 say() { printf '%s\n' "$*"; }
 step() {
   printf '\n=== %s ===\n' "$1"
   shift
-  if "$@" > /tmp/ww-gate.log 2>&1; then
-    say "  PASS"
+  STEP_NUMBER=$((STEP_NUMBER + 1))
+  local log_file
+  printf -v log_file '%s/step-%03d.log' "$LOG_DIR" "$STEP_NUMBER"
+  if "$@" > "$log_file" 2>&1; then
+    say "  PASS（日志：$log_file）"
   else
-    say "  FAIL（输出尾 20 行）"
-    tail -20 /tmp/ww-gate.log | sed 's/^/    /'
+    say "  FAIL（完整日志：$log_file）"
     FAILED=1
   fi
 }
@@ -60,6 +66,7 @@ say "仓库：$ROOT"
 
 step "编译全部 Python 源" "$PY" scripts/compile_all.py
 step "断言审计（拒绝恒真/恒假/弱断言）" "$PY" scripts/verify_tests.py
+step "行为回归（含 MCP stub，非真实 SDK 验证）" "$PY" scripts/run_behavior_regressions.py
 step "CLI 通道自检" "$PY" scripts/verify_cli.py
 step "面板契约自检" "$PY" scripts/verify_panel.py
 step "濒死保护自检" "$PY" scripts/verify_near_death.py
@@ -80,7 +87,7 @@ if "$PY" -c "import coverage" >/dev/null 2>&1; then
   rm -rf "$ROOT/.cov-gate"
   COV_FAIL=0
   for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay verify_generic verify_systems; do
-    "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema,settings_loader,sessions "$ROOT/scripts/$suite.py" >/dev/null 2>&1 || COV_FAIL=1
+    "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema,settings_loader,sessions "$ROOT/scripts/$suite.py" >"$LOG_DIR/coverage-$suite.log" 2>&1 || { say "  FAIL（日志：$LOG_DIR/coverage-$suite.log）"; COV_FAIL=1; }
   done
   PCT=$("$PY" -m coverage report --data-file="$ROOT/.cov-gate" 2>/dev/null         | awk '/^TOTAL/ {gsub("%","",$NF); print $NF}')
   rm -rf "$ROOT/.cov-gate"
@@ -107,6 +114,9 @@ MCP_STATUS=0
 MCP_OUTPUT=$(module_status mcp 2>&1) || MCP_STATUS=$?
 if [ "$MCP_STATUS" -eq 0 ]; then
   say "  $MCP_OUTPUT"
+  step "真实 MCP SDK 严格世界回归" env WORLD_GAMES_STRICT=1 "$PY" scripts/verify_world.py
+  step "真实 MCP SDK 严格通用游戏回归" env WORLD_GAMES_STRICT=1 "$PY" scripts/verify_generic.py
+  step "真实 MCP SDK 严格体系回归" env WORLD_GAMES_STRICT=1 "$PY" scripts/verify_systems.py
   step "审计修复回归" "$PY" scripts/verify_audit_fix.py
   step "MCP 端到端自检" "$PY" scripts/verify_mcp_stdio.py
   step "提示词注入防护（角色卡/世界书 untrusted 标记）" "$PY" scripts/verify_injection.py
@@ -126,11 +136,7 @@ fi
 if "$PY" -c "import playwright" >/dev/null 2>&1; then
   say $'
 === 界面巡检 ==='
-  STEP_RC=0
-  "$PY" scripts/smoke_ui.py > /tmp/ww-ui.log 2>&1 || STEP_RC=$?
-  if [ "$STEP_RC" -eq 0 ]; then say "  PASS"; else
-    say "  FAIL（输出尾 20 行）"; tail -20 /tmp/ww-ui.log | sed 's/^/    /'; FAILED=1
-  fi
+  step "界面巡检执行" "$PY" scripts/smoke_ui.py
 else
   say $'
 === 界面巡检 ===

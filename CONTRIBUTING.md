@@ -25,12 +25,13 @@ python -m playwright install msedge                     # 界面巡检所需浏�
 ## 验证
 
 ```bash
-bash scripts/pre_push_gate.sh    # 25 项，与 GitHub Actions 同判据；缺 MCP/Playwright 时 fail-closed
+bash scripts/pre_push_gate.sh    # 含行为回归；缺 MCP/Playwright 时 fail-closed
 ```
 
 单项：
 
 ```bash
+python scripts/run_behavior_regressions.py  # 判定、tick、变异、MCP stub、归档中断回归
 python scripts/verify_cli.py         # CLI 通道
 python scripts/verify_panel.py       # 视图模型 / 行动队列
 python scripts/verify_world.py       # 世界演化
@@ -41,7 +42,7 @@ python scripts/verify_mutation.py    # 44 个变异必须全杀
 
 ## 写测试的硬规则
 
-本项目**没有 pytest**。测试是 `scripts/verify_*.py`，每条断言必须满足：
+本项目**没有 pytest**。测试包括 `scripts/verify_*.py` 和行为回归套件；断言应满足：
 
 1. **精确到值**：`check('trade 扣款', gold_before - gold_after == result['total_cost'])`
    而不是 `check('trade 扣款', gold_after < gold_before)`。

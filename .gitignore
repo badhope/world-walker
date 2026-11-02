@@ -59,3 +59,9 @@ scripts/_verify_mcp_cov_tmp.py
 # 素材流水线的中间报告（可随时重跑生成，不入库）
 scripts/_shots_report.json
 scripts/_ui_report.json
+
+# 编辑器/会话状态
+.zcode/
+
+# 运行时锁文件（状态/存档库/侧写共用，进程退出即失效，绝不入库）
+*.lock

@@ -75,6 +75,7 @@ step "模块分支补测（systems/narrative/cognition/economy）" "$PY" scripts
 step "长局内存稳定性（三段对照，查泄漏）" "$PY" scripts/verify_memory.py 300
 step "世界演化与结算耦合（自演化/相位/心流/道德/术语/正文/台账）" "$PY" scripts/verify_world.py
 step "多世界观设定包（四种世界各跑一遍载入与演化）" "$PY" scripts/verify_settings.py
+step "数字信源（docs/metrics.json 必须与源码实测一致）" "$PY" scripts/metrics.py --check
 step "文档一致性（版本/工具数/截图引用/演示存档/CHANGELOG）" "$PY" scripts/verify_docs.py
 step "玩法层（剧本/事业线/世界书语义）" "$PY" scripts/verify_gameplay.py
 step "通用游戏层（判定/档案/上下文/存档库）" "$PY" scripts/verify_generic.py
@@ -94,6 +95,9 @@ if "$PY" -c "import coverage" >/dev/null 2>&1; then
   # 用 Python 比较（bc 在 Git Bash 里通常不存在）
   if [ -n "$PCT" ] && "$PY" -c "import sys; sys.exit(0 if float('$PCT') >= 70 else 1)"; then
     say "  PASS（${PCT}%）"
+    # 覆盖率写入唯一数字信源；文档只能引用 docs/metrics.json，不能手写
+    "$PY" scripts/metrics.py --write --coverage "$PCT" >"$LOG_DIR/metrics.log" 2>&1 \
+      || { say "  FAIL（无法写入 docs/metrics.json，日志：$LOG_DIR/metrics.log）"; FAILED=1; }
   else
     say "  FAIL（覆盖率 ${PCT:-未知}% < 70%）"
     FAILED=1

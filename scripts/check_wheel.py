@@ -17,6 +17,7 @@ import zipfile
 
 # 运行时通过 __file__ 相对路径读取的资源（见 pyproject.toml package-data）
 REQUIRED = [
+    'bootstrap.py',
     'panel.html',
     'panel.css',
     'panel.js',
@@ -27,7 +28,9 @@ REQUIRED = [
     'settings/雾港.setting.json',
     'settings/README.md',
     'README.md',
-    'README.en.md',
+    'README.zh-CN.md',
+    'CODE_OF_CONDUCT.md',
+    'docs/metrics.json',
     'ARCHITECTURE.md',
     'BRAND.md',
     'templates.py',

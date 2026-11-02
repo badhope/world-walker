@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-10-27 ｜ 文档版本：v1.18
+> 最后更新：2026-11-02 ｜ 文档版本：v1.19
 
 ## 1. 概述与目标
 
@@ -53,6 +53,7 @@
 
 | 容器 | 职责 | 关键约束 |
 |---|---|---|
+| `bootstrap.py` | 入口引导：把仓库目录注册成 `game_engine` 包 | 幂等；供 mcp_server / panel / engine 共用，禁止各自复制 `spec_from_file_location` |
 | `rules/*` | 纯规则结算（战斗/经济/社交/因果/叙事/模型层） | 无副作用，状态由调用方传入传出 |
 | `mcp_server.py` | 64 个 MCP 工具；读写状态文件；tick 推进 | 唯一写入源（第一阶段） |
 | `state_schema.py` | 状态结构、事件日志、归档、业债裁剪 | `save_state` 统一归档 |
@@ -74,6 +75,7 @@
 
 ```
 world-walker/                      # 仓库根即 game_engine 包
+├── bootstrap.py                  # 入口引导：仓库根 → game_engine 包（幂等，三个入口共用）
 ├── mcp_server.py                  # MCP 服务器（64 工具；MCP 1.x/2.x 双布局）
 ├── sessions.py                    # 存档库（多局/快照/回收站，只碰文件系统）
 ├── rules/checks.py                # 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
@@ -387,3 +389,22 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
   2. **图表库本地 vendored**（echarts@5.5.1，1.0MB，Apache-2.0），不引 CDN——面板离线可用，资产缺失时整块降级为文案。
   3. **皮肤由状态配置驱动**（`ui.skin/accent/motif` + 世界名启发式兜底），而不是写死一套视觉或让前端猜。
 - **后果**：正面——长局有趋势图、换世界换皮肤零代码、面板仍然只读且离线可用；负面——仓库多 1MB 静态资产；侧写是"面板自己的账"，删除该文件只丢历史曲线，不影响对局。
+
+## 12. 数字信源与发布治理（v1.5.0）
+
+文档里的每个计数都不允许手写。
+
+- `scripts/metrics.py` 从源码实测：工具数（AST 解析 `@server.tool`）、规则函数数（`rules/` 顶层公开函数）、
+  自检脚本数、门禁步骤数、变异条目数、模型数、模板数、设定包数、覆盖率。
+- 结果写入 `docs/metrics.json`；覆盖率由 `pre_push_gate.sh` 在测完后以 `--coverage` 回写。
+- `scripts/metrics.py --check` 与 `scripts/verify_docs.py` 的 D19 共同保证：
+  源码与账本不一致、或文档引用了账本以外的数字，门禁即失败。
+- 发布流程见 [docs/RELEASING.md](docs/RELEASING.md)；版本号唯一信源仍是 `__init__.py:__version__`，
+  `pyproject.toml` 必须同步。
+
+### 12.1 双语对外呈现
+
+- `README.md` 是英文主版，`README.zh-CN.md` 是中文版，两者互链且断言表必须一致（D7b）。
+- 英文版正文不得出现中文正文（示例载荷、设定包路径、市场键名等代码内容除外），由 D20 静态检查。
+- `docs/index.html` 提供 EN / 中文 切换，默认英文，语言选择存 `localStorage`；
+  两种语言互斥渲染，不会同屏混排。

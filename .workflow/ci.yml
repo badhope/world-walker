@@ -110,6 +110,12 @@ stages:
         script: |
           set -euo pipefail
           python scripts/verify_settings.py
+      - step: metrics
+        name: metrics
+        displayName: 数字信源（docs/metrics.json 与源码实测一致）
+        script: |
+          set -euo pipefail
+          python scripts/metrics.py --check
       - step: docs
         name: verify-docs
         displayName: 文档一致性

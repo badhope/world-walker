@@ -6,21 +6,17 @@
 import json, sys, argparse, os
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_PARENT_DIR = os.path.dirname(_SCRIPT_DIR)
-sys.path.insert(0, _PARENT_DIR)
 
 # 引擎内部统一用 `import game_engine.*`，过去要求仓库目录名必须叫 game_engine。
-# 这里注册包别名，使任意克隆目录名 / pip 安装方式都能导入。
-if "game_engine" not in sys.modules:
-    import importlib.util
-    _spec = importlib.util.spec_from_file_location(
-        "game_engine", os.path.join(_SCRIPT_DIR, "__init__.py"),
-        submodule_search_locations=[_SCRIPT_DIR])
-    _pkg = importlib.util.module_from_spec(_spec)
-    _pkg.__path__ = [_SCRIPT_DIR]
-    sys.modules["game_engine"] = _pkg
-    # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
-    _spec.loader.exec_module(_pkg)
+# 这里委托 bootstrap 注册包别名，使任意克隆目录名 / pip 安装方式都能导入。
+try:  # installed package
+    from game_engine import bootstrap as _bootstrap
+except ImportError:  # bare checkout: the package dir may not be on sys.path yet
+    if _SCRIPT_DIR not in sys.path:
+        sys.path.insert(0, _SCRIPT_DIR)
+    import bootstrap as _bootstrap
+_bootstrap.ensure_parent_on_path(_SCRIPT_DIR)
+_bootstrap.install(_SCRIPT_DIR)
 
 from game_engine.state_schema import load_state, save_state, log_event, seed_rng, state_lock, _recover_archive
 from game_engine.rules.combat import resolve_combat

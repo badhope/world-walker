@@ -6,6 +6,8 @@
 2. `AGENTS.md` —— 仓库级硬约束（零依赖、面板只读、确定性）
 3. `docs/BENCHMARK.md` —— 我们和谁比、哪些差距是"承认"而不是"没发现"
 
+发布流程见 `docs/RELEASING.md`；对外文档英文主版是 `README.md`，中文版是 `README.zh-CN.md`。
+
 ## 开发环境
 
 ```bash
@@ -37,6 +39,7 @@ python scripts/verify_panel.py       # 视图模型 / 行动队列
 python scripts/verify_world.py       # 世界演化
 python scripts/verify_settings.py    # 四套设定包
 python scripts/verify_generic.py     # 通用游戏层（判定/档案/上下文/存档库）
+python scripts/metrics.py --check    # 文档引用的数字必须与源码一致
 python scripts/verify_mutation.py    # 44 个变异必须全杀
 ```
 

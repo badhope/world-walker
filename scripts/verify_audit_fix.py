@@ -403,7 +403,7 @@ def r13_read_only_tools_do_not_save():
     mcp = _load_mcp_for_audit()
     d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
     path = os.path.join(d, 'readonly.json')
-    from game_engine.state_schema import load_state, save_state
+    from game_engine.state_schema import save_state
     state = fresh_state()
     state['systems'] = {'defs': {}, 'rt': {}}
     save_state(state, path)

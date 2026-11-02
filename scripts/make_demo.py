@@ -40,6 +40,7 @@ if "game_engine" not in sys.modules:
     _spec.loader.exec_module(_pkg)
 
 import mcp_server as MS  # noqa: E402
+from game_engine.state_schema import load_state, save_state, log_event  # noqa: E402
 from game_engine.rules import questline as quest_rules  # noqa: E402
 from game_engine.rules.world_evolution import evolve  # noqa: E402
 
@@ -108,7 +109,7 @@ def play_one(bundle_name, turns, seed, out_path):
     persona = PERSONAS.get(bundle_name) or {"travel": [], "social": [], "prey": [], "buy": []}
 
     MS.load_setting(path=bundle_path, state_path=out_path, seed=seed)
-    state = MS.load_state(out_path)
+    state = load_state(out_path)
     rng = random.Random(seed)
     player = state["entities"]["player"]
     locs = [l for l in (bundle.get("places") or {}) if l]
@@ -116,7 +117,7 @@ def play_one(bundle_name, turns, seed, out_path):
         locs = list(state.get("market") or {})
 
     for t in range(1, turns + 1):
-        state = MS.load_state(out_path)
+        state = load_state(out_path)
         player = state["entities"]["player"]
         loc = player.get("location", "")
 
@@ -142,38 +143,38 @@ def play_one(bundle_name, turns, seed, out_path):
                 MS.combat("player", target, rng.choice(["attack", "heavy"]))
 
         # 回合推进：市场 + 世界演化（与 tick 工具同一套语义）
-        state = MS.load_state(out_path)
+        state = load_state(out_path)
         MS._seed_rng(state)
         MS.tick_market(state)
         state["tick"] = state.get("tick", 0) + 1
         for e in evolve(state).get("events", []):
-            MS.log_event(state, "world", str(e))
+            log_event(state, "world", str(e))
         # 事业线也要推进——否则演示存档里「事业线」卡永远是"还没到浮现的时候"，
         # 截图与真实 tick 行为不一致（实测踩到）。
         for ch in quest_rules.advance(state, state.get("questlines") or [],
                                       tick=int(state["tick"])):
             if ch.get("change") == "stage":
-                MS.log_event(state, "quest", "事业线「%s」推进到：%s"
+                log_event(state, "quest", "事业线「%s」推进到：%s"
                               % (ch.get("quest"), ch.get("title")),
                               quest=ch.get("quest"), stage=ch.get("stage"))
             elif ch.get("change") == "done":
-                MS.log_event(state, "quest", "事业线「%s」完成" % ch.get("quest"),
+                log_event(state, "quest", "事业线「%s」完成" % ch.get("quest"),
                              quest=ch.get("quest"))
-        MS.log_event(state, "tick", "回合%d结束" % state["tick"])
-        MS.save_state(state, out_path)
+        log_event(state, "tick", "回合%d结束" % state["tick"])
+        save_state(state, out_path)
 
         if t % 25 == 0:
             MS.write_summary("第 %d 回合：%s。%s" % (
-                t, (MS.load_state(out_path)["entities"]["player"].get("location", "")),
-                "；".join(_recent_events(MS.load_state(out_path), 3))[:180]))
+                t, (load_state(out_path)["entities"]["player"].get("location", "")),
+                "；".join(_recent_events(load_state(out_path), 3))[:180]))
 
         # 每 30 回合写一段正文：面板主舞台展示的即这一段
         if t % 30 == 0:
-            MS.publish_prose(compose_prose(MS.load_state(out_path), bundle_name, bundle.get("places") or {}))
+            MS.publish_prose(compose_prose(load_state(out_path), bundle_name, bundle.get("places") or {}))
         # 每 60 回合尝试一次突破（走引擎判定，失败会反噬）
         if t % 60 == 0:
-            tiers = (MS.load_state(out_path).get("config") or {}).get("level_tiers") or []
-            cur = MS.load_state(out_path)["entities"]["player"].get("level", "")
+            tiers = (load_state(out_path).get("config") or {}).get("level_tiers") or []
+            cur = load_state(out_path)["entities"]["player"].get("level", "")
             if tiers:
                 idx = next((i for i, x in enumerate(tiers) if str(cur).startswith(x)), 0)
                 nxt = tiers[min(len(tiers) - 1, idx + 1)]
@@ -184,14 +185,14 @@ def play_one(bundle_name, turns, seed, out_path):
 
     # 收尾：回到世界的"枢纽"（开局地点），让演示存档的最后画面里有在场人物与关系网，
     # 而不是停在一个只有主角的荒地里——README 的首图要能展示面板的完整信息密度。
-    state = MS.load_state(out_path)
+    state = load_state(out_path)
     hub = ((bundle.get("player") or {}).get("location")
            or ((state.get("world_info") or {}).get("location_desc") and "")
            or locs[0] if locs else "")
     if hub:
         MS.travel(hub, note="回到城里，把这一路的事记下来")
-    MS.publish_prose(compose_prose(MS.load_state(out_path), bundle_name, bundle.get("places") or {}))
-    return MS.load_state(out_path)
+    MS.publish_prose(compose_prose(load_state(out_path), bundle_name, bundle.get("places") or {}))
+    return load_state(out_path)
 
 
 def main():

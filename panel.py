@@ -35,17 +35,13 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if "game_engine" not in sys.modules:
-    import importlib.util
-
-    _spec = importlib.util.spec_from_file_location(
-        "game_engine", os.path.join(_SCRIPT_DIR, "__init__.py"),
-        submodule_search_locations=[_SCRIPT_DIR])
-    _pkg = importlib.util.module_from_spec(_spec)
-    _pkg.__path__ = [_SCRIPT_DIR]
-    sys.modules["game_engine"] = _pkg
-    # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
-    _spec.loader.exec_module(_pkg)
+try:  # installed package
+    from game_engine import bootstrap as _bootstrap
+except ImportError:  # bare checkout: the package dir may not be on sys.path yet
+    if _SCRIPT_DIR not in sys.path:
+        sys.path.insert(0, _SCRIPT_DIR)
+    import bootstrap as _bootstrap
+_bootstrap.install(_SCRIPT_DIR)
 
 from game_engine.rules import lorebook as lore_engine  # noqa: E402
 from game_engine.rules import playbook as playbook_rules  # noqa: E402
@@ -55,7 +51,7 @@ from game_engine.rules.narrative_engine import (  # noqa: E402
 from game_engine.state_schema import load_state  # noqa: E402
 from game_engine import input_policy  # noqa: E402
 
-_PANEL_VERSION = "1.3.0"
+_PANEL_VERSION = __import__("game_engine").__version__
 HTML_FILE = os.path.join(_SCRIPT_DIR, "panel.html")
 HTML_DIR = _SCRIPT_DIR
 MORAL_DIMS = ("关怀", "公平", "忠诚", "权威", "圣洁", "自由")

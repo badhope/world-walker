@@ -1,558 +1,434 @@
 # World Games
 
-**版本 v1.4.0** · **中文** | [English](README.en.md) · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**v1.5.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [Gameplay](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
 
-> **AI 负责叙述，引擎负责规则结算。**
-> 通用互动游戏框架：可配置题材、骰型和资源轨，以确定性规则内核结算。
-> 188 个规则函数、64 个 MCP 工具、内置四套可直接开玩的设定包、
-> 上下文台账（AI 该记住什么可核对）、存档库与一块离线只读主舞台。
-> 相同初始状态、种子和操作序列可复现规则结算。
+> **The AI narrates. The engine decides.**
 
-> **v1.2.0 更名说明**：原「万界·行者 / World Walker」更名为 **World Games**。
-> 更名是产品定位从"一个修仙文字游戏"升级为"装任何游戏的框架"；
-> Python 包名仍为 `game_engine`，命令 `world-walker` / `world-walker-mcp` 保留为兼容别名。
+World Games is the rules layer for AI-driven interactive games. Your agent writes prose;
+a deterministic engine resolves every hit, price, relationship and faction shift, then
+persists it to one auditable state file.
+
+`188 rule functions` · `64 MCP tools` · `4 playable worlds` · `8 game templates` · `0 runtime dependencies`
 
 <p align="center">
-  <img src="docs/screenshots/stage-xuanshu.png" alt="实况主舞台（玄枢界 · 墨金皮肤 · 第 500 回合）" width="100%">
+  <img src="docs/screenshots/stage-xuanshu.png" alt="Live stage — turn 500 of a real save" width="100%">
 </p>
 
 <p align="center">
-  <a href="docs/screenshots/walkthrough.mp4">▶ 观看 16 秒真实交互录屏（行动排队 / 时间线筛选 / 命令面板 / 角色卡）</a>
+  <a href="docs/screenshots/walkthrough.mp4">▶ 16-second recording of a real session</a>
 </p>
 
 ---
 
-## 这是什么
+## What it gives you
 
-**World Games 是互动游戏的引擎层，不是一款具体的游戏。** 它提供规则结算、上下文台账和存档管理：
+Three problems kill long AI-run games. World Games fixes each one with code, not prompt wording.
 
-| 问题 | 常见做法 | 本项目 |
+| Problem | What usually happens | What World Games does |
 |---|---|---|
-| 数值如何结算 | 语言模型叙述 | 规则函数结算，相同初始状态、种子和操作序列可复现 |
-| AI 会不会忘 | 靠上下文窗口 | **上下文台账**：线索/承诺/事实落盘，`context_pack` 按预算取回 |
-| 存档会不会乱 | 一个 JSON 文件手动管 | **存档库**：多局、快照、回收站，`session_*` 统一管理 |
+| Numbers drift | The model invents damage, prices, HP | **Rule functions** resolve them; same state + seed + actions replay byte-identically |
+| The AI forgets | Context window overflows, old facts vanish | **Context ledger** persists clues, promises and facts to disk; `context_pack` returns what fits the budget |
+| Saves become chaos | One JSON file, hand-managed | **Save library** — multiple runs, snapshots, trash, all through `session_*` |
 
-宿主可按需这样组织一局：`session_new` 开局 → `game_profile` 定义资源 → `roll` 判定 →
-`context_remember` 记账 → `context_pack` 取材料 → 叙事与对话 → `tick` 推进。
+Two more things most frameworks skip:
 
-建议的职责分工：
-
-- **引擎算数**：命中、伤害、价格、关系、因果、势力消长、谣言扩散，全部由确定性规则函数结算；
-- **Agent 作文**：语言模型只把引擎返回的 JSON 转写成文学描写与对话，不得编造数值；
-- **面板见证**：网页主舞台读取状态、判定与上下文台账，不直接修改游戏状态；玩家可将行动排入侧写文件，由宿主取走后结算。
-
-它不是又一个"AI 跑团提示词"，而是一层**可以被任何 Agent 调用的游戏内核**：
-MCP 服务器（stdio，64 个工具）、命令行（14 条命令）、HTTP 只读面板，三条通道共用同一套规则与同一份状态文件。
-
-### 面板现在能干什么
-
-| 区块 | 回答的问题 |
-|---|---|
-| 游戏档案卡 | 这一局有哪些资源、属性、进度轨、标签？（自定义，不限于血条） |
-| 判定记录卡 | 最近掷了什么、难度多少、成功率多少？ |
-| 上下文台账抽屉 | AI 记住了哪些线索与承诺？哪些已结案？ |
-| 存档库抽屉 | 一共几局、各自跑到第几回合、当前是哪一局？ |
-| 叙事 + 编年史 + 趋势图 | 这一回合发生了什么、长局怎么走 |
+- **The world moves on its own.** Every `tick` advances factions (logistic growth + Lotka–Volterra pressure),
+  rumors (SIR), culture (Deffuant), roaming NPCs and a Panarchy `r → K → Ω → α` cycle driven by real stock.
+  Do not call `tick` and the world stands still — that is intentional, not a bug.
+- **The panel is read-only.** A local web stage renders the real state. It never writes.
+  Players can queue actions to a sidecar file; the host drains them with `pending_actions` and settles normally.
+  One writer, one truth.
 
 ---
 
-## 三十秒上手
+## Install
 
 ```bash
-pip install -e ".[mcp]"          # 核心使用标准库；MCP 模式另装 mcp SDK
+pip install -e ".[mcp]"      # core is standard library only; the mcp extra is for MCP mode
 ```
 
-把下面这段加进任意 MCP 客户端（Claude Code / Codex / Cursor / opencode）：
+Register with any MCP client (Claude Code / Codex / Cursor / opencode):
 
 ```json
 { "mcpServers": { "world-games": { "command": "world-games-mcp" } } }
 ```
 
-然后对 Agent 说一句：
+`world-walker-mcp` still works as a compatibility alias.
+
+## Start a game
 
 ```
 load_setting(path="settings/玄枢界.setting.json")
 ```
 
-`world-walker-mcp` 是 v1.2.0 之前的命令名，仍可用；新配置建议直接用 `world-games-mcp`。
-在仓库根目录直接运行时按上面的相对路径即可；`pip` 安装后设定包位于包目录内，
-`load_setting` 会在原路径不存在时自动回退到包内同名路径。
+That is a full game: world, protagonist, NPCs, market, relations, tiers, lorebook, questline, subsystems.
 
-一局就开好了。宿主可在需要数值结算时调用工具：
+Then play. The host calls tools when a number is needed:
 
 ```
-你：我走进万石商行，把《引元诀》残页拍在柜台上，问石三娘这东西值多少。
+You: I walk into the Wanshi trading house and slap the torn page on the counter.
+
 Agent → trade(location="临川城", item="ningyuan_dan", direction="buy", quantity=1)
       → social(actor="player", target="shi_sanniang", event="cooperate")
-      → narration_context(...)  →  publish_prose(...)  →  tick()
+      → narration_context(scene_text="万石商行")
+      → publish_prose(text="...")
+      → tick()
 ```
 
-**想开一局"不是修仙"的游戏？** 用 `session_new` + `game_profile`，不需要设定包：
-
-```
-session_new(name="我的团")
-game_profile({title:"调查", kind:"investigation",
-              resources:[{key:"sanity", label:"理智", value:8, min:0, max:10}],
-              meters:[{key:"clue", label:"线索", value:0, min:0, max:12}]})
-roll(attribute="per", difficulty=12, dice="2d6", reason="翻查档案")
-context_remember("门房说昨夜灯塔亮过", kind="clue", keys=["灯塔"])
-context_pack(scene_text="灯塔")
-```
-
-不想装 MCP 也能玩命令行：
+No MCP client? The CLI covers the same engine:
 
 ```bash
-python init_game.py                       # 生成示例世界
+python init_game.py
 python engine.py world_state --state game_state.json
 python engine.py combat --state game_state.json --attacker player --defender goblin --action_type heavy
-python panel.py --state game_state.json   # 打开只读主舞台
+python panel.py --state game_state.json     # open the read-only stage
+```
+
+## Play something that is not cultivation
+
+No setting bundle needed. Define your own profile and go:
+
+```
+session_new(name="my table")
+game_profile({title:"Investigation", kind:"investigation",
+              resources:[{key:"sanity", label:"Sanity", value:8, min:0, max:10}],
+              meters:[{key:"clue", label:"Clues", value:0, min:0, max:12}]})
+roll(attribute="per", difficulty=12, dice="2d6", reason="search the archive")
+context_remember("The janitor says the lighthouse lit last night", kind="clue", keys=["lighthouse"])
+context_pack(scene_text="lighthouse")
+```
+
+Or start from a template:
+
+```
+template_start(template="mystery", name="my case",
+               overrides={"world": {"name": "Rain Harbor"}})
 ```
 
 ---
 
-## 游玩行动一览（64 个工具）
+## Screens
 
-宿主 AI 支持 MCP 协议即可；宿主按需调用这些工具结算或记账。
+Every image below is a real render of a real save, asserted element-by-element in Edge by
+`scripts/shots.py`. Source saves live in [`docs/demo/`](docs/demo/).
 
-### 开局与存档（9）
-
-| 工具 | 做什么 |
+| Xuanshu · Eastern fantasy · ink-gold | Zhejian · Wuxia · ink |
 |---|---|
-| `session_new` | 新建一局并存进存档库（可用设定包或直接给初始状态） |
-| `session_list` / `session_switch` | 列出所有局 / 按局名切换 |
-| `session_snapshot` / `session_manage` | 拍快照 / 归档、还原、清空回收站 |
-| `session_import` | 把已有状态 JSON 导入存档库 |
-| `load_setting` | 从内置设定包一键开局 |
-| `world_init` / `world_open` | 手工建世界 / 打开任意状态文件 |
+| ![Xuanshu](docs/screenshots/stage-xuanshu.png) | ![Zhejian](docs/screenshots/stage-ink.png) |
+| **Neon Abyss · cyberpunk · neon** | **Fogport · investigation · graphite** |
+| ![Neon](docs/screenshots/stage-neon.png) | ![Fogport](docs/screenshots/stage-neutral.png) |
 
-### 每回合核心（5）
-
-| 工具 | 做什么 |
-|---|---|
-| `pending_actions` | 取走玩家在面板排的行动（双向通道） |
-| `context_pack` | 按预算打包本回合该给 AI 的材料 |
-| `narration_context` | 世界书触发 + 在场角色卡面 + 编年史 |
-| `publish_prose` | 把本回合正文写进状态（面板主舞台显示） |
-| `tick` | 推进一回合（市场 + 世界演化 + 事业线） |
-
-### 判定与数值（11）
-
-| 工具 | 做什么 |
-|---|---|
-| `roll` | **通用判定**：d20/2d6/3d6/d100/4dF/骰池、四种模式、对抗 |
-| `combat` / `trade` / `social` / `karma` | 战斗 / 交易 / 社交 / 因果债 |
-| `advance` / `use_item` | 突破 / 用物 |
-| `game_profile` / `game_adjust` / `game_tag` / `game_sheet` | 自定义档案 / 改数值 / 标签 / 表格 |
-
-### 世界与位置（9）
-
-`travel` `world_state` `narrative` `status` `playbook_info` `quest_status` `quest_advance` `lore_lookup` `failure_tick`
-
-### 记忆与检索（7）
-
-`context_remember` `context_search` `context_forget` `recall` `write_summary` `recap` `read_state`
-
-### 体系与模板（9）—— v1.4 新增
-
-| 工具 | 做什么 |
-|---|---|
-| `templates_list` / `template_info` | 列出 8 套模板 / 查看单套完整内容与校验结果 |
-| `template_apply` | 模板 → 设定包（不落盘，可继续改） |
-| `template_start` | 模板直接开局（建状态 + 写盘 + 设为当前对局） |
-| `system_define` / `system_remove` | 增删体系（7 类 kind） |
-| `system_run` | 执行体系动作（推进时间 / 掉落 / 制造 / 声望 / 成就 / 成长 / 自定义） |
-| `system_status` | 列出全部体系或查看单个体系的配置与运行态 |
-| `system_schema` | 体系与模板的字段说明（建自定义游戏前查一次） |
-
-### 生态与工具（13）
-
-`character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `close_panel` `world_schema`
-
----
-
-## 一回合实际长什么样
-
-以「雾港调查」为例（真实返回值）：
-
-**玩家说**：我去码头问门房，灯塔最近有没有亮过。
-
-```
-1. context_pack(scene_text="码头 灯塔 门房")
-   → 拿回：玩法（choice · 线索 0/24）、未结案线索、最近事件
-
-2. roll(attribute="per", difficulty=9, dice="2d6", reason="向门房打听灯塔")
-   → {"rolls":[1,1], "total":2, "difficulty":9, "margin":-7, "level":"failure"}
-
-3. context_remember("门房说昨夜灯塔亮过三分钟，随后灭了",
-                     kind="clue", keys=["灯塔","门房"], source="门房")
-   → {"fact":{"id":"f0001", ...}, "created":true}
-
-4. game_adjust("clue", delta=1)   → {"after":1, "at_max":false}
-   game_adjust("sanity", delta=-1) → {"after":7, "at_min":false}
-
-5. publish_prose("雨没停。门房把烟摁在窗台上，说昨夜灯塔亮了三分钟。")
-6. tick()  → 世界演化一回合
-```
-
-全部落在同一份状态文件里：判定在 `checks`、事实在 `context.facts`、资源在 `game`、
-正文在 `prose`、世界在 `panarchy/factions/...`。面板只读这些字段。
-
-CLI 与 MCP 的 `tick` 都推进世界和事业线，并返回当回合事业线变化；完成奖励不会重复发放。`lore_lookup` 是不消耗冷却、不写状态的世界书预演；正式叙事上下文生成仍会按规则触发世界书。
-
-存档库与回收站共享排他锁；存档移入或还原时，主存档与识别到的快照、备份、日志和侧写一起迁移。存在 `<state>.archive-pending` 或库级 `.ww-session-transaction-pending` 时，相关受保护读写会被拒绝，不会自动恢复；异常或崩溃后应停止写入、保留现场并人工核对，详见[归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。保存失败时恢复调用方内存中的状态对象，不等于磁盘归档回滚；此机制不保证断电安全。
-
----
-
-## 体系与模板（v1.4）
-
-### 七类可插拔体系
-
-游戏不只是"判定 + 数值"。World Games 把常见玩法机制拆成**数据驱动**的体系，宿主随时可增删改：
-
-| 体系 | kind | 管什么 | 动作 |
-|---|---|---|---|
-| 时间 | `time` | 日/时/分、季节、天气 | `advance(minutes)`、`status` |
-| 掉落 | `loot` | 加权掉落表、数量区间、空掉落 | `roll(table, times, grant)`、`list` |
-| 制造 | `craft` | 配方、材料校验、技能判定、失败返还 | `craft(recipe)`、`list` |
-| 声望 | `reputation` | 势力声望 −100..100 + 分档 | `adjust(faction, delta)`、`status` |
-| 成就 | `achievement` | 条件（复用事业线谓词）+ 奖励 | `check`、`list` |
-| 成长 | `progression` | XP 曲线、等级、每级属性成长 | `grant(amount)`、`status` |
-| 自定义 | `custom` | 受限效果列表（资源/属性/进度轨/标签/事实/声望/XP/时间/掉落） | `<动作名>`、`list` |
-
-全部**确定性**：时间/掉落/制造的随机都由 `sha256(seed|tick|...)` 派生，不消耗 `rng_counter`；
-同存档同 tick 必然复现。运行态写进 `state["systems"]["rt"]`，快照回退会连体系一起回退。
-
-### 八套开箱即用的模板
-
-`templates.py` 提供完整骨架（世界/角色/市场/地点/世界书/事业线/玩法剧本/体系/游戏档案）：
-
-| 模板 | 题材 | 玩法循环 | 体系数 |
-|---|---|---|---|
-| `jrpg` | 日式奇幻冒险 | freeform | 7 |
-| `mystery` | 本格推理调查 | choice | 5 |
-| `management` | 店铺经营 | mud | 4 |
-| `survival` | 末日生存 | mud | 4 |
-| `narrative` | 情感叙事 | freeform | 4 |
-| `cozy` | 田园生活 | freeform | 4 |
-| `tabletop` | 桌面跑团 | ttrpg | 5 |
-| `immersive` | 沉浸模拟 | ttrpg | 4 |
-
-一条命令开局：
-
-```
-template_start(template="mystery", name="我的调查局",
-               overrides={"world": {"name": "雨港"}, "player": {"name": "陆离"}})
-```
-
-模板是**起点不是锁死**：`overrides` 深合并 dict、列表整体替换；
-`template_apply` 只返回 bundle 不落盘，可继续改再交给 `world_init` / `session_new`。
-
----
-
-## 界面
-
-全部截图来自**真实对局的真实状态**，由 `scripts/shots.py` 在 Edge 中逐项断言后现场拍摄
-（来源存档见 [`docs/demo/`](docs/demo/)，重拍命令见文末）。
-
-### 四套世界观，同一套引擎
-
-| 玄枢界（东方玄幻 · 墨金） | 折剑行（武侠 · 水墨） |
-|---|---|
-| ![玄枢界](docs/screenshots/stage-xuanshu.png) | ![折剑行](docs/screenshots/stage-ink.png) |
-| **霓虹深渊（赛博朋克 · 霓虹）** | **雾港（调查悬疑 · 石墨）** |
-| ![霓虹深渊](docs/screenshots/stage-neon.png) | ![雾港](docs/screenshots/stage-neutral.png) |
-
-皮肤只是表层。真正随世界改变的是**词、阶、钱、地点描写**——设定包里写
-`terms: { level: "身手", gold: "银两", track: "身手阶" }`，面板上就不会再出现"境界 / 灵石 / 修行轨"。
-`scripts/verify_settings.py` 会逐个世界断言这件事。
-
-### 主舞台能做什么
+Skins are the surface. What actually changes per world is **vocabulary, tiers, currency and place
+descriptions**: a bundle declares `terms: { level: "身手", gold: "银两" }` and the panel never shows
+"境界 / 灵石" again. `scripts/verify_settings.py` asserts this for every bundle.
 
 | | |
 |---|---|
-| ![世界脉搏](docs/screenshots/drawer-world.png) | ![角色卡](docs/screenshots/character-card.png) |
-| **世界脉搏**：Panarchy 相位、势力存量、连接度、烈度、谣言热度——`tick` 每回合推动 | **角色卡**：点开在场人物，卡面文字（外观 / 性情 / 口吻）来自设定包 |
-| ![命令面板](docs/screenshots/command-palette.png) | ![行动队列](docs/screenshots/action-queue.png) |
-| **命令面板**：`Ctrl/⌘ + K`，图鉴 / 市场 / 导出 / 分享模式，全键盘可达 | **行动队列**：浏览器里排行动，经侧写文件交给 Agent 结算，状态仍只由引擎写 |
+| ![World pulse](docs/screenshots/drawer-world.png) | ![Character card](docs/screenshots/character-card.png) |
+| **World pulse** — Panarchy phase, faction stock, connectedness, intensity, rumor heat, advanced by `tick` | **Character card** — click anyone on stage to read their card text |
+| ![Command palette](docs/screenshots/command-palette.png) | ![Action queue](docs/screenshots/action-queue.png) |
+| **Command palette** (`Ctrl/⌘+K`), fully keyboard reachable | **Action queue** — queue in the browser, the host drains it via `pending_actions` |
 
-| 图鉴 | 市场 | 大事记 |
+| Codex | Market | Milestones |
 |---|---|---|
-| ![图鉴](docs/screenshots/drawer-codex.png) | ![市场](docs/screenshots/drawer-market.png) | ![大事记](docs/screenshots/drawer-milestones.png) |
+| ![Codex](docs/screenshots/drawer-codex.png) | ![Market](docs/screenshots/drawer-market.png) | ![Milestones](docs/screenshots/drawer-milestones.png) |
 
-响应式、帮助与演示模式：
-
-| 768px | 320px | 帮助 |
+| 768px | 320px | Help |
 |---|---|---|
-| ![平板](docs/screenshots/stage-768.png) | ![窄屏](docs/screenshots/stage-320.png) | ![帮助](docs/screenshots/help.png) |
-| **分享模式**（隐藏路径与操作区，适合直播） | **首次访问引导**（一次性） | |
-| ![分享模式](docs/screenshots/share-mode.png) | ![首访引导](docs/screenshots/first-visit.png) | |
+| ![Tablet](docs/screenshots/stage-768.png) | ![Narrow](docs/screenshots/stage-320.png) | ![Help](docs/screenshots/help.png) |
+
+| Share mode (hides paths and controls) | First-visit guide |
+|---|---|
+| ![Share mode](docs/screenshots/share-mode.png) | ![First visit](docs/screenshots/first-visit.png) |
 
 ---
 
-## 项目范围
+## The 64 tools
 
-项目提供规则结算、设定包、存档和宿主叙事指引；支持读取 SillyTavern 角色卡与世界书。
-不提供图像生成、多人联机、云端账号体系或插件市场；参见 [ROADMAP.md](ROADMAP.md)。
+| Group | Tools |
+|---|---|
+| Setup and saves (9) | `session_new` `session_list` `session_switch` `session_snapshot` `session_manage` `session_import` `load_setting` `world_init` `world_open` |
+| Per-turn core (5) | `pending_actions` `context_pack` `narration_context` `publish_prose` `tick` |
+| Checks and numbers (11) | `roll` `combat` `trade` `social` `karma` `advance` `use_item` `game_profile` `game_adjust` `game_tag` `game_sheet` |
+| World and place (9) | `travel` `world_state` `narrative` `status` `playbook_info` `quest_status` `quest_advance` `lore_lookup` `failure_tick` |
+| Memory and recall (7) | `context_remember` `context_search` `context_forget` `recall` `write_summary` `recap` `read_state` |
+| Systems and templates (9) | `templates_list` `template_info` `template_apply` `template_start` `system_define` `system_remove` `system_run` `system_status` `system_schema` |
+| Ecosystem and tooling (13) | `character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `close_panel` `world_schema` |
 
----|---|---|
-| 数值由谁决定 | 语言模型生成，容易漂移 | **规则函数结算**，同种子逐字节可复现 |
-| 世界会不会自己动 | 通常等你行动；不行动世界静止 | **`tick` 自己推动**势力 / 谣言 / 风气 / NPC / 相位 |
-| 世界观可换性 | 换的是提示词与角色卡 | 换的是**设定包**：术语、等级阶梯、货币、地点、世界书、品牌、皮肤 |
-| 长局记忆 | 上下文窗口 + 摘要，旧事常丢 | **三层记忆**：摘要 + 大事记 + 逐条归档（`recall` 跨世代回捞） |
-| 生态兼容 | 各自为政 | 直接吃 SillyTavern **角色卡**（PNG/JSON，V1–V3）与**世界书**（含 selective/constant/disable 语义） |
-| 界面 | 聊天流为主 | **只读实况主舞台**：叙事 + HUD + 长局曲线 + 图鉴 + 市场 + 世界脉搏 |
-| 可核对性 | 难以复核 | 每条事件有结构化字段；`status` / `world_state` 只读不落盘；提供变异测试 |
-
-我们**不**做的事：图像生成、多人联机、云端账号体系、插件市场。
-这些是取舍不是遗漏，理由写在 [ROADMAP.md](ROADMAP.md)。
+Full parameters and calling conventions: [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md).
 
 ---
 
-## 核心机制（都在结算回路上，不是摆设）
+## One turn, end to end
 
-### 1. 宿主调用 tick 推进世界
+Real return values from the Fogport investigation bundle.
 
-每次 `tick` 都会推进：
-
-- **势力消长**：每个势力带自己的禀赋上限（由名字确定性派生），logistic 增长 + 头部两家 Lotka-Volterra 温和压制 + 挑战者回流。长期有稳定强弱，短期有换手。
-- **谣言传播**：SIR 一步。业债高、物价异常、相位剧烈时才会播种新谣言。
-- **风气漂移**：Deffuant 有界信任，每 10 回合结算一次。
-- **NPC 走动**：标注 `roam: true` 的 NPC 会换地点。
-- **Panarchy 适应性循环**：`r → K → Ω → α → r` 四段状态机，由真实存量（势力均值、关系密度、世界标记、业债、物价偏离）驱动，不是查表。
-
-`scripts/verify_world.py` 的 W1/W2/W11 断言这四件事真的发生：
-60 回合内势力存量变化、长局里四个相位都观测到、MCP `tick` 工具本身推进世界。
-
-### 2. 派生指标参与结算
-
-| 指标 | 在哪里生效 | 断言 |
-|---|---|---|
-| 世界相位 | Ω 期事件概率 ×1.6、战斗伤害 ×1.25、命中 ×0.90 | W3 |
-| 心流 | 无聊时命中下降、焦虑时上升 | W4 |
-| 六维道德画像 | 业债类型直接累加（不解析中文），恶名压低社交增量 | W5 |
-| 等级阶梯 | 战斗按阶给战力加成；`advance` 逐阶校验 | W10 |
-
-### 3. 因果债
-
-`karma` 记的是结构化账本：类型、金额、债主、回合、是否已结清。
-未结清的债会压低突破成功率、放大他人敌意，并进入突破时的"天劫强度"。
-台账有界：超出 `karma_ledger_keep` 时**合并**最旧条目并保留总额（不是截断）。
-
-### 4. 长局记忆
+**Player:** I go to the docks and ask the gatekeeper whether the lighthouse has been lit.
 
 ```
-write_summary  每 20–50 回合写三五句"变了什么"
-milestones     突破 / 击杀 / 初次抵达 / 因果升级自动记录
-archive        事件超出保留量后追加进 <state>.log.jsonl
-recall         按关键词跨归档世代回捞
-recap          按字符预算给出「最新摘要 + 大事记 + 最近事件」
+1. context_pack(scene_text="码头 灯塔 门房")
+   → playbook (choice · clues 0/24), open clues, recent events
+
+2. roll(attribute="per", difficulty=9, dice="2d6", reason="ask about the lighthouse")
+   → {"rolls":[1,1], "total":2, "difficulty":9, "margin":-7, "level":"failure"}
+
+3. context_remember("The gatekeeper says the lighthouse burned for three minutes last night",
+                     kind="clue", keys=["lighthouse","gatekeeper"], source="gatekeeper")
+   → {"fact":{"id":"f0001", ...}, "created":true}
+
+4. game_adjust("clue", delta=1)    → {"after":1, "at_max":false}
+   game_adjust("sanity", delta=-1) → {"after":7, "at_min":false}
+
+5. publish_prose("The rain did not stop. The gatekeeper crushed his cigarette on the sill
+                  and said the lighthouse burned for three minutes.")
+6. tick()  → one turn of world evolution
 ```
 
-回退（`snapshot` / `restore`）只切换归档世代文件，**绝不删除任何已写下的历史**。
-
-### 5. 可复现
-
-- 开局带 `seed`；
-- 每次结算用 `sha256(seed, tick, counter)` 重置随机源，`rng_counter` 随状态落盘；
-- 世界演化另用 `sha256(seed|tick|key)` 派生随机，**不消耗** `rng_counter`；
-- 只读工具（`status` / `world_state` / `read_state`）**不落盘、不推进计数器**。
-
-三条不变量由 `verify_cli.py`（CLI 通道）、`verify_mcp_stdio.py`（MCP 通道）、
-`verify_world.py`（世界演化）同时锁定。
+Everything lands in one state file: checks under `checks`, facts under `context.facts`,
+resources under `game`, prose under `prose`, world under `panarchy/factions/...`.
+The panel reads those fields and nothing else.
 
 ---
 
-## MCP 工具一览（64 个）
+## Systems and templates
 
-分类与用途见上方「游玩行动一览」。
+### Seven pluggable subsystems
 
-完整参数与调用约定见 [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md)。
+Gameplay mechanics are **data**, not code. Add or remove them at runtime.
 
----
-
-## 玩法层：同一套规则，四种"玩起来不一样"
-
-`playbook` 描述玩法配置，并为宿主提供叙事指引：
-
-| 字段 | 可选值 | 作用 |
+| Kind | Manages | Actions |
 |---|---|---|
-| `loop` | `freeform` / `choice` / `mud` / `ttrpg` | 叙事循环：自由推进 / 选项推进 / 地点命令 / 声明→判定→后果 |
-| `input` | `natural` / `choice` / `command` | 玩家输入形态 |
-| `progress` | `{axis, label, max}` | 进度轴：`level` / `gold` / `reputation` / `knowledge` / `clock` |
-| `failure` | `{mode, label, max}` | 失败条件：`hp` / `sanity` / `clock` / `deadline` / `none` |
-| `beat` | `{pattern, every}` | 节拍序列（如「日常·摩擦·升级·代价·回收」，每 N 回合循环） |
-| `settlement` | 工具名数组 | 建议宿主采用的结算方式 |
-| `context` | `{inject, max_lore, scan_depth}` | 每回合上下文注入策略 |
+| `time` | day/hour/minute, season, weather | `advance(minutes)`, `status` |
+| `loot` | weighted drop tables, quantity ranges, empty rolls | `roll(table, times, grant)`, `list` |
+| `craft` | recipes, material checks, skill roll, partial refund | `craft(recipe)`, `list` |
+| `reputation` | faction standing −100..100 with tiers | `adjust(faction, delta)`, `status` |
+| `achievement` | conditions (questline predicate language) + rewards | `check`, `list` |
+| `progression` | XP curve, levels, per-level attribute growth | `grant(amount)`, `status` |
+| `custom` | restricted effect list (resource/attribute/meter/flag/fact/reputation/xp/time/loot) | `<action>`, `list` |
 
-`playbook_info` 会把当前剧本、进度、失败钟、当前节拍与**给宿主的叙事指南**一起返回；
-`scripts/verify_gameplay.py`（60 项断言）逐项锁定这些语义。
-循环是给宿主的指引，不由引擎强制执行。四套设定包分别演示四种循环：玄幻 `freeform` / 武侠 `ttrpg` / 赛博 `mud` / 悬疑 `choice`。
+All deterministic: subsystem randomness derives from `sha256(seed|tick|...)` and never consumes
+`rng_counter`. Runtime lives in `state["systems"]["rt"]`, so a snapshot rollback rolls subsystems back too.
 
-## 事业线：任务只声明目标与压力，不声明过程
+### Eight playable templates
 
-设定包的 `questlines` 是一个 stage DAG：
+| Template | Genre | Loop | Systems |
+|---|---|---|---|
+| `jrpg` | fantasy adventure | freeform | 7 |
+| `mystery` | investigation | choice | 5 |
+| `management` | shop management | mud | 4 |
+| `survival` | post-apocalypse | mud | 4 |
+| `narrative` | emotional story | freeform | 4 |
+| `cozy` | rural life | freeform | 4 |
+| `tabletop` | tabletop RPG | ttrpg | 5 |
+| `immersive` | immersive sim | ttrpg | 4 |
+
+Templates are starting points, not lock-in: `overrides` deep-merges dicts and replaces lists;
+`template_apply` returns the bundle without writing state.
+
+---
+
+## Four play loops, one rule set
+
+`playbook` describes how a game is played and gives the host narration guidance.
+
+| Field | Values | Effect |
+|---|---|---|
+| `loop` | `freeform` / `choice` / `mud` / `ttrpg` | free input / options / location commands / declare → resolve → consequence |
+| `input` | `natural` / `choice` / `command` | player input form |
+| `progress` | `{axis, label, max}` | `level` / `gold` / `reputation` / `knowledge` / `clock` |
+| `failure` | `{mode, label, max}` | `hp` / `sanity` / `clock` / `deadline` / `none` |
+| `beat` | `{pattern, every}` | beat sequence, e.g. daily · friction · escalation · cost · payoff |
+| `context` | `{inject, max_lore, scan_depth}` | per-turn context injection policy |
+
+The loops guide the host; the engine does not enforce them. Failure does not require hit points —
+a creditor at the door, a tail, or a drained sanity meter are all valid, advanced by `failure_tick`.
+
+The four bundles demonstrate the four loops: Xuanshu `freeform`, Zhejian `ttrpg`, Neon Abyss `mud`, Fogport `choice`.
+
+### Questlines
+
+A questline is a stage DAG whose predicates read world state only:
 
 ```json
 {
   "id": "fog_lighthouse",
-  "title": "别让灯塔亮起来",
-  "visibility": {"flag": "无署名信"},
+  "title": "Keep the lighthouse dark",
+  "visibility": {"flag": "unsigned_letter"},
   "stages": [
-    {"id": "letter", "title": "信", "objectives": ["弄清信是谁写的"],
-     "exit_if": {"visited": "雾港码头"}, "next": ["keeper"]},
-    {"id": "keeper", "title": "看守", "objectives": ["找到沈伯"],
-     "exit_if": {"visited": "灯塔"}, "next": ["ledger"]},
-    {"id": "ledger", "title": "名册", "objectives": ["对上那七个名字"], "next": []}
+    {"id": "letter", "title": "The letter", "objectives": ["find out who wrote it"],
+     "exit_if": {"visited": "fog_harbor"}, "next": ["keeper"]},
+    {"id": "keeper", "title": "The keeper", "objectives": ["find old Shen"], "next": []}
   ],
-  "reward": {"flags": ["灯塔真相"]}
+  "reward": {"flags": ["lighthouse_truth"]}
 }
 ```
 
-- **谓词只用世界状态**：`flag` / `visited` / `gold_gte` / `karma_gte` / `tier_gte` / `relation_gte` / `item_gte` / `counter_gte` / `stage_done`，支持 `all` / `any` / `not` 组合。
-- **dormant 不显示**：没满足 `visibility` 的事业线不进面板，避免变成待办清单。
-- **`exit_if` 才推进**：没有 `exit_if` 的一幕永不自动往前跑——它等宿主用 `quest_advance` 显式判定。
-- **失败优先**：`fail_if` 或 `deadline_tick` 命中直接判失败。
-- **奖励只发一次**：完成后反复 tick 不会重复给钱。
-- 载入时做 DAG 校验：有环、next 指向不存在的 stage 一律报错。
+- **Predicates:** `flag` / `visited` / `gold_gte` / `karma_gte` / `tier_gte` / `relation_gte` / `item_gte` / `counter_gte` / `stage_done`, composable with `all` / `any` / `not`.
+- **Dormant is hidden** — unmet `visibility` keeps a quest out of the panel, so it never becomes a chore list.
+- **Only `exit_if` advances** — a stage without one never moves on its own; the host calls `quest_advance`.
+- **Failure wins** — `fail_if` or `deadline_tick` short-circuits progress.
+- **Rewards pay once** — repeated ticks after completion pay nothing.
+- Loading validates the DAG: cycles and dangling `next` are rejected.
 
-## 世界书：与酒馆语义对齐，但是逐回合确定性的
+### Lorebook
 
-导入 SillyTavern 世界书不再丢语义：
+SillyTavern semantics, but deterministic per tick:
 
-| 语义 | 状态 |
+| Semantics | Status |
 |---|---|
-| `keys` / `secondary_keys` / `selective` | ✅ |
-| `selectiveLogic` 四值（AND_ANY / NOT_ALL / NOT_ANY / AND_ALL） | ✅ |
-| `constant` / `insertion_order` / `enabled` | ✅ |
-| `probability` / `use_probability` | ✅（`sha256(seed\|tick\|entry)` 派生） |
-| `sticky` / `cooldown` / `delay` | ✅（按 tick 计，写进状态文件） |
-| `group` / `group_weight` / `group_override` | ✅（同组只出一条） |
-| `scan_depth` / `match_whole_words` / `exclude_recursion` | ✅ |
-| 递归扫描 | ✅ 但**默认关闭**（打开会把整本书拉进上下文） |
-| `position` / `depth` / `role` / `outlet` | ❌ 提示词布局属于宿主 |
-| `vectorized` / `automationId` / `characters` 过滤器 | ❌ 需要嵌入模型或前端脚本 |
+| `keys` / `secondary_keys` / `selective` | supported |
+| `selectiveLogic` (AND_ANY / NOT_ALL / NOT_ANY / AND_ALL) | supported |
+| `constant` / `insertion_order` / `enabled` | supported |
+| `probability` / `use_probability` | supported, derived from `sha256(seed|tick|entry)` |
+| `sticky` / `cooldown` / `delay` | supported, tick-based, persisted |
+| `group` / `group_weight` / `group_override` | supported, one entry per group |
+| `scan_depth` / `match_whole_words` / `exclude_recursion` | supported |
+| Recursive scanning | supported, **off by default** |
+| `position` / `depth` / `role` / `outlet` | not supported — prompt layout belongs to the host |
+| `vectorized` / `automationId` / `characters` filters | not supported — needs embeddings or front-end scripts |
 
-面板「世界书」抽屉显示每条设定的触发次数与 sticky/cooldown 剩余，
-用来回答"为什么这一段被触发了"。`lore_lookup` 工具可以按任意文本预演一次触发。
+The panel's lorebook drawer shows trigger counts and remaining sticky/cooldown, so you can answer
+"why was this paragraph injected". `lore_lookup` previews a trigger for arbitrary text without
+writing state or consuming cooldown.
 
-## 设定包：换世界不改代码
+### Setting bundles
 
-一个 JSON 就是一个世界（[格式说明](settings/README.md)）：
+One JSON file is one world. Format: [settings/README.md](settings/README.md).
 
-| 设定包 | 类型 | 特色 |
+| Bundle | Genre | Highlights |
 |---|---|---|
-| [`玄枢界`](settings/玄枢界.setting.json) | 东方玄幻 | 十阶修行、玄晶经济、八股势力、21 条世界书 |
-| [`折剑行`](settings/折剑行.setting.json) | 武侠 | 七阶身手、断剑主线、当铺经济、克制叙事 |
-| [`霓虹深渊`](settings/霓虹深渊.setting.json) | 赛博朋克 | F–S 评级、信用点、义体与记忆、雨季氛围 |
-| [`雾港`](settings/雾港.setting.json) | 调查悬疑 | 六阶调查、理智/体力、灯塔谜题、克苏鲁基调 |
+| [`玄枢界`](settings/玄枢界.setting.json) | Eastern fantasy | ten cultivation tiers, crystal economy, eight factions, 21 lorebook entries |
+| [`折剑行`](settings/折剑行.setting.json) | Wuxia | seven martial tiers, broken-sword main line, pawnshop economy |
+| [`霓虹深渊`](settings/霓虹深渊.setting.json) | Cyberpunk | F–S ratings, credits, cyberware and memory, endless rain |
+| [`雾港`](settings/雾港.setting.json) | Investigation | six investigator tiers, sanity/stamina, lighthouse mystery |
 
-`scripts/verify_settings.py` 对每个包断言：载入完整、术语覆盖生效且无未声明的外来词、
-货币与品牌落盘、地点描写生效、连跑 15 回合后势力与相位都在动。
+`scripts/verify_settings.py` asserts each bundle loads completely, that term coverage leaves no
+foreign vocabulary, that currency and brand persist, and that factions and phase still move after 15 turns.
 
 ---
 
-## 质量与验证
+## Scope
 
-项目没有 `pytest` 套件；验证包括 17 个可执行自检脚本、行为回归和变异测试。断言应能被变异测试检验，而不是只被覆盖率统计到。
+**In scope:** rule resolution, setting bundles, saves, context ledger, host narration guidance,
+SillyTavern character cards (PNG/JSON, V1–V3) and world info.
 
-| 自检 | 断言数 | 锁住什么 |
+**Out of scope, deliberately:** image generation, multiplayer, cloud accounts, plugin marketplace.
+These are trade-offs with reasons in [ROADMAP.md](ROADMAP.md), not oversights.
+
+---
+
+## Quality
+
+No pytest suite, by design. Verification is `scripts/verify_*.py` plus behavior regressions plus
+mutation testing: **an assertion must be killable, not merely covered.**
+
+| Suite | Assertions | What it locks |
 |---|---|---|
-| `verify_formulas.py` | 122 | 按 docstring 的数学式独立重算 77 个函数 |
-| `verify_branches.py` | 192 | 低覆盖模块的异常路径与状态分支 |
-| `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
-| `verify_panel.py` | 89 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
-| `verify_mcp_stdio.py` | 64 | 真实 stdio 通道端到端、酒馆生态、只读零副作用、面板队列 |
-| `verify_world.py` | 48 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
-| `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
-| `verify_docs.py` | — | 版本单一信源 / 工具数 / 截图引用 / 演示存档 |
-| `verify_gameplay.py` | 60 | 玩法剧本 / 事业线 DAG / 世界书语义 |
-| `verify_generic.py` | 87 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
-| `verify_systems.py` | 161 | 七类体系行为 + 八套模板完整性 + 计数器 + 面板契约 |
-| `verify_injection.py` | 21 | 外部文本的注入特征识别与 untrusted 标记 |
-| `verify_near_death.py` | 7 | 濒死保护（气血保底、代价落盘、NPC 死亡语义不变） |
-| `verify_audit_fix.py` | 22 | 审计修复回归：快照恢复 / 并发读改写 / 严格 JSON / 输入边界 / 只读零副作用 |
-| `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
-| `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
-| `smoke_ui.py` | 20 | 真实 Edge 渲染 + 新卡片/抽屉 + 响应式 + 零 JS 错误 |
-| `verify_tests.py` | — | 静态 AST：拒绝恒真/恒假/弱断言 |
-| `verify_mutation.py` | 44 个变异 | **故意改坏代码，确认测试会红**；红线存活率 0% |
-
-另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
-全程走真实 MCP stdio。最近一次 500 轮结果：0 意外错误、0 不变量破坏。
-
-推前门禁一条命令：
+| `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
+| `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
+| `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
+| `verify_panel.py` | 89 | view-model contract, legacy saves, static whitelist, inbox guards |
+| `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
+| `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
+| `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
+| `verify_docs.py` | — | version single source, tool count, assertion counts, asset references |
+| `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
+| `verify_generic.py` | 87 | generic checks, game profile, context ledger, save library, brand |
+| `verify_systems.py` | 161 | seven subsystem kinds, eight templates, counters, panel contract |
+| `verify_injection.py` | 23 | injection signatures and `untrusted` marking |
+| `verify_near_death.py` | 7 | near-death protection |
+| `verify_audit_fix.py` | 22 | snapshot restore, concurrent RMW, finite JSON, input boundaries, read-only side effects |
+| `verify_memory.py` | 7 | leak check and three bounded structures |
+| `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
+| `smoke_ui.py` | 20 | real Edge render, cards and drawers, responsive, zero JS errors |
+| `verify_tests.py` | — | AST-level rejection of tautological assertions |
+| `verify_mutation.py` | 44 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 包含行为回归；缺少必要依赖时失败
+bash scripts/pre_push_gate.sh     # 28 steps; missing required dependencies fail the gate
 ```
 
-覆盖率门禁：核心域 ≥70%（当前实测 88%，含通用游戏层）；`pyflakes` 0。`bandit` 只在核心引擎源码上为 0，仓库级扫描仍会在测试脚本里报低危项。
+Two end-to-end stress runs exist: `stress_freeplay.py 500` (CI) and `stress_freeplay.py 2000` (local),
+both over real MCP stdio. Last 500-turn run: 0 unexpected errors, 0 invariant violations.
+
+Coverage gate: core domain ≥70% (measured 86%, including the generic layer); `pyflakes` 0.
+`bandit` is clean on the engine core; the repository-wide scan still reports findings confined to test scripts.
 
 ---
 
-## 项目结构
+## Project layout
 
 ```
-world-walker/                  # 仓库根即 game_engine 包
-├── engine.py                  # CLI（14 条命令，命令表驱动）
-├── mcp_server.py              # MCP 服务器（64 个工具）
-├── state_schema.py            # 状态模型 / 原子写 / 事务锁 / 世代归档 / 种子
-├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
-├── panel.html / .css / .js    # 主舞台（原生三件套，无构建链）
-├── viz_series.py              # 长局态势侧写（<state>.viz.jsonl）
-├── sessions.py                # 存档库（多局 / 快照 / 回收站）
-├── rules/                     # 188 个公开规则函数（含通用判定/游戏档案/上下文台账）
-│   ├── checks.py              # 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
-│   ├── gamesystem.py          # 游戏档案（自定义属性/资源/进度轨/标签/表格）
-│   ├── context.py             # 上下文台账（线索/承诺/事实 + 预算打包）
+world-walker/                  # repo root IS the game_engine package
+├── engine.py                  # CLI, 14 commands
+├── mcp_server.py              # MCP server, 64 tools
+├── state_schema.py            # state model / atomic write / transaction lock / generational archive / seed
+├── panel.py                   # read-only view model + HTTP/SSE + action inbox
+├── panel.html / .css / .js    # the stage: native trio, no build chain
+├── viz_series.py              # long-run telemetry sidecar (<state>.viz.jsonl)
+├── sessions.py                # save library: multi-run / snapshot / trash
+├── rules/                     # 188 public rule functions
+│   ├── checks.py              # d20/2d6/d100/4dF/dice pool, opposed rolls, success bands
+│   ├── gamesystem.py          # game profile: custom attributes, resources, tracks, tags, sheet
+│   ├── context.py             # context ledger: clues, promises, facts + budgeted packing
 │   ├── combat.py economy.py social.py karma.py
 │   ├── cognition.py narrative_engine.py progression.py
 │   ├── world_dynamics.py world_evolution.py
-│   ├── models.py              # 16 个命名闭式模型
+│   ├── models.py              # 16 named closed-form models
 │   └── social_extended.py cultural_evolution.py systems_feedback.py
-├── settings/                  # 4 套可直接开玩的设定包
-├── scripts/                   # 17 个自检 + 变异测试 + 截图/视频/演示存档流水线
-├── docs/demo/                 # 真实演示存档（截图与视频的数据源）
-├── docs/screenshots/          # README 预览（真实渲染 + 逐项断言）
-└── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）
+├── settings/                  # 4 ready-to-play bundles
+├── scripts/                   # 17 self-checks + mutation testing + screenshot/video/demo pipeline
+├── docs/demo/                 # real demo saves (the data behind the screenshots)
+├── docs/screenshots/          # asserted renders
+└── assets/echarts.min.js      # offline chart library (Apache-2.0, shipped with the package)
 ```
 
 ---
 
-## 常见问题
+## FAQ
 
-**它需要联网吗？**
-不需要。核心与面板零第三方依赖，图表库本地随包分发。只有 MCP 模式需要装 `mcp` SDK。
+**Does it need network access?**
+No. Core and panel have zero third-party dependencies and the chart library ships locally.
+Only MCP mode installs the `mcp` SDK.
 
-**它需要 OpenAI / Claude 的 API Key 吗？**
-不需要。它不调用任何模型；模型由你的 Agent 提供。引擎只负责"世界怎么变"。
+**Does it need an OpenAI / Claude API key?**
+No. It never calls a model. Your agent supplies the model; the engine only decides how the world changes.
 
-**我能用它做商业项目吗？**
-MIT 许可。示例设定包里的人物、势力、地名全部原创，可以自由替换。
+**Can I use it commercially?**
+MIT. Every name, faction and place in the demo bundles is original and free to replace.
 
-**为什么不用 pytest？**
-断言必须经得起"改坏代码看测试红不红"的检验。`verify_tests.py` 会静态拒绝恒真断言，
-`verify_mutation.py` 则注入变异，确认每个都能被测试杀死。
-两者都在门禁里。
+**Why no pytest?**
+Assertions must survive "break the code, watch the test go red". `verify_tests.py` statically rejects
+tautological assertions and `verify_mutation.py` injects 44 real defects, requiring every one to be killed.
+Both run in the gate.
 
-**为什么面板不能直接提交行动？**
-可以排队，但不直接结算。面板把行动写进 `<state>.inbox.jsonl` 侧写，Agent 用 `pending_actions`
-取走并照常走引擎。这样"状态只有一个写入源"，确定性与快照回退语义不会被破坏。
+**Why can't the panel submit actions directly?**
+It can queue them, but not settle them. The panel writes to `<state>.inbox.jsonl`; the agent drains it
+with `pending_actions` and settles through the engine. That keeps a single writer, which is what makes
+determinism and snapshot rollback trustworthy.
+
+**Is power-loss safety guaranteed?**
+No, and we do not claim it. Saves use atomic replacement with `.bak` fallback and a re-entrant
+Windows/POSIX lock, and crash tests cover several interruption windows. If `<state>.archive-pending`
+or `.ww-session-transaction-pending` exists, protected reads and writes are refused and there is
+no automatic recovery — stop writing, preserve the evidence, and review it manually. Restoring the
+caller's in-memory state after a failed save is not an archive rollback.
+See [the archive recovery guide](docs/ARCHIVE_RECOVERY.md).
 
 ---
 
-## 重新生成演示素材
+## Regenerate the demo assets
 
 ```bash
-python scripts/make_demo.py          # 4 套世界的真实演示存档 → docs/demo/
-python scripts/shots.py              # 逐项断言 + 截图 + 录屏 → docs/screenshots/
-python scripts/verify_settings.py    # 四套设定包全量校验
+python scripts/make_demo.py          # 4 real demo saves → docs/demo/
+python scripts/shots.py              # assert, screenshot, record → docs/screenshots/
+python scripts/verify_settings.py    # validate all four bundles
 ```
 
 ---
 
-## 许可与致谢
+## License
 
-MIT。图表库 [ECharts](https://echarts.apache.org/) 5.5.1（Apache-2.0）。
-酒馆生态格式的兼容实现参考了 SillyTavern 社区公开的角色卡与世界书规范；
-本项目不复用任何作品的名词与设定。
+MIT. Charts by [ECharts](https://echarts.apache.org/) 5.5.1 (Apache-2.0).
+Tavern-ecosystem compatibility follows the publicly documented character-card and world-info
+conventions; no names or settings from existing works are reused.

@@ -24,21 +24,15 @@ import sys
 import threading
 
 # 引擎内部用 `import game_engine.*`，要求仓库目录名恰好是 game_engine。
-# 这里注册包别名，使任意克隆目录名 / pip 安装方式都能工作。
+# 这里委托 bootstrap 注册包别名，使任意克隆目录名 / pip 安装方式都能工作。
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if "game_engine" not in sys.modules:
-    import importlib.util
-
-    _spec = importlib.util.spec_from_file_location(
-        "game_engine",
-        os.path.join(_SCRIPT_DIR, "__init__.py"),
-        submodule_search_locations=[_SCRIPT_DIR],
-    )
-    _engine_pkg = importlib.util.module_from_spec(_spec)
-    _engine_pkg.__path__ = [_SCRIPT_DIR]
-    sys.modules["game_engine"] = _engine_pkg
-    # 真正执行 __init__.py：包级元数据（__version__ 等）在里面；只建对象不执行会拿不到。
-    _spec.loader.exec_module(_engine_pkg)
+try:  # installed package
+    from game_engine import bootstrap as _bootstrap
+except ImportError:  # bare checkout: the package dir may not be on sys.path yet
+    if _SCRIPT_DIR not in sys.path:
+        sys.path.insert(0, _SCRIPT_DIR)
+    import bootstrap as _bootstrap
+_bootstrap.install(_SCRIPT_DIR)
 
 # MCP SDK 兼容层：1.x 的官方入口是 mcp.server.fastmcp.FastMCP；
 # 2.x 计划改名为 mcp.server.mcpserver.MCPServer。两套布局都支持，
@@ -77,7 +71,7 @@ from game_engine.rules import questline as quest_rules
 from game_engine.rules.world_evolution import evolve as evolve_world, world_summary
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
 from game_engine import settings_loader
-from game_engine.state_schema import (bump, load_state, log_event, save_state, seed_rng,
+from game_engine.state_schema import (bump, log_event, save_state, seed_rng,
                                       state_lock, transact_state)
 from game_engine.viz_series import record_sample
 from game_engine import sessions as session_store

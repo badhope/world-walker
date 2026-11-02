@@ -2,7 +2,6 @@ import builtins
 import importlib.util
 import json
 import os
-import sys
 import tempfile
 import types
 import unittest

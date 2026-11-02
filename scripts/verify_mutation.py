@@ -144,7 +144,7 @@ MUTATIONS = [
      'version = "@@VERSION@@"', 'version = "@@VERSION@@.0.1"',
      'scripts/verify_docs.py'),
     ('M32', 'README 宣称的工具数与源码不符', 'README.md',
-     '## MCP 工具一览（@@TOOLCOUNT@@ 个）', '## MCP 工具一览（@@TOOLCOUNT_WRONG@@ 个）',
+     '## The @@TOOLCOUNT@@ tools', '## The @@TOOLCOUNT_WRONG@@ tools',
      'scripts/verify_docs.py'),
     ('M33', '事业线绕过 exit_if 自动推进（任务自己往前跑）', 'rules/questline.py',
      '    if cur.get("exit_if") is None or not evaluate(state, cur["exit_if"]):\n        return changes',
@@ -335,8 +335,8 @@ EXPECTED_FAILURES = {
     'M28': ('对已倒下目标再次攻击：返回提示但不写编年史',),
     'M29': ('行动队列：落盘记录有界（≤ 102 行，不是只切片返回）',),
     'M30': ('POST /action 拒绝跨站 Origin（403）',),
-    'M31': ('D1b pyproject.toml 版本与 __init__.py 一致',),
-    'M32': ('D2c README 宣称的工具数与源码一致',),
+    'M31': ('D1b pyproject.toml matches __init__.py',),
+    'M32': ('D2c README tool count matches source',),
     'M33': ('G2 exit_if 未满足时停在原幕（不自动往前跑）', 'G2 exit_if 满足后推进到下一幕'),
     'M34': ('G3 递归默认关闭，显式开启后才扫第二层',),
     'M35': ('G3 sticky 保持 2 回合后回到正常触发（不无限续期）',),
@@ -350,7 +350,21 @@ EXPECTED_FAILURES = {
     'M43': ('S5 重复 check 不再重复发奖', 'S5 金币没有二次增加'),
     'M44': ('S7 非法效果 op 在定义期被拒绝',),
 }
-MCP_EXPECTED_STDERR = "Tool 'tick' failed: 'Error executing tool tick: 当前没有进行中的对局：先调用 world_init（新建）或 world_open（续跑）'"
+# The MCP baseline writes a rich-formatted log line to stderr whose timestamp and
+# column wrapping vary per run. Comparing stderr byte-for-byte made every MCP
+# mutant "inconclusive", which is the same as not testing them. Normalise instead:
+# strip the rich timestamp/wrapping and require the semantic sentence to survive.
+MCP_EXPECTED_STDERR = "当前没有进行中的对局"
+
+
+def _normalise_stderr(text):
+    """Collapse rich log decoration: timestamps, indentation, wrapping, file:line."""
+    if not text:
+        return ''
+    flat = re.sub(r'\[\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}\]', ' ', text)
+    flat = re.sub(r'server\.py:\d+', ' ', flat)
+    flat = re.sub(r'\s+', ' ', flat)
+    return flat.strip()
 
 
 def _assertion_name(line):
@@ -362,8 +376,14 @@ def _targeted_failure(mid, baseline, baseline_err, code, stdout, stderr):
     names = EXPECTED_FAILURES.get(mid)
     if not names or code != 1:
         return False
-    expected_err = MCP_EXPECTED_STDERR if mid in ('M05', 'M26', 'M28') else ''
-    if baseline_err.strip() != expected_err or stderr != baseline_err:
+    if mid in ('M05', 'M26', 'M28'):
+        # MCP suites legitimately log a tool error to stderr; only require that the
+        # same sentence appears before and after mutation, not identical bytes.
+        if MCP_EXPECTED_STDERR not in _normalise_stderr(baseline_err):
+            return False
+        if _normalise_stderr(stderr) != _normalise_stderr(baseline_err):
+            return False
+    elif baseline_err.strip() != '' or stderr != baseline_err:
         return False
     base_lines = baseline.splitlines()
     lines = stdout.splitlines()

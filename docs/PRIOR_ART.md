@@ -47,7 +47,7 @@ ZorkGPT 是"LLM 玩文字冒险"最完整的工程样本，OASIS 是百万 agent
 | Twine / Harlowe | passage 图 + 变量；Harlowe 用 `(set:)` 改状态，历史栈支持回退 | 编辑器与运行时分离；故事格式定义渲染与宏 | 基本是：给定选择与随机宏种子可重放 | Twine 是编辑器不是引擎；无世界模型；大型故事图难维护 |
 | Inform 7 / Z-machine | 对象树（rooms/things/people）+ 属性 + 关系；Z-machine 内存对象表 | 规则书分层：check/carry out/report；`instead of` 覆盖；每回合规则 | **是**：无隐式随机；`@random` 可用种子复现；Quetzal 存档完整 | 学习曲线陡；自然语言语法有歧义；不适合自由叙事 |
 | Evennia | Django ORM 持久对象（`db_key` / `db_typeclass_path` / 属性处理器）+ 持久脚本 | typeclass 定义行为，命令/锁定义权限；叙事由开发者写 | 引擎层确定（无隐式随机）；但持久脚本的定时任务按墙钟触发，带定时逻辑的场景不可重放 | 重框架、重依赖；为 MUD 设计，不适用单机叙事 |
-| mem0 | 向量库 + SQLite 历史表；每条记忆有 `hash`、`created_at/updated_at`、变更历史 | 抽取交给 LLM（ADD/UPDATE/DELETE/NONE），检索是向量相似度 | **否**：LLM 抽取 + embedding | 依赖外部模型与向量库；抽取错误污染长期记忆；无领域规则 |
+| mem0 | 向量库 + SQLite 历史表；每条记忆有 `hash`、`created_at/updated_at`、变更历史 | LLM 只做增量事实抽取；覆盖/删除是显式 API，检索是向量相似度 | **否**：LLM 抽取 + embedding | 依赖外部模型与向量库；抽取错误污染长期记忆；无领域规则 |
 | CAMEL / AutoGen / ZorkGPT / OASIS | CAMEL：角色+消息；AutoGen：actor 消息总线；ZorkGPT：地图图 + 记忆库 + 知识库；OASIS：百万 agent 图 + 推荐系统 | ZorkGPT 的 Critic 两段校验（对象树快检 → LLM 评估）是唯一把"规则"放进决策环的 | 均否；ZorkGPT 用状态哈希做循环检测但不重放 | 多 agent 框架普遍重、成本高；ZorkGPT 依赖 Z-machine 专用接口；OASIS 面向社交平台而非单人叙事 |
 
 **结论**：做到可复现的只有"规则/剧本先行"的四家（Ink、Twine、Inform、Evennia 引擎层）；

@@ -283,6 +283,20 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
      但 `event_log` 只是窗口。B1 的 seq 是补齐"历史可重放"的第一步。
 - **不抄**：Inform 的自然语言语法本身（歧义大、实现重）；只抄规则优先级与对象模型。
 
+#### C4. 提示词装配：固定窗口 vs 预算打包 vs 滚动摘要
+
+- **AI Dungeon**：`Story.latest_result()` 把 `context` + 最近 20 对 action/result 直接字符串拼接
+  （`story/story_manager.py:34,68-82`）。**缺点**：窗口外永久丢失，无检索、无摘要、无规则。
+- **NovelAI Lorebook**：按键激活条目，`budgetPriority` 决定预算紧张时谁先保留
+  （SillyTavern 的 `convertNovelLorebook` 把 `entry.contextConfig.budgetPriority` 映射到 `order`，
+  见 `public/scripts/world-info.js:5560-5610`）。**缺点**：只解决设定注入，不解决历史检索。
+- **Open Dungeon**：`packStoryHistory(messages, charBudget)` 从后往前按 `content.length + 80` 计费，
+  超预算按 16 条一块丢弃；摘要放 system 段，标注 "treat as established canon"。
+- **我们怎么用**：`context.pack` 已是"预算 + 优先级"；`recap` 是"摘要 + 大事记 + 最近事件"。
+  本轮补的是**排序稳定性**（A5）。**建议**：`pack` 返回值增加 `prompt_prefix_hash`
+  （section 标题 + 行序的 sha256），宿主可据此判断本轮前缀是否变化，从而决定是否复用缓存。
+  零成本字段，不改变内容。
+
 #### C5. SillyTavern World Info：命中评分、时间闸与槽位预算 `[已落地部分]`
 
 - **来自**：`SillyTavern/SillyTavern`，`public/scripts/world-info.js`：
@@ -305,20 +319,6 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
   - **没抄**：`vectorized`——需要嵌入模型，理由见 D3。
 - **为什么值得抄**：这是"同一份设定书在长局里不会每轮把全部条目塞进上下文"的工业级答案；
   比单纯的"关键词命中就注入"多出三层控制：命中强度、时间闸、组内互斥。
-
-#### C4. 提示词装配：固定窗口 vs 预算打包 vs 滚动摘要
-
-- **AI Dungeon**：`Story.latest_result()` 把 `context` + 最近 20 对 action/result 直接字符串拼接
-  （`story/story_manager.py:34,68-82`）。**缺点**：窗口外永久丢失，无检索、无摘要、无规则。
-- **NovelAI Lorebook**：按键激活条目，`budgetPriority` 决定预算紧张时谁先保留
-  （SillyTavern 的 `convertNovelLorebook` 把 `entry.contextConfig.budgetPriority` 映射到 `order`，
-  见 `public/scripts/world-info.js:5560-5610`）。**缺点**：只解决设定注入，不解决历史检索。
-- **Open Dungeon**：`packStoryHistory(messages, charBudget)` 从后往前按 `content.length + 80` 计费，
-  超预算按 16 条一块丢弃；摘要放 system 段，标注 "treat as established canon"。
-- **我们怎么用**：`context.pack` 已是"预算 + 优先级"；`recap` 是"摘要 + 大事记 + 最近事件"。
-  本轮补的是**排序稳定性**（A5）。**建议**：`pack` 返回值增加 `prompt_prefix_hash`
-  （section 标题 + 行序的 sha256），宿主可据此判断本轮前缀是否变化，从而决定是否复用缓存。
-  零成本字段，不改变内容。
 
 ### D. 确定性
 

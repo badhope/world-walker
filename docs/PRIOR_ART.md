@@ -283,6 +283,29 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
      但 `event_log` 只是窗口。B1 的 seq 是补齐"历史可重放"的第一步。
 - **不抄**：Inform 的自然语言语法本身（歧义大、实现重）；只抄规则优先级与对象模型。
 
+#### C5. SillyTavern World Info：命中评分、时间闸与槽位预算 `[已落地部分]`
+
+- **来自**：`SillyTavern/SillyTavern`，`public/scripts/world-info.js`：
+  - `WorldInfoBuffer.getScore(entry, scanState)`：主键命中数 +（`AND_ANY` 时）副键命中数；
+    `AND_ALL` 只在**全部**副键命中时加分，否则只算主键分。`AND_ANY / NOT_ALL / NOT_ANY / AND_ALL`
+    四种 `selectiveLogic` 决定副键是"任一 / 非全部 / 全无 / 全部"。
+  - `filterGroupsByScoring`：同组内按 `getScore` 取最高分者，低分条目从本轮移除；
+    组内没有 `useGroupScoring` 且全局开关关闭时，退回权重抽签。
+  - 时间闸 `sticky / cooldown / delay`：sticky 期间条目保持注入且不重掷概率；
+    cooldown 从 sticky 结束后起算；delay 表示第 N 条消息后才可用。
+  - `scanDepth` 控制扫描最近多少条消息；`constant` 条目每轮常驻；`order/insertion_order`
+    决定注入顺序；`position/depth/role` 决定插到提示词的哪个槽位。
+- **我们怎么用**：
+  - 四种 `selectiveLogic`、`sticky/cooldown/delay`、`scanDepth`、递归默认关闭在 v1.1.0 已落地
+    （`rules/lorebook.py:56-140,147-200`，`verify_gameplay.py` G3 逐条断言）。
+  - 本轮补 `_match_score` + `_pick_group(scoring=True)`（`rules/lorebook.py:224-260,294-310`）：
+    同组按命中键数取最高，同分才回退 `group_weight` 抽签；默认关闭，保持旧行为。
+  - **没抄**：`position / depth / role / outlet`——提示词槽位属于宿主（它才知道自己的模板），
+    引擎只返回"命中哪些、按什么顺序"，不假设提示词布局。
+  - **没抄**：`vectorized`——需要嵌入模型，理由见 D3。
+- **为什么值得抄**：这是"同一份设定书在长局里不会每轮把全部条目塞进上下文"的工业级答案；
+  比单纯的"关键词命中就注入"多出三层控制：命中强度、时间闸、组内互斥。
+
 #### C4. 提示词装配：固定窗口 vs 预算打包 vs 滚动摘要
 
 - **AI Dungeon**：`Story.latest_result()` 把 `context` + 最近 20 对 action/result 直接字符串拼接

@@ -45,7 +45,7 @@ from game_engine.rules import narrative_engine as NE            # noqa: E402
 from game_engine.rules import combat as CB                      # noqa: E402
 from game_engine.rules import social as SO                      # noqa: E402
 from game_engine.rules.progression import validate_next_level, level_tier   # noqa: E402
-from game_engine.state_schema import add_karma, get_unsettled_karma, load_state, log_event, save_state, seed_rng   # noqa: E402
+from game_engine.state_schema import add_karma, get_unsettled_karma, log_event, save_state, seed_rng   # noqa: E402
 import game_engine.panel as PANEL                               # noqa: E402
 
 RESULTS = []

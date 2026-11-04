@@ -122,6 +122,12 @@ stages:
         script: |
           set -euo pipefail
           python scripts/verify_i18n.py
+      - step: surface
+        name: verify-surface
+        displayName: 交付面（CLI / 资源 / 控制台 / 打包守卫）
+        script: |
+          set -euo pipefail
+          python scripts/verify_surface.py
       - step: docs
         name: verify-docs
         displayName: 文档一致性

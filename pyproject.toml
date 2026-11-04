@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "world-walker"
-version = "1.6.0"
+version = "1.7.0"
 description = "World Games — 标准库游戏规则核心、可选 MCP 服务器与支持行动队列的状态展示面板"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -22,7 +22,8 @@ classifiers = [
 mcp = ["mcp>=2.3,<3"]
 
 [project.scripts]
-world-games = "game_engine.engine:main"
+wg = "game_engine.cli:main"
+world-games = "game_engine.cli:main"
 world-games-mcp = "game_engine.mcp_server:main"
 # 兼容别名（v1.2.0 更名前的入口，保留以免现有客户端配置失效）
 world-walker = "game_engine.engine:main"
@@ -40,6 +41,10 @@ game_engine = [
   "panel.css",
   "panel.js",
   "panel.i18n.js",
+  "admin.html",
+  "admin.js",
+  "cli.py",
+  "mcp_primitives.py",
   "assets/*.js",
   "settings/*.json",
   "settings/*.md",

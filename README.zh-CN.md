@@ -339,7 +339,7 @@ SillyTavern 角色卡（PNG/JSON，V1–V3）与世界书。
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 20 | 真实 Edge 渲染 / 卡片抽屉 / 响应式 / 零 JS 错误 |
 | `verify_tests.py` | — | 静态 AST：拒绝恒真/恒假/弱断言 |
-| `verify_mutation.py` | 44 个变异 | **故意改坏代码，确认测试会红**；存活率必须为 0% |
+| `verify_mutation.py` | 50 个变异 | **故意改坏代码，确认测试会红**；存活率必须为 0% |
 
 ```bash
 bash scripts/pre_push_gate.sh     # 28 个步骤；缺必要依赖时门禁失败
@@ -374,7 +374,7 @@ world-walker/                  # 仓库根即 game_engine 包
 │   ├── models.py              # 16 个命名闭式模型
 │   └── social_extended.py cultural_evolution.py systems_feedback.py
 ├── settings/                  # 4 套可直接开玩的设定包
-├── scripts/                   # 18 个自检 + 变异测试 + 截图/视频/演示存档流水线
+├── scripts/                   # 19 个自检 + 变异测试 + 截图/视频/演示存档流水线
 ├── docs/demo/                 # 真实演示存档（截图背后的数据）
 ├── docs/screenshots/          # 逐项断言后的真实渲染
 └── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）
@@ -395,7 +395,7 @@ MIT 许可。演示包里的人物、势力、地名全部原创，可自由替�
 
 **为什么不用 pytest？**
 断言必须经得起"改坏代码看测试红不红"的检验。`verify_tests.py` 静态拒绝恒真断言，
-`verify_mutation.py` 注入 44 个真实缺陷并要求全部被杀。两者都在门禁里。
+`verify_mutation.py` 注入 50 个真实缺陷并要求全部被杀。两者都在门禁里。
 
 **为什么面板不能直接提交行动？**
 可以排队，但不直接结算。面板写 `<state>.inbox.jsonl`，Agent 用 `pending_actions` 取走，

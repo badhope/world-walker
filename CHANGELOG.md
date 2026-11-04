@@ -45,6 +45,54 @@
 
 ---
 
+## v1.7.0 — 2026-11-05
+
+**交付形态与企业级能力：从"能跑"到"能装、能管、能被宿主发现"。**
+
+### 新增：MCP 生态对齐
+
+- **MCP resources（4 个）**：`world://state/current`、`world://summary/current`、
+  `world://settings/index`、`world://docs/protocol`。工具是模型控制的，资源是应用控制的：
+  宿主可把实时对局状态直接钉进上下文，不必每回合花一次工具往返。
+- **Tool annotations（64 个全覆盖）**：`readOnlyHint` 让宿主自动放行只读调用，
+  `destructiveHint` 让破坏性操作（`restore` / `session_manage` / `session_import` /
+  `system_remove`）必须人工确认。此前 64 个工具在宿主眼里危险程度完全相同。
+- 依据 MCP 规范：annotations 只是 hints，客户端不得据此对不可信服务端做安全决策。
+
+### 新增：统一 CLI（`wg`）
+
+一个入口覆盖全部用法，每个子命令都委托给既有模块，行为只有一份实现：
+
+```
+wg init [path]          生成开局存档
+wg play [--state P]     打开实况主舞台（自动选空闲端口，不杀别人进程）
+wg serve [--state P]    无头运行
+wg mcp                  以 stdio 运行 MCP 服务器
+wg run <action> ...     执行单条规则动作
+wg doctor               环境与素材自检（JSON）
+wg version              版本
+```
+
+### 新增：Windows 单文件可执行
+
+- `scripts/build_exe.py` → `dist/world-games.exe`（约 30 MB，无需 Python 环境）。
+- 素材清单由仓库扫描得出而非手写，缺文件时**拒绝构建**，不会产出"能启动但白屏"的 exe。
+- 实测：`init` → 生成存档；`serve` → HTTP 200；`doctor` → 完整 JSON。
+
+### 新增：Web 管理控制台
+
+- `/admin` 只读控制台：运行态卡片、存档库列表、诊断项（状态可读性、归档 pending、
+  侧写、面板素材）。数据经 `sessions.list_saves()` 取，与 `session_list` 同一来源。
+- 严格遵守面板只读不变量：控制台不提供切换/删除，一切写操作仍在宿主。
+- CSP 保持 `script-src 'self'`，脚本外置为 `admin.js`，不使用内联脚本。
+
+### 变更
+
+- 版本 1.6.0 → 1.7.0（新增公开 CLI 入口与 MCP 资源，向后兼容）。
+- `pyproject.toml` 新增 `wg` 入口点；`world-games` 指到统一 CLI。
+
+---
+
 ## v1.5.1 — 2026-11-03
 
 **面板国际化：产品唯一"看得见"的界面终于和 README 说同一种语言。**

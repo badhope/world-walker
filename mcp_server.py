@@ -76,6 +76,10 @@ from game_engine.state_schema import (bump, log_event, save_state, seed_rng,
 from game_engine.viz_series import record_sample
 from game_engine import sessions as session_store
 from game_engine import input_policy
+try:
+    from game_engine import mcp_primitives
+except ImportError:  # bare checkout
+    import mcp_primitives
 
 from pydantic import BaseModel, Field
 
@@ -263,9 +267,15 @@ def _run_state_transaction(fn, args, kwargs):
 
 
 def _guarded_tool(*dargs, **dkwargs):
-    _decorate = _raw_tool(*dargs, **dkwargs)
-
     def _wrap(fn):
+        # Attach MCP tool annotations so hosts can auto-approve reads and confirm
+        # destructive writes. Callers may still pass annotations explicitly.
+        if 'annotations' not in dkwargs:
+            ann = mcp_primitives.annotations_for(fn.__name__)
+            if ann is not None:
+                dkwargs['annotations'] = ann
+        _decorate = _raw_tool(*dargs, **dkwargs)
+
         @functools.wraps(fn)
         def _guarded(*args, **kwargs):
             transactional = _should_state_transaction(fn, args, kwargs)
@@ -2312,6 +2322,26 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
         "game_kind": (state.get("game") or {}).get("kind", ""),
         "hint": "已设为当前对局；open_panel 看主舞台，system_run 跑体系动作。",
     }
+
+
+# Read-only MCP resources (world://…): hosts can pin live state into context
+# without spending a tool round-trip. Registered once, after all helpers exist.
+try:
+    mcp_primitives.register_resources(
+        server,
+        load_state=lambda path: input_policy.load_state(
+            path, root=os.path.dirname(os.path.abspath(path))),
+        state_path_fn=lambda: (_active["path"] or None),
+        settings_dir=os.path.join(_SCRIPT_DIR, "settings"),
+        docs_dir=os.path.join(_SCRIPT_DIR, "docs"),
+    )
+except AttributeError:
+    # SDK layout without a `resource` decorator (and the stdlib-only test stub).
+    # Silent: this is an expected capability difference, not a fault, and writing
+    # to stderr would pollute the mutation harness' stderr baseline.
+    pass
+except Exception as _exc:  # pragma: no cover - never block the server on resources
+    print("resource registration skipped: %s" % _exc, file=sys.stderr)
 
 
 def main() -> None:

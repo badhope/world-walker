@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-11-04 ｜ 文档版本：v1.21
+> 最后更新：2026-11-05 ｜ 文档版本：v1.21
 
 ## 1. 概述与目标
 
@@ -433,3 +433,42 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
   注入该键，截图流水线因此可以产出纯英文或纯中文两套素材。
 - `scripts/verify_i18n.py` 锁定：键唯一、模板占位符不重复、模板输出无中文、
   页面接线顺序、服务端白名单与 MIME、渲染管线确实调用翻译层。
+
+
+### 12.3 交付面（v1.7.0）
+
+**统一入口。** `cli.py` 提供 `wg`，一个入口覆盖 `init / play / serve / mcp / run / doctor / version`。
+每个子命令都委托给既有模块，行为只有一份实现；`wg doctor` 输出机器可读的环境与素材报告。
+
+**三种交付形态，同一份数据。**
+
+| 形态 | 入口 | 说明 |
+|---|---|---|
+| 单文件可执行 | `dist/world-games.exe` | PyInstaller 打包，~30 MB，无需 Python |
+| 命令行 | `wg` / `world-games` | pip 安装后的标准入口 |
+| Web | `wg play` / `wg serve` → `/` 与 `/admin` | 只读主舞台 + 只读控制台 |
+
+**打包的两条硬约束。**
+
+1. 素材清单由仓库扫描得出（`DATA_FILES`），缺任何一个**拒绝构建**——
+   否则会产出"能启动、界面白屏"的 exe，而这类缺陷只在用户机器上暴露。
+2. 仓库根就是 `game_engine` 包，但检出目录名任意，`import game_engine` 在分析期无法解析。
+   构建脚本先把源码暂存成真正的 `game_engine/` 目录再交给 PyInstaller，
+   并显式声明全部动态导入的模块，避免"数据文件进了包、代码没进包"。
+
+**MCP 原语补齐。** 此前只有 tools 和 1 个 prompt，缺 resources：
+
+- **resources（4）** —— `world://state/current`、`world://summary/current`、
+  `world://settings/index`、`world://docs/protocol`。工具由模型决定调用，资源由应用决定注入；
+  宿主可把实时状态直接钉进上下文，不必每回合花一次工具往返。
+- **tool annotations（64 个全覆盖）** —— `readOnlyHint` 让宿主自动放行只读调用，
+  `destructiveHint` 让 `restore` / `session_manage` / `session_import` / `system_remove`
+  必须人工确认。规范明确 annotations 只是 hints，不可用于对不可信服务端的安全决策。
+
+**Web 控制台。** `/admin` 提供运行态、存档库与诊断，数据经 `sessions.list_saves()` 取得，
+与 `session_list` 同源；不提供任何写操作，遵守"单一写入源"不变量。
+CSP 保持 `script-src 'self'`，脚本外置为 `admin.js`。
+
+**锁实现收敛。** `panel._file_lock` 与 `state_schema._key_lock` 曾是两套独立的跨进程文件锁。
+收件箱与状态文件同处一个存档库作用域，因此面板改为复用 `_key_lock`——
+同一语义只有一个实现，修一处即全局生效。

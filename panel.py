@@ -24,7 +24,6 @@ World Games · 实况面板 (World Games Live Panel)
 """
 
 import argparse
-import contextlib
 import hashlib
 import json
 import os
@@ -834,53 +833,15 @@ INBOX_MAX_BYTES = 512 * 1024
 _INBOX_TLOCK = threading.Lock()
 
 
-@contextlib.contextmanager
 def _file_lock(path, timeout=INBOX_LOCK_TIMEOUT):
-    """跨进程文件锁（Windows msvcrt / POSIX fcntl）。
+    """Cross-process lock for the action inbox.
 
-    为什么需要：收件箱是"读全部 → 改 → 整文件重写"的读-改-写。两个浏览器标签页
-    同时提交会互相覆盖——实测 20 个并发提交只剩 1 条。文件锁把临界区串起来。
+    Delegates to `state_schema._key_lock` so the panel and the state writer use
+    one lock implementation. The inbox lives beside the state file, inside the
+    same library scope, so the same key derivation applies.
     """
-    lock_path = path + ".lock"
-    deadline = time.time() + max(0.1, float(timeout))
-    fh = open(lock_path, "a+")
-    try:
-        locked = False
-        while time.time() <= deadline:
-            try:
-                if os.name == "nt":
-                    import msvcrt
-                    fh.seek(0)
-                    msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
-                else:
-                    import fcntl
-                    fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                locked = True
-                break
-            except (OSError, IOError):
-                time.sleep(0.02)
-        if not locked:
-            raise TimeoutError("收件箱被其他进程占用（%.1fs 超时）" % timeout)
-        try:
-            yield
-        finally:
-            try:
-                if os.name == "nt":
-                    import msvcrt
-                    fh.seek(0)
-                    msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
-                else:
-                    import fcntl
-                    fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
-            except OSError:
-                pass
-    finally:
-        try:
-            fh.close()
-        except OSError:
-            pass
-
-
+    from game_engine.state_schema import _key_lock
+    return _key_lock(os.path.abspath(path), timeout)
 def _atomic_write_text(path, text):
     """同目录临时文件 + os.replace：写到一半被杀也不会留下半个文件。"""
     import tempfile as _tf
@@ -1022,6 +983,9 @@ STATIC_WHITELIST = {
     "/panel.css": ("panel.css", "text/css; charset=utf-8"),
     "/panel.js": ("panel.js", "text/javascript; charset=utf-8"),
     "/panel.i18n.js": ("panel.i18n.js", "text/javascript; charset=utf-8"),
+    "/admin": ("admin.html", "text/html; charset=utf-8"),
+    "/admin.html": ("admin.html", "text/html; charset=utf-8"),
+    "/admin.js": ("admin.js", "text/javascript; charset=utf-8"),
     "/assets/echarts.min.js": (os.path.join("assets", "echarts.min.js"),
                                "text/javascript; charset=utf-8"),
 }
@@ -1386,10 +1350,46 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(409, 'application/json; charset=utf-8', body)
                 return
             self._send(200, "application/json; charset=utf-8", body)
+        elif path == "/admin/sessions":
+            body = json.dumps(self._sessions_payload(), ensure_ascii=False).encode('utf-8')
+            self._send(200, "application/json; charset=utf-8", body)
         elif path == "/events":
             self._sse()
         else:
             self._static(path)
+
+    def _sessions_payload(self):
+        """Read-only save-library listing for the console.
+
+        Goes through sessions.py (the same library the MCP tools use) so the
+        console cannot disagree with session_list. Never mutates anything.
+        """
+        try:
+            from game_engine import sessions as session_store
+        except ImportError:
+            return {'error': 'save library unavailable', 'count': 0, 'sessions': []}
+
+        current = os.path.abspath(self._state()) if self._state() else ''
+        root = session_store.saves_root(os.path.dirname(current) if current else '')
+        try:
+            entries = session_store.list_saves(root)
+        except Exception as exc:  # aqg: boundary — console must never 500 on a listing
+            return {'error': str(exc)[:160], 'count': 0, 'sessions': []}
+
+        rows = []
+        for item in entries:
+            path = item.get('path') or ''
+            rows.append({
+                'name': item.get('name', ''),
+                'tick': item.get('tick'),
+                'world': item.get('world', ''),
+                'size_kb': round(float(item.get('bytes') or 0) / 1024.0, 1),
+                'modified': item.get('updated', ''),
+                'pending_review': bool(item.get('pending_review')),
+                'current': bool(path) and os.path.abspath(path) == current,
+                'root': root,
+            })
+        return {'sessions': rows, 'count': len(rows), 'root': root}
 
     def _history_payload(self, query=""):
         from game_engine.state_schema import state_lock, _recover_archive

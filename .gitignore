@@ -65,3 +65,7 @@ scripts/_ui_report.json
 
 # 运行时锁文件（状态/存档库/侧写共用，进程退出即失效，绝不入库）
 *.lock
+
+# 发布产物：手工放行已构建的可执行文件（构建目录仍忽略）
+!release/
+!release/*.exe

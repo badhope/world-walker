@@ -34,6 +34,15 @@
 **上下文纪律**：玩家说过的承诺、发现的线索、NPC 的关键台词，都要 `context_remember` 落盘；
 否则长局里"AI 忘了"是无法追责的。`context_pack` 每回合调一次，按预算取材料。
 
+- 检索默认按 `recency/importance/relevance` 三分量排序；查旧事用 `context_search(ranked=true)`，
+  想按原始入库顺序核对用 `ranked=false`。
+- 事实更新（守夜人换人、承诺改了条件）用 `context_remember(..., subject="灯塔守夜人", supersede=true)`：
+  旧条目变成 `superseded` 并留 `superseded_by`，不会被静默删除。
+- `context_pack` 返回的 `reflection.due=true` 表示新增信息的 importance 已过阈值，
+  该调 `write_summary` 压缩这一段了（摘要会推进反思水位）。
+- 世界书条目可加 `once: true` / `max_fires: N` 控制"关键剧情只讲一次"；
+  同组条目加 `use_group_scoring: true` 时按命中关键词数选最优，而不是抽签。
+
 **存档纪律**：一局一个 `session_new`；重大节点 `session_snapshot`；不要手改 JSON，用工具。
 
 ---

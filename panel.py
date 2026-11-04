@@ -151,7 +151,12 @@ def classify_event(ev, milestone_ticks=()):
     # 事件 id 只是去重键，不用于任何安全用途（bandit B324 的 High 是误报，
     # 显式声明 usedforsecurity=False 让扫描器与读者都清楚这一点）
     digest = hashlib.sha1(desc.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
-    return {"id": "%d:%s:%s" % (tick, etype, digest), "tick": tick, "type": etype,
+    # seq 进 id 前缀：同 tick 两条描述相同、类型不同的事件曾共用同一去重键
+    # （tick:type:digest 相同），前端按 id 去重时会丢掉一条。有 seq 时以它为先。
+    seq = ev.get("seq")
+    ident = ("%d:%s:%s" % (tick, etype, digest) if seq is None
+             else "%d.%d:%s:%s" % (tick, int(seq), etype, digest))
+    return {"id": ident, "seq": seq, "tick": tick, "type": etype,
             "kind": kind, "severity": severity, "title": title, "desc": desc,
             "icon": icon, "milestone": tick in milestone_ticks,
             "repeat": int(ev.get("repeat", 1) or 1)}

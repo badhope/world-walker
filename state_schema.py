@@ -604,7 +604,12 @@ def log_event(state, etype, desc, **extra):
     log = state.get("event_log")
     if not isinstance(log, list):
         log = state["event_log"] = []
+    # 单调事件序号：同一 tick 内多条事件的真实先后，单靠 tick 排不出来。
+    # 这是事件溯源的最小锚点——归档是按追加顺序写的，seq 让"按序重放"不依赖文件行号。
+    seq = int(state.get("event_seq", 0) or 0) + 1
+    state["event_seq"] = seq
     entry = {
+        "seq": seq,
         "tick": state.get("tick", 0),
         "type": etype,
         "desc": desc

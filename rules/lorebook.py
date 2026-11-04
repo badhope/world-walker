@@ -145,8 +145,24 @@ def _runtime(state):
 
 
 def _availability(entry, rt, tick):
-    """sticky / cooldown / delay 三个时间闸。返回 (可触发, 原因)。"""
+    """once / max_fires / sticky / cooldown / delay 五个闸。返回 (可触发, 原因)。
+
+    once / max_fires 借自 ink 的"选项只能用一次"（once-only choice）：
+    关键剧情条目（"第一次见到灯塔守夜人"）不该因为关键词再次出现就重复注入。
+    计数用已有的 fired_count，快照回退后与状态一起回退，重放一致。
+    """
     eid = entry["_eid"]
+    fired = int(rt["fired_count"].get(eid, 0) or 0)
+    if entry.get("once") and fired > 0:
+        return False, "once"
+    limit = entry.get("max_fires")
+    if limit is not None:
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            limit = 0
+        if limit > 0 and fired >= limit:
+            return False, "max_fires"
     # delay=N：**第 N 回合起**才可用（N=0 表示不限）。
     # 与 SillyTavern 的"需要 N 条消息"同义，只是这里以 tick 计。
     delay = int(entry.get("delay") or 0)
@@ -205,11 +221,31 @@ def _group_split(candidates):
     return singles, groups
 
 
-def _pick_group(pool, state, tick, name):
-    """同组互斥：按 groupWeight 做确定性加权随机，groupOverride 直接指定。"""
+def _match_score(entry, text, low):
+    """组内评分：命中主键数 + 命中副键数（SillyTavern WorldInfoBuffer.getScore 同义）。
+
+    与"按 groupWeight 抽签"的区别：抽签把"关键词命中更精确的条目"和"只沾一个边"的
+    条目当成同权；评分让最贴合当轮文本的那条胜出，避免长局里设定条目轮流坐庄。
+    """
+    hit = _hits(entry, text, low)
+    primary = sum(1 for k in (entry.get("keys") or []) if hit(k))
+    secondary = sum(1 for k in (entry.get("secondary_keys") or []) if hit(k))
+    return primary + secondary
+
+
+def _pick_group(pool, state, tick, name, text="", low="", scoring=False):
+    """同组互斥：groupOverride 优先；开了 group scoring 取命中分最高；
+    否则按 groupWeight 做确定性加权随机。"""
     override = next((e for e in pool if e.get("group_override")), None)
     if override:
         return override
+    if scoring and (text or low):
+        scored = [(_match_score(e, text, low), e) for e in pool]
+        best = max(score for score, _e in scored)
+        finalists = [e for score, e in scored if score == best]
+        if len(finalists) == 1:
+            return finalists[0]
+        pool = finalists
     weights = [max(0.01, float(e.get("group_weight") or 100.0)) for e in pool]
     total = sum(weights)
     roll = _unit(state.get("rng_seed") or 0, tick, "lore_group:" + name) * total
@@ -255,16 +291,19 @@ def _decorate(entries):
     return out
 
 
-def _collect(batch, sticky_only, state, tick, depth, reason, chosen, skipped, group_won):
+def _collect(batch, sticky_only, state, tick, depth, reason, chosen, skipped, group_won,
+             text="", low=""):
     """从候选里做分组裁决 + 概率闸，写入 chosen。"""
     singles, groups = _group_split(batch)
     winners = list(singles)
+    global_scoring = bool((state.get("config") or {}).get("lore_group_scoring", False))
     for name in sorted(groups):
         if name in group_won:
             skipped.append({"entry": groups[name][0]["_eid"], "why": "group"})
             continue
         pool = [e for e in groups[name] if e.get("group_override")] or groups[name]
-        winner = _pick_group(pool, state, tick, name)
+        scoring = global_scoring or any(e.get("use_group_scoring") for e in groups[name])
+        winner = _pick_group(pool, state, tick, name, text=text, low=low, scoring=scoring)
         group_won[name] = winner["_eid"]
         winners.append(winner)
     for entry in winners:
@@ -301,7 +340,8 @@ def _scan(pool, text, low, depth, reason, state, rt, tick, chosen, skipped, grou
             batch.append(entry)
         elif _match_primary(entry, text, low) and _selective_ok(entry, text, low):
             batch.append(entry)
-    _collect(batch, sticky_only, state, tick, depth, reason, chosen, skipped, group_won)
+    _collect(batch, sticky_only, state, tick, depth, reason, chosen, skipped, group_won,
+             text=text, low=low)
 
 
 def _recursion_feed(chosen, depth):

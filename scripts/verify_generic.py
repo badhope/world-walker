@@ -273,6 +273,82 @@ def n3_context():
     summary = CTX.summary(st)
     check('N3 汇总统计总数', summary['total'], len(st['context']['facts']))
 
+    # GA 三分量检索：相关比新旧更重要（0.5/3/2 权重），且分值可复算
+    # 故意拉开新旧差距：老事实 recency=0、相关度=1.0；新事实 recency=1、相关度=0.5。
+    # 只有 relevance 权重足够大（3.0）时老事实才会赢——这条断言专杀"权重写反/清零"。
+    st_rank = base_state(tick=1)
+    CTX.remember(st_rank, '北塔的钥匙埋在井里', kind='fact', keys=['北塔'], importance=0.5)
+    st_rank['tick'] = 100
+    CTX.remember(st_rank, '北塔今日风平浪静', kind='fact', keys=['北塔'], importance=0.5)
+    ranked = CTX.search(st_rank, query='北塔 钥匙', status='open', limit=10, ranked=True)
+    check('N3 GA 检索：高相关旧事实排在低相关新事实之前',
+          [f['text'] for f in ranked][0], '北塔的钥匙埋在井里')
+    exact = (CTX.SCORE_WEIGHTS['recency'] * ranked[0]['score_detail']['recency']
+             + CTX.SCORE_WEIGHTS['relevance'] * ranked[0]['score_detail']['relevance']
+             + CTX.SCORE_WEIGHTS['importance'] * ranked[0]['score_detail']['importance'])
+    check('N3 检索总分等于三分量加权和', round(ranked[0]['score'], 2), round(exact, 2))
+    same_seed = CTX.search(st_rank, query='北塔 钥匙', status='open', limit=10, ranked=True)
+    check('N3 同状态检索完全可复现', [f['id'] for f in same_seed], [f['id'] for f in ranked])
+    legacy = CTX.search(st_rank, query='北塔', status='open', limit=10)
+    check('N3 ranked=False 走置信度排序分支', len(legacy), 2)
+
+    # mem0 式写入期冲突消解：同 subject 的旧事实留档而不是删除
+    st_sup = base_state(tick=7)
+    first = CTX.remember(st_sup, '灯塔守夜人是老周', kind='npc', subject='灯塔守夜人')
+    replaced = CTX.remember(st_sup, '灯塔守夜人换成了小满', kind='npc', subject='灯塔守夜人',
+                            supersede=True)
+    check('N3 supersede 标记旧事实并指向新事实', replaced['superseded'], [first['fact']['id']])
+    check('N3 supersede 后默认检索只剩新事实',
+          [f['text'] for f in CTX.search(st_sup, kind='npc')], ['灯塔守夜人换成了小满'])
+    closed_rows = CTX.search(st_sup, kind='npc', status='superseded')
+    check('N3 superseded 事实仍可按全状态审计查回', len(closed_rows), 1)
+    check('N3 审计链记录 superseded_by',
+          (closed_rows[0].get('superseded_by') if closed_rows else None),
+          replaced['fact']['id'])
+    CTX.remember(st_sup, '酒馆老板换人了', kind='npc', subject='酒馆老板', supersede=True)
+    check('N3 supersede 只影响同 subject',
+          len(CTX.search(st_sup, kind='npc', status='open')), 2)
+
+    # 排序稳定性：新增一条低分事实不应打乱已有高分事实的相对顺序（提示词前缀缓存）
+    st_stable = base_state(tick=50)
+    for i in range(5):
+        CTX.remember(st_stable, '线索%d：灯塔的机关' % i, kind='clue', keys=['灯塔'],
+                     importance=0.8)
+    before = [f['id'] for f in CTX.search(st_stable, query='灯塔', ranked=True, limit=10)]
+    CTX.remember(st_stable, '无关备注', kind='note')
+    after = [f['id'] for f in CTX.search(st_stable, query='灯塔', ranked=True, limit=10)]
+    check('N3 新增无关事实不改变已有排序', after, [i for i in before if i in after])
+
+    # 编年史检索：recall 旧实现只取最近的匹配，久远的突破永远回不来；
+    # 三分量打分后"类型重要 + 文本相关"能压过"刚发生但无关"的噪声。
+    st_ev = base_state(tick=500)
+    events = [{'tick': 100, 'type': 'breakthrough', 'desc': '突破至筑基'},
+              {'tick': 498, 'type': 'combat', 'desc': '攻击被闪避'},
+              {'tick': 499, 'type': 'combat', 'desc': '攻击被闪避'},
+              {'tick': 300, 'type': 'travel', 'desc': '抵达雾港'}]
+    ranked_ev = CTX.rank_events(events, st_ev, '突破', limit=2)
+    check('N3 编年史检索把久远突破排在近期噪声之前', ranked_ev[0]['desc'], '突破至筑基')
+    check('N3 编年史检索返回三元打分明细',
+          sorted((ranked_ev[0].get('score_detail') or {}).keys()),
+          ['importance', 'recency', 'relevance'])
+    check('N3 编年史检索遵守 limit', len(ranked_ev), 2)
+
+    # GA 反思阈值：累计 importance 过线才 due，write_summary 落点后归零
+    st_ref = base_state(tick=30)
+    st_ref['config'] = {'context_reflect_threshold': 2.0}
+    CTX.remember(st_ref, '第一条', kind='clue', importance=1.0)
+    check('N3 反思未达阈值不触发', CTX.reflection_due(st_ref)['due'], False)
+    CTX.remember(st_ref, '第二条', kind='clue', importance=1.0)
+    due = CTX.reflection_due(st_ref)
+    check('N3 反思累计 importance 过阈值触发', (due['due'], due['fresh_facts']), (True, 2))
+    CTX.mark_reflected(st_ref)
+    after = CTX.reflection_due(st_ref)
+    check('N3 mark_reflected 后不重复触发', (after['due'], after['accumulated']), (False, 0.0))
+    packed_ref = CTX.pack(st_ref, budget_chars=400)
+    check_true('N3 pack 输出反思建议块且已反思后不重复要',
+               'reflection' in packed_ref and packed_ref['reflection']['due'] is False,
+               str(packed_ref.get('reflection')))
+
     # 台账有界：超量后仍保留开放事实的数量级
     st2 = base_state()
     for i in range(CTX.MAX_FACTS + 30):

@@ -45,7 +45,7 @@ from game_engine.rules import narrative_engine as NE            # noqa: E402
 from game_engine.rules import combat as CB                      # noqa: E402
 from game_engine.rules import social as SO                      # noqa: E402
 from game_engine.rules.progression import validate_next_level, level_tier   # noqa: E402
-from game_engine.state_schema import add_karma, get_unsettled_karma, log_event, seed_rng   # noqa: E402
+from game_engine.state_schema import add_karma, get_unsettled_karma, load_state, log_event, save_state, seed_rng   # noqa: E402
 import game_engine.panel as PANEL                               # noqa: E402
 
 RESULTS = []
@@ -439,7 +439,6 @@ def w11_tick_tool_drives_world():
             print('SKIP  %s' % message)
         return
 
-    from game_engine.state_schema import save_state
     st = base_state()
     tmp = tempfile.mkdtemp(prefix='ww-tick-')
     path = os.path.join(tmp, 't.json')
@@ -465,6 +464,49 @@ def w11_tick_tool_drives_world():
           'panarchy_phase' in (tick_result or {}), 'panarchy_phase present')
 
 
+def w12_event_replay():
+    """事件溯源最小闭环：seq 单调 + 归档按序可重放 + 同 tick 事件不撞键。
+
+    为什么单列：归档文件是"永久的过去"，状态里的 event_log 只是最近窗口。
+    没有 seq 时，同一回合发生的两条事件只靠 tick 排序，顺序是文件行序的副作用；
+    有了 seq，`recall`/审计/面板都能按 (tick, seq) 复算出同一顺序。
+    """
+    st = base_state()
+    st['event_log'] = []
+    st.pop('event_seq', None)
+    for i in range(5):
+        log_event(st, 'system', '同回合事件%d' % i)
+    seqs = [e['seq'] for e in st['event_log']]
+    check('W12 事件 seq 从 1 起严格递增', seqs == [1, 2, 3, 4, 5], str(seqs))
+    check('W12 seq 计数器停在最后一条', st['event_seq'] == 5, str(st.get('event_seq')))
+
+    # 同一 tick 内多次写入后，按 seq 排序恢复真实发生顺序
+    st['tick'] = 4
+    log_event(st, 'combat', '先手命中')
+    log_event(st, 'combat', '后手反击')
+    same_tick = [e for e in st['event_log'] if e.get('tick') == 4]
+    ordered = [e['desc'] for e in sorted(same_tick, key=lambda e: e['seq'])]
+    check('W12 同 tick 事件按 seq 可定序', ordered == ['先手命中', '后手反击'], str(ordered))
+
+    # 归档写入后按行读取，seq 与顺序一致（事件溯源可重放）
+    tmp = tempfile.mkdtemp(prefix='ww-replay-')
+    path = os.path.join(tmp, 'r.json')
+    st2 = base_state()
+    st2['event_log'] = []
+    st2.pop('event_seq', None)
+    st2['config'] = {'event_log_keep': 3, 'archive': True}
+    for i in range(8):
+        log_event(st2, 'system', '第%d条' % i)
+        save_state(st2, path)
+    archive = path + '.log.jsonl'
+    lines = [json.loads(line) for line in open(archive, encoding='utf-8')]
+    archived = [e['seq'] for e in lines]
+    check('W12 归档事件保留 seq 且逐行递增', archived == sorted(archived) and archived == list(range(1, len(archived) + 1)), str(archived))
+    check('W12 归档条数等于被挤出窗口的条数', len(lines) == 5, str(len(lines)))
+    kept = [e['desc'] for e in st2['event_log']]
+    check('W12 状态窗口保留最新 3 条', kept == ['第5条', '第6条', '第7条'], str(kept))
+
+
 def main():
     w1_self_evolution()
     w2_phase_cycle()
@@ -477,6 +519,7 @@ def main():
     w9_determinism()
     w10_progression()
     w11_tick_tool_drives_world()
+    w12_event_replay()
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))
     return 0 if passed == len(RESULTS) and not STRICT_FAILURES else 1

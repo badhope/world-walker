@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-11-03 ｜ 文档版本：v1.20
+> 最后更新：2026-11-04 ｜ 文档版本：v1.21
 
 ## 1. 概述与目标
 
@@ -80,7 +80,7 @@ world-walker/                      # 仓库根即 game_engine 包
 ├── sessions.py                    # 存档库（多局/快照/回收站，只碰文件系统）
 ├── rules/checks.py                # 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
 ├── rules/gamesystem.py            # 游戏档案（自定义属性/资源/进度轨/标签/表格 + 旧存档回退）
-├── rules/context.py               # 上下文台账（事实/线索/承诺 + 预算打包）
+├── rules/context.py               # 上下文台账（事实/线索/承诺 + 三分量检索 + 预算打包 + 反思阈值）
 ├── rules/systems.py               # 七类可插拔体系（时间/掉落/制造/声望/成就/成长/自定义）
 ├── templates.py                   # 八套完整游戏模板（世界→体系→事业线→游戏档案）
 ├── engine.py                      # CLI 入口（14 命令）
@@ -129,7 +129,7 @@ view_model = {
   archived_events: int, others: [{ id, name, location }], lore_total: int, prose_count: int,
   game: { profile: {title, kind, attributes[], resources[], meters[], tags[], sheet{}},
           checks: [{tick, actor, dice, total, difficulty, margin, level, reason}],
-          check_rate: {total, success, rate}, context: {total, open, by_kind, recent[]} },
+          check_rate: {total, success, rate}, context: {total, open, superseded, by_kind, recent[], reflection} },
   sessions: { root, count, saves: [{name, world, player, tick, updated, active, broken}], trash }
 }
 ```
@@ -236,6 +236,10 @@ lorebook = {rows: [{id, comment, keys, constant, enabled, fired, last_tick,
 | INV-G3 | 世界书触发确定性：同 seed + 同 tick + 同文本 → 同命中集合，且不消耗 rng_counter | 引擎 | rules/lorebook.py | verify_gameplay.py G3/G5 |
 | INV-G4 | sticky 不续期、cooldown 从 sticky 结束后起算、递归默认关闭 | 引擎 | rules/lorebook.py | verify_gameplay.py G3 |
 | INV-G5 | `playbook`/`questlines` 必须经 `settings_loader` 落盘；MCP 与零依赖路径共用同一实现 | 引擎 / MCP | settings_loader.py | verify_gameplay.py G4 + verify_settings.py |
+| INV-E15 | 每条事件带单调 `seq`（从 1 起，跨 tick 不回退）；归档逐行保留 seq，可按 `(tick, seq)` 复算顺序 | 引擎 | state_schema.log_event | verify_world.py W12（六条） |
+| INV-E16 | 事实检索 `ranked=true` 时按 GA 三分量（0.5/3/2）打分；同状态同查询结果逐条一致，且新增无关事实不改变已有排序 | 引擎 | rules/context.py | verify_generic.py N3（六条） |
+| INV-G6 | 世界书支持 `once` / `max_fires`：达到上限后不再注入，原因写入 `skipped` 供面板解释 | 引擎 | rules/lorebook.py | verify_gameplay.py G3（三条） |
+| INV-G7 | 同组条目在 `use_group_scoring` 开启时按命中键数取最高者（同分才回退权重抽签）；未开启时保持原抽签语义 | 引擎 | rules/lorebook.py | verify_gameplay.py G3（两条） |
 
 ### 6.3 公式的调用路径（哪些在跑、哪些按需）
 
@@ -374,6 +378,7 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
 | 2026-10-22 | 可视化真修（三图从"画了"到"看得懂"）：物价指数图因 OU sigma=0 恒为 1.0 平线→加按 (rng_seed,tick,地点,商品) 派生的确定性扰动（4% 基准价，不耗 rng_counter、可 `configure(market_jitter=False)` 关）；气血/内力曲线图例按实际标注"几乎恒定/100% 回合为 100%"；纵轴自适应；图鉴累计 codex_total 作为第 4 系列上图；修面板端口被抢占（HTTPServer.allow_reuse_address=False 端口冲突抛错顺延）；修击杀不给战利品（接管 `loot_gold`） | §5、§7、§9 T25 | T25 | 门禁 17 项绿 + verify_* 七套全过 + 图表数据实测 price_index 442 种(0.93–1.09)/gold 30→6040/codex 8→19 + pyflakes 0 |
 | 2026-10-22 | 第二轮全维度审查 3 个 High（见 docs/AUDIT_ROUND2_2026-10-22.md）：F-001 状态文件非原子写入→临时文件+fsync+os.replace 原子替换并保留 .bak（4 条回归断言）；F-002 补 X-Content-Type-Options/X-Frame-Options/Referrer-Policy/CSP 四安全头（静态核验 0 内联 script/style/事件处理器，curl -D 四头齐全，六端点 200）；F-003 时间线条目可点击（click+Enter/Space 复用 #eventdlg）；新增 21 项 UI 逐元素巡检 | §4、§6.2、§7、§9 T26 | T26 | verify_branches 159/159（含 4 条原子写断言）+ 其余六套全过 + bandit High/Med/Low 0 + 门禁全绿 |
 
+| 2026-11-04 | **v1.6.0 先贤调研落地**：按 `docs/PRIOR_ART.md` 的 12 项目调研落地六处机制——① `rules/context.py` GA 三分量检索（recency 0.99^age / importance 类型权重 / relevance 中文二元组重叠，权重 0.5/3/2，候选集内 min-max，0.25 分桶稳定排序）；② `recall` 与 `rank_events` 用同一打分，久远突破不再被近期噪声淹没；③ `remember(subject, supersede)` 的 mem0 式冲突消解（旧事实 `superseded` + `superseded_by`，不删除）；④ GA 反思阈值 `reflection_due` / `mark_reflected`（`write_summary` 推进水位）；⑤ 事件单调 `seq`（`state_schema.log_event` + 面板事件 id `tick.seq:type:hash`）；⑥ 世界书 `once` / `max_fires`（ink once-only）与 `use_group_scoring`（SillyTavern 组内评分）。新增 §6.2 INV-E15/E16、INV-G6/G7；新增变异 M45-M50 | §5、§6.1、§6.2、§10 | v1.6.0 | verify_generic 104/104 · verify_gameplay 65/65 · verify_world 54/54 · verify_panel 93/93 · verify_tests 853 条 0 可疑 · 变异 M45-M50 全杀死 |
 | 2026-10-27 | **v1.4.0 体系与模板**：新增 `rules/systems.py`（七类数据驱动体系：time/loot/craft/reputation/achievement/progression/custom，21 个公开函数，统一 `system_run` 入口，运行态随快照回退）；新增 `templates.py`（八套完整模板：jrpg/mystery/management/survival/narrative/cozy/tabletop/immersive，每套含世界/角色/市场/地点/世界书/剧本/事业线/体系/游戏档案 + `validate()` 结构校验 + `overrides` 深合并）；新增 9 个 MCP 工具（system_define/run/status/remove/schema + templates_list/info/apply/start）；修复 `counters` 从未写入导致模板成就是死条件（新增 `state_schema.bump()` 并接到图鉴/线索/判定/击杀）；面板新增体系卡与 `/state.systems` | §5、§6.1d | v1.4.0 | verify_systems 161/161 · 断言审计 816 条 |
 | 2026-10-27 | **v1.3.0 面板加固**：修复多面板串台（state_path 从 Handler 类属性改为 server 实例）、并发排队丢数据（进程内锁 + 跨进程文件锁 + 原子替换，20 线程/3 进程零丢失）、读状态撞上原子替换（3 次退避重试）；新增剧情回放（`/history` 检索正文与归档、`/state.prose` 完整正文、面板抽屉 + `S` 快捷键）；新增脏数据归一、超大状态下发上限（商品 400/图鉴 200/剧情 20）、HTTP 分级错误码、DNS rebinding 防护、SSE 寿命、ETag、`/health`、`close_panel` 与优雅停止 | §5、§6.1c | v1.3.0 | verify_panel 89/89（含 12 组并发/脏数据/超大状态场景）· smoke_ui 20/20 · 断言审计 726 条 |
 | 2026-10-27 | **v1.2.0 World Games**：产品从"修仙文字游戏"升级为通用互动游戏框架。新增 `rules/checks.py`（6 个函数：d20/2d6/d100/4dF/骰池、roll_under、对抗、成功等级、有界台账）、`rules/gamesystem.py`（6 个函数：自定义属性/资源/进度轨/标签/自由表格，旧存档自动回退推导）、`rules/context.py`（6 个函数：八类事实、confidence/ttl、预算打包）、`sessions.py`（存档库：列表/新建/切换/快照/回收站/导入/清空）；新增 15 个 MCP 工具（roll / game_* / context_* / session_*）；面板新增游戏档案卡、判定记录卡、上下文台账抽屉、存档库抽屉；品牌默认值切到 World Games，`world-walker` 命令保留为兼容别名 | §5、§6.1、§6.2、§9 | v1.2.0 | verify_generic 87/87 · 断言审计 705 条 0 可疑 |

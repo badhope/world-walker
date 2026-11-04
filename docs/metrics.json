@@ -3,12 +3,12 @@
   "bundles": 4,
   "coverage_pct": 86.0,
   "gate_steps": 29,
-  "measured_at": "2026-11-03T16:19:59Z",
+  "measured_at": "2026-11-04T16:20:20Z",
   "models": 16,
-  "mutants": 44,
-  "rule_functions": 188,
+  "mutants": 50,
+  "rule_functions": 191,
   "templates": 8,
   "tools": 64,
   "verify_scripts": 18,
-  "version": "1.5.1"
+  "version": "1.6.0"
 }

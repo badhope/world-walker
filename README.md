@@ -1,6 +1,6 @@
 # World Games
 
-**v1.5.1** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [Gameplay](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
+**v1.6.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [Gameplay](docs/GAMEPLAY.md) · [Benchmark](docs/BENCHMARK.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
 
 > **The AI narrates. The engine decides.**
 
@@ -8,7 +8,7 @@ World Games is the rules layer for AI-driven interactive games. Your agent write
 a deterministic engine resolves every hit, price, relationship and faction shift, then
 persists it to one auditable state file.
 
-`188 rule functions` · `64 MCP tools` · `4 playable worlds` · `8 game templates` · `0 runtime dependencies`
+`191 rule functions` · `64 MCP tools` · `4 playable worlds` · `8 game templates` · `0 runtime dependencies`
 
 <p align="center">
   <img src="docs/screenshots/stage-xuanshu.png" alt="Live stage — turn 500 of a real save" width="100%">
@@ -328,14 +328,14 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
 | `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism, CLI tick drives the world |
-| `verify_panel.py` | 89 | view-model contract, legacy saves, static whitelist, inbox guards |
+| `verify_panel.py` | 93 | view-model contract, legacy saves, static whitelist, inbox guards |
 | `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
-| `verify_world.py` | 48 | self-evolution, phase, flow, morality, terms, prose, ledger |
+| `verify_world.py` | 54 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | — | version single source, tool count, assertion counts, asset references |
 | `verify_i18n.py` | 12 | panel dictionary: unique keys, unambiguous templates, no CJK in output, bilingual wiring |
-| `verify_gameplay.py` | 60 | playbook loops, questline DAG, lorebook semantics |
-| `verify_generic.py` | 87 | generic checks, game profile, context ledger, save library, brand |
+| `verify_gameplay.py` | 65 | playbook loops, questline DAG, lorebook semantics |
+| `verify_generic.py` | 104 | generic checks, game profile, context ledger, save library, brand |
 | `verify_systems.py` | 161 | seven subsystem kinds, eight templates, counters, panel contract |
 | `verify_injection.py` | 23 | injection signatures and `untrusted` marking |
 | `verify_near_death.py` | 7 | near-death protection |
@@ -369,7 +369,7 @@ world-walker/                  # repo root IS the game_engine package
 ├── panel.html / .css / .js    # the stage: native trio, no build chain
 ├── viz_series.py              # long-run telemetry sidecar (<state>.viz.jsonl)
 ├── sessions.py                # save library: multi-run / snapshot / trash
-├── rules/                     # 188 public rule functions
+├── rules/                     # 191 public rule functions
 │   ├── checks.py              # d20/2d6/d100/4dF/dice pool, opposed rolls, success bands
 │   ├── gamesystem.py          # game profile: custom attributes, resources, tracks, tags, sheet
 │   ├── context.py             # context ledger: clues, promises, facts + budgeted packing

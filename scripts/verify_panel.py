@@ -193,9 +193,16 @@ def main():
               "合并 %d 组 · 相邻相同残留 %d" % (len(_dups), _adjacent_same))
         if isinstance(events, list) and events:
             ids = [e["id"] for e in events]
-            check("events.id 稳定（tick:type:短哈希，无重复）",
+            check("events.id 稳定（tick[.seq]:type:短哈希，无重复）",
                   len(set(ids)) == len(ids) and all(len(i.split(":")) == 3 for i in ids),
                   ids[0])
+            # 同 tick 同类型同描述的两条事件（真实现场：一次 tick 里两条 quest 完成）
+            # 旧 id 只由 (tick,type,sha1(desc)) 组成，会撞键并被前端当作同一条丢掉。
+            e_a = _panel.classify_event({"tick": 4, "type": "quest", "desc": "完成", "seq": 1}, set())
+            e_b = _panel.classify_event({"tick": 4, "type": "quest", "desc": "完成", "seq": 2}, set())
+            check("events.id 带 seq 前缀时同 tick 同描述不撞键", e_a["id"] != e_b["id"],
+                  "%s vs %s" % (e_a["id"], e_b["id"]))
+            check("events 保留 seq 供事件溯源排序", (e_a["seq"], e_b["seq"]), (1, 2))
             kinds = {e["type"]: e["kind"] for e in events}
             check("事件分级覆盖引擎类型（tick 除外，共 9 类）",
                   set(kinds) == {"system", "travel", "trade", "social", "karma", "combat",

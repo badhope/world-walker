@@ -5,6 +5,46 @@
 
 ---
 
+## v1.6.0 — 2026-11-04
+
+**先贤调研落地：把 12 个开源叙事项目的记忆算法搬进确定性内核。**
+
+### 新增
+
+- `docs/PRIOR_ART.md`：12 个项目（SillyTavern / AI Dungeon / NovelAI / generative_agents /
+  修仙世界模拟器 / Open Dungeon / Ink / Twine-Harlowe / Inform 7 / Evennia / mem0 /
+  CAMEL+AutoGen+ZorkGPT+OASIS）的架构对照、可落地借鉴点与"明确不抄"清单。
+- `rules/context.py`：GA 三分量检索（`recency 0.99^age` / `importance` 类型权重 /
+  `relevance` 中文二元组重叠，权重 0.5/3/2，候选集内 min-max），`context_search(ranked=true)`。
+  `recall` 与新增 `rank_events` 共用同一打分，久远突破不再被近期噪声淹没。
+- `remember(subject=..., supersede=true)`：mem0 式写入期冲突消解——同 kind + 同 subject 的
+  旧事实标 `superseded` 并写 `superseded_by` / `closed_tick`，原文保留可审计。
+- `reflection_due` / `mark_reflected`：GA 的重要性累积反思阈值（默认 `config.context_reflect_threshold=10`），
+  `write_summary` 推进水位，`context_pack` / `context_summary` 带 `reflection` 块。
+- 事件单调 `seq`（`state_schema.log_event`）：同一 tick 内多条事件可定序；
+  面板事件 id 改为 `tick.seq:type:hash`，修掉同 tick 同描述撞键被前端去重丢掉的问题。
+- 世界书 `once` / `max_fires`（借 ink once-only choice）：关键剧情条目不再重复注入，
+  跳过原因写入 `skipped`。
+- 世界书 `use_group_scoring`（借 SillyTavern `filterGroupsByScoring`）：同组按命中键数取最高，
+  同分才回退 `group_weight` 抽签；默认关闭，保持旧行为。
+- 检索排序量化到 0.25 分桶 + id 稳定排序（借 Open Dungeon 的 prompt 前缀缓存教训）。
+
+### 修复
+
+- `context_pack` 的「未结案」与「其他事实」曾因 dict 相等比较在新打分字段下失效而重复同一事实，
+  改为按 fact id 去重。
+- 事件 id 同 tick 同类型同描述撞键：前端按 id 去重会丢掉两条中的一条。
+
+### 说明
+
+- 归档与快照的事务边界不变：存在 `<state>.archive-pending` 或库级
+  `.ww-session-transaction-pending` 时拒绝相关受保护读写，不会自动恢复；异常或崩溃后应停写、
+  保留现场并人工核对，详见[归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。
+  保存失败时恢复调用方内存中的状态对象，不等于磁盘归档回滚；不承诺断电安全。
+- 新增变异 M45-M50；`verify_generic` 104 条、`verify_gameplay` 65 条、`verify_world` 54 条（含 MCP 路径）。
+
+---
+
 ## v1.5.1 — 2026-11-03
 
 **面板国际化：产品唯一"看得见"的界面终于和 README 说同一种语言。**

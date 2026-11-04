@@ -311,6 +311,7 @@ def normalize_lore_entry(entry: dict):
         "match_whole_words": bool(entry.get("match_whole_words", False)),
         "exclude_recursion": bool(entry.get("exclude_recursion", False)),
         "use_probability": bool(entry.get("use_probability", True)),
+        "use_group_scoring": bool(entry.get("use_group_scoring", False)),
     }
     if logic is not None:
         row["selective_logic"] = logic
@@ -328,6 +329,13 @@ def normalize_lore_entry(entry: dict):
             row["probability"] = float(entry["probability"])
             # 酒馆语义：>=1 是百分比（1 = 1%）；(0,1) 是旧配置的比例写法（0.9 = 90%）。
             row["probability_scale"] = 1 if 0 < row["probability"] < 1 else 100
+        except (TypeError, ValueError):
+            pass
+    if entry.get("once"):
+        row["once"] = True
+    if entry.get("max_fires") is not None:
+        try:
+            row["max_fires"] = int(entry["max_fires"])
         except (TypeError, ValueError):
             pass
     if entry.get("group"):

@@ -1374,9 +1374,10 @@ def _recall_locked(query, limit):
         raise ValueError("query 不能为空")
     terms = [t.lower() for t in re.split(r"[\s,，、]+", q) if t]
     state = _load()
-    from collections import deque
-    tail = deque(maxlen=int(limit))
+    hits = []
     archives = _all_archive_files()
+    # 归档不再只留"最后 N 条匹配"：先用低门槛过滤，再统一走三分量打分。
+    # 长局里"最近 8 条"几乎永远是噪声（连续的闪避/回合结束），重要的是那次突破。
     for path in archives:
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -1385,14 +1386,15 @@ def _recall_locked(query, limit):
                 except Exception:  # nosec B112 —— 归档文件可能有半行（进程被杀），跳过坏行继续
                     continue
                 if any(t in str(e.get("desc", "")).lower() for t in terms):
-                    tail.append(e)
-    hits = list(tail)
+                    hits.append(e)
     for e in state.get("event_log", []):
         if any(t in str(e.get("desc", "")).lower() for t in terms):
             hits.append(e)
-    hits = sorted(hits, key=lambda x: int(x.get("tick", 0)), reverse=True)[:int(limit)]
-    return {"query": q, "matches": hits, "archived_events": int(state.get("archived_events", 0)),
-            "archive_file": _archive_path(), "archive_files": archives}
+    limit = max(1, min(100, int(limit or 8)))
+    ranked = context_rules.rank_events(hits, state, q, limit=limit)
+    return {"query": q, "matches": ranked, "archived_events": int(state.get("archived_events", 0)),
+            "archive_file": _archive_path(), "archive_files": archives,
+            "ranked_by": "recency/importance/relevance"}
 
 
 @server.tool()
@@ -1408,7 +1410,10 @@ def write_summary(text: str) -> dict:
     keep = int(_cfg(state).get("summary_keep", 30))
     if len(ss) > keep:
         del ss[:len(ss) - keep]
-    return _finish(state, {"summaries": len(ss), "upto_tick": ss[-1]["upto_tick"]})
+    # 摘要即一次反思落点：推进 reflected_upto，避免同一批事实反复触发"该反思了"。
+    reflected = context_rules.mark_reflected(state)
+    return _finish(state, {"summaries": len(ss), "upto_tick": ss[-1]["upto_tick"],
+                           "reflection": reflected})
 
 
 @server.tool()
@@ -1900,28 +1905,32 @@ def game_sheet(fields: dict, remove: bool = False) -> dict:
 @server.tool()
 def context_remember(text: str, kind: str = "fact", keys: list | None = None,
                      subject: str = "", source: str = "", confidence: float = 1.0,
-                     ttl: int = 0) -> dict:
+                     ttl: int = 0, importance: float | None = None,
+                     supersede: bool = False) -> dict:
     """记一条结构化事实（Chinese: 互动对话的"AI 该记住什么"台账。
     kind 取 fact/clue/promise/npc/place/item/rule/note；keys 是检索关键词；
-    ttl 为有效回合数（0=永久）。重复正文会刷新而不是重复记录。
+    ttl 为有效回合数（0=永久）；importance 0..1 影响检索排序；
+    supersede=true 且给了 subject 时，同 kind+subject 的旧事实标记为 superseded。
     Record a structured fact the host must not forget (clues, promises, NPCs, rules)."""
 
     state = _load()
     result = context_rules.remember(state, text, kind=kind, keys=keys, source=source,
-                                    confidence=confidence, ttl=ttl, subject=subject)
+                                    confidence=confidence, ttl=ttl, subject=subject,
+                                    importance=importance, supersede=supersede)
     log_event(state, "context", "记住%s：%s" % (kind, text[:60]))
     return _finish(state, result)
 
 
 @server.tool()
 def context_search(query: str = "", keys: list | None = None, kind: str = "",
-                   status: str = "open", limit: int = 12) -> dict:
+                   status: str = "open", limit: int = 12, ranked: bool = True) -> dict:
     """检索事实台账（Chinese: 玩家提到旧事/线索时先查这里；status="" 可查全部。
+    ranked=true 走 recency/importance/relevance 三分量打分；false 按置信度+新旧。
     Search the fact ledger; empty status returns closed facts too."""
 
     state = _load()
     rows = context_rules.search(state, query=query, keys=keys, kind=kind,
-                                status=status, limit=limit)
+                                status=status, limit=limit, ranked=ranked)
     return _read({"facts": rows, "count": len(rows),
                   "summary": context_rules.summary(state)})
 
@@ -1954,7 +1963,8 @@ def context_pack(scene_text: str = "", recent: int = 8, budget_chars: int = 0) -
     state = _load()
     packed = context_rules.pack(state, scene_text=scene_text, recent=recent,
                                 budget_chars=budget_chars)
-    facts = context_rules.search(state, query=scene_text, status="open", limit=8) if scene_text else []
+    facts = (context_rules.search(state, query=scene_text, status="open", limit=8,
+                                  ranked=True) if scene_text else [])
     return _read({"pack": packed,
                   "facts": facts,
                   "untrusted": True,

@@ -341,6 +341,28 @@ def g3_lorebook():
     check('G3 group_override 直接指定组内赢家',
           [x['comment'] for x in LB.trigger(st_o, ov, ['灯'], tick=1)['entries']] == ['o2'])
 
+    # group scoring（SillyTavern filterGroupsByScoring 同义）：
+    # 同组两条都命中时，选命中键更多的；不给 use_group_scoring 时仍按权重抽签。
+    st_gs = {'tick': 1, 'rng_seed': 5, 'config': {}, 'lore_runtime': {}}
+    gs = [entry(comment='loose', keys=['灯'], group='g2'),
+          entry(comment='exact', keys=['灯', '塔'], group='g2', use_group_scoring=True)]
+    picked = set()
+    for seed in range(1, 12):
+        st_gs['rng_seed'] = seed
+        st_gs['lore_runtime'] = {}
+        picked.add(tuple(x['comment'] for x in LB.trigger(st_gs, gs, ['灯塔'], tick=1)['entries']))
+    check('G3 group scoring 恒选命中键最多的条目', picked == {('exact',)}, str(picked))
+    st_gs2 = {'tick': 1, 'rng_seed': 5, 'config': {}, 'lore_runtime': {}}
+    gs2 = [entry(comment='loose', keys=['灯'], group='g3'),
+           entry(comment='exact', keys=['灯', '塔'], group='g3')]
+    winners2 = set()
+    for seed in range(1, 20):
+        st_gs2['rng_seed'] = seed
+        st_gs2['lore_runtime'] = {}
+        winners2.add(tuple(x['comment'] for x in
+                           LB.trigger(st_gs2, gs2, ['灯塔'], tick=1)['entries']))
+    check('G3 未开 group scoring 时组内仍抽签', len(winners2) > 1, str(winners2))
+
     # exclude_recursion
     st_x = {'tick': 1, 'rng_seed': 1, 'config': {'lore_recursion': 2}, 'lore_runtime': {}}
     chain_x = [entry(comment='a', keys=['甲'], content='乙'),
@@ -355,6 +377,27 @@ def g3_lorebook():
                   selective_logic='TOTALLY_BOGUS')
     check('G3 未知 selective_logic 回退 AND_ANY',
           [x['comment'] for x in LB.trigger(st_u, [weird], ['雨夜'], tick=1)['entries']] == ['u'])
+
+    # once / max_fires（借 ink once-only choice：关键剧情不重复注入）
+    st_once = {'tick': 1, 'rng_seed': 1, 'config': {}, 'lore_runtime': {}}
+    one = entry(comment='one', once=True)
+    seen_once = []
+    for t in (1, 2, 3):
+        st_once['tick'] = t
+        seen_once.append(bool(LB.trigger(st_once, [one], ['灯'], tick=t)['entries']))
+    check('G3 once 条目只触发一次', seen_once == [True, False, False], str(seen_once))
+    st_cap = {'tick': 1, 'rng_seed': 1, 'config': {}, 'lore_runtime': {}}
+    capped = entry(comment='cap', max_fires=2)
+    seen_cap = []
+    for t in (1, 2, 3, 4):
+        st_cap['tick'] = t
+        seen_cap.append(bool(LB.trigger(st_cap, [capped], ['灯'], tick=t)['entries']))
+    check('G3 max_fires 达上限后不再触发', seen_cap == [True, True, False, False], str(seen_cap))
+    skipped_reason = LB.trigger({'tick': 5, 'rng_seed': 1, 'config': {}, 'lore_runtime': {
+        'fired_count': {'cap': 2}, 'last_fired': {}, 'sticky_until': {},
+        'cooldown_until': {}, 'delayed_until': {}}}, [capped], ['灯'], tick=5)['skipped']
+    check('G3 闸门原因写进 skipped 供面板解释', [x['why'] for x in skipped_reason] == ['max_fires'],
+          str(skipped_reason))
 
     # runtime_summary
     st_s = {'tick': 10, 'rng_seed': 1, 'config': {}, 'lore_runtime': {}}

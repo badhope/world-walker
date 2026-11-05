@@ -116,6 +116,17 @@ def main():
     check('S7b exe build declares hidden imports for dynamic modules',
           '--hidden-import' in build_src and 'game_engine.mcp_server' in build_src)
 
+    # ── S8 release tooling is versioned, not scratch ───────────────────────
+    import os as _os
+    tools = ['publish_github.py', 'publish_release.py']
+    present = [t for t in tools if _os.path.isfile(_os.path.join(ROOT, 'scripts', t))]
+    check('S8 release tooling is committed under scripts/', len(present) == len(tools),
+          str(present))
+    with open(_os.path.join(ROOT, 'scripts', 'publish_release.py'), encoding='utf-8') as fh:
+        rel_src = fh.read()
+    check('S8b release tool attaches a binary asset',
+          'upload_asset' in rel_src and 'releases' in rel_src)
+
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))
     return 0 if passed == len(RESULTS) else 1

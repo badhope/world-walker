@@ -611,7 +611,7 @@
   }
 
   /* ── 长局态势：三张离线图表（ECharts 缺失时降级为文案）── */
-  const charts = { c1: null, c2: null, c3: null };
+  const charts = { c1: null, c2: null, c3: null, questmap: null };
   let lastSeriesKey = "";
   let seriesCache = null;
 
@@ -1031,6 +1031,8 @@
     renderPulse(v);
     renderPlaybook(v);
     renderQuests(v);
+    renderQuestMap(v);
+    renderNextMoves(v);
     renderLorebook(v);
     renderGame(v);
     renderSystems(v);
@@ -1324,6 +1326,139 @@
   }
 
   /* ── 世界书：触发次数与冷却（解释"为什么这段被触发"） ── */
+  /* ── 下一步提示：把"现在能做什么"写到输入框上方 ────────────────── */
+  function renderNextMoves(v) {
+    const box = $("next-moves");
+    const list = $("next-moves-list");
+    if (!box || !list) return;
+    const moves = v.next_moves || [];
+    if (!moves.length) { box.hidden = true; return; }
+    box.hidden = false;
+    list.textContent = "";
+    moves.forEach((m) => {
+      const chip = document.createElement("span");
+      chip.className = "nm-chip " + (m.kind || "free");
+      const label = document.createElement("span");
+      label.textContent = m.text || "";
+      chip.appendChild(label);
+      if (m.why) {
+        const why = document.createElement("span");
+        why.className = "why";
+        why.textContent = m.why;
+        chip.appendChild(why);
+      }
+      chip.title = "点一下填进输入框";
+      chip.addEventListener("click", () => {
+        const ta = $("action-text");
+        if (ta) { ta.value = m.text || ""; ta.focus(); }
+      });
+      list.appendChild(chip);
+    });
+  }
+
+  /* ── 事业线地图：把 stage DAG 画出来（Twine 的 passage 图思路）───── */
+  const QUEST_NODE_COLOR = {
+    done: "#6fbf73", current: "#e8b04b", open: "#5a6472", failed: "#e06c62",
+  };
+
+  function renderQuestMap(v) {
+    const card = $("questmap-card");
+    const box = $("questmap");
+    if (!card || !box) return;
+    const graph = (v.quests || {}).graph || {};
+    const nodes = graph.nodes || [];
+    const edges = graph.edges || [];
+    if (!nodes.length || typeof echarts === "undefined") {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    const done = nodes.filter((n) => n.state === "done").length;
+    setText($("questmap-hint"), done + " / " + nodes.length + " 幕已走过");
+
+    if (!charts.questmap) charts.questmap = window.echarts.init(box, null, { renderer: "canvas" });
+
+    // Force layout scatters nodes and overlaps their labels. A stage DAG has a
+    // natural depth, so we lay it out ourselves: x = hop count from a root,
+    // y = spread within the layer. Deterministic, readable, and it shows the
+    // shape of the story instead of a hairball.
+    const depthOf = {};
+    const incoming = {};
+    nodes.forEach((n) => { incoming[n.id] = 0; });
+    edges.forEach((e) => { if (incoming[e.to] !== undefined) incoming[e.to] += 1; });
+    const roots = nodes.filter((n) => !incoming[n.id]).map((n) => n.id);
+    const queue = roots.length ? roots.slice() : [nodes[0].id];
+    queue.forEach((id) => { depthOf[id] = 0; });
+    const adjacency = {};
+    edges.forEach((e) => { (adjacency[e.from] = adjacency[e.from] || []).push(e.to); });
+    for (let i = 0; i < queue.length && i < 500; i++) {
+      const id = queue[i];
+      (adjacency[id] || []).forEach((nxt) => {
+        const candidate = (depthOf[id] || 0) + 1;
+        if (depthOf[nxt] === undefined || candidate > depthOf[nxt]) {
+          depthOf[nxt] = candidate;
+          queue.push(nxt);
+        }
+      });
+    }
+    const layers = {};
+    nodes.forEach((n) => {
+      const d = depthOf[n.id] === undefined ? 0 : depthOf[n.id];
+      (layers[d] = layers[d] || []).push(n);
+    });
+    const COL_W = 150;
+    const ROW_H = 74;
+    const data = [];
+    Object.keys(layers).forEach((d) => {
+      layers[d].forEach((n, rowIdx) => {
+        const yOffset = (rowIdx - (layers[d].length - 1) / 2) * ROW_H;
+        data.push({
+          id: n.id,
+          name: n.title,
+          x: Number(d) * COL_W,
+          y: yOffset,
+          symbolSize: n.state === "current" ? 22 : 14,
+          itemStyle: {
+            color: QUEST_NODE_COLOR[n.state] || QUEST_NODE_COLOR.open,
+            borderColor: n.state === "current" ? "#fff" : "transparent",
+            borderWidth: n.state === "current" ? 2 : 0,
+          },
+        });
+      });
+    });
+
+    charts.questmap.setOption({
+      backgroundColor: "transparent",
+      tooltip: {
+        formatter: (p) => {
+          if (p.dataType === "edge") return "";
+          const n = byId[p.data.id] || {};
+          const lines = (n.objectives || []).map((o) => "· " + o).join("<br/>");
+          return "<b>" + (n.title || "") + "</b><br/>" + (lines || "");
+        },
+      },
+      series: [{
+        type: "graph",
+        layout: "none",
+        roam: true,
+        draggable: true,
+        label: {
+          show: true, color: "#ecebe6", fontSize: 11,
+          position: "bottom", distance: 6,
+        },
+        lineStyle: { color: "#3a4350", width: 1.2, curveness: 0.06 },
+        edgeSymbol: ["none", "arrow"],
+        edgeSymbolSize: 5,
+        data: data,
+        links: edges.map((e) => ({ source: e.from, target: e.to })),
+      }],
+      animation: panelState.motion,
+    }, true);
+
+    // Fit the drawing into the card so nothing is cut off on first paint.
+    try { charts.questmap.resize(); } catch (e) { /* chart not ready yet */ }
+  }
+
   function renderLorebook(v) {
     const box = $("lore-rows");
     if (!box) return;

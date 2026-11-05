@@ -141,7 +141,7 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
     只有同一节内部按打分排。
 - **验收**：`verify_generic.py` N3「新增无关事实不改变已有排序」。
 
-#### A6. 事件观察者模型：NPC 只知道他看见/被告知的事 `[建议]`
+#### A6. 事件观察者模型：NPC 只知道他看见/被告知的事 `[已落地]`
 
 - **来自**：`cultivation-world-simulator`，`src/classes/event_storage.py:76-160,260-310` 与
   `event_query.py`：
@@ -191,7 +191,7 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
   旧分支的历史物理保留（`state_schema.py:103-113`）；`restore` 里 `archive_generation = max(...) + 1`。
   本轮不新增机制，只把它写进结论：**分支不是删除未来，是换一条归档线**。
 
-#### B3. 状态哈希与循环检测 `[建议]`
+#### B3. 状态哈希与循环检测 `[已落地]`
 
 - **来自**：`stickystyle/ZorkGPT` README「State Manager」：用状态哈希发现"完全相同的状态重复出现"，
   提示 agent 陷入循环；地图系统给每条边记 confidence，连续失败的出口会被剪掉。
@@ -204,7 +204,7 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
 - **验收**：新增 W 断言「同状态重复 3 次触发 loop_suspected」「剪枝只影响建议不影响可达性」。
 - **注意**：ZorkGPT 本身不可复现（LLM 决策），只抄它的**检测器**，不抄生成环。
 
-#### B4. 规则优先级：Inform 的 rulebook + Evennia 的 typeclass `[建议]`
+#### B4. 规则优先级：Inform 的 rulebook + Evennia 的 typeclass `[已落地]`
 
 - **来自**：
   - Inform 7：rulebook 分层（check → carry out → report），`instead of` 高优先级覆盖，
@@ -257,7 +257,7 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
     在 `questline.evaluate` 里加两个分支（约 15 行）。
   - **不抄**：ink 的 C# 运行时与 `.ink` 编译器。只借语义，不引第二套脚本语言。
 
-#### C2. Twine/Harlowe 的 passage 图与变量作用域 `[建议]`
+#### C2. Twine/Harlowe 的 passage 图与变量作用域 `[已落地]`
 
 - **来自**：Twine 的故事格式规范（passage 为节点、链接为边）；Harlowe 的 `(set:)` / `(if:)` / hooks；
   Harlowe 3 的 story 变量与 temp 变量**作用域分离**。
@@ -331,7 +331,7 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
 | Twine/Harlowe | 给定选择序列与随机宏种子可重放；历史栈可回退 | 快照 + 世代归档已覆盖回退；选择序列未记录 |
 | Evennia | 引擎层确定，但持久脚本定时器按墙钟触发，破坏重放 | 反例：我们的世界演化只挂 `tick`，不读墙钟，这是对的 |
 
-#### D2. 动作日志：事件溯源缺的最后一块 `[建议]`
+#### D2. 动作日志：事件溯源缺的最后一块 `[已落地]`
 
 - **现状**：`event_log` 记录"发生了什么"（desc + type + 结构化字段），但没有记录
   "玩家/宿主下了什么命令"。因此可以审计，不能**重放**：同样的归档 + 同样的种子，
@@ -449,3 +449,22 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
 - mem0：`mem0/memory/main.py`（`_add_to_vector_store`、hash 去重、`history`）。
 - ZorkGPT：README「State Manager」「Map System」（状态哈希、边置信度、失败出口剪枝）。
 - OASIS：README「Integrated Recommendation Systems」（interest-based / hot-score）。
+
+
+---
+
+## 落地台账（v1.8.0）
+
+| 机制 | 落点 | 验收 |
+|---|---|---|
+| A6 事件观察者模型 | `rules/context.py` `remember(witnesses=, public=)` / `knows` / `tell` / `known_to`；工具 `context_known` `context_tell` | `verify_mechanics.py` N5–N7 |
+| B3 状态哈希与循环检测 | `rules/loopguard.py`：16 位状态签名、20 窗环形缓冲、3 次重复告警、死路剪枝 | `verify_mechanics.py` N3–N4 |
+| B4 规则优先级 rulebook | `rules/rulebook.py`：`order` 降序 + `stop` 截断；谓词复用 `questline.evaluate`，效果复用 `systems.EFFECT_OPS`；设定包 `rules` 字段声明 | `verify_mechanics.py` N1–N2 |
+| C2 事业线图 | `panel.py` `_build_quest_graph` → 面板 `#questmap` 分层 DAG（x = 跳数，y = 层内分布） | `verify_mechanics.py` N9 |
+| C3 三阶段结算（check 阶段） | `rules/combat.py` `preview()`：只读推演命中率/期望伤害/是否致命，不消耗随机 | `verify_mechanics.py` N8 |
+| D2 动作日志 | `action_log.py`：`<state>.actions.jsonl`，canonical JSON + sha256，不含明文参数；`seq` 在事务内递增落盘 | `verify_replay.py` R1–R9 |
+
+**为什么 C3 只做了 check 阶段**：`resolve_combat` 已有 12 条不变量依赖（死目标守卫、死攻击方守卫、
+自攻击守卫、逃跑独立判定、技能 inf/nan 兜底……）。把判定/扣血/事件拆成三个函数需要重写这个
+函数体，回归面远大于收益。只补一个**只读 preview** 就拿到了玩家最需要的价值（打之前知道风险），
+且零风险——它不写状态、不消耗随机，N8b/N8c 断言了这两点。

@@ -44,10 +44,58 @@ def install(script_dir: str | None = None) -> str:
     module = importlib.util.module_from_spec(spec)
     module.__path__ = [directory]
     sys.modules[_PACKAGE] = module
+
+    # Register a finder that resolves bare top-level names (`import mcp_server`)
+    # to the already-loaded package submodules. Without this, the same file can be
+    # imported twice under two names and module-level side effects run twice —
+    # which for mcp_server.py means every @server.tool() registers again.
+    _install_alias_finder(directory)
+
     # Execute __init__.py for real: package metadata lives there, and merely
     # registering the object leaves `__version__` undefined.
     spec.loader.exec_module(module)
     return directory
+
+
+def _install_alias_finder(directory: str) -> None:
+    """Route bare-name imports of package modules to the package copy."""
+    if getattr(sys, '_wg_alias_finder', False):
+        return
+    import importlib.abc
+    import importlib.machinery
+
+    names = {'mcp_server', 'engine', 'panel', 'sessions', 'templates',
+             'settings_loader', 'state_schema', 'input_policy', 'viz_series',
+             'init_game', 'cli', 'action_log', 'mcp_primitives'}
+    package = _PACKAGE
+
+    class _AliasLoader(importlib.abc.Loader):
+        def __init__(self, name):
+            self.name = name
+
+        def create_module(self, spec):
+            return sys.modules.get(package + '.' + self.name)
+
+        def exec_module(self, module):
+            # Already executed as a package submodule; nothing to redo.
+            return None
+
+    class _AliasFinder(importlib.abc.MetaPathFinder):
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname not in names:
+                return None
+            if fullname in sys.modules:
+                return None
+            # Only alias when the package submodule is ALREADY loaded. Returning a
+            # spec that resolves to None makes Python install an empty module —
+            # which is exactly how `import panel` once produced a module with no
+            # __file__ and no view_model (v1.8.0 regression, caught by the gate).
+            if (_PACKAGE + '.' + fullname) not in sys.modules:
+                return None
+            return importlib.machinery.ModuleSpec(fullname, _AliasLoader(fullname))
+
+    sys.meta_path.insert(0, _AliasFinder())
+    sys._wg_alias_finder = True
 
 
 def ensure_parent_on_path(script_dir: str | None = None) -> None:
@@ -56,3 +104,34 @@ def ensure_parent_on_path(script_dir: str | None = None) -> None:
     parent = os.path.dirname(directory)
     if parent and parent not in sys.path:
         sys.path.insert(0, parent)
+
+
+def alias_top_level(names=('mcp_server', 'engine', 'panel', 'sessions', 'templates',
+                           'settings_loader', 'state_schema', 'input_policy',
+                           'viz_series', 'init_game', 'cli', 'action_log',
+                           'mcp_primitives')) -> int:
+    """Make `import x` and `import game_engine.x` resolve to ONE module object.
+
+    Why: without this, a process that imports the package on one path and the
+    bare name on another loads the file twice, so module-level registration runs
+    twice. For `mcp_server.py` that means every `@server.tool()` executes again
+    and the SDK logs "Tool already exists" for each tool — which is exactly what
+    broke the mutation harness (its baseline assumes an empty stderr).
+
+    Aliasing is safe because both names then share one module dict, one server
+    instance and one set of counters.
+    """
+    import importlib
+    aliased = 0
+    for name in names:
+        full = _PACKAGE + '.' + name
+        module = sys.modules.get(full)
+        if module is None:
+            try:
+                module = importlib.import_module(full)
+            except Exception:  # nosec B112; aqg: boundary — optional module may not exist
+                continue
+        if sys.modules.get(name) is not module:
+            sys.modules[name] = module
+            aliased += 1
+    return aliased

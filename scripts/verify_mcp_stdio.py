@@ -41,6 +41,7 @@ EXPECTED_TOOLS = {
     # v1.2.0 通用游戏层
     'roll', 'game_profile', 'game_adjust', 'game_tag', 'game_sheet',
     'context_remember', 'context_search', 'context_forget', 'context_pack',
+    'context_known', 'context_tell', 'combat_preview',
     'session_list', 'session_new', 'session_switch', 'session_snapshot',
     'session_manage', 'session_import', 'close_panel',
     # v1.4.0 体系与模板层

@@ -195,6 +195,71 @@ def _scene_summary(state):
     return str(summaries[-1].get("text", "") or "")
 
 
+def _next_moves(state, player, playbook, quests, loop):
+    """Concrete "what can I do now" hints, derived from state alone.
+
+    Why this exists: a rule engine is invisible until you know what it will
+    accept. New players ask "what do I type?" — the panel answered that with a
+    generic placeholder, which is not an answer. These hints are computed from
+    the same state the tools read, so they cannot drift from what is possible.
+
+    Each hint is {kind, text, why}. Ordered by how likely it is to unblock the
+    player: active quest objectives first, then survival, then world, then loop.
+    """
+    moves = []
+    if not isinstance(player, dict):
+        return moves
+
+    # 1) A quest objective you have not met yet is the strongest signal.
+    for row in (quests.get("rows") or [])[:2]:
+        if row.get("status") in ("done", "failed"):
+            continue
+        for objective in (row.get("objectives") or [])[:2]:
+            moves.append({"kind": "quest", "text": str(objective)[:80],
+                          "why": "推进「%s」" % (row.get("title") or row.get("id", ""))})
+
+    # 2) Survival: low HP or a heavy debt changes what a sensible next move is.
+    hp = player.get("hp")
+    hp_max = player.get("hp_max")
+    if isinstance(hp, (int, float)) and isinstance(hp_max, (int, float)) and hp_max > 0:
+        if hp / hp_max < 0.35:
+            moves.append({"kind": "risk", "text": "找地方疗伤，或换条安全的路",
+                          "why": "气血只剩 %d%%" % round(hp * 100 / hp_max)})
+
+    karma = player.get("unsettled_karma")
+    if isinstance(karma, (int, float)) and karma >= 30:
+        moves.append({"kind": "risk", "text": "还一笔业债，或做件好事抵掉",
+                      "why": "未清业债 %s，会压突破成功率" % round(karma)})
+
+    # 3) World: a market with bargains is a concrete, checkable opportunity.
+    market = state.get("market") or {}
+    here = str(player.get("location") or "")
+    local = (market.get(here) or {}).get("items") or {}
+    bargains = 0
+    for item in local.values():
+        if not isinstance(item, dict):
+            continue
+        price = item.get("price")
+        base = item.get("base_price")
+        if isinstance(price, (int, float)) and isinstance(base, (int, float)) and base > 0:
+            if price < base * 0.95:
+                bargains += 1
+    if bargains:
+        moves.append({"kind": "opportunity", "text": "看看本地市价，有 %d 样低于基准" % bargains,
+                      "why": "低价买入，离开后可能卖得更高"})
+
+    # 4) Loop: if the player is circling, say so plainly.
+    if loop.get("loop_suspected"):
+        moves.append({"kind": "loop", "text": "换个地方，或推进一个没试过的交互",
+                      "why": "同一状态已经重复出现"})
+
+    # 5) Always offer the fallback that always works.
+    if not moves:
+        moves.append({"kind": "free", "text": "描述你想做的事，或先去别处看看",
+                      "why": "自由推进：引擎会结算，结果由规则决定"})
+    return moves[:5]
+
+
 def _scene_focus(events):
     """最近一条非 info 事件优先；没有就用最后一条。"""
     for e in reversed(events or []):
@@ -578,16 +643,67 @@ def _build_playbook(state):
 
 
 def _build_quests(state):
-    """事业线：只给已浮现的（dormant 不占版面，避免变成待办清单）。"""
+    """事业线：只给已浮现的（dormant 不占版面，避免变成待办清单）。
+
+    Also emits the stage graph (`graph`) so the panel can draw the whole DAG, not
+    just the current stage. The data already exists in questlines[].stages[].next;
+    exposing it costs nothing and turns a flat list into a map of where the story
+    can go.
+    """
     try:
         quests = state.get("questlines") or []
         return {
             "rows": quest_rules.status(state, quests),
             "total": len(quests),
             "visible": quest_rules.visible_count(state, quests),
+            "graph": _build_quest_graph(state, quests),
         }
     except Exception as exc:  # aqg: top-level boundary
-        return {"rows": [], "total": 0, "visible": 0, "error": str(exc)[:120]}
+        return {"rows": [], "total": 0, "visible": 0, "graph": [], "error": str(exc)[:120]}
+
+
+def _build_quest_graph(state, quests):
+    """Flat node/edge list for the stage DAG, coloured by progression state.
+
+    Nodes: {id, quest, title, state: done|current|open|dormant, objectives}
+    Edges: {from, to}  — straight from the declared `next` lists.
+    """
+    nodes, edges = [], []
+    for quest in quests:
+        qid = str(quest.get("id") or "")
+        progress = (state.get("quests") or {}).get(qid) or {}
+        # `stage` is stored as a plain id string by questline.advance(); older
+        # saves may hold the whole stage dict. Accept both instead of assuming.
+        raw_stage = progress.get("stage")
+        if isinstance(raw_stage, dict):
+            current_stage = str(raw_stage.get("id") or "")
+        else:
+            current_stage = str(raw_stage or "")
+        done = set(progress.get("done_stages") or [])
+        failed = bool(progress.get("failed"))
+        for stage in (quest.get("stages") or []):
+            sid = str(stage.get("id") or "")
+            if failed:
+                node_state = "failed" if sid == current_stage else (
+                    "done" if sid in done else "open")
+            elif sid in done:
+                node_state = "done"
+            elif sid == current_stage:
+                node_state = "current"
+            else:
+                node_state = "open"
+            nodes.append({
+                "id": "%s.%s" % (qid, sid),
+                "quest": qid,
+                "quest_title": str(quest.get("title") or ""),
+                "stage": sid,
+                "title": str(stage.get("title") or sid),
+                "state": node_state,
+                "objectives": [str(o) for o in (stage.get("objectives") or [])][:4],
+            })
+            for nxt in (stage.get("next") or []):
+                edges.append({"from": "%s.%s" % (qid, sid), "to": "%s.%s" % (qid, nxt)})
+    return {"nodes": nodes, "edges": edges}
 
 
 def _build_lorebook(state):
@@ -748,7 +864,55 @@ def view_model(state_path):
         "game": _build_game(state),
         "systems": _build_systems(state),
         "sessions": _build_sessions(state_path),
+        "rules": _build_rules(state),
+        "loop": _build_loop(state),
+        "replay": _build_replay(state_path, state),
+        "next_moves": _next_moves(
+            state, player,
+            state.get("playbook") or {},
+            _build_quests(state),
+            _build_loop(state)),
     }
+
+
+def _build_rules(state):
+    """Setting-declared rules: what fired, how often, in what priority order."""
+    try:
+        from game_engine.rules import rulebook as rulebook_rules
+        return rulebook_rules.describe(state)
+    except Exception as exc:  # aqg: boundary — a bad rulebook must not blank the panel
+        return {"total": 0, "fired": 0, "rules": [], "error": str(exc)[:120]}
+
+
+def _build_loop(state):
+    """Loop signals: is the player circling, and which routes are dead ends."""
+    try:
+        from game_engine.rules import loopguard as loop_rules
+        return loop_rules.summary(state)
+    except Exception as exc:  # aqg: boundary
+        return {"window": 0, "repeats": 0, "loop_suspected": False,
+                "pruned_edges": [], "error": str(exc)[:120]}
+
+
+def _build_replay(state_path, state):
+    """Replay readiness: how many actions are logged, and the last fingerprint.
+
+    The panel is read-only, so this reports capability and never replays; the
+    actual replay runs through the MCP tools so it exercises production code.
+    """
+    try:
+        from game_engine import action_log
+        rows = action_log.read_actions(state_path, limit=5)
+        total = int(state.get("actions_seq", 0) or 0)
+        return {
+            "logged": total,
+            "log_file": os.path.basename(action_log.action_log_path(state_path)),
+            "recent": [{"seq": r.get("seq"), "tick": r.get("tick"), "tool": r.get("tool")}
+                       for r in rows],
+            "last_state_hash": rows[-1].get("state_after") if rows else "",
+        }
+    except Exception as exc:  # aqg: boundary
+        return {"logged": 0, "recent": [], "error": str(exc)[:120]}
 
 
 def _build_game(state):

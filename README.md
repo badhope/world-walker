@@ -1,13 +1,13 @@
 # World Games
 
-**v1.7.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
+**v1.8.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [What it is for](docs/USE_CASES.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
 
 > **The AI narrates. The engine decides.**
 
 Your agent writes the prose. A deterministic engine resolves every hit, price, relationship and
 faction shift, then persists it to one auditable state file.
 
-`191 rule functions` · `64 MCP tools` · `4 MCP resources` · `4 playable worlds` · `8 templates` · `0 runtime dependencies`
+`205 rule functions` · `67 MCP tools` · `4 MCP resources` · `4 playable worlds` · `8 templates` · `0 runtime dependencies`
 
 <p align="center">
   <img src="docs/screenshots/stage-xuanshu.png" alt="Live stage — turn 500 of a real save" width="100%">
@@ -28,6 +28,10 @@ Three problems kill long AI-run games. Each one is solved in code, not in prompt
 | **Numbers drift** | The model invents damage, prices, HP | Rule functions resolve them; same state + seed + actions replay byte-identically |
 | **The AI forgets** | Context window overflows, old facts vanish | Context ledger persists clues, promises and facts; retrieval scored like Generative Agents |
 | **Saves become chaos** | One JSON file, hand-managed | Save library: multiple runs, snapshots, trash, all through `session_*` |
+
+**Everything is replayable.** Every mutating call is logged with its arguments (hashed),
+the RNG counters on both sides, and before/after state fingerprints. Same seed plus the same
+action log reproduces the same world — and `verify_replay.py` proves it instead of claiming it.
 
 Two things most frameworks skip:
 
@@ -113,7 +117,7 @@ descriptions**: a bundle declares `terms: { level: "身手", gold: "银两" }` a
                           ▼
     ┌─────────────────────────────────────────────┐
     │  World Games MCP server                     │
-    │  64 tools · 4 resources · 1 prompt          │
+    │  67 tools · 4 resources · 1 prompt          │
     │  tool annotations: read-only / destructive  │
     └───────────────┬─────────────────────────────┘
                     │  every mutation goes through
@@ -148,6 +152,8 @@ descriptions**: a bundle declares `terms: { level: "身手", gold: "银两" }` a
 | `combat` · `economy` · `social` · `karma` | hits and damage, prices, relationships, structured debt |
 | `cognition` · `narrative_engine` · `progression` | flow channel, Panarchy phase, tier progression |
 | `world_evolution` | factions, rumors, culture, roaming NPCs, world flags |
+| `rulebook` + `loopguard` | world-specific exceptions declared by the bundle; circling detection |
+| `action_log` | command-level replay with per-step state fingerprints |
 
 ### Seven pluggable subsystems
 
@@ -182,15 +188,15 @@ template_start(template="mystery", name="my case",
 
 ---
 
-## The 64 tools
+## The 67 tools
 
 | Group | Tools |
 |---|---|
 | Setup and saves | `session_new` `session_list` `session_switch` `session_snapshot` `session_manage` `session_import` `load_setting` `world_init` `world_open` |
 | Per-turn core | `pending_actions` `context_pack` `narration_context` `publish_prose` `tick` |
-| Checks and numbers | `roll` `combat` `trade` `social` `karma` `advance` `use_item` `game_profile` `game_adjust` `game_tag` `game_sheet` |
+| Checks and numbers | `roll` `combat` `combat_preview` `trade` `social` `karma` `advance` `use_item` `game_profile` `game_adjust` `game_tag` `game_sheet` |
 | World and place | `travel` `world_state` `narrative` `status` `playbook_info` `quest_status` `quest_advance` `lore_lookup` `failure_tick` |
-| Memory and recall | `context_remember` `context_search` `context_forget` `recall` `write_summary` `recap` `read_state` |
+| Memory and recall | `context_remember` `context_known` `context_tell` `context_search` `context_forget` `recall` `write_summary` `recap` `read_state` |
 | Systems and templates | `templates_list` `template_info` `template_apply` `template_start` `system_define` `system_remove` `system_run` `system_status` `system_schema` |
 | Ecosystem and tooling | `character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `close_panel` `world_schema` |
 
@@ -256,6 +262,8 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | — | version single source, tool count, assertion counts, asset references |
 | `verify_i18n.py` | 12 | panel dictionary: unique keys, unambiguous templates, bilingual wiring |
+| `verify_mechanics.py` | 25 | rulebook priority/stop, loop detection, NPC knowledge boundary, combat preview, quest DAG |
+| `verify_replay.py` | 15 | action log chain, seq persistence, canonical hashing, deterministic fingerprint |
 | `verify_gameplay.py` | 65 | playbook loops, questline DAG, lorebook semantics |
 | `verify_generic.py` | 104 | generic checks, game profile, context ledger, save library, brand |
 | `verify_systems.py` | 161 | seven subsystem kinds, eight templates, counters, panel contract |
@@ -269,7 +277,7 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_mutation.py` | 50 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 30 steps; missing required dependencies fail the gate
+bash scripts/pre_push_gate.sh     # 32 steps; missing required dependencies fail the gate
 ```
 
 Coverage gate: core domain ≥70% (measured 86%, including the generic layer); `pyflakes` 0.
@@ -282,21 +290,21 @@ Coverage gate: core domain ≥70% (measured 86%, including the generic layer); `
 world-walker/                  # repo root IS the game_engine package
 ├── cli.py                     # `wg` — the single front door
 ├── engine.py                  # CLI rule actions
-├── mcp_server.py              # MCP server, 64 tools + 4 resources
+├── mcp_server.py              # MCP server, 67 tools + 4 resources
 ├── mcp_primitives.py          # resources and tool annotations
 ├── state_schema.py            # state model / atomic write / transaction lock / archive
 ├── panel.py                   # read-only view model + HTTP/SSE + /admin console
 ├── panel.html / .css / .js    # the stage: native trio, no build chain
 ├── panel.i18n.js              # EN/ZH translation layer
 ├── sessions.py                # save library: multi-run / snapshot / trash
-├── rules/                     # 191 public rule functions
+├── rules/                     # 205 public rule functions
 │   ├── checks.py gamesystem.py context.py
 │   ├── combat.py economy.py social.py karma.py
 │   ├── cognition.py narrative_engine.py progression.py
 │   ├── world_dynamics.py world_evolution.py
 │   └── models.py              # 16 named closed-form models
 ├── settings/                  # 4 ready-to-play bundles
-├── scripts/                   # 19 self-checks + build_exe + screenshot pipeline
+├── scripts/                   # 21 self-checks + build_exe + screenshot pipeline
 └── assets/echarts.min.js      # offline chart library (Apache-2.0)
 ```
 

@@ -265,3 +265,80 @@ def _apply_near_death(state, player, result):
     result["events"].append(
         f"{player.get('name', '玩家')}气血耗尽，重伤退场："
         f"散落 {gold_lost} 钱财，心伤 +1（第 {player['near_death_count']} 次濒死）")
+
+
+def preview(state, attacker_id, defender_id, action="attack", skill=None):
+    """Read-only forecast of a combat exchange (Inform's "check" phase).
+
+    Why this exists: `resolve_combat` decides and mutates in one pass, so a host
+    has no way to tell the player "this is a bad idea" without actually swinging.
+    Splitting a full three-phase pipeline would mean rewriting a function that
+    many invariants already depend on; a read-only preview gets the same player
+    value with no risk to settlement.
+
+    Returns hit chance, expected damage and the modifiers that produced them.
+    Never mutates state and never consumes randomness.
+    """
+    atk = (state.get("entities") or {}).get(attacker_id)
+    de = (state.get("entities") or {}).get(defender_id)
+    if not atk or not de:
+        return {"error": "entity not found", "attacker": attacker_id,
+                "defender": defender_id}
+
+    if int(de.get("hp", 0) or 0) <= 0:
+        return {"attacker": attacker_id, "defender": defender_id,
+                "target_already_dead": True, "hit_chance": 0.0,
+                "expected_damage": 0, "advice": "目标已经倒下，再打没有意义"}
+    if attacker_id == defender_id:
+        return {"attacker": attacker_id, "defender": defender_id,
+                "self_target": True, "hit_chance": 0.0, "expected_damage": 0,
+                "advice": "不能攻击自己"}
+
+    atk_attrs = atk.get("attrs", {}) or {}
+    def_attrs = de.get("attrs", {}) or {}
+    atk_power = atk_attrs.get("str", 10) + atk_attrs.get("dex", 10) * 0.5
+    def_power = def_attrs.get("str", 10) + def_attrs.get("dex", 10) * 0.7
+    bonus_atk = bonus_def = 0.0
+    try:
+        from game_engine.rules.progression import tier_bonus
+        bonus_atk = tier_bonus(state, atk)
+        bonus_def = tier_bonus(state, de)
+        atk_power += bonus_atk
+        def_power += bonus_def
+    except Exception:  # nosec B110; aqg: boundary — preview must never raise
+        pass
+
+    hit_mult, dmg_mult = _combat_modifiers(state)
+    hit_chance = max(0.1, min(0.95, 0.5 + (atk_power - def_power) * 0.05))
+    hit_chance = max(0.05, min(0.98, hit_chance * hit_mult))
+    if action == "heavy":
+        hit_chance = max(0.1, hit_chance * 0.7)
+
+    base_damage = atk_attrs.get("str", 10) * 1.5 + bonus_atk * 1.5
+    if action == "heavy":
+        base_damage *= 1.8
+    if isinstance(skill, dict) and skill.get("power"):
+        try:
+            base_damage *= float(skill["power"])
+        except (TypeError, ValueError):
+            pass
+    base_damage *= dmg_mult
+
+    expected = round(hit_chance * base_damage, 1)
+    hp = int(de.get("hp", 0) or 0)
+    return {
+        "attacker": attacker_id,
+        "defender": defender_id,
+        "action": action,
+        "hit_chance": round(hit_chance, 3),
+        "base_damage": round(base_damage, 1),
+        "expected_damage": expected,
+        "defender_hp": hp,
+        "lethal_if_hit": base_damage >= hp,
+        "attacker_power": round(atk_power, 1),
+        "defender_power": round(def_power, 1),
+        "modifiers": {"hit_mult": round(hit_mult, 3), "damage_mult": round(dmg_mult, 3)},
+        "advice": ("这一击足以致命" if base_damage >= hp
+                   else "有风险，考虑换策略" if expected > hp * 0.5
+                   else "可以一试"),
+    }

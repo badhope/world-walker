@@ -26,6 +26,7 @@ REQUIRED = [
     'admin.js',
     'cli.py',
     'mcp_primitives.py',
+    'action_log.py',
     'assets/echarts.min.js',
     'settings/玄枢界.setting.json',
     'settings/折剑行.setting.json',

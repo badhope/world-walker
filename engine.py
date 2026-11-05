@@ -157,11 +157,23 @@ def _do_tick(state, args, result):
             desc = "事业线「%s」失败（%s）" % (ch.get("quest"), ch.get("reason"))
             quest_events.append(desc)
             log_event(state, "quest", desc, quest=ch.get("quest"))
+    # Same two steps as the MCP `tick` tool. If these drift apart, the same save
+    # produces two different worlds depending on which channel advanced it —
+    # which breaks the project's central determinism claim (INV-E4/E6).
+    from game_engine.rules import rulebook as _rulebook
+    from game_engine.rules import loopguard as _loopguard
+    rule_result = _rulebook.apply(state, event="tick")
+    for applied_id in rule_result.get("applied", []):
+        log_event(state, "rule", "规则触发：%s" % applied_id, rule=applied_id)
+    loop = _loopguard.observe(state)
+
     log_event(state, "tick", "回合%d结束" % state["tick"])
     result.update({
         "events": (["回合%d结束" % state["tick"]] + [str(e) for e in world.get("events", [])]
                    + quest_events),
         "quest_changes": quest_changes,
+        "rules_fired": rule_result.get("applied", []),
+        "loop": loop,
         "playbook": playbook_rules.summary(state, pb),
         "panarchy_phase": world.get("phase"),
         "capital": world.get("capital"),

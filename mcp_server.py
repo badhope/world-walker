@@ -46,6 +46,7 @@ except ImportError:  # pragma: no cover - 仅在只有 2.x 布局的环境走到
 
 from game_engine import __version__ as _WW_VERSION
 from game_engine.rules.cognition import daily_cognitive_budget, should_use_system2
+from game_engine.rules import combat as combat_rules
 from game_engine.rules.combat import resolve_combat
 from game_engine.rules.economy import resolve_trade, tick_market
 from game_engine.rules.karma import get_karma_consequence, resolve_karma
@@ -68,10 +69,12 @@ from game_engine.rules import gamesystem as game_rules
 from game_engine.rules import lorebook as lore_engine
 from game_engine.rules import playbook as playbook_rules
 from game_engine.rules import questline as quest_rules
+from game_engine.rules import rulebook as rulebook_rules
+from game_engine.rules import loopguard as loop_rules
 from game_engine.rules.world_evolution import evolve as evolve_world, world_summary
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
 from game_engine import settings_loader
-from game_engine.state_schema import (bump, log_event, save_state, seed_rng,
+from game_engine.state_schema import (bump, load_state, log_event, save_state, seed_rng,
                                       state_lock, transact_state)
 from game_engine.viz_series import record_sample
 from game_engine import sessions as session_store
@@ -80,6 +83,10 @@ try:
     from game_engine import mcp_primitives
 except ImportError:  # bare checkout
     import mcp_primitives
+try:
+    from game_engine import action_log
+except ImportError:  # bare checkout
+    import action_log
 
 from pydantic import BaseModel, Field
 
@@ -186,7 +193,8 @@ _STATE_TRANSACTION_TOOLS = frozenset({
     "failure_tick", "add_character", "import_lorebook",
     "narration_context", "advance", "write_summary", "configure", "travel",
     "publish_prose", "use_item", "spawn_npc", "roll", "game_profile", "game_adjust",
-    "game_tag", "game_sheet", "context_remember", "context_forget", "system_define",
+    "game_tag", "game_sheet", "context_remember", "context_forget", "context_tell",
+    "system_define",
     "system_run", "system_remove",
 })
 
@@ -257,19 +265,67 @@ def _run_state_transaction(fn, args, kwargs):
         _set_transaction_context(context)
         try:
             result_box["value"] = fn(*args, **kwargs)
+            # Bump inside the transaction so the counter is persisted with the
+            # save. Incrementing after transact_state() returns would change an
+            # in-memory object nobody writes back, and every record would carry
+            # seq=1 (observed exactly once, now covered by verify_replay R9).
+            state["actions_seq"] = int(state.get("actions_seq", 0) or 0) + 1
             input_policy.validate_state_data(state)
         finally:
             _set_transaction_context(None)
 
+    # The action log is what turns "auditable" into "replayable": it records the
+    # command, the RNG counters on both sides and the state fingerprints, so a
+    # replay can prove it reproduced the same world instead of merely claiming to.
+    before_state = None
+    try:
+        before_state = load_state(path) if os.path.exists(path) else None
+    except Exception:  # nosec B110; aqg: boundary — a missing log must not block play
+        before_state = None
+    state_before = action_log.state_fingerprint(before_state) if before_state else ''
+
     committed = transact_state(edit, path, archive_entries=archive_entries)
     _record_transaction_sample(path, committed)
+
+    try:
+        seq = int(committed.get("actions_seq", 0) or 0)
+        action_log.record(
+            path,
+            seq=seq,
+            tick=int(committed.get("tick", 0) or 0),
+            tool=fn.__name__,
+            args={"args": list(args), "kwargs": kwargs},
+            rng_before=(before_state or {}).get("rng_counter"),
+            rng_after=committed.get("rng_counter"),
+            state_before=state_before,
+            state_after=action_log.state_fingerprint(committed),
+        )
+    except Exception:  # nosec B110; aqg: boundary — logging must never break a save
+        pass
     return result_box["value"]
+
+
+def _already_registered(name):
+    """True when a tool with this name is already on the server.
+
+    Registration must be idempotent: the repository root is importable both as
+    `game_engine.mcp_server` and as `mcp_server`, and some harnesses touch both
+    paths in one process. Without this check the decorator runs twice and the
+    SDK logs "Tool already exists" to stderr — harmless to the game, but it
+    pollutes the stderr baseline that the mutation harness relies on to decide
+    whether a test failed for the right reason.
+    """
+    manager = getattr(server, '_tool_manager', None)
+    tools = getattr(manager, '_tools', None)
+    return isinstance(tools, dict) and name in tools
 
 
 def _guarded_tool(*dargs, **dkwargs):
     def _wrap(fn):
         # Attach MCP tool annotations so hosts can auto-approve reads and confirm
         # destructive writes. Callers may still pass annotations explicitly.
+        if _already_registered(fn.__name__):
+            return fn
         if 'annotations' not in dkwargs:
             ann = mcp_primitives.annotations_for(fn.__name__)
             if ann is not None:
@@ -772,6 +828,9 @@ def world_schema() -> dict:
             "game_tag": "增删游戏标签（戒严/雨季/被通缉……）",
             "game_sheet": "设置自由表格字段（职业、目标、住所……）",
             "context_remember": "记一条结构化事实（线索/承诺/人物/规则）",
+            "context_known": "查某角色知道什么（写 NPC 对话前用）",
+            "context_tell": "把事实转告给另一个角色",
+            "combat_preview": "战前推演：命中率/期望伤害/是否致命（只读）",
             "context_search": "检索事实台账",
             "context_forget": "结案或删除事实",
             "context_pack": "按预算打包本回合上下文",
@@ -885,6 +944,19 @@ def combat(attacker: str, defender: str, action_type: str = "attack",
 
 
 @server.tool()
+def combat_preview(attacker: str = "player", defender: str = "",
+                   action_type: str = "attack") -> dict:
+    """战前推演（Chinese: 只读，不改状态不消耗随机。告诉宿主"这一击命中率多少、
+    大概打多少、会不会致命"，用来给玩家风险提示或让 AI 决定要不要打。
+    Read-only forecast of a fight: hit chance, expected damage, lethality."""
+
+    if not defender:
+        raise ValueError("defender 不能为空")
+    state = _load()
+    return _read(combat_rules.preview(state, attacker, defender, action=action_type))
+
+
+@server.tool()
 def trade(location: str, item: str, direction: str, quantity: int = 1,
           entity: str = "player") -> dict:
     """结算一次交易（Chinese: item 传市场里的 item_key，不是显示名；direction 取 buy|sell。
@@ -981,12 +1053,28 @@ def tick() -> dict:
             desc = "事业线「%s」失败（%s）" % (ch.get("quest"), ch.get("reason"))
             quest_events.append(desc)
             log_event(state, "quest", desc, quest=ch.get("quest"))
+    # Setting-declared rules run before the turn closes, so a bundle can hook
+    # "every turn" behaviour without the engine knowing about that world.
+    # Imported locally: `tests_turn_regression` extracts this function body and
+    # execs it with a minimal namespace, so module-level aliases are not in scope.
+    from game_engine.rules import rulebook as _rulebook
+    from game_engine.rules import loopguard as _loopguard
+    rule_result = _rulebook.apply(state, event="tick")
+    for applied_id in rule_result.get("applied", []):
+        log_event(state, "rule", "规则触发：%s" % applied_id, rule=applied_id)
+
+    loop = _loopguard.observe(state)
+
     log_event(state, "tick", "回合%d结束" % state["tick"])
     events = (["回合%d结束" % state["tick"]]
               + [str(e) for e in world.get("events", [])]
               + quest_events)
+    if rule_result.get("applied"):
+        events.append("规则触发：%s" % "、".join(rule_result["applied"]))
     return _finish(state, {
         "events": events,
+        "rules_fired": rule_result.get("applied", []),
+        "loop": loop,
         "panarchy_phase": world.get("phase"),
         "capital": world.get("capital"),
         "connectedness": world.get("connectedness"),
@@ -1150,6 +1238,9 @@ def status() -> dict:
                        for m in state.get("milestones", [])[-6:]],
         "playbook": playbook_rules.summary(state, state.get("playbook") or {}),
         "quests": quest_rules.status(state, state.get("questlines") or []),
+        "rules": rulebook_rules.describe(state),
+        "loop": loop_rules.summary(state),
+        "actions_logged": int(state.get("actions_seq", 0) or 0),
     })
 
 
@@ -1551,6 +1642,9 @@ def travel(location: str, note: str = "", desc: str = "") -> dict:
     loc = str(location).strip()
     if not loc:
         raise ValueError("location 不能为空")
+    origin = str(player.get("location") or "")
+    # Record the route outcome so dead ends drop out of suggestions over time.
+    loop_rules.record_edge(state, origin, loc, ok=True)
     known = (set(state.get("market", {}))
              | {e.get("location", "") for k, e in state.get("entities", {}).items() if k != "player"})
     first = _remember(state, "locations", loc)   # 内部会 bump("locations")
@@ -1916,18 +2010,55 @@ def game_sheet(fields: dict, remove: bool = False) -> dict:
 def context_remember(text: str, kind: str = "fact", keys: list | None = None,
                      subject: str = "", source: str = "", confidence: float = 1.0,
                      ttl: int = 0, importance: float | None = None,
-                     supersede: bool = False) -> dict:
+                     supersede: bool = False, witnesses: list | None = None,
+                     public: bool = False) -> dict:
     """记一条结构化事实（Chinese: 互动对话的"AI 该记住什么"台账。
     kind 取 fact/clue/promise/npc/place/item/rule/note；keys 是检索关键词；
     ttl 为有效回合数（0=永久）；importance 0..1 影响检索排序；
     supersede=true 且给了 subject 时，同 kind+subject 的旧事实标记为 superseded。
+    witnesses 指定还有谁在场看见（默认只有 player）；public=true 表示全城皆知。
+    写 NPC 对话前用 context_known(character=...) 查他到底知道什么，避免"NPC 说出
+    只有玩家看见的秘密"。
     Record a structured fact the host must not forget (clues, promises, NPCs, rules)."""
 
     state = _load()
     result = context_rules.remember(state, text, kind=kind, keys=keys, source=source,
                                     confidence=confidence, ttl=ttl, subject=subject,
-                                    importance=importance, supersede=supersede)
+                                    importance=importance, supersede=supersede,
+                                    witnesses=witnesses, public=public)
     log_event(state, "context", "记住%s：%s" % (kind, text[:60]))
+    return _finish(state, result)
+
+
+@server.tool()
+def context_known(character: str = "player", limit: int = 12) -> dict:
+    """查某个角色**知道什么**（Chinese: 写 NPC 对话前调用，避免他说出不该知道的秘密。
+    character 默认 player；返回该角色可见的未结事实，以及他一共知道多少条。
+    What this character may reference; call it before writing dialogue."""
+
+    state = _load()
+    rows = context_rules.known_to(state, character, limit=limit)
+    ctx = state.get("context") or {}
+    total = sum(1 for f in (ctx.get("facts") or [])
+                if f.get("status") == "open" and context_rules.knows(f, character))
+    return _read({
+        "character": character,
+        "known": rows,
+        "count": len(rows),
+        "known_total": total,
+        "hint": "只让角色引用这里列出的内容；不在列表里的就是他不知道的。",
+    })
+
+
+@server.tool()
+def context_tell(fact_id: str, to: str, how: str = "told") -> dict:
+    """把一条事实转告给另一个角色（Chinese: 玩家告诉了 NPC，此后他可以引用。
+    how 说明传播方式：told / overheard / rumored / witnessed。
+    Propagate a fact to another character so they may reference it later."""
+
+    state = _load()
+    result = context_rules.tell(state, fact_id, to, propagation=how)
+    log_event(state, "context", "转告 %s：%s" % (to, str(result["fact"].get("text"))[:40]))
     return _finish(state, result)
 
 

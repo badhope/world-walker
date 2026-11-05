@@ -126,6 +126,10 @@
         <label class="sr-only" for="action-text">你想做什么</label>
         <textarea id="action-text" rows="1" maxlength="2000"
                   placeholder="写下这一步想做的事（Enter 排队，Shift+Enter 换行）"></textarea>
+        <div class="next-moves" id="next-moves" hidden>
+          <span class="nm-label">可以试试</span>
+          <div class="nm-list" id="next-moves-list"></div>
+        </div>
         <div class="composer-side">
           <button type="submit" class="tbtn primary" id="action-send">排队</button>
           <span class="hint">队列 <b id="inbox-count">0</b> 条 · <span id="inbox-status">指挥官在对话里取走</span></span>
@@ -142,6 +146,12 @@
     <section class="card" id="quest-card">
       <h2><span data-term="quests">事业线</span> <span class="tag" id="quest-hint"></span></h2>
       <div id="quest-list"><span class="empty">这一局还没有浮现的事业线</span></div>
+    </section>
+
+    <section class="card" id="questmap-card" hidden>
+      <h2><span data-term="quests">事业线</span>地图 <span class="tag" id="questmap-hint"></span></h2>
+      <div class="chart" id="questmap" role="img" aria-label="事业线阶段图：已完成/当前/未解锁"></div>
+      <div class="hint">每个点是一幕，箭头是它可以走向下一幕。颜色：已走过 / 正站在这里 / 还没到。</div>
     </section>
 
     <section class="card">

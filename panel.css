@@ -476,6 +476,21 @@ dialog.eventdlg button.primary { background: var(--accent-dim); border-color: va
   padding: 9px 11px; font: inherit; line-height: 1.5;
 }
 .composer textarea:focus-visible { outline: var(--focus); outline-offset: 1px; }
+/* 下一步提示：把"我该做什么"直接摆在输入框上面，而不是让玩家自己想 */
+.next-moves { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; }
+.next-moves[hidden] { display: none; }
+.nm-label { color: var(--faint); font-size: 12px; padding-top: 3px; white-space: nowrap; }
+.nm-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.nm-chip {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  background: var(--surface-3); border: 1px solid var(--line-strong);
+  border-radius: 999px; padding: 3px 10px; font-size: 12.5px; cursor: default;
+}
+.nm-chip .why { color: var(--faint); font-size: 11.5px; }
+.nm-chip.quest { border-color: #6a5a2c; }
+.nm-chip.risk { border-color: #6a3a34; }
+.nm-chip.opportunity { border-color: #2f5a33; }
+
 .composer-side {
   display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap;
 }

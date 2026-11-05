@@ -220,6 +220,11 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
         state.setdefault("quests", {})
     if bundle.get("game"):
         state["game"] = game_rules.normalize(bundle["game"])
+    if bundle.get("rules"):
+        # World-specific exceptions live in the bundle, not in the engine:
+        # this is what keeps "swap worlds without changing code" true.
+        from game_engine.rules import rulebook as rulebook_rules
+        rulebook_rules.load(state, bundle["rules"])
     if bundle.get("systems"):
         defs = state.setdefault("systems", {}).setdefault("defs", {})
         for raw in bundle["systems"]:

@@ -205,7 +205,7 @@ def _next_seq(state: dict) -> int:
 def remember(state: dict, text: str, kind: str = "fact", keys=None,
              source: str = "", confidence: float = 1.0, ttl: int = 0,
              subject: str = "", importance: float | None = None,
-             supersede: bool = False) -> dict:
+             supersede: bool = False, witnesses=None, public: bool = False) -> dict:
     """记一条结构化事实。重复文本（同 kind + 同正文）会刷新而不是重复追加。
 
     supersede=True：同一 kind + 同一 subject 的旧开放事实标为 superseded 并写
@@ -279,6 +279,8 @@ def remember(state: dict, text: str, kind: str = "fact", keys=None,
     }
     if importance is not None:
         fact["importance"] = round(importance, 3)
+    fact["public"] = bool(public)
+    fact["witnesses"] = _normalize_witnesses(witnesses, public)
     facts.append(fact)
     # 线索计数：模板/成就常用 counter_gte:{key:"clues"} 判断"找到第一条线索"
     if kind == "clue":
@@ -536,3 +538,70 @@ def summary(state: dict) -> dict:
         "budget_chars": _context_budget(state),
         "reflection": reflection_due(state),
     }
+
+
+# ── 知识边界（A6）：谁有权知道这条事实 ──────────────────────────
+def _normalize_witnesses(witnesses, public: bool) -> list:
+    """Who may know this fact. Defaults to the player alone."""
+    if public:
+        return ["*"]
+    out = ["player"]
+    for raw in (witnesses or []):
+        name = str(raw or "").strip()[:40]
+        if name and name not in out:
+            out.append(name)
+    return out
+
+
+def knows(fact: dict, knower: str) -> bool:
+    """True when `knower` is allowed to know this fact.
+
+    Facts written before this field existed default to player-only: the
+    conservative reading, so an old save never leaks a secret it never tracked.
+    """
+    if not isinstance(fact, dict):
+        return False
+    if fact.get("public"):
+        return True
+    who = str(knower or "").strip()
+    if not who:
+        return False
+    witnesses = fact.get("witnesses")
+    if not isinstance(witnesses, list) or not witnesses:
+        return who == "player"
+    return "*" in witnesses or who in witnesses
+
+
+def tell(state: dict, fact_id: str, to: str, propagation: str = "told") -> dict:
+    """Propagate a fact to another knower, recording how they learned it."""
+    who = str(to or "").strip()[:40]
+    if not who:
+        raise ValueError("to 不能为空")
+    ctx = state.get("context") or {}
+    for fact in (ctx.get("facts") or []):
+        if fact.get("id") != fact_id:
+            continue
+        witnesses = fact.get("witnesses")
+        if not isinstance(witnesses, list):
+            witnesses = ["player"]
+        if who not in witnesses:
+            witnesses.append(who)
+        fact["witnesses"] = witnesses
+        trail = fact.get("propagation")
+        if not isinstance(trail, list):
+            trail = []
+        trail.append({"to": who, "how": str(propagation or "told")[:20],
+                      "tick": _now_tick(state)})
+        fact["propagation"] = trail[-20:]
+        return {"fact": dict(fact), "told": who}
+    raise KeyError("没有这条事实: %s" % fact_id)
+
+
+def known_to(state: dict, knower: str, limit: int = 12) -> list:
+    """Facts a specific character may reference. Check before writing dialogue."""
+    ctx = state.get("context") or {}
+    facts = [f for f in (ctx.get("facts") or [])
+             if f.get("status") == "open" and knows(f, knower)]
+    facts.sort(key=lambda f: (-float(f.get("importance") or 0.5), -int(f.get("tick") or 0)))
+    return [{"id": f.get("id"), "kind": f.get("kind"), "text": f.get("text"),
+             "tick": f.get("tick")} for f in facts[:limit]]

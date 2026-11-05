@@ -45,6 +45,74 @@
 
 ---
 
+## v1.8.0 — 2026-11-05
+
+**从"可审计"升级到"可重放"，并补齐让它更像游戏的四块机制。**
+
+### 新增：动作日志与重放（D2）
+
+`action_log.py` 每次写操作追加一行到 `<state>.actions.jsonl`：
+`seq` / `tick` / `tool` / `args_sha256` / `rng_before` / `rng_after` /
+`state_before` / `state_after`。
+
+- 参数只存哈希不存明文——玩家输入可能有私密内容，落第二个文件没有收益。
+- 指纹用 canonical JSON（排序键、固定分隔符、拒绝 NaN），否则同样的调用会算出不同哈希。
+- `state_fingerprint` 刻意**排除** `actions_seq`：它因记录而变，包含进去会让重放的
+  "after" 永远对不上。
+- 修了一个真 bug：`seq` 原本在事务外递增，写的是没人回写的内存对象，导致每条记录都是
+  `seq=1`。改为在事务内递增，`verify_replay.py: R9` 锁住。
+
+### 新增：世界特例不用改引擎（B4 rulebook）
+
+`rules/rulebook.py`，设定包用 `rules` 字段声明：
+
+```json
+{"id": "scorch", "when": {"flag": "burning"}, "then": [{"op":"resource","key":"hp","delta":-2}],
+ "order": 50, "stop": false}
+```
+
+- 谓词**复用** `questline.evaluate`，效果**复用** `systems.EFFECT_OPS` 白名单——
+  没有第二套谓词语言，也没有第二条改状态的路径。
+- `order` 降序 + `stop` 截断 = Inform 的 "instead of" 语义，不需要新概念。
+- 加载期校验：未知 op、重复 id、非整数 order 一律报错并指出规则 id。
+
+### 新增：循环检测（B3）
+
+`rules/loopguard.py`。状态签名覆盖位置/资源/背包/旗标/事业阶段/物价/业债，
+**不含** tick 与时间戳。同一签名 20 窗内出现 3 次 → `loop_suspected` 并给出建议。
+dead-end 路线记失败次数，≥3 次只从**建议**里隐藏，不禁止走。
+
+### 新增：NPC 知识边界（A6）
+
+LLM 叙事最常见的硬伤是 NPC 说出只有玩家看见的秘密。提示词不可靠，改由数据回答：
+
+- `context_remember(witnesses=[...], public=false)`，默认只有 player 知道。
+- 新工具 `context_known(character)`：写 NPC 对话前查他到底知道什么。
+- 新工具 `context_tell(fact_id, to, how)`：转述并留下传播链。
+- 旧存档没有 witnesses 字段时按"只有玩家知道"处理——保守读法，绝不泄露旧秘密。
+
+### 新增：游戏化与可视化
+
+- **事业线地图**：把 `stages[].next` 的 DAG 画成分层图（x = 跳数，y = 层内分布）。
+  不用 force 布局——力导向会把节点甩成一团、标签重叠；分层布局能看出故事形状。
+- **战斗推演** `combat_preview`：命中率/期望伤害/是否致命，只读、不消耗随机。
+  没有重写 `resolve_combat`（它身上有 12 条不变量），只补了玩家真正需要的"打之前知道风险"。
+- **下一步提示**：面板在输入框上方列出可执行的具体动作（来自事业线目标、气血、
+  业债、市价、循环信号），点一下填进输入框。
+
+### 新增：使用指南
+
+`docs/USE_CASES.md`——回答"别人拿它干什么"：五种使用者、三条上手路径、
+它解决的具体问题、不该用它做什么。
+
+### 变更
+
+- 工具 64 → **67**（`context_known`、`context_tell`、`combat_preview`）。
+- 规则函数 191 → **205**；自检脚本 18 → **20**。
+- 门禁 30 → **32 步**（新增 `verify_mechanics`、`verify_replay`）。
+
+---
+
 ## v1.7.0 — 2026-11-05
 
 **交付形态与企业级能力：从"能跑"到"能装、能管、能被宿主发现"。**

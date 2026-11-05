@@ -99,6 +99,12 @@ jobs:
       - name: 交付面（wg 子命令 / doctor / init / 资源 / 控制台 / 打包守卫）
         run: python scripts/verify_surface.py
 
+      - name: 叙事机制（规则书 / 循环检测 / 知识边界 / 战斗推演 / 事业线图）
+        run: python scripts/verify_mechanics.py
+
+      - name: 动作日志与重放
+        run: python scripts/verify_replay.py
+
       - name: 文档一致性
         run: python scripts/verify_docs.py
 

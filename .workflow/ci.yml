@@ -128,6 +128,18 @@ stages:
         script: |
           set -euo pipefail
           python scripts/verify_surface.py
+      - step: mechanics
+        name: verify-mechanics
+        displayName: 叙事机制（规则书/循环检测/知识边界/战斗推演/事业线图）
+        script: |
+          set -euo pipefail
+          python scripts/verify_mechanics.py
+      - step: replay
+        name: verify-replay
+        displayName: 动作日志与重放
+        script: |
+          set -euo pipefail
+          python scripts/verify_replay.py
       - step: docs
         name: verify-docs
         displayName: 文档一致性

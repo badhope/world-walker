@@ -116,8 +116,13 @@ def upload_blobs(tok: str, repo: str, entries: list) -> None:
                 break
             except urllib.error.HTTPError as exc:
                 detail = exc.read().decode('utf-8')[:200]
-                if exc.code in (400, 422) and attempt < 4:
-                    time.sleep(1.0 + attempt)
+                # 401 on a large blob here is secondary-rate-limit, not a bad
+                # token (the same token just authenticated): GitHub throttles
+                # large writes per account. Back off and retry rather than
+                # reporting an auth failure that sends the operator chasing a
+                # credential problem that does not exist.
+                if exc.code in (400, 401, 422) and attempt < 4:
+                    time.sleep(3.0 * (attempt + 1))
                     continue
                 raise SystemExit('blob %s (%s) failed: %s %s' % (sha[:8], path, exc.code, detail))
             except Exception:

@@ -3,7 +3,7 @@
   "bundles": 4,
   "coverage_pct": 83.0,
   "gate_steps": 32,
-  "measured_at": "2026-11-05T11:09:14Z",
+  "measured_at": "2026-11-05T12:30:51Z",
   "models": 16,
   "mutants": 50,
   "rule_functions": 205,

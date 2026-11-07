@@ -94,9 +94,34 @@ def read_entries(commit: str) -> list:
     return entries
 
 
+def existing_blobs(tok: str, repo: str, ref: str = 'main') -> set:
+    """Blob SHAs already reachable from the remote ref.
+
+    Why: a re-publish after a single failed upload re-sends ~160 unchanged blobs,
+    which takes ten minutes and re-trips whatever limit caused the failure. Git
+    addresses blobs by content hash, so an unchanged file's blob is *already the
+    same object* — skip it and only upload what actually differs.
+
+    Falls back to an empty set when the ref does not exist yet (first publish).
+    """
+    status, ref_info = call(tok, 'GET', '/repos/%s/git/ref/heads/%s' % (repo, ref))
+    if status != 200:
+        return set()
+    status, tree = call(tok, 'GET', '/repos/%s/git/trees/%s?recursive=1'
+                        % (repo, ref_info['object']['sha']))
+    if status != 200:
+        return set()
+    return {entry['sha'] for entry in tree.get('tree', []) if entry.get('type') == 'blob'}
+
+
 def upload_blobs(tok: str, repo: str, entries: list) -> None:
     uploaded = 0
+    skipped = 0
+    present = existing_blobs(tok, repo)
     for mode, sha, path in entries:
+        if sha in present:
+            skipped += 1
+            continue
         blob = subprocess.run(['git', 'cat-file', 'blob', sha], cwd=ROOT,
                               capture_output=True).stdout
         payload = {'content': base64.b64encode(blob).decode(), 'encoding': 'base64'}
@@ -133,7 +158,7 @@ def upload_blobs(tok: str, repo: str, entries: list) -> None:
         if not body or body.get('sha') != sha:
             raise SystemExit('blob %s rehashed to %s' % (sha[:8], (body or {}).get('sha')))
         uploaded += 1
-    print('blobs uploaded:', uploaded)
+    print('blobs uploaded: %d (skipped %d already on remote)' % (uploaded, skipped))
 
 
 def build_trees(tok: str, repo: str, entries: list) -> str:

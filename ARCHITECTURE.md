@@ -2,7 +2,7 @@
 
 > 本文档是本项目的唯一真理源（Single Source of Truth）。
 > 任何影响架构、接口、数据模型、依赖或目录结构的代码变更，都必须同步更新本文档。
-> 最后更新：2026-11-05 ｜ 文档版本：v1.22
+> 最后更新：2026-11-07 ｜ 文档版本：v1.23
 
 ## 1. 概述与目标
 
@@ -39,7 +39,7 @@
 玩家(人) ──对话/行动──> 宿主 AI Agent（Claude Code / Codex / 自建）
                               │  MCP (stdio)
                               ▼
-                     World Games MCP 服务器 (mcp_server.py, 64 工具)
+                     World Games MCP 服务器 (mcp_server.py, 67 工具)
                               │  规则结算 (rules/*)
                               ▼
                      状态文件 ww_state.json ◄──只读── 实况主舞台 (panel.py + panel.html/css/js)
@@ -76,7 +76,7 @@
 ```
 world-walker/                      # 仓库根即 game_engine 包
 ├── bootstrap.py                  # 入口引导：仓库根 → game_engine 包（幂等，三个入口共用）
-├── mcp_server.py                  # MCP 服务器（64 工具；MCP 1.x/2.x 双布局）
+├── mcp_server.py                  # MCP 服务器（67 工具；MCP 1.x/2.x 双布局）
 ├── sessions.py                    # 存档库（多局/快照/回收站，只碰文件系统）
 ├── rules/checks.py                # 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
 ├── rules/gamesystem.py            # 游戏档案（自定义属性/资源/进度轨/标签/表格 + 旧存档回退）
@@ -186,6 +186,27 @@ state["counters"] = {key: int}                             # 成就/模板谓词
 **只读性**：唯一写入是 `<state>.inbox.jsonl` 侧写；状态文件字节不变由 `verify_panel.py` 断言。
 **容错**：`load_state_retry`（3 次退避）应对 MCP 原子替换瞬间；脏数据经 `_coerce_state` 归一后渲染。
 
+### 6.1e 主题与体验契约（v1.9.0 新增）
+
+**主题模型**：两套 token（亮/暗），由 `<html data-theme>` 切换；**亮色是默认**。
+
+| 层 | 职责 | 约束 |
+|---|---|---|
+| `panel.theme.js` | 首帧前把偏好写进 `data-theme` | 同步加载于 `<head>`，禁止 defer（否则先画亮再跳暗） |
+| `panel.css :root` | 亮色 token（默认） | `color-scheme: light`；全部组件只引用变量 |
+| `panel.css html[data-theme="dark"]` | 暗色覆盖 | 与亮色声明**同一组**变量名，缺一个即有组件掉回错色 |
+| `panel.py SKINS` | 皮肤主色，按 `{light, dark}` 成对下发 | 亮色值必须满足 4.5:1；禁止在 JS 里拼透明度 |
+
+- **accent 三分为强制约定**：`--accent` 只作可读文字色、`--accent-line` 只作描边与图表线、
+  `--accent-fill` 只作实心填充（配 `--accent-ink`）。三者合成一个变量会让"按钮底"和
+  "正文强调"必须同时满足相反的亮度要求——v1.8 的 1.92:1 就是这么来的。
+- **图表重绘**：ECharts 画在 canvas 上，不继承 CSS 变量；切主题必须显式 `setOption`
+  重下配色（`panel.js: refreshChartTheme`），否则留下"亮底 + 深图表"的半截效果。
+- **加载态**：首帧前 `body[data-boot="loading"]` 显示骨架屏 + 顶部进度条，数据到达即撤；
+  失败也撤（交给错误横幅）；8 秒兜底。SSE 后续刷新不回到骨架屏。
+- **可访问性门禁**：`scripts/verify_theme.py` 用真实浏览器遍历每个可见文本节点实测
+  前景/背景对比度，两套主题都必须满足 WCAG AA。截图评审不能替代这项。
+
 ### 6.1b 玩法层视图模型（v1.14 新增）
 
 ```text
@@ -217,6 +238,9 @@ lorebook = {rows: [{id, comment, keys, constant, enabled, fired, last_tick,
 | INV-V6 | 320px 无横向滚动；颜色非唯一语义；reduced-motion 关动效 | 前端 | panel.css/js | 浏览器尺寸冒烟 + CSS 审查 |
 | INV-V7 | SSE 断开后轮询继续刷新且连接状态可见 | 前端 | panel.js | 浏览器断线冒烟 |
 | INV-V8 | 静态资源仅白名单文件；路径穿越/任意文件读取一律 404 | HTTP 层 | panel.py | verify_panel.py 安全断言 |
+| INV-V9 | 亮色为默认主题；两套主题下每个可见文本均满足 WCAG AA 对比度 | 前端 | panel.css/js | verify_theme.py（真实浏览器实测，两主题各一遍） |
+| INV-V10 | 主题选择在首帧前生效（刷新不闪），且跨刷新保持 | 前端 | panel.theme.js | verify_theme.py T6d |
+| INV-V11 | 图表配色随主题重绘（canvas 像素确实变化），不留半截配色 | 前端 | panel.js | verify_theme.py T7 |
 | INV-E1 | 状态文件 price ∈ (0, 3×base_price]，hp/gold ≥ 0，事件日志 ≤ keep | 引擎 | mcp_server/rules | stress_freeplay.py |
 | INV-E2 | 卖出须持有；自备物品使用不再扣钱 | 引擎 | rules/economy.py | user_playtest.py |
 | INV-E3 | 只读子命令不重写状态文件（字节不变）且不推进 rng_counter | CLI | engine.py | verify_cli.py（sha256 前后对比） |
@@ -238,6 +262,10 @@ lorebook = {rows: [{id, comment, keys, constant, enabled, fired, last_tick,
 | INV-G5 | `playbook`/`questlines` 必须经 `settings_loader` 落盘；MCP 与零依赖路径共用同一实现 | 引擎 / MCP | settings_loader.py | verify_gameplay.py G4 + verify_settings.py |
 | INV-E15 | 每条事件带单调 `seq`（从 1 起，跨 tick 不回退）；归档逐行保留 seq，可按 `(tick, seq)` 复算顺序 | 引擎 | state_schema.log_event | verify_world.py W12（六条） |
 | INV-E16 | 事实检索 `ranked=true` 时按 GA 三分量（0.5/3/2）打分；同状态同查询结果逐条一致，且新增无关事实不改变已有排序 | 引擎 | rules/context.py | verify_generic.py N3（六条） |
+| INV-E17 | `pack()` 返回 `prompt_prefix_hash`：同内容同哈希、内容变则哈希变（宿主据此决定是否复用缓存） | 引擎 | rules/context.py | verify_mechanics.py N11 |
+| INV-E18 | 事业线谓词 `visits` / `turns_since` 从 `history` 派生；从未进入的幕 `turns_since` 判 False | 引擎 | rules/questline.py | verify_mechanics.py N10 |
+| INV-E19 | 谣言热度 = `i × (1+log1p(mentions)) × 0.95^(tick-last_mention)`，夹在 (0,1]；面板与 status 同口径 | 引擎 | rules/world_evolution.py | verify_mechanics.py N12 |
+| INV-E20 | 势力意向为确定性 argmax，四种意向（招募/经商/结盟/兴兵）在合理世界配置下均可达；不消耗 `rng_counter` | 引擎 | rules/world_evolution.py | verify_mechanics.py N13 |
 | INV-G6 | 世界书支持 `once` / `max_fires`：达到上限后不再注入，原因写入 `skipped` 供面板解释 | 引擎 | rules/lorebook.py | verify_gameplay.py G3（三条） |
 | INV-G7 | 同组条目在 `use_group_scoring` 开启时按命中键数取最高者（同分才回退权重抽签）；未开启时保持原抽签语义 | 引擎 | rules/lorebook.py | verify_gameplay.py G3（两条） |
 
@@ -378,6 +406,7 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
 | 2026-10-22 | 可视化真修（三图从"画了"到"看得懂"）：物价指数图因 OU sigma=0 恒为 1.0 平线→加按 (rng_seed,tick,地点,商品) 派生的确定性扰动（4% 基准价，不耗 rng_counter、可 `configure(market_jitter=False)` 关）；气血/内力曲线图例按实际标注"几乎恒定/100% 回合为 100%"；纵轴自适应；图鉴累计 codex_total 作为第 4 系列上图；修面板端口被抢占（HTTPServer.allow_reuse_address=False 端口冲突抛错顺延）；修击杀不给战利品（接管 `loot_gold`） | §5、§7、§9 T25 | T25 | 门禁 17 项绿 + verify_* 七套全过 + 图表数据实测 price_index 442 种(0.93–1.09)/gold 30→6040/codex 8→19 + pyflakes 0 |
 | 2026-10-22 | 第二轮全维度审查 3 个 High（见 docs/AUDIT_ROUND2_2026-10-22.md）：F-001 状态文件非原子写入→临时文件+fsync+os.replace 原子替换并保留 .bak（4 条回归断言）；F-002 补 X-Content-Type-Options/X-Frame-Options/Referrer-Policy/CSP 四安全头（静态核验 0 内联 script/style/事件处理器，curl -D 四头齐全，六端点 200）；F-003 时间线条目可点击（click+Enter/Space 复用 #eventdlg）；新增 21 项 UI 逐元素巡检 | §4、§6.2、§7、§9 T26 | T26 | verify_branches 159/159（含 4 条原子写断言）+ 其余六套全过 + bandit High/Med/Low 0 + 门禁全绿 |
 
+| 2026-11-07 | **v1.9.0 亮色主题 + 调研建议清零**：① 亮色成为默认主题，暗色保留为夜间/直播模式，顶栏一键切换且写入 localStorage；`panel.theme.js` 在 `<head>` 同步应用，首帧不闪。② 面板 token 拆分 `--accent`（可读文字）/ `--accent-line`（描边）/ `--accent-fill`（实心底），修掉 v1.8「同一变量既作文字色又作按钮底」导致亮底强调文字仅 1.92:1 的真缺陷；皮肤主色改为 `{light, dark}` 成对下发，JS 不再拼透明度。③ 首屏骨架屏 + 顶部进度条（数据到达即撤、失败也撤、8 秒兜底；SSE 后续刷新不回到骨架屏）。④ `docs/PRIOR_ART.md` 剩余四项 `[建议]` 全部落地：ink 访问计数谓词、Open Dungeon 前缀哈希、OASIS 谣言热度、CWS 势力意向 argmax。⑤ 新增 `scripts/verify_theme.py`（25 项，真实浏览器实测两套主题 WCAG AA），门禁 32→33 步。新增 §6.1e、INV-V9~V11、INV-E17~E20 | §6.1e、§6.2 | v1.9.0 | 门禁 33 步全绿 · verify_theme 25/25 · verify_mechanics 39/39 · verify_panel 98/98 · verify_docs 27/27 · 变异 50/50 |
 | 2026-11-04 | **v1.6.0 先贤调研落地**：按 `docs/PRIOR_ART.md` 的 12 项目调研落地六处机制——① `rules/context.py` GA 三分量检索（recency 0.99^age / importance 类型权重 / relevance 中文二元组重叠，权重 0.5/3/2，候选集内 min-max，0.25 分桶稳定排序）；② `recall` 与 `rank_events` 用同一打分，久远突破不再被近期噪声淹没；③ `remember(subject, supersede)` 的 mem0 式冲突消解（旧事实 `superseded` + `superseded_by`，不删除）；④ GA 反思阈值 `reflection_due` / `mark_reflected`（`write_summary` 推进水位）；⑤ 事件单调 `seq`（`state_schema.log_event` + 面板事件 id `tick.seq:type:hash`）；⑥ 世界书 `once` / `max_fires`（ink once-only）与 `use_group_scoring`（SillyTavern 组内评分）。新增 §6.2 INV-E15/E16、INV-G6/G7；新增变异 M45-M50 | §5、§6.1、§6.2、§10 | v1.6.0 | verify_generic 104/104 · verify_gameplay 65/65 · verify_world 54/54 · verify_panel 93/93 · verify_tests 853 条 0 可疑 · 变异 M45-M50 全杀死 |
 | 2026-10-27 | **v1.4.0 体系与模板**：新增 `rules/systems.py`（七类数据驱动体系：time/loot/craft/reputation/achievement/progression/custom，21 个公开函数，统一 `system_run` 入口，运行态随快照回退）；新增 `templates.py`（八套完整模板：jrpg/mystery/management/survival/narrative/cozy/tabletop/immersive，每套含世界/角色/市场/地点/世界书/剧本/事业线/体系/游戏档案 + `validate()` 结构校验 + `overrides` 深合并）；新增 9 个 MCP 工具（system_define/run/status/remove/schema + templates_list/info/apply/start）；修复 `counters` 从未写入导致模板成就是死条件（新增 `state_schema.bump()` 并接到图鉴/线索/判定/击杀）；面板新增体系卡与 `/state.systems` | §5、§6.1d | v1.4.0 | verify_systems 161/161 · 断言审计 816 条 |
 | 2026-10-27 | **v1.3.0 面板加固**：修复多面板串台（state_path 从 Handler 类属性改为 server 实例）、并发排队丢数据（进程内锁 + 跨进程文件锁 + 原子替换，20 线程/3 进程零丢失）、读状态撞上原子替换（3 次退避重试）；新增剧情回放（`/history` 检索正文与归档、`/state.prose` 完整正文、面板抽屉 + `S` 快捷键）；新增脏数据归一、超大状态下发上限（商品 400/图鉴 200/剧情 20）、HTTP 分级错误码、DNS rebinding 防护、SSE 寿命、ETag、`/health`、`close_panel` 与优雅停止 | §5、§6.1c | v1.3.0 | verify_panel 89/89（含 12 组并发/脏数据/超大状态场景）· smoke_ui 20/20 · 断言审计 726 条 |
@@ -461,7 +490,7 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
 - **resources（4）** —— `world://state/current`、`world://summary/current`、
   `world://settings/index`、`world://docs/protocol`。工具由模型决定调用，资源由应用决定注入；
   宿主可把实时状态直接钉进上下文，不必每回合花一次工具往返。
-- **tool annotations（64 个全覆盖）** —— `readOnlyHint` 让宿主自动放行只读调用，
+- **tool annotations（67 个全覆盖）** —— `readOnlyHint` 让宿主自动放行只读调用，
   `destructiveHint` 让 `restore` / `session_manage` / `session_import` / `system_remove`
   必须人工确认。规范明确 annotations 只是 hints，不可用于对不可信服务端的安全决策。
 

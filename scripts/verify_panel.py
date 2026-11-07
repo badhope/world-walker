@@ -161,10 +161,13 @@ def main():
         status, vm = get_json(base + "/state")
         check("/state 返回 200 JSON", status == 200 and isinstance(vm, dict), "status=%s" % status)
         vm = vm or {}
-        check("skin 契约（id 合法 + accent）",
-              isinstance(vm.get("skin"), dict) and vm["skin"].get("id") in ("xuanshu", "neutral")
-              and isinstance(vm["skin"].get("accent"), str) and vm["skin"]["accent"].startswith("#"),
-              str(vm.get("skin")))
+        skin = vm.get("skin") or {}
+        check("skin 契约（id 合法 + accent 亮暗成对下发）",
+              skin.get("id") in ("xuanshu", "neutral", "ink", "neon")
+              and isinstance(skin.get("accent"), dict)
+              and all(str(skin["accent"].get(m, "")).startswith("#") for m in ("light", "dark"))
+              and isinstance(skin.get("accent_fill"), dict),
+              str(skin.get("accent")))
         scene = vm.get("scene") or {}
         check("scene 契约（location/title/description/mood/focus_event）",
               all(k in scene for k in ("location", "title", "description", "mood", "focus_event"))
@@ -282,7 +285,9 @@ def main():
               'id="guide"' in html_txt and 'id="guide-close"' in html_txt)
         st_css, ct_css, body_css = http_get(base + "/panel.css")
         check("/panel.css 正确 MIME", st_css == 200 and "text/css" in ct_css, "status=%s" % st_css)
-        st_js, ct_js, _ = http_get(base + "/panel.js")
+        body_css_txt = body_css.decode("utf-8", "replace")
+        st_js, ct_js, body_js = http_get(base + "/panel.js")
+        panel_js = body_js.decode("utf-8", "replace")
         check("/panel.js 正确 MIME", st_js == 200 and "javascript" in ct_js, "status=%s" % st_js)
         st_i18n, ct_i18n, body_i18n = http_get(base + "/panel.i18n.js")
         check("/panel.i18n.js 正确 MIME 且含翻译入口",
@@ -290,6 +295,21 @@ def main():
               and b"translateDom" in body_i18n, "status=%s" % st_i18n)
         check("页面加载翻译层且提供中英切换",
               b"panel.i18n.js" in body and b'data-set-panel-lang="zh"' in body)
+        # 主题：亮色默认、首帧前生效、可切换（V1.9 起面板不再只有深色）
+        check("主题引导脚本在 <head> 内同步加载（首帧不闪）",
+              b"panel.theme.js" in body
+              and body.index(b"panel.theme.js") < body.index(b"</head>"))
+        check("亮色是默认主题（无 data-theme 时 CSS 按 light 渲染）",
+              'data-theme="dark"' not in html_txt.split("<body")[0]
+              and "--bg: #f6f4ee" in body_css_txt)
+        check("顶栏提供亮/暗切换且默认选中亮色",
+              'data-set-theme="light"' in html_txt and 'data-set-theme="dark"' in html_txt
+              and 'data-set-theme="light" aria-pressed="true"' in html_txt)
+        check("加载骨架屏与进度条存在（首屏体验）",
+              'data-boot="loading"' in html_txt and 'id="bootbar"' in html_txt
+              and 'id="boot-status"' in html_txt)
+        check("首屏骨架屏在数据到达后被移除",
+              'setBootState("ready")' in panel_js and 'dataset.boot' in panel_js)
         for bad in ("/panel.py", "/state.json", "/../rich.save.json", "/%2e%2e/rich.save.json",
                     "/..%2frich.save.json"):
             st_bad, _, bad_body = http_get(base + bad)
@@ -414,8 +434,10 @@ def main():
     ink = _panel.skin_for_world({"world_info": {"name": "随便什么界"}, "world_flags": [],
                                  "ui": {"skin": "ink", "accent": "#8fb0c9", "motif": "水墨"}})
     check("皮肤：ui 块可指定 ink 并带 accent/motif",
-          ink["id"] == "ink" and ink.get("accent") == "#8fb0c9" and ink.get("motif") == "水墨",
-          str(ink.get("id")))
+          ink["id"] == "ink"
+          and ink.get("accent") == {"light": "#8fb0c9", "dark": "#8fb0c9"}
+          and ink.get("motif") == "水墨",
+          str(ink.get("accent")))
     bad = _panel.skin_for_world({"world_info": {"name": "无", "era": ""}, "world_flags": [],
                                  "ui": {"skin": "martian"}})
     check("皮肤：未知 id 回退 neutral 且调色板合法",

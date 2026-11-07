@@ -1146,6 +1146,7 @@ STATIC_WHITELIST = {
     "/panel.html": ("panel.html", "text/html; charset=utf-8"),
     "/panel.css": ("panel.css", "text/css; charset=utf-8"),
     "/panel.js": ("panel.js", "text/javascript; charset=utf-8"),
+    "/panel.theme.js": ("panel.theme.js", "text/javascript; charset=utf-8"),
     "/panel.i18n.js": ("panel.i18n.js", "text/javascript; charset=utf-8"),
     "/admin": ("admin.html", "text/html; charset=utf-8"),
     "/admin.html": ("admin.html", "text/html; charset=utf-8"),
@@ -1158,24 +1159,38 @@ from game_engine.viz_series import SERIES_CAP, load_series, record_sample, serie
 
 
 # 皮肤注册表：id → 视觉与图表调色板（前端只消费，不在 JS 里写配色表）
+# 皮肤注册表：id → 视觉与图表调色板。
+#
+# 每个皮肤给两套主色：亮色主题下必须足够深才能在纸色底上达到 4.5:1，
+# 暗色主题下才是原来的亮金/霓虹色。面板按 <html data-theme> 选用其一，
+# 前端不再自己算主色（v1.8 让 JS 用 accent + "88" 拼半透明，结果文字色
+# 在亮底上只有 1.8:1 —— 这是本轮实测抓到的真缺陷）。
 SKINS = {
     "xuanshu": {
-        "id": "xuanshu", "accent": "#e8b04b", "motif": "玄门·墨金",
+        "id": "xuanshu", "motif": "玄门·墨金",
+        "accent": {"light": "#8a5a12", "dark": "#e8b04b"},
+        "accent_fill": {"light": "#6d4610", "dark": "#b08a38"},
         "palette": {"line": "#e8b04b", "area": "rgba(232,176,75,.18)", "bar": "#c07a3a",
                     "hp": "#d9534f", "mp": "#4a90d9", "grid": "#2b3341", "text": "#a3abb9"},
     },
     "neutral": {
-        "id": "neutral", "accent": "#8aa6c8", "motif": "通用·石墨",
+        "id": "neutral", "motif": "通用·石墨",
+        "accent": {"light": "#33546f", "dark": "#8aa6c8"},
+        "accent_fill": {"light": "#2c4a63", "dark": "#7d9cc0"},
         "palette": {"line": "#8aa6c8", "area": "rgba(138,166,200,.16)", "bar": "#6f8cab",
                     "hp": "#d9534f", "mp": "#4a90d9", "grid": "#2b3341", "text": "#a3abb9"},
     },
     "ink": {
-        "id": "ink", "accent": "#a8b6c1", "motif": "水墨·宣纸",
+        "id": "ink", "motif": "水墨·宣纸",
+        "accent": {"light": "#3d4c59", "dark": "#a8b6c1"},
+        "accent_fill": {"light": "#33404b", "dark": "#8d9aa6"},
         "palette": {"line": "#8fb0c9", "area": "rgba(143,176,201,.14)", "bar": "#7d8b96",
                     "hp": "#b4553f", "mp": "#5d7fa3", "grid": "#333a44", "text": "#9aa4b0"},
     },
     "neon": {
-        "id": "neon", "accent": "#4fe0c0", "motif": "霓虹·夜城",
+        "id": "neon", "motif": "霓虹·夜城",
+        "accent": {"light": "#0b5f52", "dark": "#4fe0c0"},
+        "accent_fill": {"light": "#0a5449", "dark": "#2f9a87"},
         "palette": {"line": "#4fe0c0", "area": "rgba(79,224,192,.16)", "bar": "#c74fe0",
                     "hp": "#ff5d7d", "mp": "#4fa8ff", "grid": "#243044", "text": "#93a4bd"},
     },
@@ -1198,8 +1213,20 @@ def skin_for_world(state):
         sid = "xuanshu" if ("xuanshu" in text or "玄枢" in text) else "neutral"
     skin = dict(SKINS[sid])
     skin["palette"] = dict(SKINS[sid]["palette"])
+    skin["accent"] = dict(SKINS[sid]["accent"])
+    skin["accent_fill"] = dict(SKINS[sid]["accent_fill"])
     if ui.get("accent"):
-        skin["accent"] = str(ui["accent"])
+        # 单值覆盖同时作用于两套主题：自定义主色多为深色墨金，亮底可读；
+        # 若作者给了 {light, dark} 字典则分别生效。
+        raw = ui["accent"]
+        if isinstance(raw, dict):
+            for mode in ("light", "dark"):
+                if raw.get(mode):
+                    skin["accent"][mode] = str(raw[mode])
+                    skin["accent_fill"][mode] = str(raw[mode])
+        else:
+            skin["accent"] = {"light": str(raw), "dark": str(raw)}
+            skin["accent_fill"] = {"light": str(raw), "dark": str(raw)}
     if ui.get("motif"):
         skin["motif"] = str(ui["motif"])
     skin["brand"] = str(ui.get("brand") or DEFAULT_BRAND)[:24]

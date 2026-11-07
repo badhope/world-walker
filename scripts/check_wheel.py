@@ -22,6 +22,7 @@ REQUIRED = [
     'panel.css',
     'panel.js',
     'panel.i18n.js',
+    'panel.theme.js',
     'admin.html',
     'admin.js',
     'cli.py',

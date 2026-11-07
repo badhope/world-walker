@@ -128,6 +128,15 @@ def main():
                         pass
 
                 body = page.inner_text("body")
+                # 截图是"产品长什么样"的唯一证据：必须断言它是亮色。
+                # 只截图不断言的话，主题回退到深色也不会有任何测试变红。
+                check("%s 截图为亮色主题" % world,
+                      page.evaluate("document.documentElement.getAttribute('data-theme')") == "light",
+                      page.evaluate("document.documentElement.getAttribute('data-theme')"))
+                check("%s 首屏骨架屏已撤" % world,
+                      page.evaluate("document.body.dataset.boot") == "ready")
+                check("%s 主题切换按钮存在" % world,
+                      page.evaluate("!!document.querySelector('[data-set-theme=\"dark\"]')"))
                 check("%s 页签/品牌" % world, ("World Games" in page.title() or "行者" in page.title() or world in page.title()), page.title())
                 check("%s 皮肤匹配设定包" % world,
                       page.eval_on_selector("body", "e => e.dataset.skin") == skin,
@@ -140,6 +149,13 @@ def main():
                                     " return !!e && e.getBoundingClientRect().height > 10; }"),
                       str((vm0.get("world_state") or {}).get("phase")))
                 page.screenshot(path=os.path.join(OUT, "stage-%s%s.png" % (skin, args.suffix)), full_page=False)
+                if world == "玄枢界":
+                    page.click('[data-set-theme="dark"]')
+                    page.wait_for_timeout(700)
+                    page.screenshot(path=os.path.join(OUT, "stage-%s-dark%s.png" % (skin, args.suffix)),
+                                    full_page=False)
+                    page.click('[data-set-theme="light"]')
+                    page.wait_for_timeout(500)
 
                 # 图表真的画出来了（不是空容器）
                 canv = page.evaluate("() => Array.from(document.querySelectorAll('canvas'))"
@@ -238,6 +254,13 @@ def main():
                     ov = page.evaluate("() => document.documentElement.scrollWidth"
                                        " - document.documentElement.clientWidth")
                     check("%s 无横向溢出 @%d" % (world, w), ov <= 1, "overflow=%s" % ov)
+                    if w == 320:
+                        # 窄屏下输入框必须容得下完整提示（实测曾被截成两行半）
+                        clipped = page.evaluate("""() => {
+                          const ta = document.getElementById('action-text');
+                          return !ta || ta.clientHeight < 60;
+                        }""")
+                        check("%s 窄屏输入框高度足够（提示不被截断）" % world, not clipped)
                     if world == "玄枢界":
                         page.screenshot(path=os.path.join(OUT, "stage-%s%s.png" % (tag, args.suffix)), full_page=False)
                 page.set_viewport_size({"width": 1500, "height": 950})

@@ -122,10 +122,43 @@ def evaluate(state, pred):
         st = _quest_state(state, str(target.get("quest", "")))
         done = st.get("done_stages") or []
         return str(target.get("stage", "")) in done
+    # ink 的 knot 访问计数（`{ visit_paris }` / `TURNS_SINCE(-> knot)`）。
+    # 数值从已有 history 派生，不新增平行状态：同一份数据既能画图也能做条件。
+    if "visits" in pred:
+        target = pred["visits"] or {}
+        return _visits(state, str(target.get("quest", "")),
+                       str(target.get("stage", ""))) >= int(target.get("gte", 1))
+    if "turns_since" in pred:
+        target = pred["turns_since"] or {}
+        since = _turns_since(state, str(target.get("quest", "")),
+                             str(target.get("stage", "")))
+        # 从未到过没有"多少回合前"可算，条件不成立（fail-closed，不因缺失而放行）
+        return since is not None and since >= int(target.get("gte", 0))
     if "quest_done" in pred:
         st = _quest_state(state, str(pred["quest_done"]))
         return bool(st.get("status") == "done")
     return False
+
+
+def _visits(state, quest_id, stage_id):
+    """某幕进入过几次（来自 history 的 enter 记录；随快照回退，可重放）。"""
+    row = _quest_state(state, quest_id)
+    return sum(1 for h in (row.get("history") or [])
+               if h.get("stage") == stage_id and h.get("event") == "enter")
+
+
+def _turns_since(state, quest_id, stage_id):
+    """距上次进入该幕过了多少回合；从未进入返回 None。"""
+    row = _quest_state(state, quest_id)
+    last = None
+    for h in (row.get("history") or []):
+        if h.get("stage") == stage_id and h.get("event") == "enter":
+            tick = int(h.get("tick", 0) or 0)
+            if last is None or tick > last:
+                last = tick
+    if last is None:
+        return None
+    return max(0, int(state.get("tick", 0) or 0) - last)
 
 
 def _normalize_stage(qid, raw, index):

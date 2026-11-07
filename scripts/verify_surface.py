@@ -104,6 +104,8 @@ def main():
         panel_src = fh.read()
     check('S6a admin console assets are whitelisted',
           '"/admin"' in panel_src and '"/admin.js"' in panel_src)
+    check('S9 主题引导脚本在面板白名单内（否则 404 → 首帧闪错色）',
+          '"/panel.theme.js"' in panel_src)
     check('S6b admin console has no inline script (CSP script-src self)',
           '"/admin.js"' in open(os.path.join(ROOT, 'admin.html'), encoding='utf-8').read()
           and '<script>' not in open(os.path.join(ROOT, 'admin.html'), encoding='utf-8').read())

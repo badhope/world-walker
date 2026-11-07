@@ -1,13 +1,13 @@
 # World Games
 
-**v1.6.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [拿它做什么](docs/USE_CASES.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [先贤调研](docs/PRIOR_ART.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**v1.9.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [拿它做什么](docs/USE_CASES.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [先贤调研](docs/PRIOR_ART.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
 > **AI 负责叙述，引擎负责结算。**
 
 World Games 是 AI 互动游戏的规则层。你的 Agent 负责写文字，确定性引擎负责结算每一次命中、
 价格、关系与势力变化，并写进同一份可审计的状态文件。
 
-`205 个规则函数` · `67 个 MCP 工具` · `4 套可玩世界` · `8 套游戏模板` · `0 个运行时依赖`
+`206 个规则函数` · `67 个 MCP 工具` · `4 套可玩世界` · `8 套游戏模板` · `0 个运行时依赖`
 
 <p align="center">
   <img src="docs/screenshots/stage-xuanshu.png" alt="实况主舞台 · 真实存档第 500 回合" width="100%">
@@ -15,6 +15,15 @@ World Games 是 AI 互动游戏的规则层。你的 Agent 负责写文字，确
 
 <p align="center">
   <a href="docs/screenshots/walkthrough.mp4">▶ 16 秒真实对局录屏</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/stage-xuanshu-dark.png" alt="同一存档的暗色主题" width="100%">
+</p>
+
+<p align="center">
+  <sub><b>默认亮色</b>——主舞台是要长时间读的。暗色在顶栏一键切换，选择会被记住。
+  两套配色都由 <code>verify_theme.py</code> 在真实浏览器里实测 WCAG AA 对比度，不靠肉眼。</sub>
 </p>
 
 ---
@@ -323,13 +332,14 @@ SillyTavern 角色卡（PNG/JSON，V1–V3）与世界书。
 | `verify_formulas.py` | 122 | 按 docstring 的数学式独立重算 77 个函数 |
 | `verify_branches.py` | 192 | 低覆盖模块的异常路径与状态分支 |
 | `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
-| `verify_panel.py` | 93 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 |
+| `verify_panel.py` | 98 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 / 主题接线 |
 | `verify_mcp_stdio.py` | 64 | 真实 stdio 端到端 / 酒馆生态 / 只读零副作用 |
 | `verify_world.py` | 54 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
 | `verify_docs.py` | — | 版本单一信源 / 工具数 / 断言计数 / 素材引用 |
 | `verify_i18n.py` | 12 | 面板词典：键唯一 / 模板无歧义 / 输出无中文 / 双语接线 |
-| `verify_mechanics.py` | 25 | 规则书优先级与截断 / 循环检测 / NPC 知识边界 / 战斗推演 / 事业线 DAG |
+| `verify_mechanics.py` | 39 | 规则书优先级与截断 / 循环检测 / NPC 知识边界 / 战斗推演 / 事业线 DAG / 访问计数 / 前缀哈希 / 谣言热度 / 势力意向 |
+| `verify_theme.py` | 25 | 亮色默认 / 两套主题实测 WCAG AA 对比度 / 图表重绘 / 骨架屏 |
 | `verify_replay.py` | 15 | 动作日志链 / seq 落盘 / canonical 哈希 / 确定性指纹 |
 | `verify_gameplay.py` | 65 | 玩法剧本 / 事业线 DAG / 世界书语义 |
 | `verify_generic.py` | 104 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
@@ -341,7 +351,7 @@ SillyTavern 角色卡（PNG/JSON，V1–V3）与世界书。
 | `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
 | `smoke_ui.py` | 20 | 真实 Edge 渲染 / 卡片抽屉 / 响应式 / 零 JS 错误 |
 | `verify_tests.py` | — | 静态 AST：拒绝恒真/恒假/弱断言 |
-| `verify_mutation.py` | 50 个变异 | **故意改坏代码，确认测试会红**；存活率必须为 0% |
+| `verify_mutation.py` | 53 个变异 | **故意改坏代码，确认测试会红**；存活率必须为 0% |
 
 ```bash
 bash scripts/pre_push_gate.sh     # 28 个步骤；缺必要依赖时门禁失败
@@ -366,7 +376,7 @@ world-walker/                  # 仓库根即 game_engine 包
 ├── panel.html / .css / .js    # 主舞台：原生三件套，无构建链
 ├── viz_series.py              # 长局态势侧写（<state>.viz.jsonl）
 ├── sessions.py                # 存档库：多局 / 快照 / 回收站
-├── rules/                     # 205 个公开规则函数
+├── rules/                     # 206 个公开规则函数
 │   ├── checks.py              # d20/2d6/d100/4dF/骰池、对抗、成功等级
 │   ├── gamesystem.py          # 游戏档案：自定义属性、资源、进度轨、标签、表格
 │   ├── context.py             # 上下文台账：线索、承诺、事实 + 预算打包
@@ -376,7 +386,7 @@ world-walker/                  # 仓库根即 game_engine 包
 │   ├── models.py              # 16 个命名闭式模型
 │   └── social_extended.py cultural_evolution.py systems_feedback.py
 ├── settings/                  # 4 套可直接开玩的设定包
-├── scripts/                   # 19 个自检 + 变异测试 + 截图/视频/演示存档流水线
+├── scripts/                   # 22 个自检 + 变异测试 + 截图/视频/演示存档流水线
 ├── docs/demo/                 # 真实演示存档（截图背后的数据）
 ├── docs/screenshots/          # 逐项断言后的真实渲染
 └── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）

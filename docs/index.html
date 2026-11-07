@@ -6,15 +6,27 @@
 <title>World Games — the AI narrates, the engine decides</title>
 <meta name="description" content="The rules layer for AI-driven interactive games: deterministic rule resolution, 64 MCP tools, a read-only live stage, four playable worlds." />
 <meta property="og:title" content="World Games" />
-<meta property="og:description" content="The AI narrates. The engine decides. 205 rule functions, 67 MCP tools, 4 playable worlds." />
+<meta property="og:description" content="The AI narrates. The engine decides. 206 rule functions, 67 MCP tools, 4 playable worlds." />
 <meta property="og:image" content="screenshots/stage-xuanshu.png" />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f13'/%3E%3Ctext x='16' y='22.5' font-size='17' text-anchor='middle' fill='%23e8b04b' font-family='serif'%3E%E8%A1%8C%3C/text%3E%3C/svg%3E" />
 <style>
+  /* 亮色默认，系统偏好暗色时自动切换（Pages 是对外门面，跟随访客环境最稳） */
   :root {
-    --bg: #0b0d11; --surface: #141820; --surface2: #1b212b; --line: #2b3341;
-    --text: #ecebe6; --dim: #a3abb9; --faint: #7d8695;
-    --accent: #e8b04b; --accent-dim: #8a6a2c; --danger: #e06c62; --success: #6fbf73;
+    --bg: #f7f5ef; --surface: #fffdf8; --surface2: #f1ece1; --line: #ded6c7;
+    --text: #1d2027; --dim: #4c5361; --faint: #6b7382;
+    --accent: #8a5a12; --accent-dim: #b98a35; --danger: #a8342b; --success: #2f6b34;
+    --code-bg: #f1ece1; --nav-bg: rgba(247,245,239,.88); --shot-shadow: 0 20px 60px rgba(72,58,34,.16);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0d11; --surface: #141820; --surface2: #1b212b; --line: #2b3341;
+      --text: #ecebe6; --dim: #a3abb9; --faint: #7d8695;
+      --accent: #e8b04b; --accent-dim: #8a6a2c; --danger: #e06c62; --success: #6fbf73;
+      --code-bg: #0a0c10; --nav-bg: rgba(11,13,17,.86); --shot-shadow: 0 20px 60px rgba(0,0,0,.5);
+      color-scheme: dark;
+    }
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -31,17 +43,17 @@
   a:hover { text-decoration: underline; }
   code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
   pre {
-    background: #080a0e; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px;
     padding: 14px 16px; overflow: auto; font-size: 13.5px; line-height: 1.6;
   }
-  code { background: #0a0c10; border: 1px solid var(--line); border-radius: 4px;
+  code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px;
          padding: 1px 5px; font-size: .9em; }
   pre code { background: none; border: 0; padding: 0; }
   .wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
 
   nav {
     position: sticky; top: 0; z-index: 20;
-    background: rgba(11,13,17,.86); backdrop-filter: blur(10px);
+    background: var(--nav-bg); backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--line);
   }
   nav .wrap { display: flex; align-items: center; gap: 18px; height: 62px; flex-wrap: wrap; }
@@ -70,7 +82,7 @@
   .lede { color: var(--dim); font-size: clamp(15px, 1.5vw, 18px); max-width: 760px; margin: 0 auto; }
   .badges { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 24px 0 30px; }
   .badge {
-    font-size: 12.5px; color: var(--dim); border: 1px solid #3b4657;
+    font-size: 12.5px; color: var(--dim); border: 1px solid var(--line);
     background: var(--surface); border-radius: 999px; padding: 4px 12px;
   }
   .badge b { color: var(--accent); font-weight: 600; }
@@ -91,7 +103,7 @@
 
   .shot {
     border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-    background: var(--surface); box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    background: var(--surface); box-shadow: var(--shot-shadow);
   }
   .shot img { display: block; width: 100%; height: auto; }
   .caption { color: var(--faint); font-size: 13px; padding: 10px 14px; }
@@ -153,6 +165,7 @@
       <a href="#worlds"><span data-lang="en">Worlds</span><span data-lang="zh">四套世界</span></a>
       <a href="#gameplay"><span data-lang="en">Gameplay</span><span data-lang="zh">玩法</span></a>
       <a href="#mechanics"><span data-lang="en">Engine</span><span data-lang="zh">引擎</span></a>
+      <a href="#theme"><span data-lang="en">Theme</span><span data-lang="zh">主题</span></a>
       <a href="#quality"><span data-lang="en">Quality</span><span data-lang="zh">质量</span></a>
       <a href="https://github.com/badhope/world-walker">GitHub</a>
       <span class="lang" role="group" aria-label="Language">
@@ -180,7 +193,7 @@
     <div class="badges">
       <span class="badge"><b data-lang="en">stdlib</b><b data-lang="zh">标准库</b> <span data-lang="en">core · MCP optional</span><span data-lang="zh">核心 · MCP 可选</span></span>
       <span class="badge"><b>67</b> <span data-lang="en">MCP tools</span><span data-lang="zh">个 MCP 工具</span></span>
-      <span class="badge"><b>205</b> <span data-lang="en">rule functions</span><span data-lang="zh">个规则函数</span></span>
+      <span class="badge"><b>206</b> <span data-lang="en">rule functions</span><span data-lang="zh">个规则函数</span></span>
       <span class="badge"><b>4</b> <span data-lang="en">worlds</span><span data-lang="zh">套世界</span></span>
       <span class="badge"><b>8</b> <span data-lang="en">templates</span><span data-lang="zh">套模板</span></span>
       <span class="badge"><b>86%</b> <span data-lang="en">coverage</span><span data-lang="zh">覆盖率</span></span>
@@ -211,6 +224,7 @@
       </div>
     </div>
     <div class="grid2" style="margin-top:16px">
+      <div class="shot"><img src="screenshots/stage-xuanshu-dark.png" alt="The same save in dark theme" loading="lazy" /><div class="caption"><span data-lang="en">Same save, dark theme — one click in the top bar, choice remembered</span><span data-lang="zh">同一存档的暗色主题——顶栏一键切换，选择会被记住</span></div></div>
       <div class="shot"><img src="screenshots/drawer-world.png" alt="World pulse" loading="lazy" /><div class="caption"><span data-lang="en">World pulse: Panarchy phase, faction stock, connectedness, intensity</span><span data-lang="zh">世界脉搏：Panarchy 相位 / 势力存量 / 连接度 / 烈度</span></div></div>
       <div class="shot"><img src="screenshots/character-card.png" alt="Character card" loading="lazy" /><div class="caption"><span data-lang="en">Character card: click anyone on stage to read their card text</span><span data-lang="zh">角色卡：点开在场人物，读卡面文字</span></div></div>
       <div class="shot"><img src="screenshots/command-palette.png" alt="Command palette" loading="lazy" /><div class="caption"><span data-lang="en">Command palette: Ctrl/⌘+K, fully keyboard reachable</span><span data-lang="zh">命令面板：Ctrl/⌘+K，全键盘可达</span></div></div>
@@ -327,6 +341,29 @@
       <span data-lang="zh">提供规则结算、设定包、存档和宿主叙事指引，并支持读取 SillyTavern 角色卡与世界书。
       明确不做：图像生成、多人联机、云端账号体系、插件市场。</span>
     </p>
+  </div>
+</section>
+
+<section id="theme">
+  <div class="wrap">
+    <h2><span data-lang="en">Light by default, <span class="accent">contrast measured</span></span><span data-lang="zh">默认亮色<span class="accent">对比度实测</span></span></h2>
+    <p class="sub">
+      <span data-lang="en">The stage is read for hours, so light is the default and dark is one click away.
+      Every visible text run is measured against WCAG AA in both themes by a real browser — not eyeballed from a screenshot.</span>
+      <span data-lang="zh">主舞台是要长时间读的，所以默认亮色，暗色一键可达。
+      两套主题下每个可见文本都由真实浏览器实测 WCAG AA 对比度——不靠肉眼看截图。</span>
+    </p>
+    <div class="grid3">
+      <div class="card"><h3><span data-lang="en">No first-paint flash</span><span data-lang="zh">首帧不闪</span></h3>
+        <p><span data-lang="en">The theme is applied from a synchronous head script, before the body paints. No light-then-dark flicker in recordings.</span>
+        <span data-lang="zh">主题由 &lt;head&gt; 里的同步脚本在首帧前应用，不会先 paint 亮色再跳暗色。</span></p></div>
+      <div class="card"><h3><span data-lang="en">Three accent roles</span><span data-lang="zh">主色三分</span></h3>
+        <p><span data-lang="en">Text accent, decorative line and solid fill are separate tokens. One variable cannot satisfy both a 4.5:1 text rule and a button background.</span>
+        <span data-lang="zh">文字强调、装饰描边、实心填充是三个 token。一个变量无法同时满足 4.5:1 的文字规则与按钮底色。</span></p></div>
+      <div class="card"><h3><span data-lang="en">Skeleton, not a spinner</span><span data-lang="zh">骨架屏而非转圈</span></h3>
+        <p><span data-lang="en">The first frame shows a layout-stable skeleton and a 2px progress bar; both clear on first data, and an 8-second failsafe covers script errors.</span>
+        <span data-lang="zh">首帧是布局稳定的骨架屏 + 2px 进度条，数据到达即撤；脚本异常有 8 秒兜底。</span></p></div>
+    </div>
   </div>
 </section>
 

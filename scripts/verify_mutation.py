@@ -243,6 +243,18 @@ MUTATIONS = [
      '    return _rank(pseudo, state, query)[:limit]',
      '    pseudo.sort(key=lambda r: -int(r.get("tick", 0) or 0)); return pseudo[:limit]',
      'scripts/verify_generic.py'),
+    ('M51', '主题退回深色写死（亮色默认失效）', 'panel.css',
+     '  color-scheme: light;',
+     '  color-scheme: dark;',
+     'scripts/verify_theme.py'),
+    ('M52', '前缀哈希不看内容（缓存永远判定可复用）', 'rules/context.py',
+     '    payload = [[s.get("title", ""), list(s.get("lines") or [])] for s in sections]',
+     '    payload = [[s.get("title", "")] for s in sections]',
+     'scripts/verify_mechanics.py'),
+    ('M53', '谣言热度忽略提及次数与时间衰减', 'rules/world_evolution.py',
+     '    return round(min(1.0, i * (1.0 + _log1p(mentions)) * decay), 4)',
+     '    return round(min(1.0, i), 4)',
+     'scripts/verify_mechanics.py'),
 ]
 
 
@@ -383,6 +395,11 @@ EXPECTED_FAILURES = {
             'N3 编年史检索返回三元打分明细', 'N3 编年史检索遵守 limit'),
     'M49': ('W12 事件 seq 从 1 起严格递增', 'W12 seq 计数器停在最后一条',
             'W12 归档事件保留 seq 且逐行递增', 'W12 同 tick 事件按 seq 可定序'),
+    'M51': ('T1b base :root declares color-scheme: light',),
+    'M52': ('N11c different content hashes differently (cache miss is visible)',
+            'N11d same headings with different text still changes the hash'),
+    'M53': ('N12a recent mentions outrank stale ones at equal infection',
+            'N12b more mentions raise heat'),
 }
 # The MCP baseline writes a rich-formatted log line to stderr whose timestamp and
 # column wrapping vary per run. Comparing stderr byte-for-byte made every MCP

@@ -617,16 +617,27 @@
 
   function chartReady() { return typeof window.echarts !== "undefined"; }
 
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return (v && v.trim()) || fallback;
+  }
+
+  /* 图表配色跟随主题：ECharts 画在 canvas 上，不继承 CSS 变量，
+     所以切换主题时必须把算出来的颜色重新喂给 setOption（见 refreshChartTheme）。
+     皮肤只覆盖"强调色/线色"，底与文字色一律取自当前主题 token。 */
   function chartPalette(vm) {
     const p = (vm && vm.skin && vm.skin.palette) || {};
+    const dark = document.documentElement.getAttribute("data-theme") === "dark";
     return {
-      line: p.line || "#e8b04b",
-      area: p.area || "rgba(232,176,75,.18)",
-      bar: p.bar || "#c07a3a",
+      line: p.line || cssVar("--accent", "#8a5a12"),
+      area: p.area || cssVar("--accent-soft", "rgba(138,90,18,.12)"),
+      bar: p.bar || cssVar("--accent-line", "#b98a35"),
       hp: p.hp || "#d9534f",
       mp: p.mp || "#4a90d9",
-      grid: p.grid || "#2b3341",
-      text: p.text || "#a3abb9",
+      grid: dark ? (p.grid || "#2b3341") : cssVar("--line", "#ddd5c6"),
+      text: dark ? (p.text || "#a3abb9") : cssVar("--text-dim", "#4c5361"),
+      surface: cssVar("--surface-1", dark ? "#151920" : "#fffdf8"),
+      ink: cssVar("--text", dark ? "#ecebe6" : "#1d2027"),
     };
   }
 
@@ -638,9 +649,9 @@
       textStyle: { color: pal.text, fontSize: 11 },
       tooltip: {
         trigger: "axis",
-        backgroundColor: "#151920",
+        backgroundColor: pal.surface,
         borderColor: pal.grid,
-        textStyle: { color: "#ecebe6", fontSize: 12 },
+        textStyle: { color: pal.ink, fontSize: 12 },
       },
       legend: { top: 0, textStyle: { color: pal.text, fontSize: 11 }, icon: "roundRect" },
       xAxis: {
@@ -1010,13 +1021,24 @@
     });
   }
 
+  /* 皮肤主色由后端按主题成对下发（{light, dark}）。这里只挑选当前主题那一支，
+     绝不自己拼透明度：v1.8 用 accent + "88" 生成的半透明色被当作文字色使用，
+     在亮色底上实测只有 1.8:1 —— 对比度不达标。 */
+  function applySkinAccent(skin) {
+    if (!skin) return;
+    const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const pick = (v) => (v && typeof v === "object" ? v[theme] : v) || "";
+    const accent = pick(skin.accent);
+    const fill = pick(skin.accent_fill);
+    const root = document.documentElement;
+    if (accent) root.style.setProperty("--accent", accent);
+    if (fill) root.style.setProperty("--accent-fill", fill);
+  }
+
   function render(v) {
     if (!v || typeof v !== "object") return;
     document.body.dataset.skin = (v.skin && v.skin.id) || "neutral";
-    if (v.skin && v.skin.accent) {
-      document.documentElement.style.setProperty("--accent", v.skin.accent);
-      document.documentElement.style.setProperty("--accent-dim", v.skin.accent + "88");
-    }
+    applySkinAccent(v.skin);
     applyTerms(v.terms);
     renderHud(v);
     renderScene(v);
@@ -1206,10 +1228,14 @@
           setConn("stale", "状态不可读");
         } else {
           setConn("live", "实况 · " + (v.updated_at || ""));
+          setBootState("ready");
         }
         apply(v);
       })
-      .catch(() => { setConn("down", "连接失败，重试中…"); });
+      .catch(() => {
+        setConn("down", "连接失败，重试中…");
+        setBootState("ready");   // 失败也要收掉骨架屏，横幅才是真正的错误提示
+      });
   }
 
   /* ── 玩法剧本：循环 / 进度 / 失败钟 / 节拍 ─────────── */
@@ -1357,9 +1383,15 @@
   }
 
   /* ── 事业线地图：把 stage DAG 画出来（Twine 的 passage 图思路）───── */
-  const QUEST_NODE_COLOR = {
-    done: "#6fbf73", current: "#e8b04b", open: "#5a6472", failed: "#e06c62",
-  };
+  /* 状态色取自主题 token：亮色下用深绿/深红，暗色下用亮色，保证在两种底色上都可读 */
+  function questNodeColor() {
+    return {
+      done: cssVar("--success", "#2f6b34"),
+      current: cssVar("--accent", "#8a5a12"),
+      open: cssVar("--text-faint", "#6b7382"),
+      failed: cssVar("--danger", "#a8342b"),
+    };
+  }
 
   function renderQuestMap(v) {
     const card = $("questmap-card");
@@ -1408,6 +1440,7 @@
     });
     const COL_W = 150;
     const ROW_H = 74;
+    const nodeColors = questNodeColor();
     const data = [];
     Object.keys(layers).forEach((d) => {
       layers[d].forEach((n, rowIdx) => {
@@ -1419,8 +1452,8 @@
           y: yOffset,
           symbolSize: n.state === "current" ? 22 : 14,
           itemStyle: {
-            color: QUEST_NODE_COLOR[n.state] || QUEST_NODE_COLOR.open,
-            borderColor: n.state === "current" ? "#fff" : "transparent",
+            color: nodeColors[n.state] || nodeColors.open,
+            borderColor: n.state === "current" ? cssVar("--surface-1", "#fffdf8") : "transparent",
             borderWidth: n.state === "current" ? 2 : 0,
           },
         });
@@ -1443,10 +1476,10 @@
         roam: true,
         draggable: true,
         label: {
-          show: true, color: "#ecebe6", fontSize: 11,
+          show: true, color: cssVar("--text", "#1d2027"), fontSize: 11,
           position: "bottom", distance: 6,
         },
-        lineStyle: { color: "#3a4350", width: 1.2, curveness: 0.06 },
+        lineStyle: { color: cssVar("--line-strong", "#bfb4a1"), width: 1.2, curveness: 0.06 },
         edgeSymbol: ["none", "arrow"],
         edgeSymbolSize: 5,
         data: data,
@@ -1994,10 +2027,78 @@
     if (!dlg.open) dlg.showModal();
   }
 
+  /* ── 首屏加载态：骨架屏 + 顶部进度条 ───────────────
+     "正在加载"只该出现一次（第一帧数据到达前）。之后 SSE 每回合刷新都是
+     局部重绘，不该再让整页回到骨架屏——那会让长局里每次刷新都闪一下。 */
+  function setBootState(state) {
+    document.body.dataset.boot = state;
+    const bar = $("bootbar");
+    if (bar) bar.hidden = state === "ready";
+    if (state === "ready") {
+      const status = $("boot-status");
+      if (status) status.textContent = "";
+    }
+  }
+
+  /* ── 主题：默认亮色，可切暗色；选择记住，刷新不闪 ── */
+  function paintThemeButtons() {
+    const theme = (window.PanelTheme && window.PanelTheme.current())
+      || document.documentElement.getAttribute("data-theme") || "light";
+    document.querySelectorAll("[data-set-theme]").forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.getAttribute("data-set-theme") === theme));
+    });
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme === "dark" ? "#0d0f13" : "#f6f4ee");
+  }
+
+  /* ECharts 画在 canvas 上，不继承 CSS 变量——换主题后必须重画，
+     否则会留下"亮底 + 深色图表"这种半截效果。 */
+  function refreshChartTheme() {
+    const pal = chartPalette(panelState.vm || {});
+    Object.keys(charts).forEach((key) => {
+      const chart = charts[key];
+      if (!chart) return;
+      try {
+        chart.setOption({
+          backgroundColor: "transparent",
+          textStyle: { color: pal.text },
+          tooltip: { backgroundColor: pal.surface, borderColor: pal.grid,
+                     textStyle: { color: pal.ink } },
+          legend: { textStyle: { color: pal.text } },
+          xAxis: { axisLine: { lineStyle: { color: pal.grid } }, axisLabel: { color: pal.text } },
+          yAxis: { splitLine: { lineStyle: { color: pal.grid, opacity: .5 } },
+                   axisLabel: { color: pal.text } },
+        });
+      } catch (e) { /* 图表尚未初始化 */ }
+    });
+  }
+
+  function wireTheme() {
+    if (!window.PanelTheme) return;
+    paintThemeButtons();
+    document.querySelectorAll("[data-set-theme]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        window.PanelTheme.set(btn.getAttribute("data-set-theme"));
+        paintThemeButtons();
+        refreshChartTheme();
+        if (panelState.vm) render(panelState.vm);
+      });
+    });
+    window.addEventListener("panelthemechange", () => {
+      paintThemeButtons();
+      if (panelState.vm) applySkinAccent(panelState.vm.skin);
+      refreshChartTheme();
+    });
+  }
+
   function boot() {
+    wireTheme();
     wireDrawers();
     wireStory();
     fetchState();
+    // 兜底：任何原因导致首帧没到（脚本报错、服务假死），8 秒后也要收掉骨架屏，
+    // 让连接横幅成为唯一的信息来源，而不是让用户对着一张永远转的骨架屏。
+    setTimeout(() => setBootState("ready"), 8000);
 
     if (window.EventSource) {
       const es = new EventSource("/events");
@@ -2009,6 +2110,7 @@
             setConn("stale", "状态不可读");
           } else {
             setConn("live", "实况 · " + (v.updated_at || ""));
+            setBootState("ready");
           }
           apply(v);
         } catch (err) { /* 单帧解析失败不打断流 */ }

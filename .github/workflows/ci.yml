@@ -230,7 +230,7 @@ jobs:
           "$RUNNER_TEMP/venv/bin/python" -c "
           import game_engine, os
           root = os.path.dirname(game_engine.__file__)
-          for f in ('panel.html','panel.css','panel.js','assets/echarts.min.js'):
+          for f in ('panel.html','panel.css','panel.js','panel.i18n.js','panel.theme.js','assets/echarts.min.js'):
               p = os.path.join(root, f)
               assert os.path.exists(p), 'missing ' + p
           print('安装包资源齐全')
@@ -257,6 +257,7 @@ jobs:
           need = [
               "docs/index.html",
               "docs/screenshots/stage-xuanshu.png",
+              "docs/screenshots/stage-xuanshu-dark.png",
               "docs/screenshots/stage-ink.png",
               "docs/screenshots/stage-neon.png",
               "docs/screenshots/stage-neutral.png",

@@ -61,6 +61,26 @@ def base_state():
     }
 
 
+def _intent_coverage():
+    """All four intents must be reachable; otherwise the scoring is degenerate.
+
+    A first version produced "everyone allies" in every world: it looks like a
+    feature in the output and is really a constant. Reachability is the property
+    worth asserting, not the exact distribution.
+    """
+    from game_engine.rules import world_evolution as WE
+    seen = set()
+    for seed in range(1, 20):
+        for market in ({}, {'town': {'x': {'price': 150, 'base_price': 100}}}):
+            st = {'tick': 6, 'rng_seed': seed, 'entities': {}, 'market': market,
+                  'config': {}, 'world_flags': [], 'factions': {}}
+            for i in range(6):
+                st['factions']['门派%d' % i] = {'power': 30 + i * 9}
+            WE.evolve_factions(st)
+            seen |= {v['intent'] for v in (st.get('faction_intents') or {}).values()}
+    return seen == set(WE.FACTION_INTENTS)
+
+
 def main():
     # ── N1 rulebook ordering and stop ───────────────────────────────────────
     state = base_state()
@@ -203,6 +223,89 @@ def main():
               all(n['quest'] and isinstance(n['objectives'], list) for n in nodes))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+    # ── N10 ink-style visit predicates (C1 completion) ─────────────────────
+    from game_engine.rules import questline as QL
+    qstate = {
+        'tick': 30, 'entities': {'player': {'name': 'P'}},
+        'world_flags': [],
+        'quests': {'q': {'status': 'active', 'stage': 'b',
+                         'done_stages': ['a'],
+                         'history': [{'tick': 5, 'stage': 'a', 'event': 'enter'},
+                                     {'tick': 9, 'stage': 'a', 'event': 'complete'},
+                                     {'tick': 12, 'stage': 'b', 'event': 'enter'}]}},
+    }
+    check('N10a visits counts enter events, not completions',
+          QL.evaluate(qstate, {'visits': {'quest': 'q', 'stage': 'a', 'gte': 1}})
+          and not QL.evaluate(qstate, {'visits': {'quest': 'q', 'stage': 'a', 'gte': 2}}))
+    check('N10b turns_since measured from the last enter',
+          QL.evaluate(qstate, {'turns_since': {'quest': 'q', 'stage': 'b', 'gte': 18}})
+          and not QL.evaluate(qstate, {'turns_since': {'quest': 'q', 'stage': 'b', 'gte': 19}}))
+    check('N10c a stage never entered fails turns_since (fail-closed)',
+          not QL.evaluate(qstate, {'turns_since': {'quest': 'q', 'stage': 'ghost', 'gte': 0}}))
+    check('N10d unknown quest fails both predicates',
+          not QL.evaluate(qstate, {'visits': {'quest': 'nope', 'stage': 'a', 'gte': 1}}))
+
+    # ── N11 prompt prefix hash (C4 completion) ─────────────────────────────
+    pstate = {'tick': 3, 'context': {'facts': []}, 'entities': {'player': {'name': 'P'}}}
+    pack1 = context_rules.pack(pstate)
+    pack2 = context_rules.pack(pstate)
+    check('N11a pack exposes a prompt_prefix_hash',
+          str(pack1.get('prompt_prefix_hash', '')).startswith('sha256:'))
+    check('N11b the same content hashes identically (cacheable prefix)',
+          pack1['prompt_prefix_hash'] == pack2['prompt_prefix_hash'])
+    changed = {'tick': 3, 'entities': {'player': {'name': 'P'}},
+               'context': {'facts': []}, 'world_flags': ['x']}
+    context_rules.remember(changed, 'a new clue', kind='clue', keys=['clue'])
+    check('N11c different content hashes differently (cache miss is visible)',
+          context_rules.pack(changed)['prompt_prefix_hash'] != pack1['prompt_prefix_hash'])
+
+    # Same section titles, different text: a hash that only looks at titles would
+    # pass N11a-c but would wrongly tell the host "the prefix is unchanged".
+    def _pack_with(text):
+        st = {'tick': 1, 'entities': {'player': {'name': 'P'}},
+              'context': {'facts': []}, 'world_flags': []}
+        context_rules.remember(st, text, kind='clue', keys=['k'])
+        return context_rules.pack(st)['prompt_prefix_hash']
+
+    check('N11d same headings with different text still changes the hash',
+          _pack_with('the bridge is out') != _pack_with('the bridge is repaired'))
+
+    # ── N12 rumor heat (E2: OASIS hot-score) ───────────────────────────────
+    from game_engine.rules import world_evolution as WE
+    base = {'tick': 20, 'rumors': {
+        'hot': {'s': .4, 'i': .3, 'r': .3, 'mentions': 5, 'last_mention': 20},
+        'cold': {'s': .4, 'i': .3, 'r': .3, 'mentions': 5, 'last_mention': 1},
+    }}
+    hot = WE.rumor_heat(base, 'hot')
+    cold = WE.rumor_heat(base, 'cold')
+    check('N12a recent mentions outrank stale ones at equal infection',
+          hot > cold, 'hot=%.3f cold=%.3f' % (hot, cold))
+    more = {'tick': 20, 'rumors': {'hot': dict(base['rumors']['hot'], mentions=20)}}
+    check('N12b more mentions raise heat', WE.rumor_heat(more, 'hot') > hot,
+          '%.3f vs %.3f' % (WE.rumor_heat(more, 'hot'), hot))
+    check('N12c heat is clamped to (0,1]', 0 < hot <= 1.0, str(hot))
+
+    # ── N13 faction intents (E1: CWS sect_decider, deterministic argmax) ───
+    fstate = {'tick': 6, 'rng_seed': 4, 'entities': {}, 'market': {}, 'config': {},
+              'world_flags': [],
+              'factions': {'青云宗': {'power': 60.0}, '血刀门': {'power': 30.0}}}
+    WE.evolve_factions(fstate)
+    intents = fstate.get('faction_intents') or {}
+    check('N13a every faction picks one known intent',
+          set(intents) == {'青云宗', '血刀门'}
+          and all(v['intent'] in WE.FACTION_INTENTS for v in intents.values()),
+          str({k: v['intent'] for k, v in intents.items()}))
+    a = copy.deepcopy(fstate)
+    b = copy.deepcopy(fstate)
+    WE.evolve_factions(a)
+    WE.evolve_factions(b)
+    check('N13b intent choice is deterministic',
+          a['faction_intents'] == b['faction_intents'])
+    check('N13c intents do not consume the replay RNG',
+          a.get('rng_counter', 0) == 0, str(a.get('rng_counter')))
+    check('N13d all four intents are reachable across worlds',
+          _intent_coverage(), 'see distribution')
 
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))

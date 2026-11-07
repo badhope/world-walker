@@ -13,6 +13,8 @@
   · 与现有三层记忆互补：summary/milestones/archive 是"叙事历史"，这里是"结构化知识"。
 """
 
+import hashlib
+import json
 import re
 
 MAX_FACTS = 400
@@ -473,7 +475,23 @@ def pack(state: dict, scene_text: str = "", recent: int = 8, budget_chars: int =
     out["sections"] = kept
     out["used_chars"] = used
     out["reflection"] = reflection_due(state)
+    out["prompt_prefix_hash"] = _prefix_hash(kept)
     return out
+
+
+def _prefix_hash(sections):
+    """本轮上下文的稳定前缀指纹（Open Dungeon 的 prompt 缓存教训）。
+
+    为什么不直接用 used_chars 或条数：宿主关心的是"这段前缀还能不能复用 KV 缓存"，
+    决定它的是**内容与顺序**，不是长度。同一批内容即使条数变了，只要前缀逐字相同，
+    缓存依然有效——所以哈希必须覆盖 section 顺序 + 每行原文。
+
+    排序固定（sort_keys + 固定分隔符 + ensure_ascii=False），否则中文在不同
+    Python/平台上的转义差异会让同一内容算出不同哈希。
+    """
+    payload = [[s.get("title", ""), list(s.get("lines") or [])] for s in sections]
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
 
 
 def reflection_due(state: dict, threshold: float = 0.0) -> dict:

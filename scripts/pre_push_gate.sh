@@ -77,8 +77,9 @@ step "世界演化与结算耦合（自演化/相位/心流/道德/术语/正文
 step "多世界观设定包（四种世界各跑一遍载入与演化）" "$PY" scripts/verify_settings.py
 step "数字信源（docs/metrics.json 必须与源码实测一致）" "$PY" scripts/metrics.py --check
 step "面板国际化（键唯一/模板无歧义/双语接线）" "$PY" scripts/verify_i18n.py
+step "主题与对比度（亮色默认/明暗切换/WCAG AA/图表重绘/骨架屏）" "$PY" scripts/verify_theme.py
 step "交付面（wg 子命令/doctor/init/资源/控制台/打包守卫）" "$PY" scripts/verify_surface.py
-step "叙事机制（规则书/循环检测/知识边界/战斗推演/事业线图）" "$PY" scripts/verify_mechanics.py
+step "叙事机制（规则书/循环检测/知识边界/战斗推演/事业线图/访问计数/热度/势力意向）" "$PY" scripts/verify_mechanics.py
 step "动作日志与重放（seq/指纹链/确定性）" "$PY" scripts/verify_replay.py
 step "文档一致性（版本/工具数/截图引用/演示存档/CHANGELOG）" "$PY" scripts/verify_docs.py
 step "玩法层（剧本/事业线/世界书语义）" "$PY" scripts/verify_gameplay.py
@@ -160,7 +161,8 @@ say $'\n=== 展示素材（截图/录屏/演示存档/展示站）==='
 if "$PY" - <<'PYGATE'
 import json, os, sys
 need = ["docs/index.html", "docs/BENCHMARK.md",
-        "docs/screenshots/stage-xuanshu.png", "docs/screenshots/stage-ink.png",
+        "docs/screenshots/stage-xuanshu.png", "docs/screenshots/stage-xuanshu-dark.png",
+        "docs/screenshots/stage-ink.png",
         "docs/screenshots/stage-neon.png", "docs/screenshots/stage-neutral.png",
         "docs/screenshots/command-palette.png", "docs/screenshots/character-card.png",
         "docs/screenshots/action-queue.png", "docs/screenshots/walkthrough.mp4",

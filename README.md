@@ -1,13 +1,13 @@
 # World Games
 
-**v1.8.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [What it is for](docs/USE_CASES.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
+**v1.9.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [What it is for](docs/USE_CASES.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
 
 > **The AI narrates. The engine decides.**
 
 Your agent writes the prose. A deterministic engine resolves every hit, price, relationship and
 faction shift, then persists it to one auditable state file.
 
-`205 rule functions` · `67 MCP tools` · `4 MCP resources` · `4 playable worlds` · `8 templates` · `0 runtime dependencies`
+`206 rule functions` · `67 MCP tools` · `4 MCP resources` · `4 playable worlds` · `8 templates` · `0 runtime dependencies`
 
 <p align="center">
   <img src="docs/screenshots/stage-xuanshu.png" alt="Live stage — turn 500 of a real save" width="100%">
@@ -15,6 +15,16 @@ faction shift, then persists it to one auditable state file.
 
 <p align="center">
   <a href="docs/screenshots/walkthrough.mp4">▶ 16-second recording of a real session</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/stage-xuanshu-dark.png" alt="The same save in dark theme" width="100%">
+</p>
+
+<p align="center">
+  <sub><b>Light is the default</b> — the stage is read for hours. Dark is one click away in the top bar,
+  and the choice is remembered. Both palettes are measured against WCAG AA by
+  <code>verify_theme.py</code> in a real browser, not eyeballed.</sub>
 </p>
 
 ---
@@ -256,13 +266,14 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
 | `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism |
-| `verify_panel.py` | 93 | view-model contract, legacy saves, static whitelist, inbox guards |
+| `verify_panel.py` | 98 | view-model contract, legacy saves, static whitelist, inbox guards, theme wiring |
 | `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 54 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | — | version single source, tool count, assertion counts, asset references |
 | `verify_i18n.py` | 12 | panel dictionary: unique keys, unambiguous templates, bilingual wiring |
-| `verify_mechanics.py` | 25 | rulebook priority/stop, loop detection, NPC knowledge boundary, combat preview, quest DAG |
+| `verify_mechanics.py` | 39 | rulebook priority/stop, loop detection, NPC knowledge boundary, combat preview, quest DAG, visit predicates, prefix hash, rumor heat, faction intents |
+| `verify_theme.py` | 25 | light-first theme, measured WCAG AA contrast in both themes, chart repaint, boot skeleton |
 | `verify_replay.py` | 15 | action log chain, seq persistence, canonical hashing, deterministic fingerprint |
 | `verify_gameplay.py` | 65 | playbook loops, questline DAG, lorebook semantics |
 | `verify_generic.py` | 104 | generic checks, game profile, context ledger, save library, brand |
@@ -274,7 +285,7 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
 | `smoke_ui.py` | 20 | real Edge render, cards and drawers, responsive, zero JS errors |
 | `verify_tests.py` | — | AST-level rejection of tautological assertions |
-| `verify_mutation.py` | 50 mutants | **break the code, require tests to go red**; survival must be 0% |
+| `verify_mutation.py` | 53 mutants | **break the code, require tests to go red**; survival must be 0% |
 
 ```bash
 bash scripts/pre_push_gate.sh     # 32 steps; missing required dependencies fail the gate
@@ -297,14 +308,14 @@ world-walker/                  # repo root IS the game_engine package
 ├── panel.html / .css / .js    # the stage: native trio, no build chain
 ├── panel.i18n.js              # EN/ZH translation layer
 ├── sessions.py                # save library: multi-run / snapshot / trash
-├── rules/                     # 205 public rule functions
+├── rules/                     # 206 public rule functions
 │   ├── checks.py gamesystem.py context.py
 │   ├── combat.py economy.py social.py karma.py
 │   ├── cognition.py narrative_engine.py progression.py
 │   ├── world_dynamics.py world_evolution.py
 │   └── models.py              # 16 named closed-form models
 ├── settings/                  # 4 ready-to-play bundles
-├── scripts/                   # 21 self-checks + build_exe + screenshot pipeline
+├── scripts/                   # 22 self-checks + build_exe + screenshot pipeline
 └── assets/echarts.min.js      # offline chart library (Apache-2.0)
 ```
 

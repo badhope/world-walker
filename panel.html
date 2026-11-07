@@ -4,12 +4,15 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content="World Games · 主舞台：只读展示任意互动游戏的对局状态、判定记录与上下文台账。" />
-<meta name="theme-color" content="#0d0f13" />
+<meta name="theme-color" content="#f6f4ee" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230d0f13'/%3E%3Ctext x='16' y='22.5' font-size='17' text-anchor='middle' fill='%23e8b04b' font-family='serif'%3E%E8%A1%8C%3C/text%3E%3C/svg%3E" />
 <title>World Games · 主舞台</title>
 <link rel="stylesheet" href="/panel.css" />
+<script src="/panel.theme.js"></script>
 </head>
-<body data-skin="neutral">
+<body data-skin="neutral" data-boot="loading">
+<div class="bootbar" id="bootbar" aria-hidden="true"></div>
+<span class="boot-status" id="boot-status" role="status" aria-live="polite">正在加载对局状态…</span>
 
 <header class="topbar">
   <div class="brand">
@@ -38,6 +41,10 @@
   <button class="tbtn" id="export-btn" type="button" title="下载当前对局状态 JSON（只读导出）">导出</button>
   <button class="tbtn" id="motion" type="button" aria-pressed="false"
           title="暂停/恢复界面动效">动效：开</button>
+  <span class="themeswitch" role="group" aria-label="Theme / 主题">
+    <button type="button" class="tbtn" data-set-theme="light" aria-pressed="true" title="亮色主题">亮</button>
+    <button type="button" class="tbtn" data-set-theme="dark" aria-pressed="false" title="暗色主题">暗</button>
+  </span>
   <span class="langswitch" role="group" aria-label="Language / 语言">
     <button type="button" class="tbtn" data-set-panel-lang="en" aria-pressed="true">EN</button>
     <button type="button" class="tbtn" data-set-panel-lang="zh" aria-pressed="false">中文</button>
@@ -125,7 +132,7 @@
       <form class="composer" id="composer" autocomplete="off">
         <label class="sr-only" for="action-text">你想做什么</label>
         <textarea id="action-text" rows="1" maxlength="2000"
-                  placeholder="写下这一步想做的事（Enter 排队，Shift+Enter 换行）"></textarea>
+                  placeholder="写下这一步想做的事（Enter 排队 / Shift+Enter 换行）"></textarea>
         <div class="next-moves" id="next-moves" hidden>
           <span class="nm-label">可以试试</span>
           <div class="nm-list" id="next-moves-list"></div>

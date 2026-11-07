@@ -12,6 +12,7 @@
 """
 
 import hashlib
+import math
 from typing import Dict, List
 
 from game_engine.rules.models import (
@@ -47,6 +48,15 @@ def _unit(seed, tick, key: str) -> float:
     """
     raw = ("%s|%s|%s" % (seed, tick, key)).encode("utf-8")
     return int.from_bytes(hashlib.sha256(raw).digest()[:8], "big") / float(1 << 64)
+
+
+def _log1p(value: float) -> float:
+    """log(1+x)，夹掉非数与非正值（热度计算里 0 次提及是常态，不是错误）。"""
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return math.log1p(n) if n > 0 else 0.0
 
 
 def phase_intensity(state: dict) -> float:
@@ -121,6 +131,14 @@ def evolve_factions(state: dict) -> List[str]:
         grown = logistic_growth(power, r, cap + 6.0)
         fac[name]["power"] = max(3.0, min(96.0, grown))
 
+    # 势力目标选择（cultivation-world-simulator 的 sect_decider 思路，改成确定性版）：
+    # 每个势力带 {expand, wealth, fame} 权重，按当前局势算出收益最高的意向，
+    # 用 argmax 选一个动作并小幅影响存量。LLM 只负责把它写成叙事。
+    # 为什么要这一步：单纯 logistic 消长只回答"谁变强了"，不回答"它在干什么"；
+    # 玩家因此感觉不到势力有自己的意志。
+    intent_events = _faction_intents(state, fac, seed, tick, intensity)
+    events.extend(intent_events)
+
     top = ranks[:2]
     if len(top) == 2:
         a, b = top
@@ -165,6 +183,93 @@ def evolve_factions(state: dict) -> List[str]:
     return events
 
 
+# 四种意向：与 CWS 的 {招募, 经商, 结盟, 开战} 一一对应
+FACTION_INTENTS = ("recruit", "trade", "ally", "war")
+
+INTENT_LABEL = {
+    "recruit": "广纳门人",
+    "trade": "经营商路",
+    "ally": "结盟自保",
+    "war": "兴兵相争",
+}
+
+
+def _faction_goals(state, name):
+    """势力目标权重：设定包可用 `faction_goals: {势力名: {...}}` 覆盖。
+
+    默认权重按势力名确定性派生（同一世界每次开局都一样），因此不需要作者配置，
+    但作者想写"这个门派好战"时又能直接指定。
+    """
+    cfg = ((state.get("faction_goals") or {}).get(name) or {})
+    seed = state.get("rng_seed") or 0
+    base = {
+        "expand": 0.5 + _unit(seed, 0, "goal:expand:" + name) * 0.5,
+        "wealth": 0.5 + _unit(seed, 0, "goal:wealth:" + name) * 0.5,
+        "fame": 0.5 + _unit(seed, 0, "goal:fame:" + name) * 0.5,
+    }
+    for key in base:
+        if isinstance(cfg.get(key), (int, float)):
+            base[key] = max(0.0, min(2.0, float(cfg[key])))
+    return base
+
+
+def _faction_intents(state, fac, seed, tick, intensity):
+    """每 N 回合为每个势力选一个意向（确定性 argmax），并施加小幅影响。
+
+    收益函数的每一项都来自真实状态，不用随机：
+      · recruit 收益 = expand 权重 × 与榜首的差距（落后越多越急）
+      · trade   收益 = wealth 权重 × 本地物价偏离（市价越高越有利可图）
+      · ally    收益 = fame 权重 × 当前连接度（关系越多越容易结盟）
+      · war     收益 = fame 权重 × 与次席的差距（领先越多越敢动武）
+    """
+    interval = int((state.get("config") or {}).get("faction_intent_every", 6) or 6)
+    if interval <= 0 or tick % interval != 0:
+        return []
+    names = sorted(fac)
+    if not names:
+        return []
+    powers = sorted((float(fac[n].get("power", 50.0)) for n in names), reverse=True)
+    leader = powers[0]
+    runner = powers[1] if len(powers) > 1 else 0.0
+    market = _market_index(state)
+    conn = float((state.get("panarchy") or {}).get("connectedness", 0.2))
+
+    events = []
+    state.setdefault("faction_intents", {})
+    for name in names:
+        goals = _faction_goals(state, name)
+        power = float(fac[name].get("power", 50.0))
+        # 四个驱动量各自归一到 0..1，再乘权重——否则"谁基数大谁永远赢"，
+        # 实测第一版会让所有势力长期停在同一个意向（全变 ally），等于没意向。
+        behind = max(0.0, leader - power) / max(1.0, leader)      # 落后程度
+        lead = max(0.0, power - runner) / max(1.0, runner)        # 领先程度
+        volatile = min(1.0, abs(market - 1.0) * 4.0)              # 物价波动
+        exposed = max(0.0, 1.0 - power / max(1.0, leader))        # 弱势程度
+        scores = {
+            "recruit": goals["expand"] * (0.35 + behind),
+            "trade": goals["wealth"] * (0.35 + volatile * 1.6),
+            "ally": goals["fame"] * (0.25 + exposed * 0.9 + (1.0 - conn) * 0.15),
+            "war": goals["fame"] * (0.15 + lead * 3.0),
+        }
+        # argmax 的平局按固定顺序打破，保证同状态同结果
+        best = max(FACTION_INTENTS, key=lambda k: (scores[k], -FACTION_INTENTS.index(k)))
+        state["faction_intents"][name] = {"intent": best, "tick": tick,
+                                          "score": round(scores[best], 4)}
+        delta = 0.0
+        if best == "recruit":
+            delta = 0.9 * intensity
+        elif best == "trade":
+            delta = 0.6 * intensity
+        elif best == "ally":
+            delta = 0.4 * intensity
+        elif best == "war":
+            delta = -0.5 * intensity      # 动武要付代价
+        if delta:
+            fac[name]["power"] = max(3.0, min(96.0, power + delta))
+        events.append("「%s」%s" % (name, INTENT_LABEL[best]))
+    return events
+
+
 def evolve_rumors(state: dict) -> List[str]:
     """谣言传播：SIR 一步。谣言由业债/市场异动/高烈度相位播种。"""
     tick = int(state.get("tick", 0) or 0)
@@ -184,8 +289,13 @@ def evolve_rumors(state: dict) -> List[str]:
         elif intensity >= 1.25:
             topic = "天地异象"
         if topic and topic not in rumors:
-            rumors[topic] = {"s": 0.95, "i": 0.05, "r": 0.0, "heat": 0.05}
+            rumors[topic] = {"s": 0.95, "i": 0.05, "r": 0.0, "heat": 0.05,
+                             "mentions": 1, "last_mention": tick}
             events.append("「%s」在街巷间传开" % topic)
+        elif topic and topic in rumors:
+            # 同一个话题被再次触发（业债更高、物价再次异动）＝有人重新提起
+            rumors[topic]["mentions"] = int(rumors[topic].get("mentions", 0) or 0) + 1
+            rumors[topic]["last_mention"] = tick
 
     for topic in list(rumors):
         row = rumors[topic]
@@ -193,7 +303,15 @@ def evolve_rumors(state: dict) -> List[str]:
                            float(row.get("r", 0.0)),
                            beta=0.35 * intensity, gamma=0.12)
         row["s"], row["i"], row["r"] = s, i, r
-        row["heat"] = round(i, 4)
+        # 热度不是 SIR 的感染率本身，而是"多少人还在说 + 多久没人再说"：
+        # OASIS 的 hot-score 形式 heat = i * (1 + log1p(mentions)) * 0.95^(tick-last_mention)。
+        # 只用 i 会让谣言一冷就彻底消失，看不出"旧事被重新提起"。
+        mentions = int(row.get("mentions", 0) or 0)
+        last = int(row.get("last_mention", tick) or tick)
+        decay = 0.95 ** max(0, tick - last)
+        row["mentions"] = mentions
+        row["last_mention"] = last
+        row["heat"] = round(min(1.0, float(i) * (1.0 + _log1p(mentions)) * decay), 4)
         if float(row.get("heat", 0)) >= 0.30 and ("谣言:%s 沸腾" % topic) not in state.setdefault("world_flags", []):
             state["world_flags"].append("谣言:%s 沸腾" % topic)
             events.append("「%s」愈演愈烈，街谈巷议皆在此事" % topic)
@@ -226,6 +344,21 @@ def evolve_culture(state: dict) -> List[str]:
             flags.append(flag)
             return ["新旧风气相争，地方上开始站队"]
     return []
+
+
+def rumor_heat(state: dict, topic: str, row: dict | None = None) -> float:
+    """第 `tick` 回合这条谣言的热度（只读，不推进 SIR）。
+
+    公式来自 OASIS 的 hot-score：感染率 × 被提起次数的对数 × 时间衰减。
+    单独抽成函数，是因为面板与 status 都要用同一个口径——各算各的迟早漂移。
+    """
+    row = row if isinstance(row, dict) else ((state.get("rumors") or {}).get(topic) or {})
+    tick = int(state.get("tick", 0) or 0)
+    i = float(row.get("i", 0.0) or 0.0)
+    mentions = int(row.get("mentions", 0) or 0)
+    last = int(row.get("last_mention", tick) or tick)
+    decay = 0.95 ** max(0, tick - last)
+    return round(min(1.0, i * (1.0 + _log1p(mentions)) * decay), 4)
 
 
 def evolve_npcs(state: dict) -> List[str]:
@@ -384,9 +517,10 @@ def world_summary(state: dict) -> Dict:
         "capital": pan.get("capital"),
         "connectedness": pan.get("connectedness"),
         "collapses": int(pan.get("collapses", 0) or 0),
-        "rumors": [{"topic": k, "heat": round(float(v.get("heat", 0)), 3)}
+        "rumors": [{"topic": k, "heat": round(rumor_heat(state, k, v), 3),
+                    "mentions": int(v.get("mentions", 0) or 0)}
                    for k, v in sorted((state.get("rumors") or {}).items(),
-                                      key=lambda kv: -float(kv[1].get("heat", 0)))[:5]],
+                                      key=lambda kv: -rumor_heat(state, kv[0], kv[1]))[:5]],
         "culture": state.get("culture") or {},
         "market_index": round(_market_index(state), 3),
         "intensity": phase_intensity(state),

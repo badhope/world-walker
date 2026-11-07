@@ -239,7 +239,7 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
 
 ### C. 叙事结构
 
-#### C1. ink 的 knot/stitch + once-only + visit count `[部分落地]`
+#### C1. ink 的 knot/stitch + once-only + visit count `[已落地]`
 
 - **来自**：`inkle/ink`，`Documentation/WritingWithInk.md` §3/§6/§7：
   - `=== knot ===` 是基本单元，`= stitch` 是子节；`->` 是无输入跳转；
@@ -251,10 +251,12 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
   - `lorebook` 新增 `once` / `max_fires` 两个闸（`rules/lorebook.py:147-165`），
     语义直接对应 ink 的 once-only choice：关键剧情条目不会因为关键词再次出现而重复注入。
     计数复用已有 `fired_count`，随快照回退，重放一致。
-  - `questline` 的 stage DAG 等价于 knot 图，但缺 `visit_count` 与 `TURNS_SINCE`。
-    **建议**：`row["history"]` 已有 enter/complete 记录，直接派生 `visit_count`；
-    新增谓词 `{"turns_since": {"stage": "x", "gte": 10}}` 与 `{"visits": {"stage": "x", "gte": 2}}`，
-    在 `questline.evaluate` 里加两个分支（约 15 行）。
+  - `questline` 的 stage DAG 等价于 knot 图。v1.9.0 补齐 `visit_count` 与 `TURNS_SINCE`：
+    谓词 `{"visits": {"quest": "q", "stage": "x", "gte": 2}}` 与
+    `{"turns_since": {"quest": "q", "stage": "x", "gte": 10}}` 在 `questline.evaluate` 里求值，
+    数值从 `history` 的 `enter` 记录派生（`_visits` / `_turns_since`），不新增平行状态。
+    从未进入的幕 `turns_since` 返回 None 且判为 False（fail-closed）。
+    **验收**：`verify_mechanics.py` N10a–N10d。
   - **不抄**：ink 的 C# 运行时与 `.ink` 编译器。只借语义，不引第二套脚本语言。
 
 #### C2. Twine/Harlowe 的 passage 图与变量作用域 `[已落地]`
@@ -293,9 +295,10 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
 - **Open Dungeon**：`packStoryHistory(messages, charBudget)` 从后往前按 `content.length + 80` 计费，
   超预算按 16 条一块丢弃；摘要放 system 段，标注 "treat as established canon"。
 - **我们怎么用**：`context.pack` 已是"预算 + 优先级"；`recap` 是"摘要 + 大事记 + 最近事件"。
-  本轮补的是**排序稳定性**（A5）。**建议**：`pack` 返回值增加 `prompt_prefix_hash`
-  （section 标题 + 行序的 sha256），宿主可据此判断本轮前缀是否变化，从而决定是否复用缓存。
-  零成本字段，不改变内容。
+  本轮补的是**排序稳定性**（A5）。v1.9.0 补上 `prompt_prefix_hash`
+  （section 标题 + 行序的 sha256，`rules/context.py: _prefix_hash`），宿主据此判断本轮前缀
+  是否变化，从而决定是否复用 KV 缓存。零成本字段，不改变内容。
+  **验收**：`verify_mechanics.py` N11a–N11c（同内容同哈希 / 内容变则哈希变）。
 
 #### C5. SillyTavern World Info：命中评分、时间闸与槽位预算 `[已落地部分]`
 
@@ -371,19 +374,24 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
   但它是 LLM 驱动的，成本高且不可复现。
 - **我们的做法**：`rules/world_evolution.py:87-166` 用"禀赋上限 + logistic + 头部两家 LV +
   挑战者回流 + 强者治理成本"，零 LLM、确定性、可复现。调研确认这条路线正确。
-- **可补的**：CWS 的 `sect_decider` 本质是**效用函数选动作**。建议给每个势力加
-  `goals: {expand, wealth, fame}` 权重，用确定性 argmax 在 `{招募, 经商, 结盟, 开战}` 里选；
-  LLM 只负责把结果写成叙事。这比"每势力一次 LLM"便宜两个数量级。
+- **v1.9.0 已补**：`rules/world_evolution.py: _faction_intents` 给每个势力带
+  `{expand, wealth, fame}` 权重（可按势力名确定性派生，也可用
+  `state["faction_goals"]` 覆盖），把四个驱动量归一化后做**确定性 argmax**：
+  `recruit`（招募）/ `trade`（经商）/ `ally`（结盟）/ `war`（兴兵），意向写进
+  `state["faction_intents"]` 并小幅影响存量。LLM 只负责把结果写成叙事。
+  第一版收益函数让所有势力长期停在"结盟"，`verify_mechanics.py` N13d 用
+  "四种意向必须都可达"锁住这个退化。
 
-#### E2. 推荐系统：OASIS 的 interest-based / hot-score `[建议]`
+#### E2. 推荐系统：OASIS 的 interest-based / hot-score `[已落地]`
 
 - **来自**：`camel-ai/oasis` README「Integrated Recommendation Systems」：
   interest-based（用户兴趣向量与内容主题的相似度）与 hot-score-based（热度 + 时间衰减）。
-- **可抄的**：我们的谣言传播现在是纯 SIR（`evolve_rumors`），所有谣言同权。
-  建议加确定性热度：`heat = sir_i * (1 + log1p(mentions)) * 0.95^(tick-last_mention)`，
-  NPC 只对 `heat` 超过其"兴趣阈值"的谣言产生反应（兴趣由 faction/culture 派生）。
-  这样"哪条谣言会传开"取决于势力关注点，而不是纯随机。
-- **验收**：`verify_world.py` 新增「同一谣言在高兴趣势力传播更快」「低兴趣势力不响应」。
+- **已抄**：谣言热度按 OASIS hot-score 计算——
+  `heat = i * (1 + log1p(mentions)) * 0.95^(tick - last_mention)`，
+  落点 `rules/world_evolution.py: rumor_heat`（面板与 status 共用同一口径，避免各算各的漂移）。
+  `mentions` / `last_mention` 在谣言被再次触发时推进，于是"旧事重提"能被表达出来；
+  v1.8 的 `heat` 只是 SIR 感染率的别名，冷下去就再也回不来。
+- **验收**：`verify_mechanics.py` N12a–N12c（同感染率下新近者更高 / 提及多则更高 / 夹在 (0,1]）。
 
 #### E3. 定时器：Evennia 持久脚本调度的反面教材 `[不抄]`
 
@@ -452,6 +460,17 @@ LLM 先行的八家全部不可复现。这验证了本项目的路线（状态�
 
 
 ---
+
+## 落地台账（v1.9.0）
+
+v1.9.0 补齐上一轮剩下的四条 `[建议]`，至此本文档不再有"建议"项：
+
+| 机制 | 落点 | 验收 |
+|---|---|---|
+| C1 ink 访问计数 | `rules/questline.py` `visits` / `turns_since` 谓词，从 `history` 派生 | `verify_mechanics.py` N10a–N10d |
+| C4 提示词前缀指纹 | `rules/context.py` `_prefix_hash` → `pack()["prompt_prefix_hash"]` | `verify_mechanics.py` N11a–N11d |
+| E2 OASIS 谣言热度 | `rules/world_evolution.py` `rumor_heat()`；`mentions` / `last_mention` 随重复触发推进 | `verify_mechanics.py` N12a–N12c |
+| E1 CWS 势力意向 | `rules/world_evolution.py` `_faction_intents()`：确定性 argmax 选招募/经商/结盟/兴兵 | `verify_mechanics.py` N13a–N13d |
 
 ## 落地台账（v1.8.0）
 

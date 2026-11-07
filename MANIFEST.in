@@ -17,6 +17,8 @@ recursive-include docs *.png *.md *.mp4 *.json *.jsonl
 include panel.html
 include panel.css
 include panel.js
+include panel.theme.js
+include panel.i18n.js
 
 prune __pycache__
 prune .aqg

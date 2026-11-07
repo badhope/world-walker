@@ -5,43 +5,81 @@
 
 ---
 
-## v1.6.0 — 2026-11-04
+## v1.9.0 — 2026-11-07
 
-**先贤调研落地：把 12 个开源叙事项目的记忆算法搬进确定性内核。**
+**亮色默认的可用性版本：把"能看"做成"看得清"，把先贤调研剩下的四项建议全部落地。**
 
-### 新增
+这一版没有新增游戏机制门类，只做两件事：让面板在强光、投屏、截图、打印这些
+真实场景下可读，以及把 `docs/PRIOR_ART.md` 里仍标着"建议"的四项补齐。
 
-- `docs/PRIOR_ART.md`：12 个项目（SillyTavern / AI Dungeon / NovelAI / generative_agents /
-  修仙世界模拟器 / Open Dungeon / Ink / Twine-Harlowe / Inform 7 / Evennia / mem0 /
-  CAMEL+AutoGen+ZorkGPT+OASIS）的架构对照、可落地借鉴点与"明确不抄"清单。
-- `rules/context.py`：GA 三分量检索（`recency 0.99^age` / `importance` 类型权重 /
-  `relevance` 中文二元组重叠，权重 0.5/3/2，候选集内 min-max），`context_search(ranked=true)`。
-  `recall` 与新增 `rank_events` 共用同一打分，久远突破不再被近期噪声淹没。
-- `remember(subject=..., supersede=true)`：mem0 式写入期冲突消解——同 kind + 同 subject 的
-  旧事实标 `superseded` 并写 `superseded_by` / `closed_tick`，原文保留可审计。
-- `reflection_due` / `mark_reflected`：GA 的重要性累积反思阈值（默认 `config.context_reflect_threshold=10`），
-  `write_summary` 推进水位，`context_pack` / `context_summary` 带 `reflection` 块。
-- 事件单调 `seq`（`state_schema.log_event`）：同一 tick 内多条事件可定序；
-  面板事件 id 改为 `tick.seq:type:hash`，修掉同 tick 同描述撞键被前端去重丢掉的问题。
-- 世界书 `once` / `max_fires`（借 ink once-only choice）：关键剧情条目不再重复注入，
-  跳过原因写入 `skipped`。
-- 世界书 `use_group_scoring`（借 SillyTavern `filterGroupsByScoring`）：同组按命中键数取最高，
-  同分才回退 `group_weight` 抽签；默认关闭，保持旧行为。
-- 检索排序量化到 0.25 分桶 + id 稳定排序（借 Open Dungeon 的 prompt 前缀缓存教训）。
+### 新增：亮色主题（默认）与明暗切换
+
+- **亮色成为默认**。面板是玩家长时间盯着的读屏，深色在强光与投屏下文字发灰。
+  暗色保留为夜间/直播模式，顶栏一键切换，选择写入 `localStorage`，刷新不闪。
+- `panel.theme.js`：**首帧前**同步应用主题。放在 `<head>` 且不 defer——晚一步就会
+  先画亮色再跳暗色，这种闪烁在录屏里非常明显。
+- 主题跟随系统偏好（`prefers-color-scheme`），但显式选择优先。
+- `panel.css` 的 token 拆成三组：`--accent`（可读的强调文字）、`--accent-line`
+  （装饰描边）、`--accent-fill`（实心按钮底）。**v1.8 让三者共用一个变量，
+  导致亮底上的强调文字只有 1.92:1**——这是本轮实测抓到的真缺陷，不是风格偏好。
+- 皮肤主色改为 `{light, dark}` 成对下发（`panel.py: SKINS`），前端不再用
+  `accent + "88"` 拼半透明色。自定义 `ui.accent` 支持单值（两主题共用）或字典。
+
+### 新增：首屏加载态
+
+- 骨架屏 + 顶部 2px 进度条，替换"整屏转圈"：面板是读屏，整屏 spinner 会被当成卡死。
+- 数据到达即撤（成功与失败都撤，失败交给错误横幅）；8 秒兜底，避免脚本异常时
+  用户对着一张永远闪的骨架屏。
+- SSE 后续每回合刷新**不再**回到骨架屏——局部重绘不该闪整页。
+
+### 新增：先贤调研剩余四项（`docs/PRIOR_ART.md` 的 `[建议]` 清零）
+
+| 来源 | 机制 | 落点 | 断言 |
+|---|---|---|---|
+| ink `{ visit_knot }` / `TURNS_SINCE` | 幕的访问计数与距上次访问回合数 | `rules/questline.py: evaluate`（`visits` / `turns_since`） | N10a–N10d |
+| Open Dungeon `packStoryHistory` | 提示词前缀指纹，宿主据此决定是否复用缓存 | `rules/context.py: _prefix_hash` → `pack()["prompt_prefix_hash"]` | N11a–N11c |
+| OASIS hot-score | 谣言热度 = 感染率 × log(1+提及数) × 时间衰减 | `rules/world_evolution.py: rumor_heat` | N12a–N12c |
+| CWS `sect_decider` | 势力目标权重 argmax 选意向（招募/经商/结盟/兴兵） | `rules/world_evolution.py: _faction_intents` | N13a–N13d |
+
+- `visits` / `turns_since` 从已有 `history` 派生，不新增平行状态：同一份数据
+  既能画事业线图也能做进入条件，快照回退后依然一致。
+- 势力意向是**确定性 argmax**，收益函数只读真实状态（力量差、物价偏离、连接度），
+  不消耗 `rng_counter`，因此不破坏重放。第一版收益函数让所有势力长期停在
+  "结盟"（看起来像功能，实际是常数），改为归一化驱动量后才四项可达——N13d 锁住这一点。
+- 谣言 `heat` 不再是 SIR 感染率的别名；`mentions` / `last_mention` 让"旧事重提"
+  能被表达出来。
+
+### 新增：主题与体验的自动化门禁
+
+`scripts/verify_theme.py`（25 项，接入 pre-push）：
+
+- **实测对比度**：真实浏览器里遍历每一个可见文本节点，算前景/背景相对亮度比，
+  两套主题都必须满足 WCAG AA（正文 4.5:1、大字 3:1）。不靠目测，不靠截图评审。
+- 首帧无闪烁、选择可持久化、图表 canvas 像素在切换后确实变化（ECharts 不继承 CSS 变量，
+  只改 CSS 会留下"亮底 + 深图表"的半截效果）。
+- token 完整性：两套主题声明同一组变量；组件规则里不允许出现颜色字面量。
 
 ### 修复
 
-- `context_pack` 的「未结案」与「其他事实」曾因 dict 相等比较在新打分字段下失效而重复同一事实，
-  改为按 fact id 去重。
-- 事件 id 同 tick 同类型同描述撞键：前端按 id 去重会丢掉两条中的一条。
+- **面板强调文字在亮色下对比度不足**（见上，`--accent` 一词多用是根因）。
+- `panel.css` 引用未定义的 `--faint`（`next-moves` 的两处小字实际继承了默认色），
+  统一为 `--text-faint`。
+- `ARCHITECTURE.md` 三处仍写「64 工具」，与源码 67 不一致；`README` 的规则函数数
+  停在 205（实际 206）。
+- `CHANGELOG.md` 的版本段乱序（v1.6 排在 v1.8 之前），已按版本号倒序重排。
+- `admin.html` 与 `docs/index.html` 同步改为亮色默认（控制台跟随系统，展示站跟随访客）。
 
-### 说明
+### 变更
 
-- 归档与快照的事务边界不变：存在 `<state>.archive-pending` 或库级
-  `.ww-session-transaction-pending` 时拒绝相关受保护读写，不会自动恢复；异常或崩溃后应停写、
-  保留现场并人工核对，详见[归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。
-  保存失败时恢复调用方内存中的状态对象，不等于磁盘归档回滚；不承诺断电安全。
-- 新增变异 M45-M50；`verify_generic` 104 条、`verify_gameplay` 65 条、`verify_world` 54 条（含 MCP 路径）。
+- 门禁 32 → 33 步（新增主题与对比度）。
+- `verify_panel` 93 → 98 项（主题引导、默认亮色、切换按钮、骨架屏、皮肤亮暗成对）。
+- `verify_mechanics` 25 → 39 项。
+- 自检脚本 21 → 22 个；规则公开函数 205 → 206。
+
+### 验证
+
+pre-push 33 步全绿；`verify_theme` 25/25；`verify_mechanics` 39/39；`verify_panel` 98/98；
+`verify_docs` 27/27；变异 53/53 全杀（新增 M51–M53，见 `scripts/verify_mutation.py`）。
 
 ---
 
@@ -158,6 +196,46 @@ wg version              版本
 
 - 版本 1.6.0 → 1.7.0（新增公开 CLI 入口与 MCP 资源，向后兼容）。
 - `pyproject.toml` 新增 `wg` 入口点；`world-games` 指到统一 CLI。
+
+---
+
+## v1.6.0 — 2026-11-04
+
+**先贤调研落地：把 12 个开源叙事项目的记忆算法搬进确定性内核。**
+
+### 新增
+
+- `docs/PRIOR_ART.md`：12 个项目（SillyTavern / AI Dungeon / NovelAI / generative_agents /
+  修仙世界模拟器 / Open Dungeon / Ink / Twine-Harlowe / Inform 7 / Evennia / mem0 /
+  CAMEL+AutoGen+ZorkGPT+OASIS）的架构对照、可落地借鉴点与"明确不抄"清单。
+- `rules/context.py`：GA 三分量检索（`recency 0.99^age` / `importance` 类型权重 /
+  `relevance` 中文二元组重叠，权重 0.5/3/2，候选集内 min-max），`context_search(ranked=true)`。
+  `recall` 与新增 `rank_events` 共用同一打分，久远突破不再被近期噪声淹没。
+- `remember(subject=..., supersede=true)`：mem0 式写入期冲突消解——同 kind + 同 subject 的
+  旧事实标 `superseded` 并写 `superseded_by` / `closed_tick`，原文保留可审计。
+- `reflection_due` / `mark_reflected`：GA 的重要性累积反思阈值（默认 `config.context_reflect_threshold=10`），
+  `write_summary` 推进水位，`context_pack` / `context_summary` 带 `reflection` 块。
+- 事件单调 `seq`（`state_schema.log_event`）：同一 tick 内多条事件可定序；
+  面板事件 id 改为 `tick.seq:type:hash`，修掉同 tick 同描述撞键被前端去重丢掉的问题。
+- 世界书 `once` / `max_fires`（借 ink once-only choice）：关键剧情条目不再重复注入，
+  跳过原因写入 `skipped`。
+- 世界书 `use_group_scoring`（借 SillyTavern `filterGroupsByScoring`）：同组按命中键数取最高，
+  同分才回退 `group_weight` 抽签；默认关闭，保持旧行为。
+- 检索排序量化到 0.25 分桶 + id 稳定排序（借 Open Dungeon 的 prompt 前缀缓存教训）。
+
+### 修复
+
+- `context_pack` 的「未结案」与「其他事实」曾因 dict 相等比较在新打分字段下失效而重复同一事实，
+  改为按 fact id 去重。
+- 事件 id 同 tick 同类型同描述撞键：前端按 id 去重会丢掉两条中的一条。
+
+### 说明
+
+- 归档与快照的事务边界不变：存在 `<state>.archive-pending` 或库级
+  `.ww-session-transaction-pending` 时拒绝相关受保护读写，不会自动恢复；异常或崩溃后应停写、
+  保留现场并人工核对，详见[归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。
+  保存失败时恢复调用方内存中的状态对象，不等于磁盘归档回滚；不承诺断电安全。
+- 新增变异 M45-M50；`verify_generic` 104 条、`verify_gameplay` 65 条、`verify_world` 54 条（含 MCP 路径）。
 
 ---
 

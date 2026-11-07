@@ -33,7 +33,7 @@ fails the gate if they disagree.
    bash scripts/pre_push_gate.sh
    ```
 
-   All 28 steps must pass. Coverage must be ≥70%, mutation survival must be 0%, and no check may
+   All 33 steps must pass. Coverage must be ≥70%, mutation survival must be 0%, and no check may
    be skipped for a missing dependency — a missing tool fails the gate.
 
 6. **Commit and tag:**

@@ -1,6 +1,6 @@
 # World Games
 
-**v1.9.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [拿它做什么](docs/USE_CASES.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [先贤调研](docs/PRIOR_ART.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**v1.10.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [拿它做什么](docs/USE_CASES.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [先贤调研](docs/PRIOR_ART.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
 > **AI 负责叙述，引擎负责结算。**
 
@@ -61,6 +61,12 @@ pip install -e ".[mcp]"      # 核心仅标准库；mcp 是 MCP 模式的可选�
 ```
 
 `world-walker-mcp` 仍作为兼容别名可用。
+
+远程 agent 也可以走 HTTP 接入，不必经 stdio：
+
+```bash
+wg mcp --http --port 8620   # 客户端连 http://127.0.0.1:8620/mcp 即可
+```
 
 ## 开一局
 
@@ -333,7 +339,7 @@ SillyTavern 角色卡（PNG/JSON，V1–V3）与世界书。
 | `verify_branches.py` | 192 | 低覆盖模块的异常路径与状态分支 |
 | `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
 | `verify_panel.py` | 98 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 / 主题接线 |
-| `verify_mcp_stdio.py` | 64 | 真实 stdio 端到端 / 酒馆生态 / 只读零副作用 |
+| `verify_mcp_stdio.py` | 67 | 真实 stdio 端到端 / HTTP 传输握手 / 酒馆生态 / 只读零副作用 |
 | `verify_world.py` | 54 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
 | `verify_docs.py` | — | 版本单一信源 / 工具数 / 断言计数 / 素材引用 |

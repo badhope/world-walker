@@ -42,6 +42,11 @@
   该调 `write_summary` 压缩这一段了（摘要会推进反思水位）。
 - 世界书条目可加 `once: true` / `max_fires: N` 控制"关键剧情只讲一次"；
   同组条目加 `use_group_scoring: true` 时按命中关键词数选最优，而不是抽签。
+- **GM 私有规划区**：情节草稿、伏笔计划、"如果玩家接下来去 X 就触发 Y"这类思考，
+  用 `context_remember(..., importance=低, subject="gm_notes/…")` 记台账而不写进
+  `publish_prose`——玩家可见的只有正文，台账是你自己的草稿纸（对标同类项目的
+  narrator internal monologue 设计）。玩家看不到台账不等于可以瞒着引擎：凡涉及
+  数值结算仍必须走工具，草稿只是叙事规划。
 
 **存档纪律**：一局一个 `session_new`；重大节点 `session_snapshot`；不要手改 JSON，用工具。
 

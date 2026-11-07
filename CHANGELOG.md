@@ -5,6 +5,38 @@
 
 ---
 
+## v1.10.0 — 2026-11-07
+
+**远程接入版本：MCP 服务器在 stdio 之外新增 streamable-http 传输，远程 agent 不再必须在同一台机器上。**
+
+### 新增：MCP streamable-http 传输（`wg mcp --http`）
+
+- `wg mcp --http [--host H] [--port P]`（默认 `127.0.0.1:8620`）后，任意 MCP 客户端连
+  `http://<host>:<port>/mcp` 拿到的与 stdio **完全同一套 67 个工具 + 4 个资源**——
+  工具数、注解、描述逐项一致。远程宿主（隔离容器、另一台机器、云端 agent）从此
+  不必与本机共进程。
+- 兼容层沿用 1.x/2.x 双布局策略：2.x 走 `run("streamable-http", host=…, port=…)`；
+  旧 SDK 依次回退 `streamable-http`（settings 配置）与 `sse`，全部不可用时给出明确
+  报错而不是静默半可用。
+- stdio 仍是默认：本地客户端零改动；`python mcp_server.py --http` 与 `wg mcp --http`
+  行为一致（单一实现，入口只是分发）。
+- 端到端验证进入常驻门禁：`verify_mcp_stdio.py` 64→**67 项**，新增 HTTP 初始化握手、
+  serverInfo 版本断言（对拍 `game_engine.__version__`，不是写死的字符串）与
+  tools/list 工具集全等断言。
+
+### 调研驱动
+
+- 本轮深度调研了 13 个同类项目（MCP 游戏后端 5、LLM 前端/状态追踪 4、叙事引擎 4），
+  全文见 `docs/PRIOR_ART_2026-11-07.md`。streamable-http 是其中评估出的第一优先缺口
+  （来源：mcp-state-of-play 的双传输设计）；「工具收敛到 28 个」「引入 Redis/Docker」
+  等选项经评估后明确不采纳，理由记录在同一文档。
+
+### 验证
+
+- `verify_mcp_stdio.py` 67/67（含 3 项新 HTTP 断言）；门禁 33 步全绿。
+
+---
+
 ## v1.9.0 — 2026-11-07
 
 **亮色默认的可用性版本：把"能看"做成"看得清"，把先贤调研剩下的四项建议全部落地。**

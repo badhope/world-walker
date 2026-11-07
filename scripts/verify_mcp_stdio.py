@@ -597,6 +597,94 @@ async def main():
     check('CLI 从任意工作目录可运行（导入别名生效）', ok_cli,
           (cli.stdout or cli.stderr or '').strip().splitlines()[:1][0] if not ok_cli else '')
 
+    # 15. streamable-http 传输：远程 agent 连 HTTP 端点拿到同一套工具（v1.10.0）
+    #     判据：initialize 握手成功、serverInfo 报出正确版本、tools/list 工具数与 stdio 一致。
+    import socket
+    import time as _time
+    import urllib.error
+    import urllib.request
+
+    def _free_port():
+        s = socket.socket()
+        s.bind(('127.0.0.1', 0))
+        port = s.getsockname()[1]
+        s.close()
+        return port
+
+    def _http_post(url, payload, sid=None):
+        headers = {'Content-Type': 'application/json',
+                   'Accept': 'application/json, text/event-stream',
+                   'MCP-Protocol-Version': '2025-06-18'}
+        if sid:
+            headers['Mcp-Session-Id'] = sid
+        req = urllib.request.Request(url, method='POST',
+                                     data=json.dumps(payload).encode('utf-8'),
+                                     headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode('utf-8', 'replace')
+            out_sid = resp.headers.get('mcp-session-id') or sid
+            # streamable-http 可能回 SSE 帧（data: {...}）或普通 JSON，两种都要能解
+            msgs = []
+            for line in body.splitlines():
+                line = line.strip()
+                if line.startswith('data:'):
+                    try:
+                        msgs.append(json.loads(line[5:].strip()))
+                    except Exception:
+                        pass
+            if not msgs and body.strip():
+                try:
+                    msgs.append(json.loads(body))
+                except Exception:
+                    pass
+            return resp.status, out_sid, msgs
+
+    http_port = _free_port()
+    proc = subprocess.Popen(
+        [sys.executable, SERVER, '--http', '--host', '127.0.0.1', '--port', str(http_port)],
+        cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        env={**os.environ, 'WORLD_GAMES_STATE_ROOT': tempfile.gettempdir()})
+    try:
+        base = 'http://127.0.0.1:%d/mcp' % http_port
+        sid, init_msg = None, None
+        for _ in range(60):  # 服务监听就绪前轮询（最多 ~12s）
+            if proc.poll() is not None:
+                break  # 进程提前退出：SDK 不支持 --http，下面按失败报告
+            try:
+                status, sid, msgs = _http_post(base, {
+                    'jsonrpc': '2.0', 'id': 1, 'method': 'initialize',
+                    'params': {'protocolVersion': '2025-06-18', 'capabilities': {},
+                               'clientInfo': {'name': 'wg-verify-http', 'version': '0'}}})
+                if status == 200 and msgs:
+                    init_msg = next((m for m in msgs if m.get('id') == 1), None)
+                    break
+            except urllib.error.URLError:
+                _time.sleep(0.2)
+        http_tools = []
+        if init_msg is not None:
+            # notifications/initialized 之后 tools/list 才是合法会话
+            _http_post(base, {'jsonrpc': '2.0', 'method': 'notifications/initialized'}, sid)
+            _, _, msgs = _http_post(base, {'jsonrpc': '2.0', 'id': 2, 'method': 'tools/list'}, sid)
+            tl = next((m for m in msgs if m.get('id') == 2), None)
+            http_tools = [t.get('name') for t in ((tl or {}).get('result') or {}).get('tools', [])]
+        _init_info = ((init_msg or {}).get('result') or {}).get('serverInfo') or {}
+        check('HTTP 传输：initialize 握手返回 world-games 服务器信息',
+              _init_info.get('name') == 'world-games',
+              str((init_msg or {}).get('error', {}).get('message') or _init_info.get('name')))
+        from game_engine import __version__ as _wg_ver
+        check('HTTP 传输：serverInfo 报出世界引擎版本',
+              _init_info.get('version') == _wg_ver,
+              '%s 期望 %s' % (_init_info.get('version'), _wg_ver))
+        check('HTTP 传输：tools/list 与 stdio 同一套 %d 个工具' % len(EXPECTED_TOOLS),
+              sorted(http_tools) == sorted(EXPECTED_TOOLS),
+              '%d 个工具' % len(http_tools))
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))
     return 0 if passed == len(RESULTS) else 1

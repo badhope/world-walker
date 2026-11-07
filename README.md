@@ -1,6 +1,6 @@
 # World Games
 
-**v1.9.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [What it is for](docs/USE_CASES.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
+**v1.10.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [What it is for](docs/USE_CASES.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
 
 > **The AI narrates. The engine decides.**
 
@@ -79,6 +79,12 @@ Run `wg --help` for the full list.
 
 Works with Claude Code, Codex, Cursor, opencode, or any MCP client. `world-walker-mcp` is a
 compatibility alias.
+
+Remote agents can connect over HTTP instead of stdio:
+
+```bash
+wg mcp --http --port 8620   # then point any MCP client at http://127.0.0.1:8620/mcp
+```
 
 Then:
 
@@ -267,7 +273,7 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism |
 | `verify_panel.py` | 98 | view-model contract, legacy saves, static whitelist, inbox guards, theme wiring |
-| `verify_mcp_stdio.py` | 64 | real stdio e2e, tavern ecosystem, read-only zero side effects |
+| `verify_mcp_stdio.py` | 67 | real stdio e2e, HTTP transport handshake, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 54 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | — | version single source, tool count, assertion counts, asset references |

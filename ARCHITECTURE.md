@@ -37,7 +37,7 @@
 
 ```
 玩家(人) ──对话/行动──> 宿主 AI Agent（Claude Code / Codex / 自建）
-                              │  MCP (stdio)
+                              │  MCP (stdio / streamable-http)
                               ▼
                      World Games MCP 服务器 (mcp_server.py, 67 工具)
                               │  规则结算 (rules/*)
@@ -55,7 +55,7 @@
 |---|---|---|
 | `bootstrap.py` | 入口引导：把仓库目录注册成 `game_engine` 包 | 幂等；供 mcp_server / panel / engine 共用，禁止各自复制 `spec_from_file_location` |
 | `rules/*` | 纯规则结算（战斗/经济/社交/因果/叙事/模型层） | 无副作用，状态由调用方传入传出 |
-| `mcp_server.py` | 67 个 MCP 工具；读写状态文件；tick 推进 | 唯一写入源（第一阶段） |
+| `mcp_server.py` | 67 个 MCP 工具；读写状态文件；tick 推进；stdio（默认）与 streamable-http（`--http`）双传输 | 唯一写入源（第一阶段） |
 | `state_schema.py` | 状态结构、事件日志、归档、业债裁剪 | `save_state` 统一归档 |
 | `engine.py` | CLI 14 命令（手动结算/调试） | 与 MCP 共用 rules |
 | `panel.py` | 只读视图模型 + HTTP/SSE 服务 | 不写状态；静态资源白名单 |
@@ -76,7 +76,7 @@
 ```
 world-walker/                      # 仓库根即 game_engine 包
 ├── bootstrap.py                  # 入口引导：仓库根 → game_engine 包（幂等，三个入口共用）
-├── mcp_server.py                  # MCP 服务器（67 工具；MCP 1.x/2.x 双布局）
+├── mcp_server.py                  # MCP 服务器（67 工具；1.x/2.x 双布局；stdio / streamable-http）
 ├── sessions.py                    # 存档库（多局/快照/回收站，只碰文件系统）
 ├── rules/checks.py                # 通用判定（d20/2d6/d100/4dF/骰池、对抗、成功等级）
 ├── rules/gamesystem.py            # 游戏档案（自定义属性/资源/进度轨/标签/表格 + 旧存档回退）
@@ -406,6 +406,7 @@ v1.12 起把"公式库"与"结算回路"的边界写死在这里，防止再出�
 | 2026-10-22 | 可视化真修（三图从"画了"到"看得懂"）：物价指数图因 OU sigma=0 恒为 1.0 平线→加按 (rng_seed,tick,地点,商品) 派生的确定性扰动（4% 基准价，不耗 rng_counter、可 `configure(market_jitter=False)` 关）；气血/内力曲线图例按实际标注"几乎恒定/100% 回合为 100%"；纵轴自适应；图鉴累计 codex_total 作为第 4 系列上图；修面板端口被抢占（HTTPServer.allow_reuse_address=False 端口冲突抛错顺延）；修击杀不给战利品（接管 `loot_gold`） | §5、§7、§9 T25 | T25 | 门禁 17 项绿 + verify_* 七套全过 + 图表数据实测 price_index 442 种(0.93–1.09)/gold 30→6040/codex 8→19 + pyflakes 0 |
 | 2026-10-22 | 第二轮全维度审查 3 个 High（见 docs/AUDIT_ROUND2_2026-10-22.md）：F-001 状态文件非原子写入→临时文件+fsync+os.replace 原子替换并保留 .bak（4 条回归断言）；F-002 补 X-Content-Type-Options/X-Frame-Options/Referrer-Policy/CSP 四安全头（静态核验 0 内联 script/style/事件处理器，curl -D 四头齐全，六端点 200）；F-003 时间线条目可点击（click+Enter/Space 复用 #eventdlg）；新增 21 项 UI 逐元素巡检 | §4、§6.2、§7、§9 T26 | T26 | verify_branches 159/159（含 4 条原子写断言）+ 其余六套全过 + bandit High/Med/Low 0 + 门禁全绿 |
 
+| 2026-11-07 | **v1.10.0 MCP streamable-http 传输**：`wg mcp --http [--host] [--port]`（默认 127.0.0.1:8620）后任意 MCP 客户端连 `/mcp` 拿到与 stdio 同一套 67 工具 + 4 资源；1.x/2.x 双布局兼容（2.x 传 host/port kwargs，旧 SDK 依次回退 streamable-http（settings）与 sse，全不可用则显式报错）；stdio 仍是默认。调研驱动的第一优先缺口（来源 mcp-state-of-play 双传输），13 项目同类项目调研见 `docs/PRIOR_ART_2026-11-07.md` | §4 | v1.10.0 | verify_mcp_stdio 67/67（含 HTTP 握手/serverInfo/tools/list 全等 3 项新断言）· 门禁 33 步全绿 |
 | 2026-11-07 | **v1.9.0 亮色主题 + 调研建议清零**：① 亮色成为默认主题，暗色保留为夜间/直播模式，顶栏一键切换且写入 localStorage；`panel.theme.js` 在 `<head>` 同步应用，首帧不闪。② 面板 token 拆分 `--accent`（可读文字）/ `--accent-line`（描边）/ `--accent-fill`（实心底），修掉 v1.8「同一变量既作文字色又作按钮底」导致亮底强调文字仅 1.92:1 的真缺陷；皮肤主色改为 `{light, dark}` 成对下发，JS 不再拼透明度。③ 首屏骨架屏 + 顶部进度条（数据到达即撤、失败也撤、8 秒兜底；SSE 后续刷新不回到骨架屏）。④ `docs/PRIOR_ART.md` 剩余四项 `[建议]` 全部落地：ink 访问计数谓词、Open Dungeon 前缀哈希、OASIS 谣言热度、CWS 势力意向 argmax。⑤ 新增 `scripts/verify_theme.py`（25 项，真实浏览器实测两套主题 WCAG AA），门禁 32→33 步。新增 §6.1e、INV-V9~V11、INV-E17~E20 | §6.1e、§6.2 | v1.9.0 | 门禁 33 步全绿 · verify_theme 25/25 · verify_mechanics 39/39 · verify_panel 98/98 · verify_docs 27/27 · 变异 50/50 |
 | 2026-11-04 | **v1.6.0 先贤调研落地**：按 `docs/PRIOR_ART.md` 的 12 项目调研落地六处机制——① `rules/context.py` GA 三分量检索（recency 0.99^age / importance 类型权重 / relevance 中文二元组重叠，权重 0.5/3/2，候选集内 min-max，0.25 分桶稳定排序）；② `recall` 与 `rank_events` 用同一打分，久远突破不再被近期噪声淹没；③ `remember(subject, supersede)` 的 mem0 式冲突消解（旧事实 `superseded` + `superseded_by`，不删除）；④ GA 反思阈值 `reflection_due` / `mark_reflected`（`write_summary` 推进水位）；⑤ 事件单调 `seq`（`state_schema.log_event` + 面板事件 id `tick.seq:type:hash`）；⑥ 世界书 `once` / `max_fires`（ink once-only）与 `use_group_scoring`（SillyTavern 组内评分）。新增 §6.2 INV-E15/E16、INV-G6/G7；新增变异 M45-M50 | §5、§6.1、§6.2、§10 | v1.6.0 | verify_generic 104/104 · verify_gameplay 65/65 · verify_world 54/54 · verify_panel 93/93 · verify_tests 853 条 0 可疑 · 变异 M45-M50 全杀死 |
 | 2026-10-27 | **v1.4.0 体系与模板**：新增 `rules/systems.py`（七类数据驱动体系：time/loot/craft/reputation/achievement/progression/custom，21 个公开函数，统一 `system_run` 入口，运行态随快照回退）；新增 `templates.py`（八套完整模板：jrpg/mystery/management/survival/narrative/cozy/tabletop/immersive，每套含世界/角色/市场/地点/世界书/剧本/事业线/体系/游戏档案 + `validate()` 结构校验 + `overrides` 深合并）；新增 9 个 MCP 工具（system_define/run/status/remove/schema + templates_list/info/apply/start）；修复 `counters` 从未写入导致模板成就是死条件（新增 `state_schema.bump()` 并接到图鉴/线索/判定/击杀）；面板新增体系卡与 `/state.systems` | §5、§6.1d | v1.4.0 | verify_systems 161/161 · 断言审计 816 条 |

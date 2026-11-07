@@ -106,6 +106,13 @@ def main():
           '"/admin"' in panel_src and '"/admin.js"' in panel_src)
     check('S9 主题引导脚本在面板白名单内（否则 404 → 首帧闪错色）',
           '"/panel.theme.js"' in panel_src)
+    # Release notes must quote the ledger, never a hand-typed number: the v1.9.0
+    # release shipped "32 steps / 50 mutants" for weeks after the gate grew.
+    release_src = open(os.path.join(ROOT, 'scripts', 'publish_release.py'),
+                       encoding='utf-8').read()
+    check('S10 发布说明的数字来自 docs/metrics.json（不硬编码）',
+          '_ledger()' in release_src and "m['gate_steps']" in release_src
+          and "m['mutants']" in release_src)
     check('S6b admin console has no inline script (CSP script-src self)',
           '"/admin.js"' in open(os.path.join(ROOT, 'admin.html'), encoding='utf-8').read()
           and '<script>' not in open(os.path.join(ROOT, 'admin.html'), encoding='utf-8').read())

@@ -10,7 +10,7 @@ Subcommands:
     wg init [path]                 create a starter save
     wg play [--state P]            open the live stage in the browser
     wg serve [--state P] [--port]  run the stage headless (no auto-open)
-    wg mcp                         run the MCP server on stdio
+    wg mcp [--http] [--port N]    run the MCP server (stdio; --http for remote agents)
     wg run <action> [args]         run one rule-engine action (see `wg run --help`)
     wg doctor                      print an environment/diagnostic report
     wg version                     print the version
@@ -135,10 +135,13 @@ def cmd_serve(args) -> int:
     return _serve(args.state, args.port, open_browser=False)
 
 
-def cmd_mcp(_args) -> int:
+def cmd_mcp(args) -> int:
     _bootstrap()
     import mcp_server
-    mcp_server.main()
+    if getattr(args, 'http', False):
+        mcp_server.main('http', host=args.host, port=args.port)
+    else:
+        mcp_server.main()
     return 0
 
 
@@ -218,7 +221,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument('--port', type=int, default=8765)
     p.set_defaults(func=cmd_serve)
 
-    p = sub.add_parser('mcp', help='run the MCP server on stdio')
+    p = sub.add_parser('mcp', help='run the MCP server (stdio; --http for remote agents)')
+    p.add_argument('--http', action='store_true',
+                   help='listen with the streamable-http transport instead of stdio')
+    p.add_argument('--host', default='127.0.0.1', help='bind address in --http mode')
+    p.add_argument('--port', type=int, default=8620, help='port in --http mode')
     p.set_defaults(func=cmd_mcp)
 
     p = sub.add_parser('run', help='run one rule-engine action')

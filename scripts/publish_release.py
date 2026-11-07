@@ -29,7 +29,22 @@ API = 'https://api.github.com'
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STORE = os.path.expanduser('~/.agent-secrets/accounts.json')
 
-BODY = """**The AI narrates. The engine decides.**
+def _ledger() -> dict:
+    """Read the published numbers from the single source of truth.
+
+    Why: the release notes used to hard-code "32 steps / 50 mutants / 86%".
+    Those went stale the moment the gate grew, and a release page that quotes
+    wrong numbers is a worse advertisement than no numbers at all. The ledger is
+    generated from the tree (scripts/metrics.py), so read it at publish time.
+    """
+    path = os.path.join(ROOT, 'docs', 'metrics.json')
+    with open(path, encoding='utf-8') as fh:
+        return json.load(fh)
+
+
+def _body(repo: str, tag: str) -> str:
+    m = _ledger()
+    return f"""**The AI narrates. The engine decides.**
 
 World Games is the rules layer for AI-driven interactive games: your agent writes the prose, a
 deterministic engine resolves every hit, price, relationship and faction shift, then persists it to
@@ -37,12 +52,14 @@ one auditable state file.
 
 ### What is in this release
 
-- **67 MCP tools**, **4 MCP resources**, tool annotations on all of them
+- **{m['tools']} MCP tools**, **4 MCP resources**, tool annotations on all of them
+- **Remote agents supported**: stdio by default, plus `wg mcp --http` (streamable-http)
 - **Replayable**: every mutating call is logged with RNG counters and before/after state
   fingerprints, so the same seed plus the action log reproduces the same world
 - **World rules live in the setting bundle** (`rules` field), not in the engine
 - **NPC knowledge boundaries**: an NPC cannot cite a fact they did not witness
 - **Loop detection** when the player is circling, with dead-end hints pruned from suggestions
+- **Light by default**, dark one click away, both measured against WCAG AA
 - **One front door**: `wg init / play / serve / mcp / run / doctor / version`
 - **Standalone binary**: no Python required
 - **Read-only web stage** at `/`, administration console at `/admin`
@@ -55,10 +72,11 @@ world-games.exe init my-game.json
 world-games.exe play --state my-game.json
 ```
 
-The full gate is 32 steps with 50 mutation tests; coverage 86%.
+The full gate is {m['gate_steps']} steps with {m['mutants']} mutation tests; coverage {m['coverage_pct']}%.
+This build reports version {m['version']} and ships {m['verify_scripts']} self-check scripts.
 
-See the [README](https://github.com/{repo}#readme) and
-[CHANGELOG](https://github.com/{repo}/blob/main/CHANGELOG.md).
+See the [README](https://github.com/{{repo}}#readme) and
+[CHANGELOG](https://github.com/{{repo}}/blob/main/CHANGELOG.md).
 """
 
 
@@ -137,7 +155,7 @@ def main() -> int:
         status, release = call(tok, 'POST', '/repos/%s/releases' % repo, {
             'tag_name': tag,
             'name': 'World Games ' + tag,
-            'body': BODY.replace('{repo}', repo),
+            'body': _body(repo, tag),
             'draft': False,
             'prerelease': False,
         })

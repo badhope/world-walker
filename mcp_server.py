@@ -2475,9 +2475,43 @@ except Exception as _exc:  # pragma: no cover - never block the server on resour
     print("resource registration skipped: %s" % _exc, file=sys.stderr)
 
 
-def main() -> None:
-    server.run("stdio")
+def main(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8620) -> None:
+    """启动 MCP 服务器。
+
+    stdio（默认）供本地客户端（Claude Code / Cursor / 自建 Agent）；
+    streamable-http 供远程接入：``wg mcp --http --port 8620`` 后，任意 MCP 客户端
+    连 ``http://<host>:<port>/mcp`` 即可获得同一套工具。旧 SDK 只有 sse 时自动降级。
+    """
+    if transport == "stdio":
+        server.run("stdio")
+        return
+    if transport != "http":
+        raise SystemExit("未知传输: %s（可用: stdio | http）" % transport)
+    # 2.x：run_streamable_http_async(**{host, port})；1.x：从 settings.host/port 读。
+    # 每种 SDK 布局按顺序试，签名不匹配（TypeError/ValueError）就换下一个候选。
+    candidates = (
+        ("streamable-http", {"host": host, "port": int(port)}),
+        ("streamable-http", {}),
+        ("sse", {"host": host, "port": int(port)}),
+        ("sse", {}),
+    )
+    last = None
+    for name, kwargs in candidates:
+        try:
+            server.run(name, **kwargs)
+            return
+        except (TypeError, ValueError) as exc:  # 该 SDK 布局不认这个名字/参数
+            last = exc
+    raise SystemExit("当前 MCP SDK 不提供 HTTP 传输: %s" % last)
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    _p = argparse.ArgumentParser(description="World Games MCP server")
+    _p.add_argument("--http", action="store_true",
+                    help="以 streamable-http 传输监听（默认 stdio）")
+    _p.add_argument("--host", default="127.0.0.1")
+    _p.add_argument("--port", type=int, default=8620)
+    _a = _p.parse_args()
+    main("http" if _a.http else "stdio", host=_a.host, port=_a.port)

@@ -69,10 +69,27 @@ X33834 与 Morningstar202604 两个镜像仓库的 Actions 自 v1.8.0 起持续�
 
 教训写进断言而不是注释：**"改了但没在目标环境验证" 和 "没改" 在 CI 眼里是一回事。**
 
+### 第四、第五处：端口耗尽与样本来源
+
+core 四个 Python 版本转绿后，剩下两个 mcp 作业各剩一条断言：
+
+- **面板端口窗口耗尽**（`panel.start`）。`bind_attempts=10` 只扫 10 个端口，
+  CI 同一次作业会连开多个面板（面板契约、MCP e2e、界面巡检），前面的实例还没
+  完全释放，后面的就报「端口 8796~8805 都被占用」。改为窗口扫不到时**向系统要
+  一个空闲端口**（`port_fallback="scan"`，默认），并在 stderr 说明换了端口。
+  `verify_panel` 新增两项断言，实测占满 12 个端口后仍能启动且可服务（100/100）。
+
+- **`price_index` 断言读错了样本**（`verify_panel`）。原来断言 `samples[-1]`，
+  但侧写是"同 tick 覆盖"语义，CI 上读到的最后一行可能来自另一个 state。
+  现在明确取 `tick == 12`（本 fixture 的 tick）那一行，并在失败时把该 tick 的
+  全部值与最近 4 条样本一起打印出来——让"样本来源不对"和"市场算错"能区分开，
+  而不是都显示成 `期望 1.05`。
+
 ### 验证
 
-门禁 33 步全绿；`verify_surface` 24/24（含 S11d 真实 pip 解析）；`verify_docs` 29/29；
-干净树（无 `.tmp/`）`run_behavior_regressions` 7/7；锁定环境 `verify_mcp_stdio` 67/67。
+门禁 33 步全绿；`verify_panel` 100/100；`verify_surface` 24/24（含 S11d 真实 pip 解析）；
+`verify_docs` 29/29；干净树（无 `.tmp/`）：core 19 步 + mcp 5 步共 23 个脚本全通过；
+锁定环境 `verify_mcp_stdio` 67/67。
 
 ---
 

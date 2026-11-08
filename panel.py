@@ -1793,11 +1793,17 @@ class _PanelServer(ThreadingHTTPServer):
 
 
 def start(state_path, port=8765, host="127.0.0.1", host_allow=None,
-          bind_attempts=10):
+          bind_attempts=10, port_fallback="scan"):
     """启动面板服务（后台线程），返回 (server, 实际端口)。端口被占则自动顺延。
 
     `host_allow`：允许访问的 Host 头白名单（默认只允许本机回环名）。
     `state_path` 绑定在 server 实例上，多个面板互不干扰。
+
+    `port_fallback` 决定首选端口不可用时的策略：
+      · "scan"（默认）：先顺延 `bind_attempts` 个端口，仍失败就向系统要一个
+        空闲端口。CI 上同一次作业会连开多个面板（面板契约、MCP e2e、界面巡检），
+        固定窗口扫完 10 个就被判"全被占用"，而其实只是前面的实例还没释放。
+      · "strict"：只在窗口内顺延，失败即抛。用于需要可预测端口的调用方。
     """
     resolved = os.path.abspath(state_path)
     srv = None
@@ -1807,6 +1813,15 @@ def start(state_path, port=8765, host="127.0.0.1", host_allow=None,
             break
         except OSError:
             continue
+    if srv is None and port_fallback == "scan":
+        try:
+            srv = _PanelServer((host, 0), Handler, state_path=resolved)
+        except OSError:
+            srv = None
+        if srv is not None:
+            # 记录一下：调用方拿到的端口与请求的不同，排障时需要知道原因。
+            print("面板端口 %s 不可用，已改用系统分配端口 %d"
+                  % (port, srv.server_address[1]), file=sys.stderr)
     if srv is None:
         raise RuntimeError("端口 %s~%s 都被占用"
                            % (port, int(port) + max(1, int(bind_attempts)) - 1))

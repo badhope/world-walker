@@ -349,8 +349,17 @@ def main():
             pi = series["samples"][-1]["price_index"]
             # rich_state 里只有两个商品：安神丹 55/50=1.1、飞剑 300/300=1.0 → 均值 1.05
             # 用精确值而不是 0.2~5 的宽区间：后者连"常量 1.0"都能通过。
+            #
+            # 但要读的是**本 fixture 那一行**，不是"最后一行"：面板在同一 tick 上
+            # 会覆盖样本，而 CI 上 /state 可能先被别的请求写过（同一 tick、同一份
+            # state，理论上值相同）。真出现 1.0 说明读到的样本来自另一个 state，
+            # 那时应该明确指出"样本来源不对"，而不是让断言看起来像 market 算错了。
+            own = [s for s in series["samples"] if int(s.get("tick", -1)) == 12]
             check("price_index 精确等于样本均价（(1.1+1.0)/2=1.05）",
-                  abs(float(pi) - 1.05) < 1e-4, "index=%s 期望 1.05" % pi)
+                  bool(own) and abs(float(own[-1]["price_index"]) - 1.05) < 1e-4,
+                  "tick12=%s 全部样本=%s" % (
+                      [s["price_index"] for s in own],
+                      [(s.get("tick"), s.get("price_index")) for s in series["samples"]][-4:]))
             check("skin 调色板随 /state 下发（图表配色用）",
                   isinstance(series.get("palette"), dict)
                   and {"line", "area", "bar", "grid", "text"} <= set(series["palette"]))
@@ -744,6 +753,31 @@ def _panel_scenarios():
               str((health or {}).get("version")))
     finally:
         srv_hl.shutdown()
+
+    # 12i. 端口耗尽时仍能启动（CI 上同作业连开多个面板会扫完固定窗口）
+    holders = []
+    try:
+        import socket as _socket
+        base = 19600
+        for p in range(base, base + 12):
+            holder = _socket.socket()
+            holder.bind(("127.0.0.1", p))
+            holder.listen(1)
+            holders.append(holder)
+        state_fb = os.path.join(tempfile.mkdtemp(prefix="ww-portfb-"), "p.json")
+        with open(state_fb, "w", encoding="utf-8") as f:
+            json.dump({"tick": 0, "entities": {"player": {"name": "P"}}}, f)
+        srv_fb, port_fb = _panel.start(state_fb, base, bind_attempts=10)
+        try:
+            check("端口窗口耗尽时回退到系统分配端口（不报「都被占用」）",
+                  port_fb != base, "requested=%d actual=%d" % (base, port_fb))
+            st_fb, _ = get_json("http://127.0.0.1:%d/state" % port_fb)
+            check("回退后的面板仍可正常服务", st_fb == 200, "status=%s" % st_fb)
+        finally:
+            _panel.stop(srv_fb)
+    finally:
+        for holder in holders:
+            holder.close()
 
 
 if __name__ == "__main__":

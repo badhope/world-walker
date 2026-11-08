@@ -147,6 +147,23 @@ def main():
     pyproject = open(os.path.join(ROOT, 'pyproject.toml'), encoding='utf-8').read()
     check('S11c project still declares >=3.10 and the lockfile agrees',
           'requires-python = ">=3.10"' in pyproject)
+    # Static version checks can drift from what pip actually resolves (transitive
+    # deps). Ask pip to resolve the lockfile *as if* it were Python 3.10 — no
+    # install, no network beyond the index. This is the check that would have
+    # caught the 2026-11-08 CI failure before it shipped.
+    resolve = subprocess.run(
+        [sys.executable, '-m', 'pip', 'install', '--dry-run', '--ignore-installed',
+         '--python-version', '3.10', '--only-binary=:all:', '-q',
+         '-r', lock_path],
+        capture_output=True, text=True, timeout=300,
+        env=dict(os.environ, PYTHONIOENCODING='utf-8'))
+    offline = ('network' in (resolve.stderr or '').lower()
+               or 'connection' in (resolve.stderr or '').lower()
+               or 'new connection' in (resolve.stderr or '').lower())
+    check('S11d pip can resolve the lockfile for Python 3.10',
+          resolve.returncode == 0 or offline,
+          'SKIPPED (offline: no index reachable)' if offline
+          else (resolve.stderr or resolve.stdout or '')[-160:])
 
     # ── S12 验证脚本不得假设 .tmp/ 已存在 ─────────────────────────────────
     # `.tmp/` 在 .gitignore 里，全新 clone 没有它；直接用 mkdtemp(dir=.tmp)

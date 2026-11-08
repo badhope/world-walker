@@ -37,11 +37,11 @@ MODULES = (
     "tests_panel_rejection_regression",
 )
 
-# test id -> platform family where skipping is legitimate.
-# The value names the family the skip is DECLARED FOR: the Windows-only lock test
-# is allowed to skip when running on POSIX, and must actually run on Windows.
+# test id -> set of platform families where skipping is legitimate.
+# The Windows-only case-insensitive-lock test can only run on Windows, so on
+# POSIX it is allowed to skip; on Windows it must actually execute.
 ALLOWED_SKIPS = {
-    'tests_pending_sessions.PendingSessions.test_windows_case_alias_reentrant_lock': 'posix',
+    'tests_pending_sessions.PendingSessions.test_windows_case_alias_reentrant_lock': {'posix'},
 }
 
 
@@ -70,8 +70,9 @@ def main():
             allowed = ALLOWED_SKIPS.get(test_id)
             if allowed is None:
                 problems.append('undeclared skip %s (%s)' % (test_id, reason))
-            elif allowed == family:
-                problems.append('skipped on its own platform (%s): %s' % (family, test_id))
+            elif family not in allowed:
+                problems.append('skipped on a platform where it must run (%s): %s'
+                                % (family, test_id))
 
         if problems:
             print('FAIL: %s: %s' % (name, '; '.join(problems)), file=sys.stderr)

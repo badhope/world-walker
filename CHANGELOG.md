@@ -44,9 +44,24 @@ X33834 与 Morningstar202604 两个镜像仓库的 Actions 自 v1.8.0 起持续�
 - `verify_docs` D12c：回归 runner 必须有显式、限定平台的跳过白名单。
   这三条都是"把这次的根因变成不可回归的断言"，而不是记住教训。
 
+### 又修了两个（v1.10.1 首次推送后 CI 复跑暴露）
+
+第一次推送 v1.10.1 后 CI 仍红，说明上面的修复还不够——两处都是"改了但没测对"：
+
+- **跳过白名单的方向写反了**。上一版把映射写成"在该平台跳过就报错"，
+  于是 POSIX 上跳过 Windows-only 用例反而被判红，与修之前等价。现在写成
+  `test id -> {允许跳过的平台集合}`，并且 **D12d 直接断言这份数据的方向**
+  （`'posix' in allowed and 'windows' not in allowed`），不再只断言"代码里有白名单"。
+- **lockfile 的兼容性只做了静态检查**。静态表能漏掉传递依赖，所以 `verify_surface`
+  新增 S11d：让 pip 以 `--python-version 3.10 --dry-run` 真正解析一遍 lockfile。
+  实测解析出 31 个包并成功（含 `pywin32-312`），这才是 py3.10 作业能装上的证据。
+  离线时该项显示 SKIPPED 而不是误红。
+
+教训写进断言而不是注释：**"改了但没在目标环境验证" 和 "没改" 在 CI 眼里是一回事。**
+
 ### 验证
 
-门禁 33 步全绿；`verify_surface` 23/23；`verify_docs` 28/28；
+门禁 33 步全绿；`verify_surface` 24/24（含 S11d 真实 pip 解析）；`verify_docs` 29/29；
 干净树（无 `.tmp/`）`run_behavior_regressions` 7/7；锁定环境 `verify_mcp_stdio` 67/67。
 
 ---

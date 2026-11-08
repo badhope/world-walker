@@ -265,6 +265,23 @@ def main():
           and 'undeclared skip' in runner_src
           and 'every test was skipped' in runner_src)
 
+    # The allowlist is a mapping of test id -> platforms where skipping is OK.
+    # Getting this backwards turns a green gate red on every Linux runner, which
+    # is exactly what shipped in v1.10.1 and had to be hotfixed. Assert the
+    # direction on the real data instead of trusting the comment.
+    import importlib.util as _ilu
+    _spec = _ilu.spec_from_file_location(
+        '_rbr_probe', os.path.join(ROOT, 'scripts', 'run_behavior_regressions.py'))
+    _mod = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+    _win_test = ('tests_pending_sessions.PendingSessions.'
+                 'test_windows_case_alias_reentrant_lock')
+    _allowed = _mod.ALLOWED_SKIPS.get(_win_test)
+    check('D12d the Windows-only test is allowed to skip on posix, not on windows',
+          isinstance(_allowed, (set, frozenset, list, tuple))
+          and 'posix' in _allowed and 'windows' not in _allowed,
+          str(_allowed))
+
     # ── D13 English README and site agree on tool count ─────────────────────
     # The site localises the badge label, so match the number in its own <b> and
     # require the label to be one of the two accepted localisations. Matching the

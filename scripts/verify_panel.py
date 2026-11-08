@@ -536,7 +536,9 @@ def main():
             _probe = json.loads(_r.read().decode("utf-8"))
     except Exception as _exc:  # aqg: top-level boundary —— 连不上就是这一项失败
         _probe = {"error": str(_exc)}
-    check("行动队列面板：连到的是本次启动的实例（端口 %d）" % inbox_port,
+    # 断言名里不带端口：变异测试要求基线与变异后的断言清单完全一致，
+    # 而端口在两次运行之间可能不同（顺延/回退）。端口放进说明列。
+    check("行动队列面板：连到的是本次启动的实例",
           isinstance(_probe, dict) and str(_probe.get("meta", {}).get("state_path", ""))
           .endswith(os.path.basename(inbox_state)),
           str((_probe or {}).get("meta", {}).get("state_path", ""))[:70])

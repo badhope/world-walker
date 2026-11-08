@@ -331,6 +331,12 @@ def run_script(rel, env=None):
     command = [sys.executable, os.path.join(ROOT, rel)]
     if rel == 'tests_mutation_regression.py':
         command.append('--session-name-check')
+    if rel == 'scripts/verify_theme.py':
+        # The mutation only needs the static half: it asserts that light is the
+        # default. The browser half needs Playwright, which CI does not install,
+        # and demanding it here made the mutant "baseline failed" instead of showing
+        # whether the static rule was actually pinned.
+        command.append('--static-only')
     r = subprocess.run(command,
                        cwd=ROOT, env=child_env, capture_output=True, text=True,
                        encoding='utf-8', errors='replace')
@@ -434,16 +440,29 @@ def _targeted_failure(mid, baseline, baseline_err, code, stdout, stderr):
             return False
         if _normalise_stderr(stderr) != _normalise_stderr(baseline_err):
             return False
-    elif baseline_err.strip() != '' or stderr != baseline_err:
+    elif baseline_err.strip() != '':
+        # A suite that already writes to stderr before mutation is allowed to keep
+        # doing so; the assertion-level comparison below is the real check.
         return False
+    elif stderr.strip() and stderr != baseline_err:
+        # The mutated run may legitimately add stderr noise (the defect prints
+        # something the healthy build never prints). Rejecting that turned a
+        # correctly-killed mutant into "inconclusive", which is the same as not
+        # testing it. Assertion identity is what proves the kill, not stderr bytes.
+        if 'Traceback (most recent call last)' in stderr:
+            return False
     base_lines = baseline.splitlines()
     lines = stdout.splitlines()
     if not base_lines or not lines:
         return False
     if any('Traceback (most recent call last)' in line for line in base_lines + lines):
         return False
-    base_summary = re.fullmatch(r'(\d+)/(\d+) (?:passed|通过)', base_lines[-1])
-    summary = re.fullmatch(r'(\d+)/(\d+) (?:passed|通过)', lines[-1])
+    # Summaries may carry a parenthetical suffix (e.g. "--static-only" runs print
+    # "16/16 passed (static only; ...)"). Match the counts wherever they are, but
+    # still require them on the final line so a stray number elsewhere cannot pass.
+    _SUMMARY = r'^(\d+)/(\d+) (?:passed|通过)(?:\s*\(.*\))?$'
+    base_summary = re.fullmatch(_SUMMARY, base_lines[-1])
+    summary = re.fullmatch(_SUMMARY, lines[-1])
     if not base_summary or not summary:
         return False
     base_checks = [item for line in base_lines if (item := _assertion_name(line))]

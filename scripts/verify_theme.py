@@ -311,6 +311,13 @@ def browser_checks(state_path):
 def main():
     static_checks()
     demo = os.path.join(ROOT, "docs", "demo", "玄枢界.save.json")
+    static_only = "--static-only" in sys.argv
+    if static_only:
+        passed, total = sum(RESULTS), len(RESULTS)
+        print(chr(10) + "%d/%d passed (static only; browser phase skipped by flag)"
+              % (passed, total))
+        return 0 if passed == total else 1
+
     workdir = tempfile.mkdtemp(prefix="ww-theme-")
     state_path = os.path.join(workdir, "theme.save.json")
     if not os.path.exists(demo):

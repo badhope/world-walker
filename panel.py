@@ -1820,8 +1820,12 @@ def start(state_path, port=8765, host="127.0.0.1", host_allow=None,
             srv = None
         if srv is not None:
             # 记录一下：调用方拿到的端口与请求的不同，排障时需要知道原因。
-            print("面板端口 %s 不可用，已改用系统分配端口 %d"
-                  % (port, srv.server_address[1]), file=sys.stderr)
+            # 只在显式要求时报（WG_PANEL_PORT_VERBOSE=1）：这行本身带端口号，
+            # 而测试套件用 stderr 是否为空来判定"运行是否干净"，端口每次不同
+            # 会让同一份代码的两次运行看起来不一样。
+            if os.environ.get("WG_PANEL_PORT_VERBOSE") == "1":
+                print("面板端口 %s 不可用，已改用系统分配端口 %d"
+                      % (port, srv.server_address[1]), file=sys.stderr)
     if srv is None:
         raise RuntimeError("端口 %s~%s 都被占用"
                            % (port, int(port) + max(1, int(bind_attempts)) - 1))

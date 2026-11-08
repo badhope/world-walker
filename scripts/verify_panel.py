@@ -516,13 +516,30 @@ def main():
         inbox_lines = len([ln for ln in f.read().splitlines() if ln.strip()])
     # 这里只追加过 1 条已处理记录，所以正确实现的行数上限就是 MAX_PENDING + 1；
     # 留 1 行余量，任何"不裁剪"实现（106 行）都会立刻越界。
+    # 失败时必须能区分两种原因：裁剪没生效，还是这个文件被别的进程/实例写脏了
+    # （同一存档被两个面板同时 append）。只报行数无法判断，所以把记录构成一并打出来。
+    all_recs = _panel.inbox_read_all(inbox_state)
+    done_n = sum(1 for r in all_recs if r.get("done"))
     check("行动队列：落盘记录有界（≤ %d 行，不是只切片返回）" % (_panel.INBOX_MAX_PENDING + 2),
           inbox_lines <= _panel.INBOX_MAX_PENDING + 2,
-          "%d 行 / pending %d" % (inbox_lines, len(_panel.inbox_pending(inbox_state))))
+          "%d 行 / pending %d / done %d / 总记录 %d"
+          % (inbox_lines, len(_panel.inbox_pending(inbox_state)), done_n, len(all_recs)))
 
     # 10. 行动队列 HTTP 层：同源 / Content-Type / 长度 三道闸
     inbox_srv, inbox_port = _panel.start(inbox_state, PORT + 3)
     inbox_base = "http://127.0.0.1:%d" % inbox_port
+    # 先确认连的是**本次启动的这个实例**：面板端口会顺延/回退，若打到别的实例，
+    # 后面的同源/长度断言会对着另一份状态跑，失败信息还指向错误的方向。
+    _probe = None
+    try:
+        with urllib.request.urlopen(inbox_base + "/state", timeout=8) as _r:
+            _probe = json.loads(_r.read().decode("utf-8"))
+    except Exception as _exc:  # aqg: top-level boundary —— 连不上就是这一项失败
+        _probe = {"error": str(_exc)}
+    check("行动队列面板：连到的是本次启动的实例（端口 %d）" % inbox_port,
+          isinstance(_probe, dict) and str(_probe.get("meta", {}).get("state_path", ""))
+          .endswith(os.path.basename(inbox_state)),
+          str((_probe or {}).get("meta", {}).get("state_path", ""))[:70])
     try:
         def post_action(payload, ctype="application/json", origin=None):
             import urllib.request as _ur
@@ -553,8 +570,10 @@ def main():
         check("POST /action 拒绝非 JSON（415）", st_bad == 415 and body_bad.get("ok") is False,
               "status=%s" % st_bad)
         st_x, body_x = post_action({"text": "x"}, origin="http://evil.example")
+        # 若这里仍是 200，先看 body_x：打到了「Host 不被允许」还是「跨站请求被拒绝」，
+        # 能区分是校验缺失还是请求根本没到本实例（端口回退后的旧实例）。
         check("POST /action 拒绝跨站 Origin（403）", st_x == 403 and body_x.get("ok") is False,
-              "status=%s" % st_x)
+              "status=%s body=%s" % (st_x, str(body_x)[:60]))
         st_long, body_long = post_action({"text": "长" * (_panel.INBOX_MAX_TEXT + 10)})
         # 正文过长由业务校验回 400；请求体字节超限由传输层回 413（两者都是拒绝）
         check("POST /action 拒绝超长行动（400/413）", st_long in (400, 413), "status=%s" % st_long)

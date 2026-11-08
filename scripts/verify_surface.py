@@ -117,6 +117,58 @@ def main():
           '"/admin.js"' in open(os.path.join(ROOT, 'admin.html'), encoding='utf-8').read()
           and '<script>' not in open(os.path.join(ROOT, 'admin.html'), encoding='utf-8').read())
 
+    # ── S11 依赖锁定必须与 requires-python 相容 ───────────────────────────
+    # 2026-11-08 的 CI 红就是这个：pyproject 声明 >=3.10，而 lockfile 钉的
+    # httpx2 / starlette / pydantic-settings 已要求 3.11，py3.10 作业直接装不上。
+    # 这里做静态检查（不联网）：锁文件里每个包名/版本都要有记录，且不得出现
+    # 已知的 3.11-only 版本号。真正的可安装性由 CI 矩阵两端验证。
+    lock_path = os.path.join(ROOT, 'requirements-mcp.lock.txt')
+    lock_text = open(lock_path, encoding='utf-8').read()
+    pins = {}
+    for line in lock_text.splitlines():
+        line = line.strip()
+        if '==' in line and not line.startswith('#'):
+            name, _, ver = line.partition('==')
+            pins[name.strip()] = ver.strip()
+    # 这些版本是被实测确认要求 >=3.11 的（见 CHANGELOG v1.10.1）
+    known_blockers = {
+        'pydantic-settings': ('2.16.0', '2.16.1', '2.16.2'),
+        'starlette': ('1.8.0', '1.9.0', '1.10.0'),
+        'sse-starlette': ('3.6.0', '3.7.0'),
+        'httpx2': ('2.15.0', '2.15.1', '2.16.0'),
+    }
+    offenders = [f'{k}=={v}' for k, v in pins.items()
+                 if v in known_blockers.get(k, ())]
+    check('S11a lockfile pins deps that still install on Python 3.10',
+          not offenders, str(offenders))
+    check('S11b lockfile pins the transitive chain mcp actually pulls',
+          {'mcp', 'httpx2', 'starlette', 'pydantic-settings', 'uvicorn'} <= set(pins),
+          str(sorted(set(pins))[:8]))
+    pyproject = open(os.path.join(ROOT, 'pyproject.toml'), encoding='utf-8').read()
+    check('S11c project still declares >=3.10 and the lockfile agrees',
+          'requires-python = ">=3.10"' in pyproject)
+
+    # ── S12 验证脚本不得假设 .tmp/ 已存在 ─────────────────────────────────
+    # `.tmp/` 在 .gitignore 里，全新 clone 没有它；直接用 mkdtemp(dir=.tmp)
+    # 会在 CI 上抛 FileNotFoundError，且错误信息完全看不出该怎么修。
+    offenders = []
+    for name in sorted(os.listdir(os.path.join(ROOT, 'scripts'))):
+        if not name.endswith('.py'):
+            continue
+        # The helper itself and this check legitimately contain the pattern
+        # (one implements the fix, the other searches for it).
+        if name in ('_tmpdir.py', 'verify_surface.py'):
+            continue
+        src = open(os.path.join(ROOT, 'scripts', name), encoding='utf-8').read()
+        if "mkdtemp(dir=os.path.join(ROOT, '.tmp'))" in src:
+            offenders.append(name)
+    check('S12 no verification script assumes .tmp/ already exists',
+          not offenders, str(offenders))
+    tmpdir_helper = os.path.join(ROOT, 'scripts', '_tmpdir.py')
+    check('S12b the scratch helper creates .tmp on demand',
+          os.path.isfile(tmpdir_helper)
+          and 'makedirs' in open(tmpdir_helper, encoding='utf-8').read())
+
     # ── S7 build script guards ──────────────────────────────────────────────
     with open(os.path.join(ROOT, 'scripts', 'build_exe.py'), encoding='utf-8') as fh:
         build_src = fh.read()

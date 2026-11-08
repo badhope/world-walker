@@ -37,6 +37,9 @@ except ImportError:
     import bootstrap
 bootstrap.install(ROOT)
 
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from _tmpdir import workspace_tmpdir  # noqa: E402
+
 import action_log                                        # noqa: E402
 from game_engine.state_schema import load_state, save_state   # noqa: E402
 
@@ -56,7 +59,7 @@ def fresh_state(tmp):
 
 
 def main():
-    tmp = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    tmp = workspace_tmpdir()
     try:
         state_path = fresh_state(tmp)
         log = action_log.action_log_path(state_path)

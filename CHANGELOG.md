@@ -5,6 +5,52 @@
 
 ---
 
+## v1.10.1 — 2026-11-08
+
+**CI 从红到绿：修三个"只在干净环境里才暴露"的门禁缺陷。**
+
+X33834 与 Morningstar202604 两个镜像仓库的 Actions 自 v1.8.0 起持续失败。此前记为
+"镜像仓库 CI 环境/权限差异"，实测拉日志后确认**是仓库自己的缺陷**，三个都修了。
+
+### 修复
+
+- **回归跑批把合法跳过当失败**（`scripts/run_behavior_regressions.py`）。
+  `tests_pending_sessions` 里 `test_windows_case_alias_reentrant_lock` 在非 Windows 上
+  按设计 `skipTest`，而 runner 的条件是 `if ... or result.skipped` —— 于是 Linux 上
+  `OK (skipped=1)` 被判成 FAIL，四个 core 作业全红。
+  改为**显式平台白名单**：只有声明过的跳过才允许，且只能在声明的那一侧平台跳过；
+  未声明的跳过、整包全跳过、零测试仍然一律红。三个失败模式分开建模，不再一刀切。
+
+- **`.tmp/` 在全新 clone 中不存在**（`scripts/_tmpdir.py` + 三个脚本）。
+  `verify_audit_fix.py`、`verify_mechanics.py`、`verify_replay.py` 都直接
+  `tempfile.mkdtemp(dir=<repo>/.tmp)`。`.tmp/` 在 `.gitignore` 里，CI checkout 从来没有它，
+  于是 `mcp e2e (py3.13)` 报 `FileNotFoundError: .../.tmp/tmpdp6z53o6`。
+  新增 `scripts/_tmpdir.py: workspace_tmpdir()` 按需建目录，三个脚本改用它。
+  已在**删掉 `.tmp/` 的干净树**上复跑 `run_behavior_regressions` 验证（7/7 OK）。
+
+- **依赖锁定与 `requires-python` 自相矛盾**（`requirements-mcp.lock.txt`）。
+  项目声明 `>=3.10`，但锁定链里 `pydantic-settings==2.16.0`（>=3.11）、
+  `starlette==1.8.0`（>=3.11）、`sse-starlette==3.5.0` 的传递依赖 `httpx2`
+  新版（>=3.11）都装不进 3.10，于是 `mcp e2e (py3.10)` 在安装步骤就失败。
+  重新锁定到**全部支持 3.10** 的一组版本（`httpx2==2.14.0`、`starlette==1.7.0`、
+  `pydantic-settings==2.15.0`、`sse-starlette==3.5.0`），并用该 lockfile 建全新
+  venv 实测：`pip check` 无冲突、`verify_mcp_stdio` **67/67**（含 HTTP 传输三项）。
+
+### 新增门禁
+
+- `verify_surface` S11：lockfile 里不得出现已知要求 3.11+ 的版本，且必须钉住
+  `mcp` 实际拉取的传递链（`httpx2` / `starlette` / `pydantic-settings` / `uvicorn`）。
+- `verify_surface` S12：任何验证脚本不得假设 `.tmp/` 已存在；`_tmpdir.py` 必须在。
+- `verify_docs` D12c：回归 runner 必须有显式、限定平台的跳过白名单。
+  这三条都是"把这次的根因变成不可回归的断言"，而不是记住教训。
+
+### 验证
+
+门禁 33 步全绿；`verify_surface` 23/23；`verify_docs` 28/28；
+干净树（无 `.tmp/`）`run_behavior_regressions` 7/7；锁定环境 `verify_mcp_stdio` 67/67。
+
+---
+
 ## v1.10.0 — 2026-11-07
 
 **远程接入版本：MCP 服务器在 stdio 之外新增 streamable-http 传输，远程 agent 不再必须在同一台机器上。**

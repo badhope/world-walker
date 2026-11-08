@@ -35,6 +35,9 @@ from game_engine.rules import context as context_rules   # noqa: E402
 from game_engine.rules import loopguard as loop_rules     # noqa: E402
 from game_engine.rules import rulebook as rulebook_rules  # noqa: E402
 
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from _tmpdir import workspace_tmpdir  # noqa: E402
+
 RESULTS = []
 
 
@@ -202,7 +205,7 @@ def main():
     import panel as PANEL
 
     demo = os.path.join(ROOT, 'docs', 'demo', '玄枢界.save.json')
-    tmp = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    tmp = workspace_tmpdir()
     try:
         work = os.path.join(tmp, 'g.save.json')
         shutil.copyfile(demo, work)

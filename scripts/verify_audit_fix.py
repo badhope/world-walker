@@ -29,6 +29,8 @@ import types
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault('WORLD_GAMES_STATE_ROOT', ROOT)
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from _tmpdir import workspace_tmpdir  # noqa: E402
 
 # 仓库根即 game_engine 包（与 engine.py 同样的包别名引导，任意目录名可跑）
 if 'game_engine' not in sys.modules:
@@ -63,7 +65,7 @@ def fresh_state():
 # ── R1 快照 label 路径穿越 ────────────────────────────────
 def r1_snapshot_label_traversal():
     mcp = _load_mcp_for_audit()
-    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    d = workspace_tmpdir()
     sp = os.path.join(d, 'a.json')
     mcp.world_init(state_path=sp, world=mcp.WorldInfo(name='W'),
                    player=mcp.EntityIn(name='P'))
@@ -95,7 +97,7 @@ def _worker(state_path, tag, err_box):
 
 def r2_concurrent_rmw():
     from game_engine.state_schema import load_state, save_state
-    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    d = workspace_tmpdir()
     p = os.path.join(d, 'race.json')
     save_state(fresh_state(), p)
     err_box = []
@@ -110,7 +112,7 @@ def r2_concurrent_rmw():
     check('R2 10 线程读-改-写不丢更新', final['tick'] == 11 and len(final['event_log']) == 10,
           'tick=%d events=%d' % (final['tick'], len(final['event_log'])))
 
-    child = os.path.join(tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp')),
+    child = os.path.join(workspace_tmpdir(),
                          '_xproc_child.py')
     with open(child, 'w', encoding='utf-8') as f:
         f.write(
@@ -296,7 +298,7 @@ def _load_mcp_for_audit():
 # ── R8 restore uses current disk state and snapshot atomically ───────────────
 def r8_restore_transaction():
     mcp = _load_mcp_for_audit()
-    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    d = workspace_tmpdir()
     current_path = os.path.join(d, 'current.json')
     snapshot_path = current_path + '.snap.before'
     baseline = fresh_state()
@@ -322,7 +324,7 @@ def r8_restore_transaction():
 # ── R9 rejected input leaves active path and state unchanged ─────────────────
 def r9_input_rejection_isolated():
     mcp = _load_mcp_for_audit()
-    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    d = workspace_tmpdir()
     state_path = os.path.join(d, 'current.json')
     from game_engine.state_schema import save_state, load_state
     before = fresh_state()
@@ -343,7 +345,7 @@ def r9_input_rejection_isolated():
 # ── R10 state mutation uses transaction and persists behavior ────────────────
 def r10_mutation_transaction():
     mcp = _load_mcp_for_audit()
-    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    d = workspace_tmpdir()
     state_path = os.path.join(d, 'current.json')
     from game_engine.state_schema import save_state, load_state
     save_state(fresh_state(), state_path)
@@ -361,7 +363,7 @@ def r10_mutation_transaction():
 # ── R11 backup exists after replacement ─────────────────────────────────────
 def r11_backup_behavior():
     from game_engine.state_schema import save_state, load_state
-    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    d = workspace_tmpdir()
     path = os.path.join(d, 'backup.json')
     first = fresh_state()
     save_state(first, path)
@@ -378,7 +380,7 @@ def r11_backup_behavior():
 # ── R12 failed transaction restores in-memory state and disk ─────────────────
 def r12_transaction_rollback():
     from game_engine.state_schema import load_state, save_state, transact_state
-    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    d = workspace_tmpdir()
     path = os.path.join(d, 'rollback.json')
     original = fresh_state()
     save_state(original, path)
@@ -401,7 +403,7 @@ def r12_transaction_rollback():
 
 def r13_read_only_tools_do_not_save():
     mcp = _load_mcp_for_audit()
-    d = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    d = workspace_tmpdir()
     path = os.path.join(d, 'readonly.json')
     from game_engine.state_schema import save_state
     state = fresh_state()

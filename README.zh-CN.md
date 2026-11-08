@@ -1,6 +1,6 @@
 # World Games
 
-**v1.10.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [拿它做什么](docs/USE_CASES.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [先贤调研](docs/PRIOR_ART.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**v1.10.1** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [拿它做什么](docs/USE_CASES.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [先贤调研](docs/PRIOR_ART.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
 
 > **AI 负责叙述，引擎负责结算。**
 

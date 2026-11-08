@@ -254,6 +254,17 @@ def main():
           not missing and not missing_gates,
           'missing=%s gates=%s' % (missing, missing_gates))
 
+    # ── D12c the regression runner distinguishes declared skips from silence ─
+    # A gate that fails on every skip goes red on legitimate platform guards
+    # (the Windows-only lock test on Linux), and a gate that ignores skips hides
+    # an empty suite. Both failure modes are real; the runner must model the
+    # difference, so assert that the model exists.
+    runner_src = read('scripts/run_behavior_regressions.py')
+    check('D12c regression runner has an explicit, platform-scoped skip allowlist',
+          'ALLOWED_SKIPS' in runner_src
+          and 'undeclared skip' in runner_src
+          and 'every test was skipped' in runner_src)
+
     # ── D13 English README and site agree on tool count ─────────────────────
     # The site localises the badge label, so match the number in its own <b> and
     # require the label to be one of the two accepted localisations. Matching the

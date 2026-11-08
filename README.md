@@ -1,6 +1,6 @@
 # World Games
 
-**v1.10.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [What it is for](docs/USE_CASES.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
+**v1.10.1** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [What it is for](docs/USE_CASES.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
 
 > **The AI narrates. The engine decides.**
 

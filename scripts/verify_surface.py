@@ -29,6 +29,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS = []
 
 
+def _scratch(prefix='ww-surface-'):
+    """Scratch dir under <repo>/.tmp/, creating .tmp when a fresh clone lacks it."""
+    base = os.path.join(ROOT, '.tmp')
+    os.makedirs(base, exist_ok=True)
+    return tempfile.mkdtemp(prefix=prefix, dir=base)
+
+
 def check(name, ok, note=''):
     RESULTS.append(bool(ok))
     print('%s  %-56s %s' % ('PASS' if ok else 'FAIL', name, str(note)[:90]))
@@ -73,7 +80,7 @@ def main():
           str(payload.get('assets', {})))
 
     # ── S4 init ─────────────────────────────────────────────────────────────
-    tmp = tempfile.mkdtemp(dir=os.path.join(ROOT, '.tmp'))
+    tmp = _scratch()
     target = os.path.join(tmp, 'probe.json')
     made = run([cli, 'init', target])
     loaded = None
@@ -174,11 +181,19 @@ def main():
             continue
         # The helper itself and this check legitimately contain the pattern
         # (one implements the fix, the other searches for it).
-        if name in ('_tmpdir.py', 'verify_surface.py'):
+        if name == '_tmpdir.py':
             continue
         src = open(os.path.join(ROOT, 'scripts', name), encoding='utf-8').read()
-        if "mkdtemp(dir=os.path.join(ROOT, '.tmp'))" in src:
-            offenders.append(name)
+        # Match every spelling that hard-codes .tmp as a mkdtemp target:
+        #   dir=os.path.join(ROOT, '.tmp')   dir=<repo>/.tmp   dir=".tmp"
+        # The first version of this check only matched the first spelling and
+        # therefore missed verify_surface.py itself, which kept CI red.
+        for line in src.splitlines():
+            if line.lstrip().startswith('#'):
+                continue
+            if re.search(r'mkdtemp\([^)]*dir\s*=\s*[^)]*\.tmp', line):
+                offenders.append(name)
+                break
     check('S12 no verification script assumes .tmp/ already exists',
           not offenders, str(offenders))
     tmpdir_helper = os.path.join(ROOT, 'scripts', '_tmpdir.py')

@@ -62,7 +62,8 @@ def new_game():
         "karma_ledger": [],
         "world_flags": [],
         "event_log": [],
-        "turns": []
+        "turns": [],
+        "narrative": {},
     }
 
 def _require_finite(value):

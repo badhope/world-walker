@@ -1515,7 +1515,7 @@ class Handler(BaseHTTPRequestHandler):
         return rows
 
     def _bootstrap_payload(self):
-        from game_engine import model_config, sessions as session_store
+        from game_engine import model_config, narrative_rules, sessions as session_store
         root = self._save_root()
         try:
             saves = session_store.list_saves(root)
@@ -1551,6 +1551,7 @@ class Handler(BaseHTTPRequestHandler):
             "saves": rows,
             "worlds": self._world_catalog(),
             "model": model_config.public_config(),
+            "session_zero": narrative_rules.options(),
         }
 
     def _player_payload(self):
@@ -1645,27 +1646,55 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:  # noqa: BLE001
                 self._api_json(400, {"ok": False, "error": str(exc)[:180]})
             return
+        if path == "/api/v1/session-zero/preview":
+            from game_engine import narrative_rules
+            try:
+                card = narrative_rules.preview(
+                    body.get("narrative") or body,
+                    world_name=str(body.get("world_name") or ""),
+                    world_desc=str(body.get("world_desc") or ""),
+                    player_name=str(body.get("player_name") or ""),
+                )
+                self._api_json(200, card)
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(400, {"ok": False, "error": str(exc)[:180]})
+            return
         if path == "/api/v1/new":
-            from game_engine import mcp_server
+            from game_engine import mcp_server, narrative_rules
             kind = str(body.get("kind") or "setting")
             ident = str(body.get("id") or "").strip()
             name = str(body.get("name") or "").strip()
+            narrative = narrative_rules.normalize(body.get("narrative") or {})
+            if not ident:
+                kind = "template"
+                ident = narrative_rules.template_for(narrative)
+            if (kind == "template" and narrative.get("role") == "random"
+                    and not narrative.get("player_name")):
+                narrative["player_name"] = narrative_rules.random_name(narrative["genre"])
             try:
                 if self._state():
                     mcp_server.set_active_path(self._state())
                 if kind == "template":
-                    result = mcp_server.template_start(template=ident, name=name)
+                    result = mcp_server.template_start(
+                        template=ident, name=name,
+                        overrides=narrative_rules.template_overrides(narrative),
+                        player_name=narrative.get("player_name") or "")
                 else:
-                    result = mcp_server.session_new(name=name or os.path.basename(ident).split(".")[0],
-                                                    setting_path=ident)
+                    result = mcp_server.session_new(
+                        name=name or os.path.basename(ident).split(".")[0],
+                        setting_path=ident)
                 target = str(result.get("state_path") or "")
                 if not target:
                     raise ValueError("开局没有返回状态路径")
+                narrative_rules.attach(
+                    target, narrative,
+                    world_name=str(result.get("world") or ""),
+                    player_name=narrative.get("player_name") or "")
                 self.server.state_path = os.path.abspath(target)
                 mcp_server.set_active_path(self.server.state_path)
                 from game_engine import player_view
                 self._api_json(200, {"ok": True, "state": player_view.build_player_view(target),
-                                     "created": result})
+                                     "created": result, "narrative": narrative})
             except Exception as exc:  # noqa: BLE001
                 self._api_json(400, {"ok": False, "error": str(exc)[:220]})
             return

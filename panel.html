@@ -36,16 +36,10 @@
     <section class="new-card">
       <div class="section-head">
         <h2>开一个新世界</h2>
-        <span class="hint">选一个设定包，或者一套模板</span>
+        <span class="hint">先说你想玩什么</span>
       </div>
-      <div class="world-list" id="world-list" role="listbox" aria-label="世界目录"></div>
-      <div class="new-row">
-        <label class="field">
-          <span>这一局叫什么</span>
-          <input id="new-name" type="text" maxlength="24" placeholder="留空就用世界名" autocomplete="off" />
-        </label>
-        <button class="primary-btn" id="new-btn" type="button">开始</button>
-      </div>
+      <p class="session-teaser">不用先选模板。告诉我类型、玩法和你想要的角色，我配一局给你。</p>
+      <button class="primary-btn wide" id="new-btn" type="button">开始配置</button>
     </section>
 
     <section class="saves-card">
@@ -104,6 +98,23 @@
     </aside>
   </main>
 </section>
+
+<!-- Session Zero -->
+<div class="overlay" id="session-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="session-title">
+  <div class="overlay-panel session-panel">
+    <header class="overlay-head">
+      <h2 id="session-title">开局：先说你想要什么</h2>
+      <button class="icon-btn" data-close="session-overlay" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="session-steps" id="session-steps"></div>
+    <div class="session-body" id="session-body"></div>
+    <footer class="session-foot">
+      <button class="ghost-btn" id="session-back" type="button">上一步</button>
+      <span class="muted" id="session-step-label"></span>
+      <button class="primary-btn" id="session-next" type="button">下一步</button>
+    </footer>
+  </div>
+</div>
 
 <!-- World overlay -->
 <div class="overlay" id="world-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="world-overlay-title">

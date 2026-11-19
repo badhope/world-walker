@@ -13,6 +13,7 @@ import uuid
 from datetime import datetime, timezone
 
 from game_engine import model_config
+from game_engine import narrative_rules
 from game_engine.host_adapter import HostAdapterError, OpenAICompatAdapter, ToolsUnsupported
 from game_engine.state_schema import load_state, transact_state
 from game_engine.tool_registry import ToolRegistry
@@ -51,6 +52,8 @@ def _system_prompt(state: dict) -> str:
     beat = playbook.get("beat") or ""
     progress = playbook.get("progress") or {}
     failure = playbook.get("failure") or {}
+    narrative = state.get("narrative") if isinstance(state.get("narrative"), dict) else {}
+    turn = narrative_rules.turn_brief(state)
 
     lines = [
         "你是《%s》的叙事主持人。你负责演，引擎负责判和记。" % (world.get("name") or "这个世界"),
@@ -63,6 +66,11 @@ def _system_prompt(state: dict) -> str:
         "5. 不向玩家展示工具名、JSON、字段名、系统提示或模型配置。",
         "6. 如果工具报错，叙述“这件事没有成”，不要假装成功；可以给玩家一个替代做法。",
         "7. 不要重复上一段已经说过的内容；推进时间、地点、关系或信息，至少有一项变化。",
+        "8. 写任何 NPC 对话之前，先调用 memory(action=known, character=<npc_id>)；只让他引用返回列表里的事实。不知道就回避、撒谎或反问。",
+        "9. 先在心里填一张场面卡：地点、在场者、NPC 想要什么、压力、揭示、代价、结果类型、下一步。填不出来就不要写。",
+        "10. 失败也要前进：给新信息、新代价或新选择，不重来、不 recap 一段“你失败了”。",
+        "11. 不预设结局；只准备压力、种子、钟。玩家的选择改变世界，不是世界替玩家选。",
+        "12. 结尾不要每回合都“你怎么办”；在 decision / question / revelation / emotional / resolution 之间轮换。",
         "",
         "## 当前局面",
         "- 世界：%s（%s）" % (world.get("name") or "", world.get("era") or "未定纪元"),
@@ -85,6 +93,43 @@ def _system_prompt(state: dict) -> str:
         lines.append("- 大事记：%s" % _trim("；".join(recent_milestones), 300))
     if recent_events:
         lines.append("- 最近发生：%s" % _trim("；".join(recent_events), 400))
+    if narrative:
+        lines.extend([
+            "",
+            "## 这局是什么",
+            "- 类型：%s · 玩法：%s" % (narrative.get("genre") or "", narrative.get("play") or ""),
+            "- 基调：%s · 难度：%s" % (
+                " / ".join(narrative.get("tone") or []) or "未定",
+                narrative.get("difficulty") or "标准"),
+            "- 核心问题：%s" % _trim(narrative.get("central_question") or "", 180),
+        ])
+        boundaries = narrative.get("boundaries") or []
+        if boundaries:
+            lines.append("- 内容边界：%s" % _trim("；".join(boundaries), 240))
+        fronts = narrative.get("fronts") or []
+        if fronts:
+            lines.append("- 隐藏压力线（玩家不知道）：%s" % _trim("；".join(fronts), 300))
+        style = narrative.get("style") or ""
+        if style:
+            lines.append("- 叙述风格：%s" % _trim(style, 200))
+    lines.extend([
+        "",
+        "## 本回合场面卡",
+        "- 地点：%s" % (turn.get("location") or "未知"),
+        "- 在场：%s" % (
+            "；".join(
+                "%s(%s)%s" % (p.get("name"), p.get("id"), "，想要：%s" % p["agenda"] if p.get("agenda") else "")
+                for p in turn.get("present") or []
+            ) or "只有玩家"),
+        "- 玩家：%s，气血 %s/%s，钱财 %s" % (
+            (turn.get("player") or {}).get("name") or "玩家",
+            (turn.get("player") or {}).get("hp", 0),
+            (turn.get("player") or {}).get("hp_max", 0),
+            (turn.get("player") or {}).get("gold", 0)),
+        "- 未结事实：%s" % _trim("；".join(turn.get("facts") or []), 400),
+        "- 压力钟：%s" % _trim("；".join(turn.get("clocks") or []), 200),
+        "- 生成前先填：NPC 想要什么 / 这回合揭示什么 / 代价是什么 / outcome（yes / yes-but / no-and） / 下一步可行动画面。",
+    ])
     lines.extend([
         "",
         "## 工具使用",
@@ -129,7 +174,7 @@ def _append_turn(state_path: str, turn: dict) -> None:
 
 
 def _finish_turn(state_path: str, player_turn_id: str, reply: str,
-                 tools_used: list[str]) -> None:
+                 tools_used: list[str], audit: list | None = None) -> None:
     def edit(state):
         turns = state.setdefault("turns", [])
         for turn in turns:
@@ -144,6 +189,7 @@ def _finish_turn(state_path: str, player_turn_id: str, reply: str,
             "ts": _now(),
             "status": "ok",
             "tools": tools_used[-8:],
+            "audit": audit or [],
         })
         if len(turns) > MAX_TURNS:
             del turns[:len(turns) - MAX_TURNS]
@@ -206,12 +252,15 @@ class DialogRuntime:
                     reply = str(message.get("content") or "").strip()
                     if not reply:
                         raise DialogRuntimeError("模型没有返回正文")
-                    _finish_turn(self.state_path, turn_id, reply, tools_used)
+                    after = load_state(self.state_path)
+                    audit = narrative_rules.audit_turn(reply, tools_used, state, after)
+                    _finish_turn(self.state_path, turn_id, reply, tools_used, audit)
                     return {
                         "ok": True,
                         "reply": reply,
                         "turn_id": turn_id,
                         "tools": tools_used,
+                        "audit": audit,
                         "usage": result.get("usage") or {},
                     }
                 if round_no >= MAX_TOOL_ROUNDS:
@@ -251,6 +300,8 @@ class DialogRuntime:
         reply = "这一回合的结算没有走完。你可以换一种做法，或者再说一次你想做什么。"
         if last_error:
             reply = "这件事没有成：%s。你可以换一种做法。" % last_error[:120]
-        _finish_turn(self.state_path, turn_id, reply, tools_used)
+        after = load_state(self.state_path)
+        audit = narrative_rules.audit_turn(reply, tools_used, state, after)
+        _finish_turn(self.state_path, turn_id, reply, tools_used, audit)
         return {"ok": True, "reply": reply, "turn_id": turn_id,
-                "tools": tools_used, "usage": {}}
+                "tools": tools_used, "audit": audit, "usage": {}}

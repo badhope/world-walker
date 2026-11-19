@@ -1,56 +1,39 @@
-# World Games
+# World Walker
 
-**v1.10.1** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [What it is for](docs/USE_CASES.md) · [Gameplay](docs/GAMEPLAY.md) · [Prior art](docs/PRIOR_ART.md) · [Changelog](CHANGELOG.md) · [Live site](https://badhope.github.io/world-walker/)
+**v1.12.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [Gameplay](docs/GAMEPLAY.md) · [Changelog](CHANGELOG.md)
 
-> **The AI narrates. The engine decides.**
+> **You talk. The AI performs. The engine decides. The save remembers.**
 
-Your agent writes the prose. A deterministic engine resolves every hit, price, relationship and
-faction shift, then persists it to one auditable state file.
+World Walker is a **single-player AI tabletop RPG / interactive narrative engine**, not a
+game-assistant dashboard. You open one page, say what kind of game you want, and then talk to the
+GM in ordinary language. There is no external host to wire up and no second app to keep open.
 
-`206 rule functions` · `67 MCP tools` · `4 MCP resources` · `4 playable worlds` · `8 templates` · `0 runtime dependencies`
+The model layer is deliberately vendor-neutral: any endpoint that speaks the OpenAI-compatible
+`/chat/completions` shape works. Set `base_url`, `api_key` and `model`; bring your own gateway,
+local model or aggregator. No provider names, no SDK lock-in.
 
-<p align="center">
-  <img src="docs/screenshots/stage-xuanshu.png" alt="Live stage — turn 500 of a real save" width="100%">
-</p>
+What stays deterministic is the part a narrator should never improvise: HP, prices, inventory,
+relationships, clocks, clues, saves and replay. The AI writes the scene; the engine owns the truth.
 
-<p align="center">
-  <a href="docs/screenshots/walkthrough.mp4">▶ 16-second recording of a real session</a>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/stage-xuanshu-dark.png" alt="The same save in dark theme" width="100%">
-</p>
-
-<p align="center">
-  <sub><b>Light is the default</b> — the stage is read for hours. Dark is one click away in the top bar,
-  and the choice is remembered. Both palettes are measured against WCAG AA by
-  <code>verify_theme.py</code> in a real browser, not eyeballed.</sub>
-</p>
+`206 rule functions` · `67 MCP tools` · `26 player tools` · `4 setting bundles` · `8 templates` ·
+`20 self-check suites` · `0 runtime dependencies`
 
 ---
 
 ## Why this exists
 
-Three problems kill long AI-run games. Each one is solved in code, not in prompt wording.
+Most "AI RPG" attempts fail in the same three places. World Walker fixes them in the contract,
+not in a longer prompt.
 
-| Problem | What usually happens | What World Games does |
+| Failure | What usually happens | What World Walker does |
 |---|---|---|
-| **Numbers drift** | The model invents damage, prices, HP | Rule functions resolve them; same state + seed + actions replay byte-identically |
-| **The AI forgets** | Context window overflows, old facts vanish | Context ledger persists clues, promises and facts; retrieval scored like Generative Agents |
-| **Saves become chaos** | One JSON file, hand-managed | Save library: multiple runs, snapshots, trash, all through `session_*` |
+| **The AI plays your character** | It writes what you feel, decide or say next | The GM may describe the world and NPCs, never your inner decision; player agency is a hard rule |
+| **NPCs know everything** | Every NPC answers from the whole plot bible | An NPC may only use facts returned by `memory(action=known, character=...)`; otherwise they evade, lie or ask back |
+| **Turns have no cost** | Beautiful prose, but no HP, clue, clock or relationship ever changes | Every turn carries a scene card and an audit; a turn without a visible change is flagged |
 
-**Everything is replayable.** Every mutating call is logged with its arguments (hashed),
-the RNG counters on both sides, and before/after state fingerprints. Same seed plus the same
-action log reproduces the same world — and `verify_replay.py` proves it instead of claiming it.
-
-Two things most frameworks skip:
-
-- **The world moves on its own.** Every `tick` advances factions (logistic growth + Lotka–Volterra),
-  rumors (SIR), culture (Deffuant), roaming NPCs and a Panarchy `r → K → Ω → α` cycle driven by real
-  stock. Do not call `tick` and the world stands still — intentional, not a bug.
-- **The panel is read-only, and bilingual.** English by default, one click to Chinese. It renders the
-  real state and never writes. Players queue actions to a sidecar; the host drains them with
-  `pending_actions`. One writer, one truth.
+The campaign is built **during play**, like a GM running a table — not pre-written like a novel.
+Session Zero sets genre, play style, role, tone, lethality and boundaries. After that, each turn is
+`scene card → player action → world reaction → state change → next hook`.
 
 ---
 
@@ -98,69 +81,49 @@ subsystems. The host calls tools only when a number is needed.
 
 ---
 
-## Screens
+## Play it directly
 
-Every image is a real render of a real save, asserted element-by-element in Edge by
-`scripts/shots.py`. Source saves live in [`docs/demo/`](docs/demo/).
-
-| Xuanshu · Eastern fantasy | Zhejian · Wuxia | Neon Abyss · Cyberpunk | Fogport · Investigation |
-|---|---|---|---|
-| ![Xuanshu](docs/screenshots/stage-xuanshu.png) | ![Zhejian](docs/screenshots/stage-ink.png) | ![Neon](docs/screenshots/stage-neon.png) | ![Fogport](docs/screenshots/stage-neutral.png) |
-
-Skins are the surface. What actually changes per world is **vocabulary, tiers, currency and place
-descriptions**: a bundle declares `terms: { level: "身手", gold: "银两" }` and the panel never shows
-"境界 / 灵石" again.
-
-| World pulse | Character card | Command palette | Action queue |
-|---|---|---|---|
-| ![World pulse](docs/screenshots/drawer-world.png) | ![Character card](docs/screenshots/character-card.png) | ![Palette](docs/screenshots/command-palette.png) | ![Queue](docs/screenshots/action-queue.png) |
-
-| Codex | Market | Milestones | Help |
-|---|---|---|---|
-| ![Codex](docs/screenshots/drawer-codex.png) | ![Market](docs/screenshots/drawer-market.png) | ![Milestones](docs/screenshots/drawer-milestones.png) | ![Help](docs/screenshots/help.png) |
-
-| 768 px | 320 px | Share mode |
-|---|---|---|
-| ![Tablet](docs/screenshots/stage-768.png) | ![Narrow](docs/screenshots/stage-320.png) | ![Share](docs/screenshots/share-mode.png) |
-
----
-
-## Architecture
-
-```
-        your agent (Claude Code / Codex / Cursor / custom)
-                          │  MCP over stdio
-                          ▼
-    ┌─────────────────────────────────────────────┐
-    │  World Games MCP server                     │
-    │  67 tools · 4 resources · 1 prompt          │
-    │  tool annotations: read-only / destructive  │
-    └───────────────┬─────────────────────────────┘
-                    │  every mutation goes through
-                    ▼  one transactional writer
-    ┌─────────────────────────────────────────────┐
-    │  rules/*  deterministic settlement          │
-    │  checks · combat · economy · social · karma │
-    │  questline · lorebook · systems · models    │
-    └───────────────┬─────────────────────────────┘
-                    ▼
-            state.json  ◄── read-only ──  live stage (HTTP + SSE)
-                    │                   + /admin console
-                    └── generational archive (.log.jsonl)
+```bash
+pip install -e ".[mcp]"
+wg init my-game.json
+wg play --state my-game.json
 ```
 
-**Invariants** (all asserted by the gate):
+`wg play` starts the local page. Open `http://127.0.0.1:8899/` and you are in the lobby:
+continue a save, or start a new world. No host, no plugin, no second app.
 
-1. One writer. The panel serves `GET` only; actions queue to `<state>.inbox.jsonl`.
-2. Determinism. `sha256(seed, tick, counter)` reseeds every settlement; `rng_counter` persists.
-3. Everything is bounded. Event log, karma ledger, sidecar and inbox all have caps and merge rather
-   than truncate.
+The player surface is one screen: narrative stream on the left, a thin character/quest rail on
+the right, one input at the bottom. The old admin console, translation layer, theme scripts and
+offline chart bundle are gone; the player shell is a native HTML/CSS/JS trio with no build chain.
 
----
+## The model
 
-## What the engine gives you
+World Walker is vendor-neutral. The model layer only assumes an OpenAI-compatible
+`/chat/completions` endpoint:
 
-### Settlement
+```json
+{ "base_url": "https://your-gateway/v1", "api_key": "sk-...", "model": "any-model" }
+```
+
+Set it in the page (`模型 · 去设置`) or with `WW_MODEL_BASE_URL / WW_MODEL_API_KEY /
+WW_MODEL_NAME`. The file lives at `~/.world-walker/model.json` with `0600` permissions.
+There is no provider list, no vendor SDK and no hidden fallback.
+
+## Session Zero
+
+A new game starts with a conversation, not a template picker:
+
+1. **类型** — mystery, fantasy, wuxia, sci-fi, urban, historical, romance, horror, survival, slice-of-life.
+2. **玩法** — investigate, survive, scheme, relate, fight/grow, horror investigation, cozy.
+3. **角色** — random, write one line yourself, or use the template's preset.
+4. **体验** — tone, difficulty, content boundaries, optional world override.
+
+The engine picks the rule skeleton from the genre (for example wuxia → `tabletop`,
+mystery → `mystery`), starts the save and writes a **start card**: where you are, who you are,
+what is already moving, the death rule, three hooks and the central question. Templates provide
+a skeleton and a seed, not a pre-written plot.
+
+## What the engine owns
 
 | Layer | What it resolves |
 |---|---|
@@ -168,97 +131,46 @@ descriptions**: a bundle declares `terms: { level: "身手", gold: "银两" }` a
 | `combat` · `economy` · `social` · `karma` | hits and damage, prices, relationships, structured debt |
 | `cognition` · `narrative_engine` · `progression` | flow channel, Panarchy phase, tier progression |
 | `world_evolution` | factions, rumors, culture, roaming NPCs, world flags |
-| `rulebook` + `loopguard` | world-specific exceptions declared by the bundle; circling detection |
 | `action_log` | command-level replay with per-step state fingerprints |
 
-### Seven pluggable subsystems
-
-Mechanics are **data**, not code. Add or remove at runtime.
-
-| Kind | Manages | Actions |
-|---|---|---|
-| `time` | day/hour, season, weather | `advance(minutes)`, `status` |
-| `loot` | weighted tables, quantity ranges | `roll(table, times, grant)`, `list` |
-| `craft` | recipes, material checks, skill roll | `craft(recipe)`, `list` |
-| `reputation` | faction standing −100..100 with tiers | `adjust(faction, delta)`, `status` |
-| `achievement` | questline predicates + rewards | `check`, `list` |
-| `progression` | XP curve, levels, attribute growth | `grant(amount)`, `status` |
-| `custom` | restricted effect list | `<action>`, `list` |
-
-### Four play loops, one rule set
-
-`freeform` (free input) · `choice` (options) · `mud` (location commands) · `ttrpg`
-(declare → resolve → consequence). The loops guide the host; the engine does not enforce them.
-
-The four bundles are the four loops: Xuanshu `freeform`, Zhejian `ttrpg`, Neon Abyss `mud`,
-Fogport `choice`.
-
-### Eight playable templates
-
-`jrpg` · `mystery` · `management` · `survival` · `narrative` · `cozy` · `tabletop` · `immersive`
-
-```
-template_start(template="mystery", name="my case",
-               overrides={"world": {"name": "Rain Harbor"}})
-```
-
----
-
-## The 67 tools
-
-| Group | Tools |
-|---|---|
-| Setup and saves | `session_new` `session_list` `session_switch` `session_snapshot` `session_manage` `session_import` `load_setting` `world_init` `world_open` |
-| Per-turn core | `pending_actions` `context_pack` `narration_context` `publish_prose` `tick` |
-| Checks and numbers | `roll` `combat` `combat_preview` `trade` `social` `karma` `advance` `use_item` `game_profile` `game_adjust` `game_tag` `game_sheet` |
-| World and place | `travel` `world_state` `narrative` `status` `playbook_info` `quest_status` `quest_advance` `lore_lookup` `failure_tick` |
-| Memory and recall | `context_remember` `context_known` `context_tell` `context_search` `context_forget` `recall` `write_summary` `recap` `read_state` |
-| Systems and templates | `templates_list` `template_info` `template_apply` `template_start` `system_define` `system_remove` `system_run` `system_status` `system_schema` |
-| Ecosystem and tooling | `character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `close_panel` `world_schema` |
-
-Plus four **MCP resources** a host can pin into context without a tool round-trip:
-`world://state/current`, `world://summary/current`, `world://settings/index`, `world://docs/protocol`.
-
-Full parameters: [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md).
-
----
+The engine also owns the **turn contract**: before the model writes, it receives a scene card
+(location, present NPCs, what each NPC wants, pressure, open facts, clocks). The model is told to
+fill `reveal / cost / outcome / next` before producing prose. After the turn, a lightweight audit
+flags a reply that is too short, repeats an opening, makes a decision for the player or leaves no
+visible state change.
 
 ## One turn, end to end
 
-Real return values from the Fogport investigation bundle.
-
-**Player:** I go to the docks and ask the gatekeeper whether the lighthouse has been lit.
+**Player:** I push the door open and look behind the counter.
 
 ```
-1. context_pack(scene_text="码头 灯塔 门房")
-   → playbook (choice · clues 0/24), open clues, recent events
-
-2. roll(attribute="per", difficulty=9, dice="2d6")
-   → {"rolls":[1,1], "total":2, "difficulty":9, "margin":-7, "level":"failure"}
-
-3. context_remember("The gatekeeper says the lighthouse burned for three minutes",
-                     kind="clue", keys=["lighthouse"], source="gatekeeper")
-   → {"fact":{"id":"f0001", ...}, "created":true}
-
-4. game_adjust("clue", delta=1)    → {"after":1, "at_max":false}
-   game_adjust("sanity", delta=-1) → {"after":7, "at_min":false}
-
-5. publish_prose("The rain did not stop...")
-6. tick()  → one turn of world evolution
+scene card      → 你在灰岩堡的酒馆；罗兰在柜台后；他不想让你下墓穴；悬赏还贴着
+player action   → 推门、观察
+world reaction  → 罗兰先开口，试图把话题岔开
+state change    → 关系/线索/钟至少变一项
+next hook       → 他手边有一把不属于他的钥匙
 ```
 
-Everything lands in one state file: checks under `checks`, facts under `context.facts`, resources
-under `game`, prose under `prose`, world under `panarchy/factions/...`.
+The model writes the prose. The engine settles the numbers and writes the save. If the turn has
+no consequence, the audit says so; the next turn can correct it.
 
----
+## Tools
+
+The model sees 26 player tools, not the old 67-tool MCP surface:
+
+`inspect` `progress` `story` `memory` `context` `characters` `sheet` `systems` `worlds` `calc`
+`panel` `new_game` `open_game` `saves` `snapshot` `combat` `combat_preview` `trade` `social`
+`karma` `tick` `advance` `travel` `use_item` `roll` `configure`
+
+MCP remains available for advanced hosts, but it is no longer the front door. The player page is.
 
 ## Scope
 
-**In scope:** rule resolution, setting bundles, saves, context ledger, host narration guidance,
-SillyTavern character cards (PNG/JSON, V1–V3) and world info.
+**In scope:** single-player AI GM, Session Zero, turn contract and audit, deterministic rule
+settlement, setting bundles, saves, context ledger, NPC knowledge boundaries, replay.
 
-**Out of scope, deliberately:** image generation, multiplayer, cloud accounts, plugin marketplace.
-Reasons in [ROADMAP.md](ROADMAP.md).
+**Out of scope, deliberately:** multiplayer, cloud accounts, a plugin marketplace, pre-written
+campaigns sold as content, image generation.
 
 ---
 
@@ -305,34 +217,32 @@ Coverage gate: core domain ≥70% (measured 82%, including the generic layer); `
 
 ```
 world-walker/                  # repo root IS the game_engine package
-├── cli.py                     # `wg` — the single front door
-├── engine.py                  # CLI rule actions
-├── mcp_server.py              # MCP server, 67 tools + 4 resources
-├── mcp_primitives.py          # resources and tool annotations
-├── state_schema.py            # state model / atomic write / transaction lock / archive
-├── panel.py                   # read-only view model + HTTP/SSE + /admin console
-├── panel.html / .css / .js    # the stage: native trio, no build chain
-├── panel.i18n.js              # EN/ZH translation layer
-├── sessions.py                # save library: multi-run / snapshot / trash
-├── rules/                     # 206 public rule functions
-│   ├── checks.py gamesystem.py context.py
-│   ├── combat.py economy.py social.py karma.py
-│   ├── cognition.py narrative_engine.py progression.py
-│   ├── world_dynamics.py world_evolution.py
-│   └── models.py              # 16 named closed-form models
-├── settings/                  # 4 ready-to-play bundles
-├── scripts/                   # 22 self-checks + build_exe + screenshot pipeline
-└── assets/echarts.min.js      # offline chart library (Apache-2.0)
+├── panel.py                   # player HTTP/SSE server + session-zero/new/chat APIs
+├── panel.html / .css / .js    # native player shell: lobby, wizard, play, rail
+├── dialog_runtime.py          # GM system prompt, tool loop, turn finish + audit
+├── narrative_rules.py         # Session Zero, start card, scene card, turn audit
+├── player_view.py             # save -> player-facing payload
+├── model_config.py            # OpenAI-compatible base_url / key / model
+├── tool_registry.py           # 26 player tools
+├── game_service.py            # thin intent layer over the engine
+├── host_adapter.py            # optional external-host bridge (not the default path)
+├── state_schema.py            # state model / atomic write / transaction lock
+├── templates.py               # 8 rule skeletons
+├── rules/                     # deterministic settlement functions
+├── settings/                  # ready-to-play setting bundles
+├── saves/                     # local save library
+└── scripts/                   # verification + build tooling
 ```
 
 ---
 
 ## FAQ
 
-**Does it need network access?** No. Zero runtime dependencies; the chart library ships locally.
-Only MCP mode installs the `mcp` SDK.
+**Does it need network access?** Only if your model endpoint is remote. The engine and saves are
+local; any OpenAI-compatible gateway, local model or aggregator works.
 
-**Does it need an API key?** No. It never calls a model. Your agent supplies the model.
+**Does it need an API key?** A real model endpoint usually does. The key is stored in
+`~/.world-walker/model.json` with `0600` permissions and is never returned in clear text.
 
 **Can I use it commercially?** MIT. Every name, faction and place in the demo bundles is original.
 
@@ -340,8 +250,8 @@ Only MCP mode installs the `mcp` SDK.
 `verify_tests.py` statically rejects tautological assertions; `verify_mutation.py` injects 50 real
 defects and requires every one to be killed.
 
-**Why can't the panel submit actions directly?** It can queue them, not settle them. That keeps a
-single writer, which is what makes determinism and snapshot rollback trustworthy.
+**Who writes the save?** The engine. The player page talks to the local API; the model calls tools;
+every mutation goes through one transactional writer, so determinism and rollback stay intact.
 
 **Is power-loss safety guaranteed?** No, and we do not claim it. Saves use atomic replacement with
 `.bak` fallback and a re-entrant Windows/POSIX lock, and crash tests cover several interruption

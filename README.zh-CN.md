@@ -1,52 +1,34 @@
-# World Games
+# World Walker
 
-**v1.10.1** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [拿它做什么](docs/USE_CASES.md) · [玩法层](docs/GAMEPLAY.md) · [对标调研](docs/BENCHMARK.md) · [先贤调研](docs/PRIOR_ART.md) · [更新日志](CHANGELOG.md) · [展示站](https://badhope.github.io/world-walker/)
+**v1.12.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [更新日志](CHANGELOG.md)
 
-> **AI 负责叙述，引擎负责结算。**
+> **你说话，AI 演，引擎判，存档记。**
 
-World Games 是 AI 互动游戏的规则层。你的 Agent 负责写文字，确定性引擎负责结算每一次命中、
-价格、关系与势力变化，并写进同一份可审计的状态文件。
+World Walker 是**单人 AI 跑团 / 互动叙事引擎**，不是游戏助手，也不是后台管理台。
+打开一个页面，先告诉它你想玩什么类型、怎么玩、以谁的身份进去，然后就像和真人 GM
+聊天一样直接玩。没有外部宿主要接，没有第二个 App 要开。
 
-`206 个规则函数` · `67 个 MCP 工具` · `4 套可玩世界` · `8 套游戏模板` · `0 个运行时依赖`
+模型层是厂商中立的：任何支持 OpenAI-compatible `/chat/completions` 的端点都能用。
+你只填 `base_url`、`api_key`、`model`；自带网关、本地模型、聚合平台都行，没有厂商绑定。
 
-<p align="center">
-  <img src="docs/screenshots/stage-xuanshu.png" alt="实况主舞台 · 真实存档第 500 回合" width="100%">
-</p>
+确定性的部分是叙述者不该乱编的东西：血量、价格、背包、关系、钟、线索、存档与回放。
+AI 写场面，引擎拥有事实。
 
-<p align="center">
-  <a href="docs/screenshots/walkthrough.mp4">▶ 16 秒真实对局录屏</a>
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/stage-xuanshu-dark.png" alt="同一存档的暗色主题" width="100%">
-</p>
-
-<p align="center">
-  <sub><b>默认亮色</b>——主舞台是要长时间读的。暗色在顶栏一键切换，选择会被记住。
-  两套配色都由 <code>verify_theme.py</code> 在真实浏览器里实测 WCAG AA 对比度，不靠肉眼。</sub>
-</p>
-
----
+`206 个规则函数` · `67 个 MCP 工具` · `26 个玩家工具` · `4 套设定包` · `8 套模板` ·
+`20 个可执行自检` · `0 个运行时依赖`
 
 ## 它解决什么
 
-长局 AI 游戏通常死于三个问题，World Games 用代码解决，而不是靠提示词措辞。
+多数“AI 跑团”死在三个地方。World Walker 把这三件事写进契约，而不是写进更长的提示词。
 
-| 问题 | 常见情况 | World Games 的做法 |
+| 失败 | 常见情况 | World Walker 的做法 |
 |---|---|---|
-| 数值漂移 | 模型自己编伤害、价格、血量 | **规则函数**结算；相同状态 + 种子 + 行动序列逐字节可复现 |
-| AI 遗忘 | 上下文窗口溢出，旧事实消失 | **上下文台账**把线索、承诺、事实落盘；`context_pack` 按预算取回 |
-| 存档失控 | 单个 JSON 手工管理 | **存档库**：多局、快照、回收站，统一由 `session_*` 管理 |
+| **AI 替你玩** | 它写你的内心、决定、下一句话 | GM 只能写世界和 NPC，不能替玩家做决定；玩家代理权是硬规则 |
+| **NPC 全知** | 每个 NPC 都像读过整本设定集 | NPC 只能用 `memory(action=known, character=...)` 返回的事实；不知道就回避、撒谎或反问 |
+| **回合没有代价** | 文笔很好，但血量、线索、钟、关系一项都没变 | 每回合先填场面卡，回合后做审计；没有可见变化的回合会被标出来 |
 
-还有两件多数框架不做的事：
-
-- **世界自己会动。** 每次 `tick` 推进势力（logistic 增长 + Lotka–Volterra 压制）、
-  谣言（SIR）、风气（Deffuant）、游荡 NPC，以及由真实存量驱动的 Panarchy `r → K → Ω → α` 循环。
-  不调用 `tick`，世界就静止——这是设计，不是缺陷。
-- **面板严格只读，且双语。** 本地网页主舞台渲染真实状态，默认英文，一键切中文，从不写入。玩家可以把行动排进侧写文件，
-  宿主用 `pending_actions` 取走后照常结算。只有一个写入源，才谈得上确定性。
-
----
+战役是**玩出来的**，像真人 GM 带桌，不是小说式预写。开局先问类型、玩法、角色、基调、
+难度和边界；之后每回合是 `场面卡 → 玩家行动 → 世界反应 → 状态变化 → 下一个钩子`。
 
 ## 安装
 
@@ -68,138 +50,66 @@ pip install -e ".[mcp]"      # 核心仅标准库；mcp 是 MCP 模式的可选�
 wg mcp --http --port 8620   # 客户端连 http://127.0.0.1:8620/mcp 即可
 ```
 
-## 开一局
-
-```
-load_setting(path="settings/玄枢界.setting.json")
-```
-
-这就是一局完整游戏：世界、主角、NPC、市场、关系、等级阶梯、世界书、事业线、体系全在里面。
-
-然后开始玩。需要数字时由宿主调用工具：
-
-```
-你：我走进万石商行，把《引元诀》残页拍在柜台上。
-
-Agent → trade(location="临川城", item="ningyuan_dan", direction="buy", quantity=1)
-      → social(actor="player", target="shi_sanniang", event="cooperate")
-      → narration_context(scene_text="万石商行")
-      → publish_prose(text="……")
-      → tick()
-```
-
-没有 MCP 客户端？命令行用的是同一套引擎：
+## 直接开玩
 
 ```bash
-python init_game.py
-python engine.py world_state --state game_state.json
-python engine.py combat --state game_state.json --attacker player --defender goblin --action_type heavy
-python panel.py --state game_state.json     # 打开只读主舞台
+pip install -e ".[mcp]"
+wg init my-game.json
+wg play --state my-game.json
 ```
 
-## 玩一局不是修仙的游戏
+`wg play` 启动本地页面。打开 `http://127.0.0.1:8899/` 就是大厅：继续旧局，或开一个新世界。
+不需要外部宿主、插件或第二个 App。
 
-不需要设定包，自己定义档案即可：
+玩家界面只有一屏：左边叙事流，右边窄栏（角色/任务/人情/世界），底部一个输入框。
+旧管理台、翻译层、主题脚本和离线图表库都已移除；玩家壳是原生 HTML/CSS/JS，没有构建链。
 
-```
-session_new(name="我的团")
-game_profile({title:"调查", kind:"investigation",
-              resources:[{key:"sanity", label:"理智", value:8, min:0, max:10}],
-              meters:[{key:"clue", label:"线索", value:0, min:0, max:12}]})
-roll(attribute="per", difficulty=12, dice="2d6", reason="翻查档案")
-context_remember("门房说昨夜灯塔亮过", kind="clue", keys=["灯塔"])
-context_pack(scene_text="灯塔")
-```
+## 模型
 
-或者从模板起步：
+World Walker 不绑定厂商。模型层只假设一个 OpenAI-compatible `/chat/completions` 端点：
 
-```
-template_start(template="mystery", name="我的调查局",
-               overrides={"world": {"name": "雨港"}})
+```json
+{ "base_url": "https://你的网关/v1", "api_key": "sk-...", "model": "任意模型" }
 ```
 
----
+在页面里点“模型 · 去设置”，或用 `WW_MODEL_BASE_URL / WW_MODEL_API_KEY / WW_MODEL_NAME`。
+配置文件在 `~/.world-walker/model.json`，权限 `0600`。没有厂商列表、没有厂商 SDK、没有隐藏回退。
 
-## 界面
+## 开局先问你想玩什么（Session Zero）
 
-下面每一张图都是真实存档的真实渲染，由 `scripts/shots.py` 在 Edge 中逐项断言后拍摄。
-来源存档见 [`docs/demo/`](docs/demo/)。
+新游戏不是先选模板，而是先问四步：
 
-| 玄枢界 · 东方玄幻 · 墨金 | 折剑行 · 武侠 · 水墨 |
-|---|---|
-| ![玄枢界](docs/screenshots/stage-xuanshu.png) | ![折剑行](docs/screenshots/stage-ink.png) |
-| **霓虹深渊 · 赛博朋克 · 霓虹** | **雾港 · 调查悬疑 · 石墨** |
-| ![霓虹深渊](docs/screenshots/stage-neon.png) | ![雾港](docs/screenshots/stage-neutral.png) |
+1. **类型** — 悬疑、奇幻、武侠仙侠、科幻、都市、历史、恋爱、恐怖、生存、日常。
+2. **玩法** — 探索解谜、生存压力、权谋经营、关系情感、战斗成长、调查恐怖、轻松日常。
+3. **角色** — 随机、自己写一句、用模板预设。
+4. **体验** — 基调、难度、内容边界、可选世界覆盖。
 
-皮肤只是表层。真正随世界改变的是**词、阶、钱、地点描写**：设定包里写
-`terms: { level: "身手", gold: "银两" }`，面板上就不会再出现"境界 / 灵石"。
-`scripts/verify_settings.py` 会逐个世界断言这件事。
-
-| | |
-|---|---|
-| ![世界脉搏](docs/screenshots/drawer-world.png) | ![角色卡](docs/screenshots/character-card.png) |
-| **世界脉搏**：Panarchy 相位、势力存量、连接度、烈度、谣言热度，由 `tick` 每回合推动 | **角色卡**：点开在场人物，读卡面文字 |
-| ![命令面板](docs/screenshots/command-palette.png) | ![行动队列](docs/screenshots/action-queue.png) |
-| **命令面板**（`Ctrl/⌘+K`），全键盘可达 | **行动队列**：浏览器里排队，宿主用 `pending_actions` 取走结算 |
-
-| 图鉴 | 市场 | 大事记 |
-|---|---|---|
-| ![图鉴](docs/screenshots/drawer-codex.png) | ![市场](docs/screenshots/drawer-market.png) | ![大事记](docs/screenshots/drawer-milestones.png) |
-
-| 768px | 320px | 帮助 |
-|---|---|---|
-| ![平板](docs/screenshots/stage-768.png) | ![窄屏](docs/screenshots/stage-320.png) | ![帮助](docs/screenshots/help.png) |
-
-| 分享模式（隐藏路径与操作区） | 首次访问引导 |
-|---|---|
-| ![分享模式](docs/screenshots/share-mode.png) | ![首访引导](docs/screenshots/first-visit.png) |
-
----
-
-## 67 个工具
-
-| 分组 | 工具 |
-|---|---|
-| 开局与存档（9） | `session_new` `session_list` `session_switch` `session_snapshot` `session_manage` `session_import` `load_setting` `world_init` `world_open` |
-| 每回合核心（5） | `pending_actions` `context_pack` `narration_context` `publish_prose` `tick` |
-| 判定与数值 | `roll` `combat` `combat_preview` `trade` `social` `karma` `advance` `use_item` `game_profile` `game_adjust` `game_tag` `game_sheet` |
-| 世界与位置（9） | `travel` `world_state` `narrative` `status` `playbook_info` `quest_status` `quest_advance` `lore_lookup` `failure_tick` |
-| 记忆与检索 | `context_remember` `context_known` `context_tell` `context_search` `context_forget` `recall` `write_summary` `recap` `read_state` |
-| 体系与模板（9） | `templates_list` `template_info` `template_apply` `template_start` `system_define` `system_remove` `system_run` `system_status` `system_schema` |
-| 生态与工具（13） | `character_card_read` `add_character` `import_lorebook` `spawn_npc` `model` `model_list` `merit` `narrative_weight` `snapshot` `restore` `configure` `open_panel` `close_panel` `world_schema` |
-
-完整参数与调用约定见 [GAME_MASTER_PROTOCOL.md](GAME_MASTER_PROTOCOL.md)。
-
----
+引擎按类型自动配规则骨架（武侠仙侠→`tabletop`，悬疑→`mystery`），然后写一张**开局卡**：
+你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。模板只给骨架和种子，不预写剧情。
 
 ## 一回合，完整流程
 
-真实返回值，来自雾港调查包。
-
-**玩家**：我去码头问门房，灯塔最近有没有亮过。
+**玩家：** 我推门进去，先看柜台后面的人。
 
 ```
-1. context_pack(scene_text="码头 灯塔 门房")
-   → 玩法（choice · 线索 0/24）、未结案线索、最近事件
-
-2. roll(attribute="per", difficulty=9, dice="2d6", reason="向门房打听灯塔")
-   → {"rolls":[1,1], "total":2, "difficulty":9, "margin":-7, "level":"failure"}
-
-3. context_remember("门房说昨夜灯塔亮了三分钟，随后灭了",
-                     kind="clue", keys=["灯塔","门房"], source="门房")
-   → {"fact":{"id":"f0001", ...}, "created":true}
-
-4. game_adjust("clue", delta=1)   → {"after":1, "at_max":false}
-   game_adjust("sanity", delta=-1) → {"after":7, "at_min":false}
-
-5. publish_prose("雨没停。门房把烟摁在窗台上，说昨夜灯塔亮了三分钟。")
-6. tick()  → 世界演化一回合
+场面卡      → 你在灰岩堡的酒馆；罗兰在柜台后；他不想让你下墓穴；悬赏还贴着
+玩家行动    → 推门、观察
+世界反应    → 罗兰先开口，试图把话题岔开
+状态变化    → 关系/线索/钟至少变一项
+下一个钩子  → 他手边有一把不属于他的钥匙
 ```
 
-全部落在同一份状态文件里：判定在 `checks`、事实在 `context.facts`、资源在 `game`、
-正文在 `prose`、世界在 `panarchy/factions/...`。面板只读这些字段，别的不碰。
+模型写正文，引擎结算数值并落盘。如果这一回合没有产生任何后果，审计会标出来，下一回合可以修正。
 
----
+## 工具
+
+模型看到的是 26 个玩家工具，不是旧的 67 个 MCP 工具面：
+
+`inspect` `progress` `story` `memory` `context` `characters` `sheet` `systems` `worlds` `calc`
+`panel` `new_game` `open_game` `saves` `snapshot` `combat` `combat_preview` `trade` `social`
+`karma` `tick` `advance` `travel` `use_item` `roll` `configure`
+
+MCP 仍可供高级宿主使用，但它不再是前门。玩家页面才是。
 
 ## 体系与模板
 
@@ -320,11 +230,10 @@ template_start(template="mystery", name="我的调查局",
 
 ## 项目范围
 
-**在范围内：** 规则结算、设定包、存档、上下文台账、宿主叙事指引、
-SillyTavern 角色卡（PNG/JSON，V1–V3）与世界书。
+**在范围内：** 单人 AI GM、Session Zero、回合契约与审计、确定性规则结算、
+设定包、存档、上下文台账、NPC 知情边界、回放。
 
-**明确不做：** 图像生成、多人联机、云端账号体系、插件市场。
-这些是取舍不是遗漏，理由写在 [ROADMAP.md](ROADMAP.md)。
+**明确不做：** 多人联机、云端账号、插件市场、以售卖内容为目的的预写战役、图像生成。
 
 ---
 
@@ -375,27 +284,21 @@ bash scripts/pre_push_gate.sh     # 28 个步骤；缺必要依赖时门禁失�
 
 ```
 world-walker/                  # 仓库根即 game_engine 包
-├── engine.py                  # CLI，14 条命令
-├── mcp_server.py              # MCP 服务器，67 个工具
-├── state_schema.py            # 状态模型 / 原子写 / 事务锁 / 世代归档 / 种子
-├── panel.py                   # 只读视图模型 + HTTP/SSE + 行动收件箱
-├── panel.html / .css / .js    # 主舞台：原生三件套，无构建链
-├── viz_series.py              # 长局态势侧写（<state>.viz.jsonl）
-├── sessions.py                # 存档库：多局 / 快照 / 回收站
-├── rules/                     # 206 个公开规则函数
-│   ├── checks.py              # d20/2d6/d100/4dF/骰池、对抗、成功等级
-│   ├── gamesystem.py          # 游戏档案：自定义属性、资源、进度轨、标签、表格
-│   ├── context.py             # 上下文台账：线索、承诺、事实 + 预算打包
-│   ├── combat.py economy.py social.py karma.py
-│   ├── cognition.py narrative_engine.py progression.py
-│   ├── world_dynamics.py world_evolution.py
-│   ├── models.py              # 16 个命名闭式模型
-│   └── social_extended.py cultural_evolution.py systems_feedback.py
-├── settings/                  # 4 套可直接开玩的设定包
-├── scripts/                   # 22 个自检 + 变异测试 + 截图/视频/演示存档流水线
-├── docs/demo/                 # 真实演示存档（截图背后的数据）
-├── docs/screenshots/          # 逐项断言后的真实渲染
-└── assets/echarts.min.js      # 离线图表库（Apache-2.0，随包分发）
+├── panel.py                   # 玩家 HTTP/SSE 服务 + 开局/新局/对话 API
+├── panel.html / .css / .js    # 原生玩家壳：大厅、向导、对局、右栏
+├── dialog_runtime.py          # GM 系统提示、工具循环、回合收尾与审计
+├── narrative_rules.py         # Session Zero、开局卡、场面卡、回合审计
+├── player_view.py             # 存档 -> 玩家视图
+├── model_config.py            # OpenAI-compatible base_url / key / model
+├── tool_registry.py           # 26 个玩家工具
+├── game_service.py            # 引擎上的轻量意图层
+├── host_adapter.py            # 可选外部宿主桥（不是默认路径）
+├── state_schema.py            # 状态模型 / 原子写 / 事务锁
+├── templates.py               # 8 套规则骨架
+├── rules/                     # 确定性结算函数
+├── settings/                  # 可直接开玩的设定包
+├── saves/                     # 本地存档库
+└── scripts/                   # 自检 + 构建工具
 ```
 
 ---
@@ -403,10 +306,10 @@ world-walker/                  # 仓库根即 game_engine 包
 ## 常见问题
 
 **需要联网吗？**
-不需要。核心与面板零第三方依赖，图表库本地随包分发。只有 MCP 模式要装 `mcp` SDK。
+只有模型端点在远端时才需要。引擎与存档都在本地；任何 OpenAI-compatible 网关、本地模型或聚合平台都行。
 
 **需要 OpenAI / Claude 的 API Key 吗？**
-不需要。它从不调用模型；模型由你的 Agent 提供，引擎只决定"世界怎么变"。
+真实模型端点通常需要。Key 存在 `~/.world-walker/model.json`，权限 `0600`，接口永远只返回掩码。
 
 **能用于商业项目吗？**
 MIT 许可。演示包里的人物、势力、地名全部原创，可自由替换。
@@ -415,9 +318,9 @@ MIT 许可。演示包里的人物、势力、地名全部原创，可自由替�
 断言必须经得起"改坏代码看测试红不红"的检验。`verify_tests.py` 静态拒绝恒真断言，
 `verify_mutation.py` 注入 50 个真实缺陷并要求全部被杀。两者都在门禁里。
 
-**为什么面板不能直接提交行动？**
-可以排队，但不直接结算。面板写 `<state>.inbox.jsonl`，Agent 用 `pending_actions` 取走，
-再走引擎结算。这样才只有一个写入源，确定性与快照回退才可信。
+**谁写存档？**
+引擎。玩家页面调用本地 API，模型调用工具；所有变更都穿过同一个事务写入源，
+确定性与回退才可信。
 
 **保证断电安全吗？**
 不保证，我们也不这样宣称。存档使用原子替换 + `.bak` 降级 + Windows/POSIX 可重入锁，

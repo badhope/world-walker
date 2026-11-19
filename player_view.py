@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 
-from game_engine import model_config, panel
+from game_engine import model_config, narrative_rules, panel
 from game_engine.state_schema import load_state
 
 
@@ -131,6 +131,7 @@ def build_player_view(state_path: str) -> dict:
             "phase": world_state.get("phase"),
         },
         "scene": vm.get("scene") or {},
+        "narrative": narrative_rules.player_narrative(state),
         "player": {
             "name": player.get("name") or "玩家",
             "level": player.get("level") or "",

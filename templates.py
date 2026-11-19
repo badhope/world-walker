@@ -882,6 +882,14 @@ def to_bundle(tid: str, overrides: dict | None = None, name: str = "",
               player_name: str = "") -> dict:
     """模板 → 设定包（settings/*.setting.json 同构，可直接 load_setting / build_state）。"""
     tpl = apply_overrides(get(tid), overrides)
+    world_flags = list(tpl["world_flags"])
+    # 模板用 `visibility: {"flag": "__start__"}` 表示“开局即浮现”。
+    # 这是模板语法，不是玩家世界里真实存在的一个 flag；转 bundle 时补上，
+    # 否则新开局的所有事业线都会停在 dormant，玩家看不到主线。
+    if any((q.get("visibility") or {}).get("flag") == "__start__"
+           for q in (tpl.get("questlines") or [])):
+        if "__start__" not in world_flags:
+            world_flags.insert(0, "__start__")
     bundle = {
         "name": name or tpl["name"],
         "note": tpl["notes"],
@@ -891,7 +899,7 @@ def to_bundle(tid: str, overrides: dict | None = None, name: str = "",
         "entities": tpl["entities"],
         "market": tpl["market"],
         "relations": tpl["relations"],
-        "world_flags": tpl["world_flags"],
+        "world_flags": world_flags,
         "level_tiers": tpl["level_tiers"],
         "terms": tpl["terms"],
         "places": {k: (v if isinstance(v, dict) else {"desc": str(v)})

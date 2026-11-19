@@ -18,6 +18,7 @@
     sse: null,
     toastTimer: null,
     feedFirst: true,
+    session: null,
   };
 
   const esc = (value) => String(value == null ? "" : value)
@@ -87,7 +88,6 @@
   function renderLobby() {
     const data = app.bootstrap || {};
     renderContinue(data.current);
-    renderWorlds(data.worlds || []);
     renderSaves(data.saves || []);
     const model = data.model || {};
     if (!model.configured) {
@@ -100,7 +100,7 @@
   function renderContinue(current) {
     const body = $("continue-body");
     if (!current) {
-      body.innerHTML = `<p class="muted">还没有正在进行的局。选一个世界，说第一句话。</p>`;
+      body.innerHTML = `<p class="muted">还没有正在进行的局。开一局，先说你想玩什么。</p>`;
       return;
     }
     const broken = current.broken ? "（存档需要修复）" : "";
@@ -115,28 +115,226 @@
     $("continue-open-btn").addEventListener("click", () => $("saves-list").scrollIntoView({ behavior: "smooth" }));
   }
 
-  function renderWorlds(worlds) {
-    const list = $("world-list");
-    if (!worlds.length) {
-      list.innerHTML = `<p class="empty">没有找到设定包或模板。</p>`;
-      return;
+  const FALLBACK_SESSION_OPTIONS = {
+    genres: ["悬疑", "奇幻", "武侠仙侠", "科幻", "都市", "历史", "恋爱", "恐怖", "生存", "日常"],
+    plays: ["探索解谜", "生存压力", "权谋经营", "关系情感", "战斗成长", "调查恐怖", "轻松日常"],
+    tones: ["明亮", "阴郁", "热血", "克制", "荒诞"],
+    difficulties: ["轻松", "标准", "硬核", "铁人"],
+    roles: [
+      { id: "random", label: "随机生成", desc: "让引擎给你一个能直接玩的人" },
+      { id: "custom", label: "我自己写一句", desc: "名字和身份由你定" },
+      { id: "preset", label: "用预设角色", desc: "用模板里的主角" },
+    ],
+    boundaries: ["不写玩家内心决定", "不出现现代科技", "不写血腥细节", "不写恋爱线", "不无故杀死 NPC"],
+  };
+
+  function sessionOptions() {
+    const data = (app.bootstrap && app.bootstrap.session_zero) || {};
+    if (Array.isArray(data.genres) && data.genres.length) return data;
+    return FALLBACK_SESSION_OPTIONS;
+  }
+
+  function newSession() {
+    app.session = {
+      step: 0, genre: "", play: "", role: "random", name: "",
+      tone: [], difficulty: "标准", boundaries: [], world: null, showWorlds: false,
+    };
+    app.sessionPreviewToken = 0;
+  }
+
+  function openSession() {
+    if (!app.bootstrap) { toast("大厅还没加载好"); return; }
+    newSession();
+    renderSession();
+    openOverlay("session-overlay");
+  }
+
+  function sessionChip(label, value, selected, group, extra = "") {
+    return `<button class="choice-chip ${selected ? "selected" : ""}" type="button"
+      data-session-group="${esc(group)}" data-session-value="${esc(value)}">
+      ${esc(label)}${extra ? `<small>${esc(extra)}</small>` : ""}
+    </button>`;
+  }
+
+  function renderSession() {
+    const s = app.session;
+    if (!s) { newSession(); return; }
+    const opts = sessionOptions();
+    const stepNames = ["类型", "玩法", "角色", "开局卡"];
+    $("session-steps").innerHTML = stepNames.map((name, index) =>
+      `<span class="${index <= s.step ? "on" : ""}" title="${esc(name)}"></span>`).join("");
+    $("session-step-label").textContent = `第 ${s.step + 1} / 4 步 · ${stepNames[s.step]}`;
+    $("session-back").disabled = s.step === 0;
+    $("session-next").textContent = s.step === 3 ? "开始这一局" : "下一步";
+
+    const body = $("session-body");
+    if (s.step === 0) {
+      body.innerHTML = `
+        <h3 class="session-question">你想玩什么类型？</h3>
+        <p class="session-sub">这一步决定世界的气味。选一个，或者直接告诉我你脑子里的那个词。</p>
+        <div class="choice-grid">${opts.genres.map((x) => sessionChip(x, x, s.genre === x, "genre")).join("")}</div>`;
+    } else if (s.step === 1) {
+      body.innerHTML = `
+        <h3 class="session-question">你想怎么玩？</h3>
+        <p class="session-sub">同一个世界，可以调查、可以生存、也可以只谈关系。玩法决定每一回合在推进什么。</p>
+        <div class="choice-grid">${opts.plays.map((x) => sessionChip(x, x, s.play === x, "play")).join("")}</div>`;
+    } else if (s.step === 2) {
+      body.innerHTML = `
+        <h3 class="session-question">你以谁的身份进去？</h3>
+        <p class="session-sub">随机是让引擎给你一个人；自己写一句，是你已经知道自己想当谁。</p>
+        <div class="choice-grid">${(opts.roles || []).map((r) =>
+          sessionChip(r.label || r.id, r.id, s.role === r.id, "role", r.desc || "")).join("")}</div>
+        <div class="session-field">
+          <label for="session-name">名字 / 身份一句话</label>
+          <input id="session-name" type="text" maxlength="24" autocomplete="off"
+                 value="${esc(s.name)}" placeholder="留空就让引擎决定" />
+        </div>`;
+    } else {
+      const worlds = (app.bootstrap && app.bootstrap.worlds) || [];
+      body.innerHTML = `
+        <h3 class="session-question">最后，定一下体验</h3>
+        <p class="session-sub">难度不是“敌人更强”，是“失败会不会留下后果”。世界起点可以自动配，也可以指定。</p>
+        <div class="session-field"><label>基调（可多选）</label>
+          <div class="choice-grid">${opts.tones.map((x) => sessionChip(x, x, s.tone.includes(x), "tone")).join("")}</div>
+        </div>
+        <div class="session-field"><label>难度</label>
+          <div class="choice-grid">${opts.difficulties.map((x) => sessionChip(x, x, s.difficulty === x, "difficulty")).join("")}</div>
+        </div>
+        <div class="session-field"><label>内容边界（可多选）</label>
+          <div class="choice-grid">${opts.boundaries.map((x) => sessionChip(x, x, s.boundaries.includes(x), "boundaries")).join("")}</div>
+        </div>
+        <div class="session-field"><label>开局卡</label>
+          <div id="session-preview" class="session-preview"><p class="muted">选完上面的项，这里会出现开局卡。</p></div>
+        </div>
+        <div class="session-field"><label>世界起点（可选）</label>
+          <button class="world-option ${s.world ? "" : "selected"}" type="button" data-world-auto="1">
+            <span><b>自动配一个</b><small>按类型和玩法选最合适的规则骨架</small></span>
+            <span>→</span>
+          </button>
+          <button class="ghost-btn session-world-toggle" id="session-world-toggle" type="button">
+            ${s.showWorlds || s.world ? "收起世界列表" : "我想指定一个世界"}
+          </button>
+          <div class="world-picker" id="session-world-list" ${s.showWorlds || s.world ? "" : "hidden"}>
+            ${worlds.map((w) => `<button class="world-option ${s.world && s.world.id === w.id ? "selected" : ""}" type="button"
+              data-world-kind="${esc(w.kind)}" data-world-id="${esc(w.id)}" data-world-name="${esc(w.name)}">
+              <span><b>${esc(w.name)}</b><small>${esc(w.notes || w.genre || "")}</small></span>
+              <span class="muted">${w.kind === "template" ? "模板" : "设定包"}</span>
+            </button>`).join("")}
+          </div>
+        </div>`;
+      refreshSessionPreview();
     }
-    const first = app.selectedWorld || worlds[0];
-    app.selectedWorld = first;
-    list.innerHTML = worlds.map((world) => `
-      <button class="world-item ${world.kind === first.kind && world.id === first.id ? "active" : ""}"
-              type="button" role="option" data-kind="${esc(world.kind)}" data-id="${esc(world.id)}">
-        <span class="w-main"><b>${esc(world.name)}</b><small>${esc(world.notes || world.genre || "")}</small></span>
-        <span class="w-kind">${world.kind === "template" ? "模板" : "设定包"}</span>
-      </button>`).join("");
-    list.querySelectorAll(".world-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        app.selectedWorld = { kind: item.dataset.kind, id: item.dataset.id,
-          name: item.querySelector("b").textContent };
-        list.querySelectorAll(".world-item").forEach((x) => x.classList.remove("active"));
-        item.classList.add("active");
+    bindSessionBody();
+  }
+
+  function bindSessionBody() {
+    const s = app.session;
+    document.querySelectorAll("#session-body [data-session-group]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const group = chip.dataset.sessionGroup;
+        const value = chip.dataset.sessionValue;
+        if (group === "tone" || group === "boundaries") {
+          const list = Array.isArray(s[group]) ? s[group] : [];
+          s[group] = list.includes(value) ? list.filter((x) => x !== value) : list.concat(value);
+        } else {
+          s[group] = value;
+        }
+        renderSession();
       });
     });
+    document.querySelectorAll("#session-body .world-option").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (button.dataset.worldAuto) {
+          s.world = null;
+        } else {
+          s.world = { kind: button.dataset.worldKind, id: button.dataset.worldId,
+            name: button.dataset.worldName };
+          s.showWorlds = false;
+        }
+        renderSession();
+      });
+    });
+    const toggle = $("session-world-toggle");
+    if (toggle) {
+      toggle.addEventListener("click", () => {
+        s.showWorlds = !s.showWorlds;
+        renderSession();
+      });
+    }
+    const input = $("session-name");
+    if (input) {
+      input.addEventListener("input", (event) => { s.name = event.target.value; });
+    }
+  }
+
+  function sessionNarrative() {
+    const s = app.session || {};
+    return {
+      genre: s.genre, play: s.play, role: s.role, player_name: s.name,
+      tone: s.tone, difficulty: s.difficulty, boundaries: s.boundaries,
+      world_kind: s.world ? s.world.kind : "", world_id: s.world ? s.world.id : "",
+      world_name: s.world ? s.world.name : "",
+    };
+  }
+
+  async function refreshSessionPreview() {
+    const s = app.session;
+    if (!s || s.step !== 3) return;
+    if (!s.genre || !s.play) { renderSessionPreview(null); return; }
+    const token = (app.sessionPreviewToken || 0) + 1;
+    app.sessionPreviewToken = token;
+    try {
+      const card = await api("/api/v1/session-zero/preview", {
+        method: "POST",
+        body: { narrative: sessionNarrative(), world_name: s.world ? s.world.name : "" },
+      });
+      if (app.session !== s || app.sessionPreviewToken !== token || s.step !== 3) return;
+      s.preview = card;
+      renderSessionPreview(card);
+    } catch (err) {
+      if (app.session === s && s.step === 3) renderSessionPreview(null, err.message);
+    }
+  }
+
+  function renderSessionPreview(card, error = "") {
+    const el = $("session-preview");
+    if (!el) return;
+    if (!card) {
+      el.innerHTML = `<p class="muted">${esc(error || "选完类型和玩法，这里会出现开局卡。")}</p>`;
+      return;
+    }
+    el.innerHTML = `
+      <h3>${esc(card.headline)}</h3>
+      <p>${esc(card.world_line)}</p>
+      <p>${esc(card.player_line)}</p>
+      <p>${esc(card.pressure_line)}</p>
+      <p class="rules">${esc(card.rules_line)}</p>
+      <p class="rules">核心问题：${esc(card.central_question || "由你的选择决定")}</p>
+      <ul class="hints">${(card.hints || []).map((hint) => `<li>${esc(hint)}</li>`).join("")}</ul>`;
+    el.dataset.ready = "1";
+  }
+
+  function sessionNext() {
+    const s = app.session;
+    if (!s) return;
+    if (s.step === 0 && !s.genre) { toast("先选一个类型"); return; }
+    if (s.step === 1 && !s.play) { toast("先选一种玩法"); return; }
+    if (s.step === 2 && s.role === "custom" && !String(s.name || "").trim()) {
+      toast("自己写一句，至少给个名字"); return;
+    }
+    if (s.step < 3) {
+      s.step += 1;
+      renderSession();
+      return;
+    }
+    createGame();
+  }
+
+  function sessionBack() {
+    const s = app.session;
+    if (!s || s.step === 0) return;
+    s.step -= 1;
+    renderSession();
   }
 
   function renderSaves(saves) {
@@ -179,19 +377,27 @@
   }
 
   async function createGame() {
-    if (!app.selectedWorld) { toast("先选一个世界"); return; }
-    const name = $("new-name").value.trim();
-    const button = $("new-btn");
+    const s = app.session;
+    if (!s) return;
+    const button = $("session-next");
+    const narrative = sessionNarrative();
+    const name = String(s.name || "").trim();
     button.disabled = true;
     button.textContent = "正在开局…";
     try {
       const payload = await api("/api/v1/new", {
         method: "POST",
-        body: { kind: app.selectedWorld.kind, id: app.selectedWorld.id, name },
+        body: {
+          kind: s.world ? s.world.kind : "",
+          id: s.world ? s.world.id : "",
+          name,
+          narrative,
+        },
       });
       app.view = payload.state;
       app.feedFirst = true;
-      $("new-name").value = "";
+      app.session = null;
+      closeOverlay("session-overlay");
       showScreen("play");
       renderPlay();
       connectSSE();
@@ -200,7 +406,7 @@
       toast(err.message);
     } finally {
       button.disabled = false;
-      button.textContent = "开始";
+      button.textContent = "开始这一局";
     }
   }
 
@@ -242,6 +448,25 @@
     app.feedFirst = false;
     if (!items.length) {
       const scene = (app.view && app.view.scene) || {};
+      const narrative = (app.view && app.view.narrative) || {};
+      const brief = narrative.brief || {};
+      if (brief.headline) {
+        const hints = (brief.hints || narrative.hints || []);
+        feed.innerHTML = `
+          <div class="session-zero-card">
+            <p class="eyebrow">开局卡</p>
+            <h2>${esc(brief.headline)}</h2>
+            <div class="brief">
+              ${brief.world_line ? `<p>${esc(brief.world_line)}</p>` : ""}
+              ${brief.player_line ? `<p>${esc(brief.player_line)}</p>` : ""}
+              ${brief.pressure_line ? `<p>${esc(brief.pressure_line)}</p>` : ""}
+              ${brief.rules_line ? `<p class="muted">${esc(brief.rules_line)}</p>` : ""}
+            </div>
+            ${hints.length ? `<ul class="hints">${hints.map((hint) => `<li>${esc(hint)}</li>`).join("")}</ul>` : ""}
+            <p class="cta">说第一句话，或者先问一句。你不需要选“正确”的开头。</p>
+          </div>`;
+        return;
+      }
       feed.innerHTML = `
         <div class="empty-feed">
           <h2>${esc(scene.title || "故事还没有开始")}</h2>
@@ -305,7 +530,7 @@
   function characterRail(character) {
     const p = character.player || {};
     const hp = Number(p.hp || 0), hpMax = Math.max(1, Number(p.hp_max || 1));
-    const mp = Number(p.mp || 0), mpMax = Math.max(1, Number(p.mp_max || 1));
+    const mp = Number(p.mp || 0), mpMax = Number(p.mp_max || 0);
     const items = p.inventory || [];
     const checks = character.checks || [];
     const attrs = Object.entries(p.attrs || {});
@@ -317,8 +542,8 @@
         <div class="stat"><span class="k">所在</span><span class="v" style="font-size:14px">${esc(p.location || "未知")}</span></div>
         <div class="stat"><span class="k">气血</span><span class="v">${num(hp)} / ${num(hpMax)}</span>
           <div class="bar hp"><i style="width:${clamp(hp / hpMax * 100, 0, 100)}%"></i></div></div>
-        <div class="stat"><span class="k">内力</span><span class="v">${num(mp)} / ${num(mpMax)}</span>
-          <div class="bar mp"><i style="width:${clamp(mp / mpMax * 100, 0, 100)}%"></i></div></div>
+        ${mpMax > 0 ? `<div class="stat"><span class="k">内力</span><span class="v">${num(mp)} / ${num(mpMax)}</span>
+          <div class="bar mp"><i style="width:${clamp(mp / mpMax * 100, 0, 100)}%"></i></div></div>` : ""}
       </div>
       <div class="row"><span>${esc(p.currency || "钱财")}</span><b>${num(p.gold)}</b></div>
       ${p.karma ? `<div class="row"><span>未清因果</span><b>${esc(typeof p.karma === "object" ? JSON.stringify(p.karma) : p.karma)}</b></div>` : ""}`));
@@ -689,7 +914,9 @@
       }
     });
 
-    $("new-btn").addEventListener("click", createGame);
+    $("new-btn").addEventListener("click", openSession);
+    $("session-next").addEventListener("click", sessionNext);
+    $("session-back").addEventListener("click", sessionBack);
     $("lobby-model-btn").addEventListener("click", openModel);
     $("model-badge").addEventListener("click", openModel);
 

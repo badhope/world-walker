@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.16.1** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
+**v1.16.2** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
 
 > **You talk. The AI performs. The engine decides. The save remembers.**
 
@@ -15,7 +15,7 @@ local model or aggregator. No provider names, no SDK lock-in.
 What stays deterministic is the part a narrator should never improvise: HP, prices, inventory,
 relationships, clocks, clues, saves and replay. The AI writes the scene; the engine owns the truth.
 
-`206 rule functions` · `72 MCP tools` · `28 player tools` · `5 setting bundles` · `9 templates` ·
+`206 rule functions` · `72 MCP tools` · `28 player tools` · `6 setting bundles` · `9 templates` ·
 `21 self-check suites` · `0 runtime dependencies`
 
 ---

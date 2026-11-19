@@ -1,0 +1,1550 @@
+{
+  "id": "jiuhuang",
+  "name": "九荒·凡骨",
+  "genre": "修仙 / 凡人流",
+  "loop": "freeform",
+  "world": {
+    "name": "九荒",
+    "era": "灵历 317 年 · 霜降",
+    "location_desc": "你在一座塌了半边的山神庙里醒来。供桌下压着你的地质包，门外是一条陌生的青石街，天边有一道像被撕开的裂口。手机没有信号，只剩百分之十二的电。"
+  },
+  "player": {
+    "name": "陈砚",
+    "faction": "无",
+    "level": "凡人",
+    "attrs": {
+      "str": 8,
+      "dex": 9,
+      "int": 12,
+      "con": 8,
+      "cha": 9
+    },
+    "hp": 18,
+    "hp_max": 18,
+    "mp": 0,
+    "mp_max": 0,
+    "gold": 3,
+    "location": "山神庙",
+    "skills": [
+      "野外记录",
+      "岩层辨认",
+      "基础统计"
+    ],
+    "items": {
+      "water": 1,
+      "dry_food": 2,
+      "hammer": 1,
+      "compass": 1,
+      "phone": 1,
+      "notebook": 1,
+      "bone_shard": 1
+    },
+    "desc": "二十一岁，普通二本地质工程大三学生。冲锋衣上还沾着实习路线的泥，背包里有地质锤、罗盘、记录本和一部没信号的手机。",
+    "personality": "谨慎、好奇、认死理",
+    "speech": "「先别急着说神仙，我先看看这石头是什么。」",
+    "activity": "刚在山神庙醒来，正在摸背包和手机",
+    "intent": "先弄清自己在哪，再找失联的许青",
+    "agenda": "活下去，弄清楚裂谷下面是什么",
+    "aliases": [
+      "陈砚",
+      "小陈"
+    ]
+  },
+  "entities": [
+    {
+      "id": "chen_bo",
+      "name": "陈伯",
+      "faction": "苍梧镇",
+      "level": "凡人",
+      "attrs": {
+        "str": 7,
+        "dex": 8,
+        "int": 12,
+        "con": 8,
+        "cha": 10
+      },
+      "hp": 18,
+      "hp_max": 18,
+      "gold": 20,
+      "location": "山神庙",
+      "desc": "背驼得厉害，手指常年沾着药汁和骨粉；他在山神庙里给过路人看伤，也替人辨骨。",
+      "personality": "谨慎、护短、嘴硬",
+      "speech": "「山里的东西，捡了别往家带。」",
+      "activity": "在供桌边磨一截骨针",
+      "intent": "看看你身上有没有沾到骨灰",
+      "agenda": "把裂谷里爬出来的东西挡在镇外",
+      "aliases": [
+        "陈伯",
+        "老陈"
+      ]
+    },
+    {
+      "id": "shen_yan",
+      "name": "沈砚",
+      "faction": "青岚宗（叛逃）",
+      "level": "炼气三层",
+      "attrs": {
+        "str": 9,
+        "dex": 13,
+        "int": 12,
+        "con": 10,
+        "cha": 8
+      },
+      "hp": 24,
+      "hp_max": 24,
+      "mp": 16,
+      "mp_max": 16,
+      "gold": 0,
+      "location": "山神庙",
+      "desc": "脸色苍白，右腕缠着浸黑的布，布下有一圈骨文；腰间挂着一枚裂开的青岚宗牌。",
+      "personality": "寡言、戒备、欠人情会还",
+      "speech": "「别碰我的手腕。」",
+      "activity": "靠在神像后面压着右腕，像在等疼过去",
+      "intent": "躲开青岚宗的搜捕，找到裂谷底下那东西",
+      "agenda": "把腕上的骨文挖掉，或者学会用它",
+      "aliases": [
+        "沈砚",
+        "沈师兄"
+      ]
+    },
+    {
+      "id": "liu_fufeng",
+      "name": "柳扶风",
+      "faction": "青岚宗",
+      "level": "筑基初期",
+      "attrs": {
+        "str": 11,
+        "dex": 12,
+        "int": 13,
+        "con": 11,
+        "cha": 12
+      },
+      "hp": 40,
+      "hp_max": 40,
+      "mp": 28,
+      "mp_max": 28,
+      "gold": 30,
+      "location": "青岚宗",
+      "desc": "青袍外罩一件旧骨甲，袖口有洗不掉的血渍；笑起来很温和，眼睛却一直在量人。",
+      "personality": "温和、算计、重规矩",
+      "speech": "「灵根不看命，看骨。」",
+      "activity": "在宗门石阶前摆测骨台",
+      "intent": "在苍梧镇收一批能下墓的拾骨人",
+      "agenda": "凑够三十个活人，打开裂谷第二层",
+      "aliases": [
+        "柳执事",
+        "柳扶风"
+      ]
+    },
+    {
+      "id": "zhou_zhanggui",
+      "name": "周掌柜",
+      "faction": "万骨堂",
+      "level": "凡人",
+      "attrs": {
+        "str": 8,
+        "dex": 9,
+        "int": 13,
+        "con": 9,
+        "cha": 12
+      },
+      "hp": 22,
+      "hp_max": 22,
+      "gold": 60,
+      "location": "黑水坊",
+      "desc": "圆脸，十根手指戴了七枚不同材质的骨戒；柜台上永远有一壶冷茶。",
+      "personality": "和气、贪、消息灵",
+      "speech": "「骨头不咬人，人才咬人。」",
+      "activity": "用铜镜照一块刚收来的骨片",
+      "intent": "收带血的古骨，转手卖给青岚宗",
+      "agenda": "攒够灵石，买一条自己的灵脉",
+      "aliases": [
+        "周掌柜",
+        "老周"
+      ]
+    },
+    {
+      "id": "xu_qing",
+      "name": "许青",
+      "faction": "无",
+      "level": "凡人",
+      "attrs": {
+        "str": 8,
+        "dex": 10,
+        "int": 11,
+        "con": 9,
+        "cha": 10
+      },
+      "hp": 16,
+      "hp_max": 16,
+      "gold": 0,
+      "location": "裂谷",
+      "status": "missing",
+      "desc": "和陈砚同组的地质工程同学，冲锋衣左袖有一道撕口；她最后一条消息停在「我好像看见下面有灯」。",
+      "personality": "胆子大、嘴快、讲义气",
+      "speech": "「陈砚，你别又拿锤子敲两下就说自己懂了。」",
+      "activity": "失联，最后一条消息停在裂谷下面",
+      "intent": "活下去",
+      "agenda": "从裂谷底下爬出来",
+      "aliases": [
+        "许青",
+        "青青"
+      ]
+    },
+    {
+      "id": "a_he",
+      "name": "阿禾",
+      "faction": "苍梧镇",
+      "level": "凡人",
+      "attrs": {
+        "str": 6,
+        "dex": 10,
+        "int": 10,
+        "con": 8,
+        "cha": 11
+      },
+      "hp": 16,
+      "hp_max": 16,
+      "gold": 2,
+      "location": "苍梧镇",
+      "desc": "药铺学徒，十五六岁，袖口总是沾着药渣；她认得镇上的每一张生面孔。",
+      "personality": "机灵、怕事、心软",
+      "speech": "「你要找的人，是不是穿着跟你一样的衣裳？」",
+      "activity": "在药铺门口晒骨粉",
+      "intent": "攒钱去青岚宗测骨",
+      "agenda": "离开苍梧镇",
+      "aliases": [
+        "阿禾"
+      ]
+    }
+  ],
+  "market": [
+    {
+      "location": "苍梧镇",
+      "items": [
+        {
+          "key": "dry_food",
+          "name": "炊饼",
+          "price": 2,
+          "supply": 30,
+          "base_price": 2,
+          "type": "食物"
+        },
+        {
+          "key": "water",
+          "name": "净水",
+          "price": 3,
+          "supply": 20,
+          "base_price": 3,
+          "type": "饮品"
+        },
+        {
+          "key": "herb",
+          "name": "止血草",
+          "price": 4,
+          "supply": 20,
+          "base_price": 4,
+          "type": "草药"
+        },
+        {
+          "key": "flint",
+          "name": "火折子",
+          "price": 2,
+          "supply": 15,
+          "base_price": 2,
+          "type": "工具"
+        },
+        {
+          "key": "rope",
+          "name": "麻绳",
+          "price": 5,
+          "supply": 10,
+          "base_price": 5,
+          "type": "工具"
+        }
+      ]
+    },
+    {
+      "location": "黑水坊",
+      "items": [
+        {
+          "key": "spirit_sand",
+          "name": "灵砂",
+          "price": 12,
+          "supply": 10,
+          "base_price": 12,
+          "type": "资源"
+        },
+        {
+          "key": "bone_powder",
+          "name": "骨粉",
+          "price": 6,
+          "supply": 15,
+          "base_price": 6,
+          "type": "药物"
+        },
+        {
+          "key": "old_talisman",
+          "name": "旧符纸",
+          "price": 8,
+          "supply": 8,
+          "base_price": 8,
+          "type": "符箓"
+        },
+        {
+          "key": "dagger",
+          "name": "骨柄短刀",
+          "price": 15,
+          "supply": 5,
+          "base_price": 15,
+          "type": "武器"
+        },
+        {
+          "key": "water",
+          "name": "净水",
+          "price": 3,
+          "supply": 10,
+          "base_price": 3,
+          "type": "饮品"
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "a": "player",
+      "b": "chen_bo",
+      "affinity": 8,
+      "respect": 4
+    },
+    {
+      "a": "player",
+      "b": "shen_yan",
+      "affinity": -2,
+      "respect": 0
+    },
+    {
+      "a": "player",
+      "b": "liu_fufeng",
+      "affinity": 0,
+      "respect": 0
+    },
+    {
+      "a": "player",
+      "b": "zhou_zhanggui",
+      "affinity": 0,
+      "respect": 0
+    },
+    {
+      "a": "player",
+      "b": "xu_qing",
+      "affinity": 12,
+      "respect": 6
+    },
+    {
+      "a": "player",
+      "b": "a_he",
+      "affinity": 3,
+      "respect": 0
+    }
+  ],
+  "world_flags": [
+    "__start__",
+    "天裂之后",
+    "青岚宗开山",
+    "听说许青"
+  ],
+  "level_tiers": [
+    "凡人",
+    "炼气",
+    "筑基",
+    "金丹",
+    "元婴",
+    "化神",
+    "炼虚",
+    "合体",
+    "大乘",
+    "渡劫"
+  ],
+  "terms": {
+    "hero": "求道者",
+    "level": "境界",
+    "location": "所在",
+    "hp": "气血",
+    "mp": "灵力",
+    "gold": "碎银",
+    "flow": "心流",
+    "phase": "世相",
+    "karma": "未清因果",
+    "inventory": "行囊",
+    "chronicle": "见闻",
+    "present": "在场",
+    "relations": "人情",
+    "territory": "足迹",
+    "track": "修为",
+    "stage": "阶",
+    "codex": "见闻录",
+    "market": "行情",
+    "milestones": "大事",
+    "factions": "势力",
+    "rumors": "传闻",
+    "culture": "风气"
+  },
+  "places": {
+    "山神庙": {
+      "desc": "塌了半边的山神庙，供桌下能避雨；神像的脸被香灰糊住，手里握着一截断骨。",
+      "market": ""
+    },
+    "苍梧镇": {
+      "desc": "青石街，药铺、当铺、铁匠铺挤在一条坡上；镇口告示墙写着青岚宗收徒，纸边被人撕过。",
+      "market": "苍梧镇"
+    },
+    "裂谷": {
+      "desc": "镇西三十里，地裂像一张竖开的嘴，谷底有白光；拾骨人用绳梯下去，很少有人完整上来。",
+      "market": ""
+    },
+    "青岚宗": {
+      "desc": "半山腰的旧山门，石阶上摆着测骨台；宗门弟子穿青袍，腰间挂骨牌，牌上刻着自己的骨文。",
+      "market": ""
+    },
+    "黑水坊": {
+      "desc": "地下坊市，柜台用棺材板拼的；卖灵砂、骨粉、旧符和来路不明的骨器，灯芯是骨油。",
+      "market": "黑水坊"
+    }
+  },
+  "lore": [
+    {
+      "keys": [
+        "基调",
+        "文风"
+      ],
+      "constant": true,
+      "comment": "基调",
+      "content": "凡人流修仙：先活，再修。每个境界都要拿资源、心境或记忆去换；不送系统，不送老爷爷，不保证好人有好报。NPC有自己的算盘。"
+    },
+    {
+      "keys": [
+        "九荒",
+        "苍梧",
+        "天裂"
+      ],
+      "constant": false,
+      "comment": "九荒表层",
+      "content": "九荒是九块大陆，苍梧在东荒边缘。二十年前天裂，山里多出裂口，井水变苦，草木疯长。宗门说这是灵潮退去；凡人只看见失踪的人越来越多。"
+    },
+    {
+      "keys": [
+        "裂谷",
+        "骨文",
+        "拾骨人"
+      ],
+      "constant": false,
+      "comment": "裂谷",
+      "content": "裂谷在镇西三十里，是已知唯一通向古墓的入口。拾骨人签生死契下墓，带上来带文的古骨，换灵砂。谷底夜里透白光，光会动。"
+    },
+    {
+      "keys": [
+        "青岚宗",
+        "测骨",
+        "收徒"
+      ],
+      "constant": false,
+      "comment": "青岚宗",
+      "content": "青岚宗在山门摆测骨台，测的是骨文共鸣。手放上去，台面亮；亮得越久，执事越客气。镇上人说，亮过三息的人都没再回来。"
+    },
+    {
+      "keys": [
+        "炼气",
+        "筑基",
+        "金丹",
+        "境界"
+      ],
+      "constant": false,
+      "comment": "修行阶梯",
+      "content": "修行十阶：凡人→炼气→筑基→金丹→元婴→化神→炼虚→合体→大乘→渡劫。炼气引气入经脉，筑基立道基，金丹结骨文丹；越往上，越不像人。"
+    },
+    {
+      "keys": [
+        "黑水坊",
+        "万骨堂",
+        "灵砂"
+      ],
+      "constant": false,
+      "comment": "黑水坊",
+      "content": "黑水坊在苍梧镇下面的废渠里，柜台是棺材板拼的。灵砂十二枚碎银一撮；骨粉六枚；旧符八枚。周掌柜收古骨，不问来路。"
+    },
+    {
+      "keys": [
+        "陈砚",
+        "大学生",
+        "许青"
+      ],
+      "constant": false,
+      "comment": "玩家与许青",
+      "content": "陈砚是普通二本地质工程大三学生，实习时坠入裂谷；许青是同组同学，三天前在裂谷附近失联。陈砚没有灵根，背包里有一块黑色骨片。"
+    },
+    {
+      "keys": [
+        "骨片",
+        "黑骨"
+      ],
+      "constant": false,
+      "comment": "骨片",
+      "content": "黑色骨片只有半个手掌大，表面没有纹，摸上去是温的。靠近古骨时，它会轻轻震一下；震过之后，陈砚会多出一段不属于自己的梦。"
+    }
+  ],
+  "currency": "碎银",
+  "ui": {
+    "skin": "ink",
+    "accent": "#6b7a5a",
+    "motif": "九荒·骨文",
+    "brand": "九荒",
+    "tagline": "仙骸之上，凡人问路"
+  },
+  "playbook": {
+    "loop": "freeform",
+    "input": "natural",
+    "progress": {
+      "axis": "level",
+      "label": "修为",
+      "max": 9
+    },
+    "failure": {
+      "mode": "hp",
+      "label": "气血耗尽",
+      "max": 18
+    },
+    "beat": {
+      "pattern": [
+        "日常",
+        "异象",
+        "入山",
+        "斗法",
+        "代价"
+      ],
+      "every": 5
+    },
+    "settlement": [
+      "combat",
+      "roll",
+      "social",
+      "trade",
+      "use_item",
+      "travel"
+    ],
+    "context": {
+      "inject": [
+        "lore",
+        "cast",
+        "chronicle"
+      ],
+      "max_lore": 12,
+      "scan_depth": 2
+    }
+  },
+  "questlines": [
+    {
+      "id": "bone_shard",
+      "title": "骨片",
+      "summary": "一块不该在你身上的黑色骨片，和裂谷底下的白光有关。",
+      "tags": [
+        "主线",
+        "真相"
+      ],
+      "visibility": {
+        "flag": "__start__"
+      },
+      "stages": [
+        {
+          "id": "wake",
+          "title": "醒来",
+          "objectives": [
+            "向陈伯问清这里是哪",
+            "确认许青是不是也在这里"
+          ],
+          "exit_if": {
+            "flag": "asked_chen"
+          },
+          "next": [
+            "rift"
+          ]
+        },
+        {
+          "id": "rift",
+          "title": "裂谷",
+          "objectives": [
+            "去裂谷找许青",
+            "弄清骨片为什么发热"
+          ],
+          "exit_if": {
+            "visited": "裂谷"
+          },
+          "next": [
+            "tomb"
+          ]
+        },
+        {
+          "id": "tomb",
+          "title": "墓门",
+          "objectives": [
+            "决定要不要下裂谷第二层"
+          ],
+          "next": []
+        }
+      ],
+      "reward": {
+        "flags": [
+          "bone_shard_trace"
+        ]
+      }
+    },
+    {
+      "id": "sect_exam",
+      "title": "青岚宗·测骨",
+      "summary": "青岚宗开山收徒，测骨台在等一双手。",
+      "tags": [
+        "主线",
+        "入宗"
+      ],
+      "visibility": {
+        "flag": "青岚宗开山"
+      },
+      "stages": [
+        {
+          "id": "signup",
+          "title": "报名",
+          "objectives": [
+            "去青岚宗山门看测骨台"
+          ],
+          "exit_if": {
+            "visited": "青岚宗"
+          },
+          "next": [
+            "test"
+          ]
+        },
+        {
+          "id": "test",
+          "title": "测骨",
+          "objectives": [
+            "把手放在测骨台上"
+          ],
+          "exit_if": {
+            "flag": "bone_tested"
+          },
+          "next": [
+            "bargain"
+          ]
+        },
+        {
+          "id": "bargain",
+          "title": "取舍",
+          "objectives": [
+            "决定：入宗，还是拿骨片换自由"
+          ],
+          "next": []
+        }
+      ],
+      "reward": {
+        "flags": [
+          "青岚宗外门"
+        ]
+      }
+    },
+    {
+      "id": "missing_classmate",
+      "title": "许青",
+      "summary": "同组同学在裂谷附近失联，最后一条消息停在一盏灯。",
+      "tags": [
+        "个人线",
+        "救援"
+      ],
+      "visibility": {
+        "flag": "听说许青"
+      },
+      "stages": [
+        {
+          "id": "ask",
+          "title": "打听",
+          "objectives": [
+            "问陈伯或周掌柜，许青往哪去了"
+          ],
+          "exit_if": {
+            "flag": "asked_xu"
+          },
+          "next": [
+            "rift"
+          ]
+        },
+        {
+          "id": "rift",
+          "title": "下裂谷",
+          "objectives": [
+            "去裂谷找许青"
+          ],
+          "exit_if": {
+            "visited": "裂谷"
+          },
+          "next": [
+            "find"
+          ]
+        },
+        {
+          "id": "find",
+          "title": "找到",
+          "objectives": [
+            "找到许青，决定救不救"
+          ],
+          "next": []
+        }
+      ],
+      "reward": {
+        "flags": [
+          "xu_qing_found"
+        ]
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "clock",
+      "kind": "time",
+      "label": "山中时辰",
+      "config": {
+        "start": {
+          "day": 1,
+          "hour": 7,
+          "minute": 0
+        },
+        "days_per_season": 30,
+        "seasons": [
+          "秋"
+        ],
+        "weathers": [
+          {
+            "name": "晴",
+            "weight": 35
+          },
+          {
+            "name": "阴",
+            "weight": 30
+          },
+          {
+            "name": "雨",
+            "weight": 25
+          },
+          {
+            "name": "雾",
+            "weight": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "spirit_loot",
+      "kind": "loot",
+      "label": "拾骨",
+      "config": {
+        "tables": {
+          "bone": {
+            "rolls": 2,
+            "empty_weight": 30,
+            "entries": [
+              {
+                "item": "bone_shard_frag",
+                "name": "骨片碎屑",
+                "weight": 25,
+                "qty_min": 1,
+                "qty_max": 2
+              },
+              {
+                "item": "herb",
+                "name": "止血草",
+                "weight": 25,
+                "qty_min": 1,
+                "qty_max": 2
+              },
+              {
+                "item": "spirit_sand",
+                "name": "灵砂",
+                "weight": 15,
+                "qty_min": 1,
+                "qty_max": 1
+              },
+              {
+                "item": "old_talisman",
+                "name": "旧符纸",
+                "weight": 10,
+                "qty_min": 1,
+                "qty_max": 1
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "sect_rep",
+      "kind": "reputation",
+      "label": "苍梧关系",
+      "config": {
+        "factions": [
+          "青岚宗",
+          "万骨堂",
+          "镇渊司",
+          "散修"
+        ],
+        "tiers": [
+          {
+            "min": -1000,
+            "label": "敌对"
+          },
+          {
+            "min": -40,
+            "label": "冷淡"
+          },
+          {
+            "min": 0,
+            "label": "无名"
+          },
+          {
+            "min": 30,
+            "label": "记名"
+          },
+          {
+            "min": 70,
+            "label": "内门"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cultivation",
+      "kind": "custom",
+      "label": "修行",
+      "config": {
+        "actions": {
+          "meditate": {
+            "label": "打坐引气",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 240
+              },
+              {
+                "op": "xp",
+                "delta": 10
+              },
+              {
+                "op": "flag",
+                "flag": "tried_meditation"
+              }
+            ]
+          },
+          "gather": {
+            "label": "下裂谷拾骨",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 180
+              },
+              {
+                "op": "loot",
+                "table": "bone"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "xp",
+      "kind": "progression",
+      "label": "修为",
+      "config": {
+        "base_xp": 500,
+        "growth": 2.0,
+        "max_level": 9,
+        "per_level": {
+          "int": 1,
+          "con": 1
+        },
+        "level_label": "境界"
+      }
+    }
+  ],
+  "game": {
+    "title": "九荒",
+    "kind": "rpg",
+    "resources": [
+      {
+        "key": "hp",
+        "label": "气血",
+        "value": 18,
+        "min": 0,
+        "max": 18,
+        "color": "hp"
+      },
+      {
+        "key": "mp",
+        "label": "灵力",
+        "value": 0,
+        "min": 0,
+        "max": 0,
+        "color": "mp"
+      },
+      {
+        "key": "gold",
+        "label": "碎银",
+        "value": 3,
+        "min": 0,
+        "max": 0,
+        "color": "gold"
+      }
+    ],
+    "attributes": [
+      {
+        "key": "str",
+        "label": "力量",
+        "value": 8
+      },
+      {
+        "key": "dex",
+        "label": "敏捷",
+        "value": 9
+      },
+      {
+        "key": "int",
+        "label": "悟性",
+        "value": 12
+      },
+      {
+        "key": "con",
+        "label": "体魄",
+        "value": 8
+      },
+      {
+        "key": "cha",
+        "label": "心性",
+        "value": 9
+      }
+    ],
+    "meters": [
+      {
+        "key": "level",
+        "label": "境界",
+        "value": 0,
+        "min": 0,
+        "max": 9
+      }
+    ],
+    "tags": [
+      "修仙",
+      "凡人流",
+      "骨文"
+    ],
+    "sheet": {
+      "出身": "普通大学生",
+      "灵根": "未测",
+      "境况": "坠入九荒"
+    }
+  },
+  "world_bible": {
+    "version": 1,
+    "world": {
+      "name": "九荒",
+      "era": "灵历 317 年 · 霜降",
+      "premise": "九荒是九块漂浮的大陆，苍梧是东荒边缘；二十年前天裂，灵气退潮，宗门靠挖古墓、拓骨文维持修行。",
+      "genre": "修仙 / 凡人流",
+      "tone": "冷硬、资源匮乏、古仙坟场、凡人问路"
+    },
+    "immutable": [
+      {
+        "subject": "世界",
+        "predicate": "前提",
+        "value": "九荒是九块大陆，苍梧是东荒边缘；二十年前天裂，灵气开始退潮",
+        "statement": "九荒的凡人只知道天裂之后山里多出许多裂口，井水变苦、草木疯长；宗门说这是“灵潮退去”，没人解释裂口下面是什么。",
+        "tags": [
+          "core"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "力量",
+        "predicate": "规则",
+        "value": "修行需要灵根、骨文与灵气；没有灵根不能引气，骨文可从古骨拓印",
+        "statement": "凡人先测骨，再看灵根；骨文是刻在骨头上的旧法。施法消耗灵力；灵气稀薄处，法术威力减半。不能凭空造物，不能复活死者。",
+        "tags": [
+          "rule",
+          "power"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "力量",
+        "predicate": "代价",
+        "value": "破境要资源与心境；越阶施法伤经脉；骨文反噬会污染记忆",
+        "statement": "每次破境都要有功法、灵砂和稳定的心境；强行冲关会伤道基。拓印不属于自己的骨文，轻则头痛，重则记忆错乱。",
+        "tags": [
+          "rule",
+          "cost"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "历史",
+        "predicate": "断层",
+        "value": "二十年前天裂，裂谷打开；青岚宗靠挖古墓起家；镇渊司封不住裂谷",
+        "statement": "天裂之前，苍梧只有一座小宗门；天裂之后，青岚宗在裂谷里挖出第一块“活骨”，十年内扩成三峰。镇渊司立了封碑，但封碑每年都往下沉。",
+        "tags": [
+          "history"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "地图",
+        "predicate": "节点",
+        "value": "山神庙—苍梧镇—裂谷—青岚宗—黑水坊",
+        "statement": "山神庙在镇外半里；苍梧镇是凡人集市；裂谷在镇西三十里，是已知唯一通向古墓的入口；青岚宗在镇北山上；黑水坊在镇下废渠里。",
+        "tags": [
+          "map"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "地图",
+        "predicate": "通行成本",
+        "value": "凡人走路；低阶修士踏风；御剑会留下灵气痕迹，容易被宗门或骨妖盯上",
+        "statement": "山神庙到苍梧镇约一刻钟；镇到裂谷约一个时辰；镇到青岚宗要半天；黑水坊从废渠下去，约半个时辰。夜里走裂谷，危险度翻倍。",
+        "tags": [
+          "map",
+          "travel"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "势力",
+        "predicate": "格局",
+        "value": "青岚宗、万骨堂、镇渊司、拾骨人、散修",
+        "statement": "青岚宗掌测骨与入宗资格；万骨堂掌黑水坊与古骨买卖；镇渊司名义上封裂谷；拾骨人替宗门下墓；散修在镇外接活。",
+        "tags": [
+          "faction"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "社会",
+        "predicate": "秩序",
+        "value": "仙凡有别；青岚宗测骨收徒；拾骨人无籍；骨奴是宗门的私产",
+        "statement": "凡人不能告修士；宗门在山门内执法。拾骨人签的是“生死契”，下墓死了，镇里只记一笔失踪。骨奴多是欠债的凡人，脸上烙骨印。",
+        "tags": [
+          "society"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "经济",
+        "predicate": "底座",
+        "value": "凡人用碎银；修士用灵砂、灵石；古骨、骨文是硬通货",
+        "statement": "苍梧镇的炊饼两枚碎银一个；黑水坊的灵砂十二枚碎银一撮；一块带文古骨能换十撮灵砂。灵砂可吸纳入体，也可布阵、买命。",
+        "tags": [
+          "economy"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "生死",
+        "predicate": "规则",
+        "value": "死亡不可复活；骨文只能留下残念；夺舍是禁术；高阶修士也会死于天劫",
+        "statement": "凡人寿约七十；炼气修士约百岁；筑基二百；金丹五百。骨文能保存死者生前的片段，但不是灵魂；夺舍会留下因果，被镇渊司追杀。",
+        "tags": [
+          "death"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "玩家",
+        "predicate": "位置",
+        "value": "陈砚，二十一岁，普通大学生；地质实习时坠入裂谷，醒来在山神庙；没有测过灵根",
+        "statement": "陈砚带着地质锤、罗盘、记录本、没信号的手机和一块黑色骨片；他和同学许青一起失联。陈砚没有灵根，也没有宗门背景。",
+        "tags": [
+          "player"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "当前",
+        "predicate": "近事",
+        "value": "青岚宗开山收徒；裂谷夜里透白光；苍梧镇有三个人失踪；山神庙捡到一个穿怪衣的活人",
+        "statement": "青岚宗在山门摆测骨台，收“能下墓的人”；裂谷的白光连续七夜；失踪者里有拾骨人、货郎和一名穿冲锋衣的女学生。",
+        "tags": [
+          "hook"
+        ],
+        "source": "setting"
+      }
+    ],
+    "hidden": [
+      {
+        "subject": "九荒",
+        "predicate": "真相",
+        "value": "九荒是一具古仙的尸体，九块大陆是骨板，灵脉是血管，灵气是骨髓里散出的余息",
+        "statement": "所谓“天裂”不是山崩，是尸体的骨缝在裂开；宗门挖的不是古墓，是古仙的骨腔。灵气越浓的地方，尸骸越完整。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "world"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "飞升",
+        "predicate": "真相",
+        "value": "飞升不是成仙，是被“仙庭”收割；九荒没有真正飞升的人",
+        "statement": "渡劫之后打开的“仙门”是一条消化通道；飞升者会被抽走骨文与记忆，成为仙庭的养料。青岚宗的祖师不是飞升，是被吸干了。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "青岚宗",
+        "predicate": "测骨台",
+        "value": "测骨台是一座骨坛，测的是“骨文共鸣”，不是灵根；共鸣高的人会被送进裂谷第二层当“骨引”",
+        "statement": "测骨台下面埋着一块活骨；手放上去，骨文会自己认人。共鸣越高，越容易被柳扶风记住。宗门说“天赋”，实际是“钥匙”。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "sect"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "柳扶风",
+        "predicate": "身体",
+        "value": "柳扶风的左臂是古骨接的；他每十年换一次骨，靠宗门供的活骨维持",
+        "statement": "他的左臂比右臂长一寸，雨天会自己发抖；骨甲不是护具，是压住排异反应的夹板。他知道自己也是宗门的一件器具。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "npc"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "许青",
+        "predicate": "状态",
+        "value": "许青还活着，在裂谷第二层；她背上有一枚“灯”形骨文，青岚宗想拿她当开门的钥匙",
+        "statement": "她最后一条消息发出去时，手机还有电；她看见的白光是一盏骨灯。骨灯认了她，因为她碰过陈砚背包里的黑色骨片。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "npc"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "沈砚",
+        "predicate": "右腕",
+        "value": "沈砚腕上的骨文是青岚宗下的锁；他是失败的“骨引”，锁开了会变成一扇门",
+        "statement": "他曾经下到裂谷第二层，活着回来，但右腕多了一圈骨文。柳扶风没杀他，因为锁还没长成；沈砚在等一个能解骨文的人。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "npc"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "陈伯",
+        "predicate": "过去",
+        "value": "陈伯当过拾骨人，儿子死在裂谷；他知道九荒的真相，但不敢说",
+        "statement": "陈伯的右手少了两根手指，是骨文反噬咬掉的；他给陈砚看伤时，认出骨片的温度，手抖了一下。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "npc"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "周掌柜",
+        "predicate": "骨粉",
+        "value": "黑水坊的骨粉里混着死去的拾骨人；周掌柜知道，但为了活下去照卖",
+        "statement": "他不亲手杀人，只收尸体；青岚宗把下墓死掉的人运回黑水坊，他磨成粉，卖给想延寿的凡人。他给每个死者留一枚骨戒。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "npc"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "骨片",
+        "predicate": "真相",
+        "value": "黑色骨片是古仙道骨的一枚碎片；它能读残念，每读一次都会覆盖陈砚自己的一小段记忆",
+        "statement": "骨片不是系统，不会给任务和奖励；它只是在陈砚碰到古骨时发热，把死者的最后一段记忆推进他的梦里。用多了，他会忘了自己是谁。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "item"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "天裂",
+        "predicate": "真相",
+        "value": "天裂不是“打开”，是古仙尸体的缝合线在崩开；裂谷不是门，是伤口",
+        "statement": "每七年裂谷会“呼吸”一次；青岚宗用活人骨文去补缝，镇渊司用封碑去压。下一次呼吸在第 3 天夜里。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "event"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "镇渊司",
+        "predicate": "真相",
+        "value": "镇渊司不是封裂谷，是在喂裂谷；封碑底下是投喂口",
+        "statement": "镇渊司每季往封碑下送一批“死囚”；他们知道裂谷饿，饿极了会自己爬出来。封碑每年下沉，是投喂记录。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "faction"
+        ],
+        "spoiler": "gm"
+      },
+      {
+        "subject": "地球",
+        "predicate": "关系",
+        "value": "地球可能是“第十荒”，也可能是一枚被封印的种子；陈砚的坠落不是随机",
+        "statement": "骨片在陈砚靠近裂谷时第一次发热；许青的手机里有一张裂谷照片，照片角落有和骨片一样的纹。两人的实习路线是被人改过的。",
+        "status": "hidden",
+        "locked": true,
+        "source": "setting",
+        "tags": [
+          "truth",
+          "world"
+        ],
+        "spoiler": "gm"
+      }
+    ],
+    "revealed": [
+      {
+        "subject": "玩家",
+        "predicate": "已知",
+        "value": "陈砚是普通大学生，地质实习时坠入裂谷，醒来在山神庙；手机没信号，背包还在",
+        "statement": "陈砚记得最后一件事是暴雨和崖壁塌方；他不记得自己怎么走到山神庙。手机剩下 12% 电，指南针乱转。",
+        "tags": [
+          "start"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "世界",
+        "predicate": "表层",
+        "value": "苍梧镇、青岚宗、黑水坊、裂谷；青岚宗正在开山收徒",
+        "statement": "镇口告示写着“青岚宗收徒，测骨合格者入外门”；黑水坊在地下；裂谷在镇西，夜里透白光。",
+        "tags": [
+          "start"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "许青",
+        "predicate": "失踪",
+        "value": "许青在裂谷附近失联；最后一条消息是“我好像看见下面有灯”",
+        "statement": "许青和陈砚同组；她的冲锋衣左袖撕了一道口子。镇上的人说，三天前有个穿怪衣的女学生往裂谷去了。",
+        "tags": [
+          "start",
+          "hook"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "人物",
+        "predicate": "初见",
+        "value": "陈伯给陈砚看了伤；沈砚躲在神像后面；柳扶风是青岚宗执事；周掌柜在黑水坊",
+        "statement": "陈伯认得山里的骨粉味；沈砚右腕缠着黑布；柳扶风在石阶上摆测骨台；周掌柜收古骨，不问来路。",
+        "tags": [
+          "start",
+          "cast"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "规则",
+        "predicate": "测骨",
+        "value": "青岚宗测骨台测的是“骨文共鸣”；凡人也能测，共鸣高的人会被记名",
+        "statement": "测骨不疼，手放上去，台面会亮；亮得越久，柳扶风笑得越温和。镇上人说，亮过三息的人都没再回来。",
+        "tags": [
+          "start",
+          "rule"
+        ],
+        "source": "setting"
+      }
+    ],
+    "rumors": [
+      {
+        "subject": "裂谷",
+        "predicate": "传闻",
+        "value": "裂谷里有仙人的骨头，捡一块能换十年寿命",
+        "statement": "拾骨人说，裂谷底下有会发光的骨头；带上来一块，黑水坊给十撮灵砂。也有人说，带骨头上来的的人，三个月内都死了。",
+        "status": "rumor",
+        "source": "setting"
+      },
+      {
+        "subject": "青岚宗",
+        "predicate": "传闻",
+        "value": "青岚宗抓凡人下墓填坑",
+        "statement": "镇上失踪的人越来越多；柳扶风说他们是“自愿签契”，但没人见过契。",
+        "status": "rumor",
+        "source": "setting"
+      },
+      {
+        "subject": "山神庙",
+        "predicate": "传闻",
+        "value": "山神庙的神像夜里会睁眼",
+        "statement": "陈伯说神像手里那截断骨是“镇物”；夜里别在供桌下面睡。",
+        "status": "rumor",
+        "source": "setting"
+      }
+    ],
+    "unknown": [
+      {
+        "question": "地球和九荒是什么关系？",
+        "hint": "陈砚的实习路线、许青的照片、骨片的纹，可能是同一条线。",
+        "status": "unknown"
+      },
+      {
+        "question": "古仙还活着吗？",
+        "hint": "裂谷在呼吸；骨片在发热；青岚宗在补缝。",
+        "status": "unknown"
+      },
+      {
+        "question": "许青为什么会被骨片认出来？",
+        "hint": "她碰过骨片，还是她本来就有“灯”形骨文？",
+        "status": "unknown"
+      }
+    ]
+  },
+  "map_blueprint": {
+    "start": "temple",
+    "core_nodes": [
+      {
+        "id": "temple",
+        "name": "山神庙",
+        "role": "start",
+        "danger": 0,
+        "desc": "塌了半边的山神庙，供桌下能避雨；神像的脸被香灰糊住，手里握着一截断骨。"
+      },
+      {
+        "id": "town",
+        "name": "苍梧镇",
+        "role": "market",
+        "danger": 0,
+        "desc": "青石街，药铺、当铺、铁匠铺挤在一条坡上；镇口告示墙写着青岚宗收徒，纸边被人撕过。",
+        "market": "苍梧镇"
+      },
+      {
+        "id": "rift",
+        "name": "裂谷",
+        "role": "dungeon",
+        "danger": 3,
+        "desc": "镇西三十里，地裂像一张竖开的嘴，谷底有白光；拾骨人用绳梯下去，很少有人完整上来。"
+      },
+      {
+        "id": "sect",
+        "name": "青岚宗",
+        "role": "gate",
+        "danger": 2,
+        "desc": "半山腰的旧山门，石阶上摆着测骨台；宗门弟子穿青袍，腰间挂骨牌，牌上刻着自己的骨文。"
+      },
+      {
+        "id": "market",
+        "name": "黑水坊",
+        "role": "market",
+        "danger": 1,
+        "desc": "地下坊市，柜台用棺材板拼的；卖灵砂、骨粉、旧符和来路不明的骨器，灯芯是骨油。",
+        "market": "黑水坊"
+      }
+    ],
+    "random_nodes": [
+      {
+        "id": "bone_kiln",
+        "role": "dungeon",
+        "danger": 3,
+        "names": [
+          "骨窑",
+          "白窑",
+          "旧骨窑"
+        ],
+        "descs": [
+          "窑口堆着烧白的骨渣，里面还有温度。",
+          "窑壁上有一圈圈抓痕，像有人从里面爬过。"
+        ]
+      },
+      {
+        "id": "graveyard",
+        "role": "wild",
+        "danger": 2,
+        "names": [
+          "乱葬岗",
+          "无名坟",
+          "枯坟坡"
+        ],
+        "descs": [
+          "坟包没有碑，土里露出半截骨片。",
+          "夜里能听见土下有节奏的敲击声。"
+        ]
+      },
+      {
+        "id": "observatory",
+        "role": "ruin",
+        "danger": 2,
+        "names": [
+          "观星台",
+          "废观星台",
+          "望天台"
+        ],
+        "descs": [
+          "石台裂成两半，台面刻着不属于这个时代的星图。",
+          "台心有一块凹槽，形状像一枚骨片。"
+        ]
+      },
+      {
+        "id": "dry_well",
+        "role": "wild",
+        "danger": 1,
+        "names": [
+          "枯井村",
+          "断井村",
+          "无水村"
+        ],
+        "descs": [
+          "村子只剩三户人，井口被石板压着。",
+          "井绳还在，桶里却没有水，只有一层白灰。"
+        ]
+      }
+    ],
+    "random_count": 2,
+    "edges": [
+      {
+        "a": "temple",
+        "b": "town",
+        "minutes": [
+          10,
+          20
+        ],
+        "label": "镇口土路"
+      },
+      {
+        "a": "town",
+        "b": "market",
+        "minutes": [
+          30,
+          50
+        ],
+        "label": "废渠暗道"
+      },
+      {
+        "a": "town",
+        "b": "rift",
+        "minutes": [
+          40,
+          70
+        ],
+        "label": "西坡乱石"
+      },
+      {
+        "a": "town",
+        "b": "sect",
+        "minutes": [
+          90,
+          120
+        ],
+        "label": "青石官道"
+      },
+      {
+        "a": "rift",
+        "b": "sect",
+        "minutes": [
+          60,
+          90
+        ],
+        "label": "山脊旧道"
+      },
+      {
+        "a": "market",
+        "b": "sect",
+        "minutes": [
+          50,
+          80
+        ],
+        "label": "背街石阶"
+      }
+    ],
+    "random_links": [
+      {
+        "id": "bone_kiln",
+        "links": [
+          "rift",
+          "market"
+        ]
+      },
+      {
+        "id": "graveyard",
+        "links": [
+          "temple",
+          "town"
+        ]
+      },
+      {
+        "id": "observatory",
+        "links": [
+          "sect",
+          "rift"
+        ]
+      },
+      {
+        "id": "dry_well",
+        "links": [
+          "town",
+          "market"
+        ]
+      }
+    ],
+    "rules": [
+      "山神庙、苍梧镇、裂谷、青岚宗、黑水坊的名字与位置固定。",
+      "每次开局从骨窑/乱葬岗/观星台/枯井村里抽两个，名字、描写与路程随机，但只能接在核心节点之间。",
+      "危险度：山神庙0，苍梧镇0，黑水坊1，青岚宗2，裂谷3，野外节点1-3。",
+      "随机只改变外观与路程，不改变境界阶梯、骨文规则和宗门关系。"
+    ]
+  },
+  "notes": "普通大学生坠入九荒：无系统、无宗门背景，骨片能读残念，但每次都要拿自己的记忆去换。",
+  "seed": 20261120,
+  "state_path_hint": "saves/九荒_凡骨.save.json"
+}

@@ -165,6 +165,24 @@ class GameService:
             return self._call("import_lorebook", path=kwargs.get("path", ""))
         return {"ok": False, "error": "context.action 只能是 pack/narrate/lookup/import"}
 
+    def canon(self, *, action: str = "brief", **kwargs) -> dict:
+        if action == "brief":
+            return self._call("canon_brief", scene_text=kwargs.get("scene_text", ""),
+                              limit=kwargs.get("limit", 14))
+        if action == "check":
+            return self._call("canon_check", facts=kwargs.get("facts") or [],
+                              status=kwargs.get("status", "revealed"),
+                              allow_override=kwargs.get("allow_override", False))
+        if action == "commit":
+            return self._call("canon_commit", facts=kwargs.get("facts") or [],
+                              status=kwargs.get("status", "revealed"),
+                              source=kwargs.get("source", "play"),
+                              allow_override=kwargs.get("allow_override", False),
+                              reason=kwargs.get("reason", ""))
+        if action == "init":
+            return self._call("canon_init", bible=kwargs.get("bible") or {})
+        return {"ok": False, "error": "canon.action 只能是 brief/check/commit/init"}
+
     # -- sheet / systems / worlds --------------------------------------
     def characters(self, *, action: str, **kwargs) -> dict:
         if action == "read":

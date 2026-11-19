@@ -43,6 +43,7 @@ REQUIRED = [
     'docs/MCP_PLAY.md',
     'BRAND.md',
     'templates.py',
+    'canon.py',
     'rules/systems.py',
     'docs/demo/玄枢界.save.json',
     'docs/demo/折剑行.save.json',

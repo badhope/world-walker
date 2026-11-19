@@ -64,6 +64,7 @@ def new_game():
         "event_log": [],
         "turns": [],
         "narrative": {},
+        "world_bible": {},
     }
 
 def _require_finite(value):

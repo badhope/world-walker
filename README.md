@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.12.1** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
+**v1.13.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
 
 > **You talk. The AI performs. The engine decides. The save remembers.**
 
@@ -15,7 +15,7 @@ local model or aggregator. No provider names, no SDK lock-in.
 What stays deterministic is the part a narrator should never improvise: HP, prices, inventory,
 relationships, clocks, clues, saves and replay. The AI writes the scene; the engine owns the truth.
 
-`206 rule functions` · `67 MCP tools` · `26 player tools` · `4 setting bundles` · `8 templates` ·
+`206 rule functions` · `71 MCP tools` · `27 player tools` · `4 setting bundles` · `8 templates` ·
 `21 self-check suites` · `0 runtime dependencies`
 
 ---
@@ -156,9 +156,9 @@ no consequence, the audit says so; the next turn can correct it.
 
 ## Tools
 
-The model sees 26 player tools, not the old 67-tool MCP surface:
+The model sees 27 player tools, not the old 71-tool MCP surface:
 
-`inspect` `progress` `story` `memory` `context` `characters` `sheet` `systems` `worlds` `calc`
+`inspect` `progress` `story` `memory` `context` `canon` `characters` `sheet` `systems` `worlds` `calc`
 `panel` `new_game` `open_game` `saves` `snapshot` `combat` `combat_preview` `trade` `social`
 `karma` `tick` `advance` `travel` `use_item` `roll` `configure`
 
@@ -184,8 +184,8 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_player_shell.py` | 23 | real browser: lobby, Session Zero, start card, play view, no duplicate prose |
 | `verify_surface.py` | 27 | player API, model config, save list, static assets, one-writer invariants |
 | `verify_docs.py` | 27 | version, links, current docs, no ghost scripts or assets |
-| `verify_mcp_stdio.py` | 67 | stdio + HTTP MCP handshake, Session Zero prompt, no panel dependency |
-| `verify_mcp_mode.py` | 7 | standalone MCP prompt/protocol: session zero, prose ownership, no open_panel |
+| `verify_mcp_stdio.py` | 71 | stdio + HTTP MCP handshake, Session Zero prompt, no panel dependency |
+| `verify_mcp_mode.py` | 8 | standalone MCP prompt/protocol: session zero, prose ownership, no open_panel |
 
 ```bash
 python3 scripts/verify_player_shell.py

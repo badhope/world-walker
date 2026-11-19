@@ -47,6 +47,8 @@ EXPECTED_TOOLS = {
     # v1.4.0 体系与模板层
     'system_define', 'system_run', 'system_status', 'system_remove', 'system_schema',
     'templates_list', 'template_info', 'template_apply', 'template_start',
+    # v1.13.0 世界圣经层
+    'canon_init', 'canon_brief', 'canon_check', 'canon_commit',
 }
 
 RESULTS = []

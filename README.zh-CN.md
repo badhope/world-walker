@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.12.1** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
+**v1.13.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
 
 > **你说话，AI 演，引擎判，存档记。**
 
@@ -14,7 +14,7 @@ World Walker 是**单人 AI 跑团 / 互动叙事引擎**，不是游戏助手�
 确定性的部分是叙述者不该乱编的东西：血量、价格、背包、关系、钟、线索、存档与回放。
 AI 写场面，引擎拥有事实。
 
-`206 个规则函数` · `67 个 MCP 工具` · `26 个玩家工具` · `4 套设定包` · `8 套模板` ·
+`206 个规则函数` · `71 个 MCP 工具` · `27 个玩家工具` · `4 套设定包` · `8 套模板` ·
 `21 个可执行自检` · `0 个运行时依赖`
 
 ## 它解决什么
@@ -103,9 +103,9 @@ World Walker 不绑定厂商。模型层只假设一个 OpenAI-compatible `/chat
 
 ## 工具
 
-模型看到的是 26 个玩家工具，不是旧的 67 个 MCP 工具面：
+模型看到的是 27 个玩家工具，不是旧的 71 个 MCP 工具面：
 
-`inspect` `progress` `story` `memory` `context` `characters` `sheet` `systems` `worlds` `calc`
+`inspect` `progress` `story` `memory` `context` `canon` `characters` `sheet` `systems` `worlds` `calc`
 `panel` `new_game` `open_game` `saves` `snapshot` `combat` `combat_preview` `trade` `social`
 `karma` `tick` `advance` `travel` `use_item` `roll` `configure`
 
@@ -247,8 +247,8 @@ MCP 仍可供高级宿主使用，但它不再是前门。玩家页面才是。
 | `verify_player_shell.py` | 23 | 真实浏览器：大厅 / Session Zero / 开局卡 / 对局视图 / 正文不重复 |
 | `verify_surface.py` | 27 | 玩家 API / 模型配置 / 存档列表 / 静态资源 / 单写入源不变量 |
 | `verify_docs.py` | 27 | 版本 / 链接 / 当前文档 / 无幽灵脚本或素材 |
-| `verify_mcp_stdio.py` | 67 | stdio + HTTP MCP 握手 / Session Zero 提示词 / 不依赖面板 |
-| `verify_mcp_mode.py` | 7 | MCP 独立模式契约：开局问询 / 正文归属 / 不调用 open_panel |
+| `verify_mcp_stdio.py` | 71 | stdio + HTTP MCP 握手 / Session Zero 提示词 / 不依赖面板 |
+| `verify_mcp_mode.py` | 8 | MCP 独立模式契约：开局问询 / 正文归属 / 不调用 open_panel |
 
 ```bash
 python3 scripts/verify_player_shell.py
@@ -275,7 +275,7 @@ world-walker/                  # 仓库根即 game_engine 包
 ├── narrative_rules.py         # Session Zero、开局卡、场面卡、回合审计
 ├── player_view.py             # 存档 -> 玩家视图
 ├── model_config.py            # OpenAI-compatible base_url / key / model
-├── tool_registry.py           # 26 个玩家工具
+├── tool_registry.py           # 27 个玩家工具
 ├── game_service.py            # 引擎上的轻量意图层
 ├── host_adapter.py            # 可选外部宿主桥（不是默认路径）
 ├── state_schema.py            # 状态模型 / 原子写 / 事务锁

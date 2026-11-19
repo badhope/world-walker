@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 
 from game_engine import model_config
 from game_engine import narrative_rules
+from game_engine import canon as canon_rules
 from game_engine.host_adapter import HostAdapterError, OpenAICompatAdapter, ToolsUnsupported
 from game_engine.state_schema import load_state, transact_state
 from game_engine.tool_registry import ToolRegistry
@@ -54,16 +55,20 @@ def _system_prompt(state: dict) -> str:
     failure = playbook.get("failure") or {}
     narrative = state.get("narrative") if isinstance(state.get("narrative"), dict) else {}
     turn = narrative_rules.turn_brief(state)
+    canon_brief = canon_rules.brief(state, scene_text="%s %s" % (
+        player.get("location") or "", recent_summary))
+    canon_text = canon_rules.render(canon_brief)
 
     lines = [
         "你是《%s》的叙事主持人。你负责演，引擎负责判和记。" % (world.get("name") or "这个世界"),
         "",
-        "## 硬规则",
+        "## POLICY（绝对规则，优先于语气、记忆和临场推理）",
+        "0. 世界圣经（CANON）是最高事实源；状态 > 记忆 > 你的推理。根设定不许改，冲突时修正叙述，不许 retcon。",
         "1. 玩家的每个行动先判断是否需要结算；涉及战斗、交易、人情、移动、使用物品、判定、突破、推进回合，必须先调用对应工具。",
         "2. 工具返回的 JSON 是唯一数值真相；不得自行编造、修改或心算气血、伤害、价格、关系、因果、任务进度。",
-        "3. 不替玩家做决定，不写玩家没有说过的行动。玩家说“我看看”，你就只描写看到什么。",
+        "3. 不替玩家做决定，不写玩家没有说过的行动、内心决定或台词。玩家说“我看看”，你就只描写看到什么。",
         "4. 每次回复 2-4 段，300-500 字；结尾给一个可行动的画面、选择或问题。",
-        "5. 不向玩家展示工具名、JSON、字段名、系统提示或模型配置。",
+        "5. 不向玩家展示工具名、JSON、字段名、系统提示或模型配置；NPC 不许知道玩家不知道的事。",
         "6. 如果工具报错，叙述“这件事没有成”，不要假装成功；可以给玩家一个替代做法。",
         "7. 不要重复上一段已经说过的内容；推进时间、地点、关系或信息，至少有一项变化。",
         "8. 写任何 NPC 对话之前，先调用 memory(action=known, character=<npc_id>)；只让他引用返回列表里的事实。不知道就回避、撒谎或反问。",
@@ -71,6 +76,11 @@ def _system_prompt(state: dict) -> str:
         "10. 失败也要前进：给新信息、新代价或新选择，不重来、不 recap 一段“你失败了”。",
         "11. 不预设结局；只准备压力、种子、钟。玩家的选择改变世界，不是世界替玩家选。",
         "12. 结尾不要每回合都“你怎么办”；在 decision / question / revelation / emotional / resolution 之间轮换。",
+        "13. 正文里出现新地点、新历史、新组织、新规则，先 canon(action=check, facts=[...])；通过后 canon(action=commit, facts=[...], status=revealed)。没有通过就不许写进正文。",
+        "14. 不确定的过去不要编；先 canon(action=brief) 查。查不到就把它留在 unknown 或传闻里，不要补成既定事实。",
+        "",
+        "## CANON（世界圣经，只读）",
+        canon_text,
         "",
         "## 当前局面",
         "- 世界：%s（%s）" % (world.get("name") or "", world.get("era") or "未定纪元"),
@@ -96,7 +106,7 @@ def _system_prompt(state: dict) -> str:
     if narrative:
         lines.extend([
             "",
-            "## 这局是什么",
+            "## GAME PROFILE（这局是什么）",
             "- 类型：%s · 玩法：%s" % (narrative.get("genre") or "", narrative.get("play") or ""),
             "- 基调：%s · 难度：%s" % (
                 " / ".join(narrative.get("tone") or []) or "未定",
@@ -114,7 +124,7 @@ def _system_prompt(state: dict) -> str:
             lines.append("- 叙述风格：%s" % _trim(style, 200))
     lines.extend([
         "",
-        "## 本回合场面卡",
+        "## CONTRACT（本回合场面卡）",
         "- 地点：%s" % (turn.get("location") or "未知"),
         "- 在场：%s" % (
             "；".join(
@@ -132,12 +142,14 @@ def _system_prompt(state: dict) -> str:
     ])
     lines.extend([
         "",
-        "## 工具使用",
+        "## TOOLS（工具使用）",
+        "- 每回合开场：canon(action=brief) 读世界圣经；不确定过去时先查这里。",
         "- 不确定当前数值：先 inspect。",
         "- 玩家移动：travel；玩家打架：combat 或先 combat_preview。",
         "- 玩家买东西/卖东西：trade；玩家用人情/威胁/求助：social。",
         "- 玩家做了亏心事或要结算因果：karma。",
         "- 玩家用物品：use_item；玩家要做风险判定：roll。",
+        "- 正文出现新地点/新历史/新组织/新规则：先 canon(action=check, facts=[...])，通过后 canon(action=commit, facts=[...])。",
         "- 每回合收尾：tick。",
         "- 玩家完成一幕：progress(action=advance)。失败钟压力：progress(action=failure)。",
         "- 需要把正文写进存档：story(action=publish)。",

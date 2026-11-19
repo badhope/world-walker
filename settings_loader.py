@@ -14,6 +14,7 @@
 所有函数都是纯函数（除非显式接收 state 并原地更新），不读写文件、不依赖时间。
 """
 
+from game_engine import canon as canon_rules
 from game_engine.rules import gamesystem as game_rules
 from game_engine.rules import playbook as playbook_rules
 from game_engine.rules import questline as questline_rules
@@ -155,6 +156,7 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
     # 不能等到 apply_runtime_fields 才补（那样 UI 第一帧是空的）。
     playbook, pb_notes = playbook_rules.normalize(bundle.get("playbook"))
     quests = questline_rules.normalize_all(bundle.get("questlines"))         if bundle.get("questlines") else []
+    world_bible = canon_rules.normalize(bundle.get("world_bible") or {})
 
     # 游戏档案与体系定义在**建局时**就落盘：面板第一帧与 status 立刻可用。
     # 模板库（templates.py）产出的 bundle 直接带这两块；老设定包没有也不影响。
@@ -184,6 +186,7 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
             "era": str(world.get("era", "")),
             "location_desc": str(world.get("location_desc", "")),
         },
+        "world_bible": world_bible,
         "playbook": playbook,
         "playbook_notes": pb_notes,
         "questlines": quests,
@@ -217,6 +220,8 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
         pb, notes = playbook_rules.normalize(bundle["playbook"])
         state["playbook"] = pb
         state["playbook_notes"] = notes
+    if bundle.get("world_bible") and not state.get("world_bible"):
+        state["world_bible"] = canon_rules.normalize(bundle["world_bible"])
     if bundle.get("questlines"):
         state["questlines"] = questline_rules.normalize_all(bundle["questlines"])
         state.setdefault("quests", {})

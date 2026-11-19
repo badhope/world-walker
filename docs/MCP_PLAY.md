@@ -45,7 +45,15 @@ MCP 不要求模型厂商；宿主 AI 用哪个模型由你的客户端决定。
 3. 以谁的身份？
 4. 基调、难度、内容边界？
 
-然后：
+拿到答案后，**第一次写正文前**必须把世界根设定定下来。不要一次写百科全书，只锁底层：
+
+1. 世界前提：最基本现状、谁维持秩序、哪里失控。
+2. 力量规则：能做什么、代价、绝对不能做什么。
+3. 历史断层：哪段过去仍在影响现在、官方说法与真相是否不同。
+4. 地图边界：玩家在哪、最近三四个地点、通行时间、哪里进不去。
+5. 社会与生死：什么被禁止/惩罚、受伤/濒死/死亡怎么处理。
+
+写成 10–12 条 `immutable` 事实，细节和未探索区放 `unknown`。然后选一条路：
 
 ```text
 templates_list()
@@ -53,13 +61,16 @@ template_start(template="tabletop", name="灰岩堡", player_name="韩照",
                overrides={"game": {"tags": ["硬核"]}})
 ```
 
-或：
+模板已自带 11 条根设定和 3 个未知；开局后先 `canon_brief` 读一遍，再写开场。
+
+自建世界：
 
 ```text
 world_init(world={...}, player={...}, entities=[...], state_path="my-game.json")
+canon_init(bible={world: {...}, immutable: [...], unknown: [...]})
 ```
 
-模板只提供骨架、世界种子和初始关系，不提供预写剧情。开局后让 AI 写一张开局卡：
+`canon_init` 至少 8 条 `immutable`；没有世界圣经就不开始叙事。开局后让 AI 写一张开局卡：
 
 - 你在哪
 - 你是谁
@@ -71,22 +82,39 @@ world_init(world={...}, player={...}, entities=[...], state_path="my-game.json")
 ## 一回合
 
 ```text
+canon_brief(scene_text=...)           # 先读世界圣经
 read_state()                          # 或 context_pack(scene_text=...)
 roll(attribute="dex", difficulty=12)   # 需要判定时
 context_known(character="roland")      # 写 NPC 对话前
+canon_check(facts=[...])               # 正文出现新地点/新历史/新规则时先查
 publish_prose(text="...")              # 唯一正文出口
+canon_commit(facts=[...], status="revealed")  # 通过后入账
 tick()                                 # 收尾
 ```
 
 规则：
 
 - 数值只由工具结算，宿主不心算、不编造。
+- `canon_brief` 每回合先读；状态 > 记忆 > 推理，根设定不许改，不许 retcon。
 - `publish_prose` 只写玩家看到的文学描写；不写 JSON、字段名、工具名。
 - 不替玩家写内心决定、台词或下一步。
+- 正文出现新地点/新历史/新组织/新规则：先 `canon_check`，通过才 `canon_commit`；冲突就修正叙述，不许自己圆。
+- 不确定的过去先 `canon_brief` 查；查不到留在 `unknown` 或传闻，不补成既定事实。
 - NPC 只能引用 `context_known` 返回的事实；不知道就回避、撒谎或反问。
 - 失败也要前进：给新信息、新代价或新选择。
 - 不预设结局；只准备压力、种子、钟。
 - 每 3–5 回合看一次 `narrative` / `status`，把世界变化织进叙事。
+
+### 改根设定
+
+根设定是硬 canon。确实要改（例如玩家要求重开世界观）时，必须显式覆盖并说明理由：
+
+```text
+canon_commit(facts=[...], status="immutable", allow_override=true,
+             reason="玩家要求把墓穴改到城北")
+```
+
+没有 `reason` 的覆盖会被拒绝；默认流程只写 `revealed` 或 `rumor`。
 
 ## 资源
 

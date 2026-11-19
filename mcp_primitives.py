@@ -2,7 +2,7 @@
 
 Why this exists
 ---------------
-The server exposes 67 tools and one prompt, but had zero **resources** at first. That matters:
+The server exposes 71 tools and one prompt, but had zero **resources** at first. That matters:
 in MCP, tools are *model-controlled* (the model decides to call them), while
 resources are *application-controlled* — a host can pin live game state, the
 current save, or the active rule set into context without asking the model to
@@ -39,6 +39,7 @@ READ_ONLY_TOOLS = frozenset({
     'recall', 'recap', 'templates_list', 'template_info', 'template_apply',
     'system_schema', 'system_status', 'session_list', 'pending_actions',
     'context_search', 'context_pack',
+    'canon_brief', 'canon_check',
     'character_card_read',
 })
 

@@ -5,6 +5,40 @@
 
 ---
 
+## v1.13.0 — 2026-11-19
+
+**世界圣经层：先锁根设定，再边探索边展开。**
+
+### 新增
+
+- `canon.py`：`normalize / brief / check / commit / render`。世界事实分
+  `immutable`（锁死）、`revealed`（玩出来）、`rumors`（传闻）、`unknown`（迷雾）；
+  每条事实带 `id / subject / predicate / value / statement / status / locked / source / tags / tick`。
+- 8 套模板各内置 11 条根设定 + 3 个未知：世界前提、力量规则与代价/限制、历史断层、
+  地图节点与通行成本、势力格局、社会秩序、经济底座、生死规则、玩家位置。
+- MCP 新增 `canon_init / canon_brief / canon_check / canon_commit` 四个工具（67 → 71）。
+- 玩家工具新增 `canon`（brief/check/commit/init），模型工具面 26 → 27。
+- `mcp_primitives` 把 `canon_brief / canon_check` 标为只读。
+- `scripts/verify_mcp_mode.py` 增加世界圣经契约；`verify_mcp_stdio` 工具清单同步到 71。
+
+### 变更
+
+- `state_schema.new_game()`、`settings_loader.build_state()` / `apply_runtime_fields()` 接入
+  `world_bible`；旧存档没有 bible 时保持可读，但会提示先 `canon_init`。
+- GM 提示词改为 POLICY → CANON → 当前局面 → GAME PROFILE → CONTRACT → TOOLS；
+  每回合先 `canon_brief`，新事实先 `canon_check` 再 `canon_commit`，根设定冲突必须修正叙述。
+- `SESSION_ZERO_BRIEF` 增加世界根设定五问；`NEW_GAME_BRIEF` 增加开局前 canon 流程。
+- `docs/MCP_PLAY.md`、`README`、`README.zh-CN.md`、`ARCHITECTURE.md` 同步新计数与协议。
+
+### 验证
+
+- `python3 -m py_compile` 核心 9 文件通过；8 套模板 `validate()` 全部空问题；
+  `tabletop` bundle 带 11 条 immutable；canon 冲突/覆盖/提交按临时存档实测通过。
+- `verify_docs.py` 29/29、`verify_surface.py` 27/27、`verify_player_shell.py` 23/23、
+  `verify_mcp_stdio.py` 67/67、`verify_mcp_mode.py` 8/8、`verify_generic.py` 104/104。
+
+---
+
 ## v1.12.1 — 2026-11-19
 
 **清理旧展示层，补齐 MCP 独立游玩模式。**

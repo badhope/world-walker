@@ -45,6 +45,7 @@ except ImportError:  # pragma: no cover - 仅在只有 2.x 布局的环境走到
     _MCP_LAYOUT = "mcpserver"
 
 from game_engine import __version__ as _WW_VERSION
+from game_engine import canon as canon_rules
 from game_engine.rules.cognition import daily_cognitive_budget, should_use_system2
 from game_engine.rules import combat as combat_rules
 from game_engine.rules.combat import resolve_combat
@@ -206,6 +207,7 @@ _STATE_TRANSACTION_TOOLS = frozenset({
     "game_tag", "game_sheet", "context_remember", "context_forget", "context_tell",
     "system_define",
     "system_run", "system_remove",
+    "canon_init", "canon_commit",
 })
 
 
@@ -365,36 +367,51 @@ def _guarded_tool(*dargs, **dkwargs):
 
 server.tool = _guarded_tool
 
-SESSION_ZERO_BRIEF = """你在主持一局单人 AI 跑团。先不要开局，先问玩家想玩什么。
+SESSION_ZERO_BRIEF = """你在主持一局单人 AI 跑团。先不要开局，先问玩家想玩什么，再一起把世界的根定下来。
 
-## 四步开局问询
+## 第一步：四问玩家
 1. **类型**：悬疑 / 奇幻 / 武侠仙侠 / 科幻 / 都市 / 历史 / 恋爱 / 恐怖 / 生存 / 日常
 2. **玩法**：探索解谜 / 生存压力 / 权谋经营 / 关系情感 / 战斗成长 / 调查恐怖 / 轻松日常
 3. **角色**：随机生成 / 自己写一句 / 用模板预设
 4. **体验**：基调、难度、内容边界
 
-一次问一到两组，不要甩一张长表单；玩家答完再问下一层。拿到答案后：
+一次问一到两组，不要甩长表单。玩家答完再问下一层。
+
+## 第二步：世界根设定五问（不能跳过）
+在第一次写正文之前，必须把下面五类根设定定下来。不要一次写百科全书；每类只要 1–3 句，能锁住底层就行：
+1. **世界前提**：这个世界最基本的现状是什么？谁在维持秩序，哪里已经失控？
+2. **力量规则**：超自然/科技/核心能力能做什么？代价是什么？绝对不能做什么？
+3. **历史断层**：哪一段过去仍在影响现在？哪件事官方说法和真相可能不同？
+4. **地图边界**：玩家现在在哪？最近的三四个地点是什么？走一趟要多久？哪里进不去？
+5. **社会与生死**：什么行为会被禁止/惩罚？受伤、濒死、死亡怎么处理？有没有复活？
+
+拿到答案后，把它们写成 10–12 条 `immutable` 事实（每条：subject / predicate / value / statement / tags）。细节、秘密、未探索地区写进 `unknown`，不要提前编死。然后：
 
 ```
-templates_list()
-template_start(template="...", name="...", player_name="...", overrides={...})
+canon_init(bible={world: {...}, immutable: [...], unknown: [...]})
 ```
 
-或者用 `world_init` 自建设定。开局后写一张**开局卡**：你在哪、你是谁、什么已经在动、
-死亡规则、三个钩子、核心问题。不要预写完整剧情。
+## 第三步：选模板或自建
+- 想开箱即用：`templates_list()` → `template_start(template="...", name="...", player_name="...", overrides={...})`。模板自带 11 条根设定，开局后先 `canon_brief` 读一遍，再开始写。
+- 想自建：`world_init(...)` 建世界，**紧接着** `canon_init(...)`，然后才写第一段正文。没有 canon 就不许开始叙事。
+
+开局写一张**开局卡**：你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。不预写完整剧情。
 
 ## 这是 MCP 模式
 没有本地页面，玩家只看到你的对话。地点、人物、物品、氛围全部由你的叙述展示。
 不要调用 `open_panel`，不要把 JSON、工具名、字段名或系统提示给玩家看。
 
 ## 每回合
-1. `read_state` / `context_pack` 看局面与在场人物。
-2. 需要判定就 `roll` / `combat` / `trade` / `social` / `karma`；数值必须由工具结算。
-3. 写 NPC 对话前先 `context_known(character=...)`；不知道就回避、撒谎或反问。
-4. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
-5. `tick()` 收尾；每 3–5 回合看一次 `narrative` / `status`。
+1. `canon_brief(scene_text=...)` 先读本回合的世界根设定、已揭示事实和迷雾问题。
+2. `read_state` / `context_pack` 看局面与在场人物。
+3. 需要判定就 `roll` / `combat` / `trade` / `social` / `karma`；数值必须由工具结算。
+4. 写 NPC 对话前先 `context_known(character=...)`；不知道就回避、撒谎或反问。
+5. 正文里出现新地点/新历史/新组织/新规则，先 `canon_check(facts=[...])`；通过才 `canon_commit(facts=[...])`。冲突就修正叙述，不许自己圆。
+6. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
+7. `tick()` 收尾；每 3–5 回合看一次 `narrative` / `status`。
 
-## 硬规则
+## 硬规则（POLICY）
+- **CANON 最高**：状态 > 记忆 > 你的推理。根设定不许改，不许 retcon；发现冲突先修正叙述，不要改世界。
 - 不替玩家写内心决定、台词或下一步。
 - 不编数值；工具报错就叙述“这件事没有成”，给替代做法。
 - 失败也要前进：给新信息、新代价或新选择。
@@ -415,20 +432,23 @@ NEW_GAME_BRIEF = """你在主持一局单人 AI 跑团，所有数值结算通�
 没有本地页面，玩家只看到你的对话；地点、人物、物品、氛围全部由你叙述展示。
 不要调用 open_panel，不要把 JSON、工具名、字段名给玩家看。
 
-## 开局
-若玩家还没选类型/玩法/角色，先用 `session_zero` 的四步问询；不要直接塞模板。
-选好后 `templates_list` → `template_start`（或用 `world_init` 自建）。
-开局写一张开局卡：你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。
-模板只给骨架和世界种子，不预写剧情。
+## 开局：先定世界根设定
+若玩家还没选类型/玩法/角色，先用 `session_zero` 的四问。选好后，在第一次写正文前必须定下五类根设定：世界前提、力量规则（能做什么/代价/不能做什么）、历史断层、地图边界与通行成本、社会与生死规则。
+- 用模板：`templates_list` → `template_start`。模板已带 11 条 immutable canon 和 3 个 unknown；开局后先 `canon_brief`。
+- 自建：`world_init` 之后立刻 `canon_init(bible={...})`，至少 8 条 immutable，细节放 unknown。没有 canon 不许开始叙事。
+开局写一张开局卡：你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。模板只给骨架和世界种子，不预写剧情。
 
-## 每回合
-1. `read_state` / `context_pack` 读局面与在场人物。
-2. 需要判定时 `roll` / `combat` / `trade` / `social` / `karma`；数值只由工具结算。
-3. 写 NPC 对话前 `context_known(character=...)`；不知道就回避、撒谎或反问。
-4. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
-5. `tick()` 收尾；每 3–5 回合看 `narrative` / `status`。
+## 每回合（顺序不能乱）
+1. `canon_brief(scene_text=...)` 读本回合的世界根设定、已揭示事实、迷雾问题。
+2. `read_state` / `context_pack` 读局面与在场人物。
+3. 需要判定时 `roll` / `combat` / `trade` / `social` / `karma`；数值只由工具结算。
+4. 写 NPC 对话前 `context_known(character=...)`；不知道就回避、撒谎或反问。
+5. 正文出现新地点/新历史/新组织/新规则：先 `canon_check(facts=[...])`，通过才 `canon_commit(facts=[...], status=revealed)`；冲突就修正叙述，不许自己圆。
+6. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
+7. `tick()` 收尾；每 3–5 回合看 `narrative` / `status`。
 
-## 硬规则
+## 硬规则（POLICY）
+- **CANON 最高**：状态 > 记忆 > 你的推理。根设定不许改，不许 retcon。
 - 不替玩家写内心决定、台词或下一步。
 - 不编数值；工具报错就叙述“这件事没有成”，给替代做法。
 - 失败也要前进：给新信息、新代价或新选择。
@@ -441,7 +461,7 @@ NEW_GAME_BRIEF = """你在主持一局单人 AI 跑团，所有数值结算通�
 ## 状态文件
 {state_path}（seed={seed}，同种子可复现）
 
-现在开始：先开局，然后写开场。"""
+现在开始：先确认世界根设定，再开局，然后写开场。"""
 
 
 @server.prompt(name="new_game", title="开一局新游戏",
@@ -778,6 +798,13 @@ def world_schema() -> dict:
             "tick": "回合数（整数，引擎维护）",
             "rng_seed": "随机种子（整数，决定可复现性）",
             "world_info": {"name": "世界名", "era": "纪元", "location_desc": "开场地点描写"},
+            "world_bible": {
+                "world": {"name": "世界名", "era": "纪元", "premise": "世界前提", "genre": "题材", "tone": "基调"},
+                "immutable": "锁死的根设定数组；每条含 id/subject/predicate/value/statement/tags",
+                "revealed": "玩出来后才成立的事实",
+                "rumors": "传闻，可能为假",
+                "unknown": "迷雾问题数组；首次接触后通过 canon_commit 升为 revealed",
+            },
             "entities": "entity_id -> 实体对象（见 entity_shape）",
             "relations": "关系表，键为 'a:b'（字母序，引擎自动生成），值为 {affinity, respect}（-100~100）",
             "market": "location -> {item_key -> item_shape}；交易工具用 item_key 而非 name",
@@ -873,6 +900,10 @@ def world_schema() -> dict:
             "failure_tick": "推进失败钟（仅 clock 模式）",
             "world_schema": "状态结构说明（建局前查一次即可）",
             "world_init": "按设定建世界并写盘（建局入口）",
+            "canon_init": "建立/替换世界圣经（自建世界时第一次叙事前调用，至少 8 条 immutable）",
+            "canon_brief": "读取本回合相关世界圣经（只读，每回合开场先调）",
+            "canon_check": "检查拟提交事实是否与 canon 冲突（只读）",
+            "canon_commit": "把探索到的新事实写入世界圣经（默认 revealed，冲突拒绝）",
             "world_open": "打开已有状态文件续跑",
             "read_state": "读取当前对局完整状态（只读，不落盘）",
             "load_setting": "从设定包一键开一局（settings/*.setting.json）",
@@ -974,6 +1005,94 @@ def read_state() -> dict:
     Full state of the active game."""
 
     return _load()
+
+
+@server.tool()
+def canon_init(bible: dict) -> dict:
+    """建立/替换世界圣经（Chinese: 开局前把世界前提、力量规则、历史断层、地图节点、
+    通行成本、势力、社会秩序、经济、生死规则、玩家位置写成 immutable 事实；细节放 unknown。
+    模板开局已自动带 canon，自建世界时在第一次叙事前调用本工具。
+    Install the immutable world bible before play starts."""
+
+    normalized = canon_rules.normalize(bible)
+    if not canon_rules.is_configured(normalized) or len(normalized.get("immutable") or []) < 8:
+        raise ValueError("canon_init 至少需要 8 条 immutable 根设定")
+    if not normalized.get("unknown"):
+        raise ValueError("canon_init 至少要留 1 个 unknown（未探索区不能为空）")
+    state = _load()
+    state["world_bible"] = normalized
+    log_event(state, "system", "世界圣经建立：%d 条根设定，%d 个未知"
+              % (len(normalized["immutable"]), len(normalized["unknown"])))
+    return _finish(state, {
+        "world": normalized["world"],
+        "counts": {
+            "immutable": len(normalized["immutable"]),
+            "revealed": len(normalized["revealed"]),
+            "rumors": len(normalized["rumors"]),
+            "unknown": len(normalized["unknown"]),
+        },
+        "hint": "每回合先 canon_brief；新事实先 canon_check，再 canon_commit。",
+    })
+
+
+@server.tool()
+def canon_brief(scene_text: str = "", limit: int = 14) -> dict:
+    """读取本回合相关的世界圣经（Chinese: 根设定 + 已揭示事实 + 迷雾问题；只读。
+    GM 每回合先读它，再读局面。Read the canon facts relevant to this scene."""
+
+    state = _load()
+    return _read(canon_rules.brief(state, scene_text=scene_text, limit=limit))
+
+
+@server.tool()
+def canon_check(facts: list[dict], status: str = "revealed",
+                allow_override: bool = False) -> dict:
+    """检查拟新增/改写的事实是否与 canon 冲突（Chinese: 只读，不写入。
+    facts 每项至少给 subject/predicate/value/statement；同 id 或同 subject+predicate
+    的已有事实会被比对，locked 事实被改写会报 locked_change。
+    Check proposed facts against the locked world bible without writing."""
+
+    if status not in ("immutable", "revealed", "rumor"):
+        raise ValueError("status 只能是 immutable / revealed / rumor")
+    state = _load()
+    return _read(canon_rules.check(state, facts, allow_override=allow_override, status=status))
+
+
+@server.tool()
+def canon_commit(facts: list[dict], status: str = "revealed", source: str = "play",
+                 allow_override: bool = False, reason: str = "") -> dict:
+    """把已检查的新事实写入世界圣经（Chinese: 探索到的新地点/新历史/新关系走这里，
+    不是直接改 JSON。默认写入 revealed；rumor 写传闻；immutable 只能显式 override。
+    冲突时不写入并返回 conflicts。
+    Commit revealed/rumour facts; immutable changes require an explicit override."""
+
+    if status not in ("immutable", "revealed", "rumor"):
+        raise ValueError("status 只能是 immutable / revealed / rumor")
+    if not facts:
+        raise ValueError("facts 不能为空")
+    if allow_override and not str(reason or "").strip():
+        raise ValueError("allow_override=true 时必须给 reason")
+    state = _load()
+    source_text = str(source or "play").strip()
+    if source_text == "play":
+        source_text = "play:tick_%s" % int(state.get("tick", 0) or 0)
+    _bible, result = canon_rules.commit(
+        state, facts, status=status, source=source_text,
+        allow_override=allow_override, reason=reason)
+    if not result.get("ok"):
+        return _finish(state, result)
+    counts = {
+        "immutable": len(_bible.get("immutable") or []),
+        "revealed": len(_bible.get("revealed") or []),
+        "rumors": len(_bible.get("rumors") or []),
+        "unknown": len(_bible.get("unknown") or []),
+    }
+    return _finish(state, {
+        "ok": True,
+        "committed": result.get("committed", 0),
+        "counts": counts,
+        "message": result.get("message", "已写入 canon。"),
+    })
 
 
 @server.tool()
@@ -2511,7 +2630,9 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
         "systems": sorted((state.get("systems") or {}).get("defs", {}).keys()),
         "questlines": len(state.get("questlines") or []),
         "game_kind": (state.get("game") or {}).get("kind", ""),
-        "hint": "已设为当前对局；可直接开始写正文，不需要本地页面。",
+        "canon_facts": len((state.get("world_bible") or {}).get("immutable") or []),
+        "canon_unknown": len((state.get("world_bible") or {}).get("unknown") or []),
+        "hint": "已设为当前对局；先 canon_brief 读世界根设定，再开始写正文。",
     }
 
 

@@ -43,6 +43,9 @@ check("M6 protocol resource points at docs/MCP_PLAY.md",
       "MCP_PLAY.md" in primitives and "GAME_MASTER_PROTOCOL" not in primitives)
 check("M7 retired protocol file is gone",
       not os.path.exists(os.path.join(ROOT, "GAME_MASTER_PROTOCOL.md")))
+check("M8 world bible is required before narration",
+      "世界前提" in session_zero and "canon_init" in session_zero
+      and "canon_brief" in brief and "canon_commit" in brief)
 
-print("\n%d/%d passed" % (len(FAIL) == 0 and 7 or 7 - len(FAIL), 7))
+print("\n%d/%d passed" % (8 - len(FAIL) if FAIL else 8, 8))
 raise SystemExit(1 if FAIL else 0)

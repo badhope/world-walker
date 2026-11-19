@@ -25,7 +25,7 @@ World Walker 是单人 AI 跑团 / 互动叙事引擎，不是游戏助手、不
 - `panel.i18n.js`、主题切换脚本
 - `assets/echarts.min.js`
 - 以 `open_panel` 为必需步骤的 MCP 流程
-- 把旧 67 工具叙事塞回玩家页面
+- 把旧 MCP 工具叙事（现 71 个工具）塞回玩家页面
 - 用模板预写完整剧情
 
 ## 验证

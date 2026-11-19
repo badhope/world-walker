@@ -1,6 +1,6 @@
 # World Walker 架构
 
-文档版本：v1.12 · 2026-11-19
+文档版本：v1.13 · 2026-11-19
 
 World Walker 有两个入口，但只有一套引擎：
 
@@ -44,14 +44,22 @@ MCP 模式走：
   `session-zero/preview`、`model/config`、`model/test`、`saves`、`export`、`events`。
 - `bootstrap` 返回大厅、世界目录、模型状态和 Session Zero 选项。
 - `new` 接受 `narrative`；未指定模板时按类型自动配骨架。
-- `chat` 调 `DialogRuntime.respond()`，模型通过 26 个玩家工具推进。
+- `chat` 调 `DialogRuntime.respond()`，模型通过 27 个玩家工具推进。
 
 ### 对话运行时：`dialog_runtime.py`
 
-- 组装 GM 系统提示：世界状态、这局是什么、本回合场面卡、12 条硬规则。
+- 组装 GM 系统提示：POLICY（15 条绝对规则）、CANON（只读世界圣经）、当前局面、
+  GAME PROFILE、CONTRACT（本回合场面卡）、TOOLS。
 - 跑 OpenAI-compatible 工具循环；模型可以多轮调用工具。
 - 收尾时写 `turns`，并把 `narrative_rules.audit_turn` 的发现写入 `audit`。
 - 不直接改写游戏数值；所有数值变更由工具完成。
+
+### 世界圣经：`canon.py`
+
+- `normalize`：把模板/设定包的 bible 归一化为 `immutable / revealed / rumors / unknown`。
+- `brief`：每回合返回根设定、相关已揭示事实、迷雾问题；GM 先读它再叙事。
+- `check`：确定性冲突检查；同 id 或同 subject+predicate 且 value 不同即冲突。
+- `commit`：把探索到的新事实写入 `revealed`/`rumor`；根设定改动必须显式 override。
 
 ### Session Zero：`narrative_rules.py`
 
@@ -87,9 +95,10 @@ world-walker/
 ├── panel.py / panel.html / panel.css / panel.js   # 玩家页面
 ├── dialog_runtime.py                              # GM 提示词与工具循环
 ├── narrative_rules.py                             # Session Zero / 开局卡 / 场面卡 / 审计
+├── canon.py                                       # 世界圣经 / 硬 canon / 冲突检查
 ├── player_view.py                                 # 存档 → 玩家视图
 ├── model_config.py                                # OpenAI-compatible 配置
-├── tool_registry.py                               # 26 个玩家工具
+├── tool_registry.py                               # 27 个玩家工具
 ├── game_service.py                                # 工具意图层
 ├── mcp_server.py / mcp_primitives.py              # 可选 MCP 独立接口
 ├── state_schema.py                                # 状态 / 原子写 / 锁 / 归档

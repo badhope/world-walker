@@ -90,6 +90,19 @@ def build_specs(svc: GameService) -> list[ToolSpec]:
             svc.context,
         ),
         ToolSpec(
+            "canon",
+            "世界圣经。brief 先读本回合根设定/已揭示事实/迷雾；check 检查新事实是否冲突；"
+            "commit 把探索到的新事实入账；init 自建世界时建立根设定。"
+            "每回合先 brief；正文里出现新地点/新历史/新关系后，先 check 再 commit。",
+            _params(action={"type": "string", "enum": ["brief", "check", "commit", "init"]},
+                    scene_text=_str("当下场景文字"), limit=_int("条数"),
+                    facts={"type": "array", "items": {"type": "object"}},
+                    status=_str("immutable/revealed/rumor"), source=_str("来源"),
+                    allow_override=_bool("是否显式改根设定"), reason=_str("override 理由"),
+                    bible={"type": "object"}),
+            svc.canon,
+        ),
+        ToolSpec(
             "characters",
             "角色卡与 NPC。read 先看卡；add 把卡加入当前局；spawn 现场生成一个新 NPC。"
             "新人物进场优先 spawn；有卡文件才用 add。",

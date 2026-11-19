@@ -85,7 +85,7 @@ canon_init(bible={world: {...}, immutable: [...], unknown: [...]})
 canon_brief(scene_text=...)           # 先读世界圣经
 read_state()                          # 或 context_pack(scene_text=...)
 roll(attribute="dex", difficulty=12)   # 需要判定时
-context_known(character="roland")      # 写 NPC 对话前
+knowledge(action="character", name="roland")  # 写 NPC 对话前：位置/活动/知道什么
 canon_check(facts=[...])               # 正文出现新地点/新历史/新规则时先查
 publish_prose(text="...")              # 唯一正文出口
 canon_commit(facts=[...], status="revealed")  # 通过后入账
@@ -101,7 +101,8 @@ tick()                                 # 收尾
 - 不替玩家写内心决定、台词或下一步。
 - 正文出现新地点/新历史/新组织/新规则：先 `canon_check`，通过才 `canon_commit`；冲突就修正叙述，不许自己圆。
 - 不确定的过去先 `canon_brief` 查；查不到留在 `unknown` 或传闻，不补成既定事实。
-- NPC 只能引用 `context_known` 返回的事实；不知道就回避、撒谎或反问。
+- NPC 只能引用 `knowledge(action=character).knowledge` 返回的事实；不知道就回避、撒谎或反问。
+- NPC 换地点/换状态后用 `knowledge(action=update_character, ...)` 写回；稳定新设定用 `worldbook_add`，重大事件用 `timeline_add`。
 - 失败也要前进：给新信息、新代价或新选择。
 - 不预设结局；只准备压力、种子、钟。
 - 每 3–5 回合看一次 `narrative` / `status`，把世界变化织进叙事。

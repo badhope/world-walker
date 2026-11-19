@@ -49,6 +49,8 @@ EXPECTED_TOOLS = {
     'templates_list', 'template_info', 'template_apply', 'template_start',
     # v1.13.0 世界圣经层
     'canon_init', 'canon_brief', 'canon_check', 'canon_commit',
+    # v1.15.0 知识库投影
+    'knowledge',
 }
 
 RESULTS = []

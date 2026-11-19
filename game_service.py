@@ -27,11 +27,11 @@ class GameService:
         self.state_path = os.path.abspath(state_path)
 
     # -- low level -----------------------------------------------------
-    def _call(self, name: str, **kwargs) -> dict:
+    def _call(self, tool_name: str, /, **kwargs) -> dict:
         import game_engine.mcp_server as server
-        fn = getattr(server, name, None)
+        fn = getattr(server, tool_name, None)
         if fn is None:
-            return {"ok": False, "error": "未知工具：%s" % name}
+            return {"ok": False, "error": "未知工具：%s" % tool_name}
         try:
             sig = inspect.signature(fn)
             accepted = {p.name for p in sig.parameters.values()
@@ -152,6 +152,9 @@ class GameService:
                               status=kwargs.get("status", ""))
         return {"ok": False, "error": "memory.action 不在支持范围"}
 
+    def knowledge(self, *, action: str = "search", **kwargs) -> dict:
+        return self._call("knowledge", action=action, **kwargs)
+
     def context(self, *, action: str = "pack", **kwargs) -> dict:
         if action == "pack":
             return self._call("context_pack", scene_text=kwargs.get("scene_text", ""),
@@ -198,7 +201,10 @@ class GameService:
                               attrs=kwargs.get("attrs"), level=kwargs.get("level", "凡人"),
                               hp=kwargs.get("hp", 60), gold=kwargs.get("gold", 0),
                               location=kwargs.get("location", ""), desc=kwargs.get("desc", ""),
-                              personality=kwargs.get("personality", ""))
+                              personality=kwargs.get("personality", ""),
+                              activity=kwargs.get("activity", ""), intent=kwargs.get("intent", ""),
+                              mood=kwargs.get("mood", ""), routine=kwargs.get("routine", ""),
+                              status=kwargs.get("status", ""))
         return {"ok": False, "error": "characters.action 只能是 read/add/spawn"}
 
     def sheet(self, *, action: str = "profile", **kwargs) -> dict:

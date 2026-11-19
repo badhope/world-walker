@@ -5,6 +5,44 @@
 
 ---
 
+## v1.15.0 — 2026-11-20
+
+**NPC 互动沉淀为可检索的角色卡 / 世界书 / 时间线知识库。**
+
+### 新增
+
+- `knowledge.py`：SQLite sidecar 索引（`<save>.json.knowledge.db`），`sqlite3` + WAL +
+  FTS5 `trigram`；中文 3 字以上子串检索，1–2 字回退 `LIKE`。JSON 存档仍是唯一事实源，
+  索引可随时 `knowledge sync` 重建，不引入 Postgres / ORM / 常驻服务 / 向量库。
+- MCP 新增 `knowledge`（71 → 72），玩家工具面新增 `knowledge`（27 → 28）。
+  action：`search / stats / character / update_character / worldbook_add / timeline_add / sync`。
+- 角色档案：`knowledge(action=character, name=...)` 一次返回
+  location / activity / intent / mood / routine / status / last_seen_tick、关系、已知事实、
+  相关 canon / 世界书、最近事件，以及可导出的 V2 角色卡。
+- 实体新增 `activity / intent / mood / routine / status / last_seen_tick`；`spawn_npc`
+  支持这些字段并自动生成 V2 `card_json`；`add_character` 保存导入的原卡；
+  `knowledge(update_character)` 更新活动状态并同步卡内 `extensions.world_walker`。
+- `narration_context.present_cast` 返回在场 NPC 的 activity / intent / mood / status，
+  GM 不必再靠 `desc` 猜“他现在在干嘛”。
+- GM 固定规则：写 NPC 前先 `knowledge(character)`；NPC 换地点/状态用
+  `update_character` 写回；稳定新设定用 `worldbook_add`；重大事件用 `timeline_add`；
+  旧事用 `search` 查，不凭记忆编。
+
+### 变更
+
+- `settings_loader.normalize_entity()` 允许持久化 `card_json`（≤24KB）；
+- `game_service._call()` 改为 positional-only 工具名，避免 `name` 等业务参数与内部参数冲突；
+- `world_schema`、`tool_registry`、README / README.zh-CN / ARCHITECTURE / docs 计数同步 72 / 28。
+
+### 验证
+
+- 临时存档端到端：`sync` 建库 → `character` 陈伯 → `update_character` 活动写回 →
+  `worldbook_add` 白灯条目 → `timeline_add` → `search` 命中；独立存档不受影响。
+- `verify_docs.py` 29/29、`verify_mcp_stdio.py` 67/67（tools/list 72）、
+  `python3 -m py_compile` 核心文件通过。
+
+---
+
 ## v1.14.0 — 2026-11-20
 
 **世界分两层：主角知道的，与世界默认但主角不知道的。**

@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.14.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
+**v1.15.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
 
 > **You talk. The AI performs. The engine decides. The save remembers.**
 
@@ -15,7 +15,7 @@ local model or aggregator. No provider names, no SDK lock-in.
 What stays deterministic is the part a narrator should never improvise: HP, prices, inventory,
 relationships, clocks, clues, saves and replay. The AI writes the scene; the engine owns the truth.
 
-`206 rule functions` · `71 MCP tools` · `27 player tools` · `4 setting bundles` · `9 templates` ·
+`206 rule functions` · `72 MCP tools` · `28 player tools` · `4 setting bundles` · `9 templates` ·
 `21 self-check suites` · `0 runtime dependencies`
 
 ---
@@ -156,9 +156,9 @@ no consequence, the audit says so; the next turn can correct it.
 
 ## Tools
 
-The model sees 27 player tools, not the old 71-tool MCP surface:
+The model sees 28 player tools, not the old 72-tool MCP surface:
 
-`inspect` `progress` `story` `memory` `context` `canon` `characters` `sheet` `systems` `worlds` `calc`
+`inspect` `progress` `story` `memory` `context` `canon` `characters` `knowledge` `sheet` `systems` `worlds` `calc`
 `panel` `new_game` `open_game` `saves` `snapshot` `combat` `combat_preview` `trade` `social`
 `karma` `tick` `advance` `travel` `use_item` `roll` `configure`
 
@@ -184,7 +184,7 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_player_shell.py` | 23 | real browser: lobby, Session Zero, start card, play view, no duplicate prose |
 | `verify_surface.py` | 27 | player API, model config, save list, static assets, one-writer invariants |
 | `verify_docs.py` | 27 | version, links, current docs, no ghost scripts or assets |
-| `verify_mcp_stdio.py` | 71 | stdio + HTTP MCP handshake, Session Zero prompt, no panel dependency |
+| `verify_mcp_stdio.py` | 72 | stdio + HTTP MCP handshake, Session Zero prompt, no panel dependency |
 | `verify_mcp_mode.py` | 8 | standalone MCP prompt/protocol: session zero, prose ownership, no open_panel |
 
 ```bash
@@ -208,7 +208,7 @@ world-walker/                  # repo root IS the game_engine package
 ├── narrative_rules.py         # Session Zero, start card, scene card, turn audit
 ├── player_view.py             # save -> player-facing payload
 ├── model_config.py            # OpenAI-compatible base_url / key / model
-├── tool_registry.py           # 26 player tools
+├── tool_registry.py           # 28 player tools
 ├── game_service.py            # thin intent layer over the engine
 ├── host_adapter.py            # optional external-host bridge (not the default path)
 ├── state_schema.py            # state model / atomic write / transaction lock

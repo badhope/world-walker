@@ -14,6 +14,8 @@
 所有函数都是纯函数（除非显式接收 state 并原地更新），不读写文件、不依赖时间。
 """
 
+import json
+
 from game_engine import canon as canon_rules
 from game_engine import mapgen
 from game_engine.rules import gamesystem as game_rules
@@ -61,6 +63,24 @@ def normalize_entity(entity_id: str, raw: dict) -> dict:
     for extra in ("desc", "personality", "speech"):
         if raw.get(extra):
             ent[extra] = str(raw[extra])[:PLACE_DESC_CAP]
+    # NPC 的“现在在干嘛”不属于数值，但属于可查询的世界状态：
+    # activity / intent / mood / routine / status / last_seen_tick 会跟着存档走，
+    # 也进 knowledge 索引；不要把这几项塞进 desc 里靠关键词反推。
+    for extra in ("activity", "intent", "mood", "routine", "status"):
+        if raw.get(extra):
+            ent[extra] = str(raw[extra])[:300]
+    card = raw.get("card_json")
+    if isinstance(card, dict):
+        try:
+            if len(json.dumps(card, ensure_ascii=False)) <= 24000:
+                ent["card_json"] = card
+        except (TypeError, ValueError):
+            pass
+    if raw.get("last_seen_tick") is not None:
+        try:
+            ent["last_seen_tick"] = max(0, int(raw["last_seen_tick"]))
+        except (TypeError, ValueError):
+            pass
     if raw.get("skills"):
         ent["skills"] = list(raw["skills"])
     if raw.get("morality"):

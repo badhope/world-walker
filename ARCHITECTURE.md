@@ -1,6 +1,6 @@
 # World Walker 架构
 
-文档版本：v1.14 · 2026-11-20
+文档版本：v1.15 · 2026-11-20
 
 World Walker 有两个入口，但只有一套引擎：
 
@@ -44,7 +44,7 @@ MCP 模式走：
   `session-zero/preview`、`model/config`、`model/test`、`saves`、`export`、`events`。
 - `bootstrap` 返回大厅、世界目录、模型状态和 Session Zero 选项。
 - `new` 接受 `narrative`；未指定模板时按类型自动配骨架。
-- `chat` 调 `DialogRuntime.respond()`，模型通过 27 个玩家工具推进。
+- `chat` 调 `DialogRuntime.respond()`，模型通过 28 个玩家工具推进。
 
 ### 对话运行时：`dialog_runtime.py`
 
@@ -63,6 +63,18 @@ MCP 模式走：
 - `check`：确定性冲突检查；同 id 或同 subject+predicate 且 value 不同即冲突，hidden 也参与比对。
 - `commit`：把探索到的新事实写入 `revealed`/`rumor`；揭示一条 hidden 时自动从 hidden 移除；
   根设定改动必须显式 override。
+
+### 知识库投影：`knowledge.py`
+
+- **JSON 存档仍是唯一事实源**；SQLite 是旁边的可丢弃索引 `<save>.knowledge.db`，可随时重建。
+- `sqlite3` + WAL + FTS5 `trigram`，中文按 3 字以上子串检索；1–2 字查询回退 `LIKE`，不依赖嵌入模型。
+- 统一表 `items(kind, item_id, title, body, keys, tick, extra)`：角色卡、世界书、canon、
+  事实、事件时间线、地点、关系、摘要都投影到这里；单角色档案另带 activity / intent / mood /
+  status / last_seen_tick。
+- `knowledge` MCP 工具：`search / stats / character / update_character / worldbook_add /
+  timeline_add / sync`；玩家工具面同时暴露同一套 action。
+- 运行时写世界书仍写回 `state["lore"]`，时间线仍写回 `state["event_log"]`，不另造第二套事实源。
+- 不引入 Postgres、ORM、常驻服务或向量库；需要语义检索时再加可选 `sqlite-vec` 适配器。
 
 ### Session Zero：`narrative_rules.py`
 
@@ -99,9 +111,10 @@ world-walker/
 ├── dialog_runtime.py                              # GM 提示词与工具循环
 ├── narrative_rules.py                             # Session Zero / 开局卡 / 场面卡 / 审计
 ├── canon.py                                       # 世界圣经 / 硬 canon / 冲突检查
+├── knowledge.py                                   # SQLite sidecar 索引：角色卡 / 世界书 / 时间线
 ├── player_view.py                                 # 存档 → 玩家视图
 ├── model_config.py                                # OpenAI-compatible 配置
-├── tool_registry.py                               # 27 个玩家工具
+├── tool_registry.py                               # 28 个玩家工具
 ├── game_service.py                                # 工具意图层
 ├── mcp_server.py / mcp_primitives.py              # 可选 MCP 独立接口
 ├── state_schema.py                                # 状态 / 原子写 / 锁 / 归档

@@ -1,4 +1,4 @@
-"""The 26 player tools exposed to an OpenAI-compatible model.
+"""The 28 player tools exposed to an OpenAI-compatible model.
 
 Every tool is a thin, named intent over GameService.  Old MCP names stay
 available to hosts, but the model only sees the new surface.
@@ -110,8 +110,28 @@ def build_specs(svc: GameService) -> list[ToolSpec]:
                     path=_str("角色卡路径"), entity_id=_str("实体 id"), id=_str("实体 id（spawn）"),
                     name=_str("显示名"), faction=_str("阵营"), desc=_str("外观/背景"),
                     personality=_str("性格"), location=_str("所在地"), level=_str("境界/等级"),
-                    hp=_int("生命"), gold=_int("钱财"), attrs={"type": "object"}),
+                    hp=_int("生命"), gold=_int("钱财"), attrs={"type": "object"},
+                    activity=_str("现在在做什么"), intent=_str("下一步打算"), mood=_str("情绪"),
+                    routine=_str("日常作息"), status=_str("idle/忙碌/受伤/失踪等")),
             svc.characters,
+        ),
+        ToolSpec(
+            "knowledge",
+            "对局知识库。search 跨角色卡/世界书/canon/事实/事件/地点/关系检索；"
+            "character 查看某个 NPC 现在在哪、在做什么、知道什么、关系如何；"
+            "stats 看索引；sync 重建索引。update_character 更新 NPC 的 activity/intent/mood/status/"
+            "location；worldbook_add 运行时写入世界书条目；timeline_add 记一条时间线。"
+            "对话里问到 NPC 近况或旧事时优先 search/character，不要凭记忆编。",
+            _params(action={"type": "string", "enum": ["search", "stats", "character",
+                                                       "update_character", "worldbook_add", "timeline_add", "sync"]},
+                    query=_str("检索词"), kind=_str("character/worldbook/canon/fact/event/place/relation/summary"),
+                    name=_str("角色 id 或显示名"), fields={"type": "object"},
+                    title=_str("世界书条目标题"), keys={"type": "array", "items": {"type": "string"}},
+                    secondary_keys={"type": "array", "items": {"type": "string"}},
+                    content=_str("世界书正文"), scope=_str("session/world"),
+                    text=_str("时间线正文"), actors={"type": "array", "items": {"type": "string"}},
+                    location=_str("地点"), story_time=_str("故事内时间"), limit=_int("条数")),
+            svc.knowledge,
         ),
         ToolSpec(
             "sheet",

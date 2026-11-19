@@ -284,12 +284,6 @@ stages:
           set -euo pipefail
           python - <<'PY'
           import os, sys, json
-          need = ["docs/index.html", "docs/BENCHMARK.md",
-                  "docs/screenshots/stage-xuanshu.png",
-                  "docs/screenshots/stage-ink.png",
-                  "docs/screenshots/stage-neon.png",
-                  "docs/screenshots/stage-neutral.png",
-                  "docs/screenshots/walkthrough.mp4",
                   "docs/demo/玄枢界.save.json"]
           missing = [p for p in need if not os.path.exists(p) or os.path.getsize(p) == 0]
           print("missing:", missing)

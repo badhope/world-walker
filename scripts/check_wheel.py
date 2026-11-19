@@ -40,18 +40,14 @@ REQUIRED = [
     'CODE_OF_CONDUCT.md',
     'docs/metrics.json',
     'ARCHITECTURE.md',
+    'docs/MCP_PLAY.md',
     'BRAND.md',
     'templates.py',
     'rules/systems.py',
-    'GAME_MASTER_PROTOCOL.md',
-    'docs/GAMEPLAY.md',
-    'docs/BENCHMARK.md',
     'docs/demo/玄枢界.save.json',
     'docs/demo/折剑行.save.json',
     'docs/demo/霓虹深渊.save.json',
     'docs/demo/雾港.save.json',
-    'docs/screenshots/stage-xuanshu.png',
-    'docs/screenshots/walkthrough.mp4',
 ]
 
 

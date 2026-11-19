@@ -188,7 +188,7 @@ def check() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description='World Games metric ledger')
+    parser = argparse.ArgumentParser(description='World Walker metric ledger')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--write', action='store_true', help='measure and write docs/metrics.json')
     group.add_argument('--check', action='store_true', help='verify the ledger is current')

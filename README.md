@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.12.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [Gameplay](docs/GAMEPLAY.md) · [Changelog](CHANGELOG.md)
+**v1.12.1** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
 
 > **You talk. The AI performs. The engine decides. The save remembers.**
 
@@ -16,7 +16,7 @@ What stays deterministic is the part a narrator should never improvise: HP, pric
 relationships, clocks, clues, saves and replay. The AI writes the scene; the engine owns the truth.
 
 `206 rule functions` · `67 MCP tools` · `26 player tools` · `4 setting bundles` · `8 templates` ·
-`20 self-check suites` · `0 runtime dependencies`
+`21 self-check suites` · `0 runtime dependencies`
 
 ---
 
@@ -43,7 +43,7 @@ Session Zero sets genre, play style, role, tone, lethality and boundaries. After
 pip install -e ".[mcp]"      # core is standard library only; the mcp extra is for MCP mode
 ```
 
-**No Python?** Download `world-games.exe` — one file, ~30 MB, runs standalone.
+**No Python?** Download `world-walker.exe` — one file, ~30 MB, runs standalone.
 Same program, same data.
 
 ```bash
@@ -57,7 +57,7 @@ Run `wg --help` for the full list.
 ### Hook it to an agent
 
 ```json
-{ "mcpServers": { "world-games": { "command": "world-games-mcp" } } }
+{ "mcpServers": { "world-walker": { "command": "world-walker-mcp" } } }
 ```
 
 Works with Claude Code, Codex, Cursor, opencode, or any MCP client. `world-walker-mcp` is a
@@ -181,32 +181,17 @@ mutation testing: **an assertion must be killable, not merely covered.**
 
 | Suite | Assertions | What it locks |
 |---|---|---|
-| `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
-| `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
-| `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism |
-| `verify_panel.py` | 103 | view-model contract, legacy saves, static whitelist, inbox guards, theme wiring |
-| `verify_mcp_stdio.py` | 67 | real stdio e2e, HTTP transport handshake, tavern ecosystem, read-only zero side effects |
-| `verify_world.py` | 54 | self-evolution, phase, flow, morality, terms, prose, ledger |
-| `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
-| `verify_docs.py` | — | version single source, tool count, assertion counts, asset references |
-| `verify_i18n.py` | 12 | panel dictionary: unique keys, unambiguous templates, bilingual wiring |
-| `verify_mechanics.py` | 44 | rulebook priority/stop, loop detection, NPC knowledge boundary, combat preview, quest DAG, visit predicates, prefix hash, rumor heat, faction intents |
-| `verify_theme.py` | 25 | light-first theme, measured WCAG AA contrast in both themes, chart repaint, boot skeleton |
-| `verify_replay.py` | 15 | action log chain, seq persistence, canonical hashing, deterministic fingerprint |
-| `verify_gameplay.py` | 65 | playbook loops, questline DAG, lorebook semantics |
-| `verify_generic.py` | 104 | generic checks, game profile, context ledger, save library, brand |
-| `verify_systems.py` | 161 | seven subsystem kinds, eight templates, counters, panel contract |
-| `verify_injection.py` | 23 | injection signatures and `untrusted` marking |
-| `verify_near_death.py` | 7 | near-death protection |
-| `verify_audit_fix.py` | 22 | snapshot restore, concurrent RMW, finite JSON, input boundaries |
-| `verify_memory.py` | 7 | leak check and three bounded structures |
-| `user_playtest.py` | 47 | player-perspective abuse cases and error readability |
-| `smoke_ui.py` | 20 | real Edge render, cards and drawers, responsive, zero JS errors |
-| `verify_tests.py` | — | AST-level rejection of tautological assertions |
-| `verify_mutation.py` | 53 mutants | **break the code, require tests to go red**; survival must be 0% |
+| `verify_player_shell.py` | 23 | real browser: lobby, Session Zero, start card, play view, no duplicate prose |
+| `verify_surface.py` | 27 | player API, model config, save list, static assets, one-writer invariants |
+| `verify_docs.py` | 27 | version, links, current docs, no ghost scripts or assets |
+| `verify_mcp_stdio.py` | 67 | stdio + HTTP MCP handshake, Session Zero prompt, no panel dependency |
+| `verify_mcp_mode.py` | 7 | standalone MCP prompt/protocol: session zero, prose ownership, no open_panel |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 32 steps; missing required dependencies fail the gate
+python3 scripts/verify_player_shell.py
+python3 scripts/verify_surface.py
+python3 scripts/verify_docs.py
+python3 scripts/verify_mcp_stdio.py
 ```
 
 Coverage gate: core domain ≥70% (measured 82%, including the generic layer); `pyflakes` 0.
@@ -266,7 +251,6 @@ review it manually. Restoring the caller's in-memory state after a failed save i
 
 ```bash
 python scripts/make_demo.py          # 4 real demo saves → docs/demo/
-python scripts/shots.py --lang en    # assert, screenshot, record → docs/screenshots/
 python scripts/build_exe.py          # standalone executable → dist/
 ```
 
@@ -274,6 +258,6 @@ python scripts/build_exe.py          # standalone executable → dist/
 
 ## License
 
-MIT. Charts by [ECharts](https://echarts.apache.org/) 5.5.1 (Apache-2.0).
+MIT.
 Tavern-ecosystem compatibility follows the publicly documented character-card and world-info
 conventions; no names or settings from existing works are reused.

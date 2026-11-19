@@ -844,7 +844,7 @@ def view_model(state_path):
             "sidecar": os.path.abspath(series_path(state_path)),
             "inbox": os.path.abspath(inbox_path(state_path)),
             "read_only": True,
-            "panel": "World Games 主舞台（只读）",
+            "panel": "World Walker 主舞台（只读）",
         },
         "scene": build_scene(state, events, player),
         "events": events,
@@ -1204,7 +1204,7 @@ SKINS = {
 
 
 # 品牌默认值（单一信源，BRAND.md 与 README 引用此处；ui.brand/tagline 可整局覆盖）
-DEFAULT_BRAND = "World Games"
+DEFAULT_BRAND = "World Walker"
 DEFAULT_TAGLINE = "万物皆可为一局 · 规则为证"
 
 
@@ -1856,7 +1856,7 @@ def stop(srv, timeout=5.0):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="World Games 实况面板")
+    ap = argparse.ArgumentParser(description="World Walker 实况面板")
     ap.add_argument("--state", default="ww_state.json", help="状态文件路径")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--host", default="127.0.0.1")

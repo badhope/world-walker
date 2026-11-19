@@ -1,6 +1,6 @@
 # Release process
 
-World Games follows [Semantic Versioning](https://semver.org/). The version has exactly one
+World Walker follows [Semantic Versioning](https://semver.org/). The version has exactly one
 source of truth: `__init__.py:__version__`. `pyproject.toml` must match it, and `verify_docs.py`
 fails the gate if they disagree.
 
@@ -41,7 +41,7 @@ fails the gate if they disagree.
    ```bash
    git add -A
    git commit -m "release: vX.Y.Z"
-   git tag -a vX.Y.Z -m "World Games vX.Y.Z"
+   git tag -a vX.Y.Z -m "World Walker vX.Y.Z"
    ```
 
 7. **Push `main` and the tag:**
@@ -80,4 +80,4 @@ Removing a tool or renaming a command requires:
 1. A `CHANGELOG.md` entry under `变更` that names the old and new surface.
 2. At least one MINOR release where both work (the `world-walker` / `world-walker-mcp` aliases are
    the standing example).
-3. `GAME_MASTER_PROTOCOL.md` updated in the same commit.
+3. `docs/MCP_PLAY.md` updated in the same commit.

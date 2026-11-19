@@ -46,7 +46,7 @@ def _body(repo: str, tag: str) -> str:
     m = _ledger()
     return f"""**The AI narrates. The engine decides.**
 
-World Games is the rules layer for AI-driven interactive games: your agent writes the prose, a
+World Walker is the rules layer for AI-driven interactive games: your agent writes the prose, a
 deterministic engine resolves every hit, price, relationship and faction shift, then persists it to
 one auditable state file.
 
@@ -67,9 +67,9 @@ one auditable state file.
 ### Verify it yourself
 
 ```bash
-world-games.exe doctor            # assets, bundles, optional dependencies
-world-games.exe init my-game.json
-world-games.exe play --state my-game.json
+world-walker.exe doctor            # assets, bundles, optional dependencies
+world-walker.exe init my-game.json
+world-walker.exe play --state my-game.json
 ```
 
 The full gate is {m['gate_steps']} steps with {m['mutants']} mutation tests; coverage {m['coverage_pct']}%.
@@ -91,7 +91,7 @@ def call(tok: str, method: str, path: str, payload=None):
         'Authorization': 'Bearer %s' % tok,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'world-games-release',
+        'User-Agent': 'world-walker-release',
     }
     if data is not None:
         headers['Content-Type'] = 'application/json'
@@ -117,7 +117,7 @@ def upload_asset(tok: str, upload_url: str, path: str) -> dict:
         'Accept': 'application/vnd.github+json',
         'Content-Type': ctype,
         'Content-Length': str(size),
-        'User-Agent': 'world-games-release',
+        'User-Agent': 'world-walker-release',
     }
     for attempt in range(4):
         req = urllib.request.Request(url, data=payload, method='POST', headers=headers)
@@ -154,7 +154,7 @@ def main() -> int:
     else:
         status, release = call(tok, 'POST', '/repos/%s/releases' % repo, {
             'tag_name': tag,
-            'name': 'World Games ' + tag,
+            'name': 'World Walker ' + tag,
             'body': _body(repo, tag),
             'draft': False,
             'prerelease': False,

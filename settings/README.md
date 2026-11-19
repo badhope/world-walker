@@ -27,7 +27,7 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | `terms` | | 面板术语覆盖 `{level:"等级", track:"进化轨", ...}`（键见 `panel.py::DEFAULT_TERMS`）。让非修真世界观不必看到「境界/修行轨」 |
 | `places` | | 地点描写 `{地名: {desc}}` 或 `{地名: "描写"}`。走到该地时面板主舞台显示它，而不是开场那句 |
 | `lore` | | 世界书条目，**与酒馆 character_book 同形**：`keys` / `secondary_keys` / `selective` / `constant` / `insertion_order` / `content` / `comment`。`narration_context` 按关键词触发它们 |
-| `playbook` | | 玩法剧本 `{loop, input, progress, failure, beat, settlement, context}`；决定这一局"怎么玩"（详见 `docs/GAMEPLAY.md`）。缺省为自由推进 + 气血失败 |
+| `playbook` | | 玩法剧本 `{loop, input, progress, failure, beat, settlement, context}`；决定这一局"怎么玩"（详见 `docs/MCP_PLAY.md`）。缺省为自由推进 + 气血失败 |
 | `questlines` | | 事业线数组（stage DAG + 谓词 + 奖励）。载入时校验环与幽灵 next；未满足 `visibility` 的线保持 dormant，不占面板 |
 | `seed` | | 随机种子（可复现） |
 | `state_path_hint` | | 默认状态文件名 |

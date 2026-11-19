@@ -578,16 +578,18 @@ async def main():
             pv = data(await session.call_tool('open_panel', {'port': 8791}))
             import urllib.request
             html = urllib.request.urlopen(pv['url'], timeout=8).read().decode('utf-8')
-            vm = json.loads(urllib.request.urlopen(pv['url'].rstrip('/') + '/state',
+            vm = json.loads(urllib.request.urlopen(pv['url'].rstrip('/') + '/api/v1/state',
                                                    timeout=8).read().decode('utf-8'))
-            check('实况面板：页面与数据就绪且反映最新状态',
-                  '实况' in html and vm['player']['location'] == '后山古道'
-                  and '后山古道' in vm['codex']['locations'],
-                  pv['url'] + ' | 编年史 %d 条' % len(vm['chronicle']))
-            check('面板视图含引擎推导（心流/相位/图鉴/市场）',
-                  'flow' in vm['insights'] and 'phase' in vm['insights']
-                  and {'locations', 'people', 'items', 'lore'} <= set(vm['codex'])
-                  and bool(vm['market']))
+            check('玩家页：页面与数据就绪且反映最新状态',
+                  'World Walker' in html and vm['player']['location'] == '后山古道'
+                  and '后山古道' in (vm.get('world_overlay') or {}).get('codex', {}).get('locations', {}),
+                  pv['url'] + ' | 正文 %d 段' % len(vm.get('feed') or []))
+            ins = (vm.get('rail') or {}).get('character', {}).get('insights', {})
+            codex = (vm.get('world_overlay') or {}).get('codex', {})
+            check('玩家视图含引擎推导（心流/相位/图鉴/市场）',
+                  'flow' in ins and 'phase' in ins
+                  and {'locations', 'people', 'items', 'lore'} <= set(codex)
+                  and bool((vm.get('rail') or {}).get('world', {}).get('market')))
 
     # 14. CLI 冒烟（验证导入别名让任意目录名都能跑）
     cli = subprocess.run([sys.executable, os.path.join(ROOT, 'engine.py'),
@@ -668,8 +670,8 @@ async def main():
             tl = next((m for m in msgs if m.get('id') == 2), None)
             http_tools = [t.get('name') for t in ((tl or {}).get('result') or {}).get('tools', [])]
         _init_info = ((init_msg or {}).get('result') or {}).get('serverInfo') or {}
-        check('HTTP 传输：initialize 握手返回 world-games 服务器信息',
-              _init_info.get('name') == 'world-games',
+        check('HTTP 传输：initialize 握手返回 world-walker 服务器信息',
+              _init_info.get('name') == 'world-walker',
               str((init_msg or {}).get('error', {}).get('message') or _init_info.get('name')))
         from game_engine import __version__ as _wg_ver
         check('HTTP 传输：serverInfo 报出世界引擎版本',

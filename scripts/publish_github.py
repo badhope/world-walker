@@ -49,7 +49,7 @@ def call(tok: str, method: str, path: str, payload=None, attempts: int = 4):
         'Authorization': 'Bearer %s' % tok,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'world-games-release',
+        'User-Agent': 'world-walker-release',
     }
     if data is not None:
         headers['Content-Type'] = 'application/json'
@@ -134,7 +134,7 @@ def upload_blobs(tok: str, repo: str, entries: list) -> None:
                          'Accept': 'application/vnd.github+json',
                          'Content-Type': 'application/json',
                          'Connection': 'close',
-                         'User-Agent': 'world-games-release'})
+                         'User-Agent': 'world-walker-release'})
             try:
                 with urllib.request.urlopen(req, timeout=90) as resp:
                     body = json.loads(resp.read().decode('utf-8'))

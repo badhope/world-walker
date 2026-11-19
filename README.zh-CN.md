@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.12.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [玩法层](docs/GAMEPLAY.md) · [更新日志](CHANGELOG.md)
+**v1.12.1** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
 
 > **你说话，AI 演，引擎判，存档记。**
 
@@ -15,7 +15,7 @@ World Walker 是**单人 AI 跑团 / 互动叙事引擎**，不是游戏助手�
 AI 写场面，引擎拥有事实。
 
 `206 个规则函数` · `67 个 MCP 工具` · `26 个玩家工具` · `4 套设定包` · `8 套模板` ·
-`20 个可执行自检` · `0 个运行时依赖`
+`21 个可执行自检` · `0 个运行时依赖`
 
 ## 它解决什么
 
@@ -39,7 +39,7 @@ pip install -e ".[mcp]"      # 核心仅标准库；mcp 是 MCP 模式的可选�
 接入任意 MCP 客户端（Claude Code / Codex / Cursor / opencode）：
 
 ```json
-{ "mcpServers": { "world-games": { "command": "world-games-mcp" } } }
+{ "mcpServers": { "world-walker": { "command": "world-walker-mcp" } } }
 ```
 
 `world-walker-mcp` 仍作为兼容别名可用。
@@ -244,32 +244,17 @@ MCP 仍可供高级宿主使用，但它不再是前门。玩家页面才是。
 
 | 自检 | 断言数 | 锁住什么 |
 |---|---|---|
-| `verify_formulas.py` | 122 | 按 docstring 的数学式独立重算 77 个函数 |
-| `verify_branches.py` | 192 | 低覆盖模块的异常路径与状态分支 |
-| `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
-| `verify_panel.py` | 103 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 / 主题接线 |
-| `verify_mcp_stdio.py` | 67 | 真实 stdio 端到端 / HTTP 传输握手 / 酒馆生态 / 只读零副作用 |
-| `verify_world.py` | 54 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
-| `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
-| `verify_docs.py` | — | 版本单一信源 / 工具数 / 断言计数 / 素材引用 |
-| `verify_i18n.py` | 12 | 面板词典：键唯一 / 模板无歧义 / 输出无中文 / 双语接线 |
-| `verify_mechanics.py` | 44 | 规则书优先级与截断 / 循环检测 / NPC 知识边界 / 战斗推演 / 事业线 DAG / 访问计数 / 前缀哈希 / 谣言热度 / 势力意向 |
-| `verify_theme.py` | 25 | 亮色默认 / 两套主题实测 WCAG AA 对比度 / 图表重绘 / 骨架屏 |
-| `verify_replay.py` | 15 | 动作日志链 / seq 落盘 / canonical 哈希 / 确定性指纹 |
-| `verify_gameplay.py` | 65 | 玩法剧本 / 事业线 DAG / 世界书语义 |
-| `verify_generic.py` | 104 | 通用判定 / 游戏档案 / 上下文台账 / 存档库 / 品牌 |
-| `verify_systems.py` | 161 | 七类体系 / 八套模板 / 计数器 / 面板契约 |
-| `verify_injection.py` | 23 | 注入特征识别与 `untrusted` 标记 |
-| `verify_near_death.py` | 7 | 濒死保护 |
-| `verify_audit_fix.py` | 22 | 快照恢复 / 并发读改写 / 严格 JSON / 输入边界 / 只读零副作用 |
-| `verify_memory.py` | 7 | 三段对照查泄漏 + 三重有界 |
-| `user_playtest.py` | 47 | 玩家视角：卖没有的东西 / 超量交易 / 边界输入 / 报错可读性 |
-| `smoke_ui.py` | 20 | 真实 Edge 渲染 / 卡片抽屉 / 响应式 / 零 JS 错误 |
-| `verify_tests.py` | — | 静态 AST：拒绝恒真/恒假/弱断言 |
-| `verify_mutation.py` | 53 个变异 | **故意改坏代码，确认测试会红**；存活率必须为 0% |
+| `verify_player_shell.py` | 23 | 真实浏览器：大厅 / Session Zero / 开局卡 / 对局视图 / 正文不重复 |
+| `verify_surface.py` | 27 | 玩家 API / 模型配置 / 存档列表 / 静态资源 / 单写入源不变量 |
+| `verify_docs.py` | 27 | 版本 / 链接 / 当前文档 / 无幽灵脚本或素材 |
+| `verify_mcp_stdio.py` | 67 | stdio + HTTP MCP 握手 / Session Zero 提示词 / 不依赖面板 |
+| `verify_mcp_mode.py` | 7 | MCP 独立模式契约：开局问询 / 正文归属 / 不调用 open_panel |
 
 ```bash
-bash scripts/pre_push_gate.sh     # 28 个步骤；缺必要依赖时门禁失败
+python3 scripts/verify_player_shell.py
+python3 scripts/verify_surface.py
+python3 scripts/verify_docs.py
+python3 scripts/verify_mcp_stdio.py
 ```
 
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
@@ -335,7 +320,6 @@ MIT 许可。演示包里的人物、势力、地名全部原创，可自由替�
 
 ```bash
 python scripts/make_demo.py          # 4 套世界的真实演示存档 → docs/demo/
-python scripts/shots.py              # 逐项断言 + 截图 + 录屏 → docs/screenshots/
 python scripts/verify_settings.py    # 四套设定包全量校验
 ```
 
@@ -343,6 +327,6 @@ python scripts/verify_settings.py    # 四套设定包全量校验
 
 ## 许可
 
-MIT。图表库 [ECharts](https://echarts.apache.org/) 5.5.1（Apache-2.0）。
+MIT。
 酒馆生态格式的兼容实现参考了 SillyTavern 社区公开的角色卡与世界书规范；
 本项目不复用任何作品的名词与设定。

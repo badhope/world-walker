@@ -2,7 +2,7 @@
 """
 通用游戏层自检 (verify_generic.py)
 
-为什么需要：World Games 的新定位是"通用于所有游戏"。支撑它的三层是
+为什么需要：World Walker 的新定位是"通用于所有游戏"。支撑它的三层是
 `rules/checks.py`（任意判定）、`rules/gamesystem.py`（自定义档案）、
 `rules/context.py`（上下文台账），加上 `sessions.py`（存档库）与面板的新区块。
 这些能力最容易犯的错是**静默不生效**：判定永远成功、资源不夹紧、上下文超出预算、
@@ -14,7 +14,7 @@
   N3 上下文：事实增删查、结案/过期、预算打包、去重
   N4 存档库：新建/列表/快照/回收站/还原/导入，路径安全
   N5 集成：MCP 工具端到端 + 面板视图模型字段
-  N6 品牌：World Games 默认值与可覆盖性
+  N6 品牌：World Walker 默认值与可覆盖性
 
 用法:  python scripts/verify_generic.py
 退出码: 0 = 全绿；1 = 有失败
@@ -486,7 +486,7 @@ def n6_brand():
     import game_engine.panel as PANEL
     st = base_state(ui={})
     skin = PANEL.skin_for_world(st)
-    check('N6 默认品牌是 World Games', skin['brand'], 'World Games')
+    check('N6 默认品牌是 World Walker', skin['brand'], 'World Walker')
     check('N6 默认标语', skin['tagline'], '万物皆可为一局 · 规则为证')
     st2 = base_state(ui={'brand': '折剑行', 'tagline': '一柄断剑'})
     skin2 = PANEL.skin_for_world(st2)

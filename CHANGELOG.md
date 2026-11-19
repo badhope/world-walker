@@ -5,6 +5,41 @@
 
 ---
 
+## v1.12.1 — 2026-11-19
+
+**清理旧展示层，补齐 MCP 独立游玩模式。**
+
+### 删除
+
+- 旧审计/竞品/路线图文档：`AGENTS` 旧版、`ROADMAP.md`、`docs/BENCHMARK.md`、
+  `docs/PRIOR_ART*.md`、`docs/USE_CASES.md`、`docs/GAMEPLAY.md`、
+  `docs/AUDIT_*.md`、`docs/PROJECT_AUDIT_*.md`。
+- 旧 `GAME_MASTER_PROTOCOL.md`（合并为 `docs/MCP_PLAY.md`）。
+- 构建清单里的已删资源：`panel.i18n.js`、`admin.html/js`、`assets/echarts.min.js`。
+
+### 新增
+
+- `docs/MCP_PLAY.md`：外部 AI 通过 MCP 当 GM 的独立协议，明确 Session Zero、
+  每回合工具顺序、`publish_prose` 正文归属、不调用 `open_panel`。
+- MCP `session_zero` 提示词：先问类型/玩法/角色/体验，再开局。
+- `scripts/verify_mcp_mode.py`：7 条静态契约，防止页面导向文案回流。
+
+### 变更
+
+- `mcp_server.py` 的 `new_game` 提示词重写为对话模式；`template_start` 不再提示打开面板；
+  `publish_prose` 说明改为 MCP 唯一正文出口。
+- `mcp_primitives.py` 的 `world://docs/protocol` 改读 `docs/MCP_PLAY.md`。
+- `ARCHITECTURE.md`、`AGENTS.md`、`CONTRIBUTING.md`、`BRAND.md` 重写为当前双入口架构。
+- README 链接与验证清单去掉旧 UI/截图流水线，登记 MCP 契约测试。
+- `scripts/build_exe.py` / `check_wheel.py` 的打包清单只保留真实运行时文件。
+- `scripts/verify_docs.py` 不再对历史 `CHANGELOG` 做脚本存在性检查。
+
+### 验证
+
+- `python3 -m py_compile` 核心 8 文件 + `node --check panel.js` 通过。
+- `verify_surface.py` 27/27；`verify_docs.py` 29/29；
+  `verify_mcp_mode.py` 7/7。
+
 ## v1.12.0 — 2026-11-19
 
 **定位收敛：从“游戏助手 / 管理台”改为“单人 AI 跑团 / 互动叙事引擎”。**

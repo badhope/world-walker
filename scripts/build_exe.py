@@ -1,4 +1,4 @@
-"""Build a single-file Windows executable for World Games.
+"""Build a single-file Windows executable for World Walker.
 
 Why PyInstaller and not a custom packer: it is the de-facto standard for Python
 desktop distribution, handles the stdlib subset automatically, and produces one
@@ -29,24 +29,17 @@ DATA_FILES = [
     ('panel.html', '.'),
     ('panel.css', '.'),
     ('panel.js', '.'),
-    ('panel.i18n.js', '.'),
-    ('admin.html', '.'),
-    ('admin.js', '.'),
-    ('assets/echarts.min.js', 'assets'),
     ('settings', 'settings'),
     ('README.md', '.'),
     ('README.zh-CN.md', '.'),
     ('ARCHITECTURE.md', '.'),
     ('CHANGELOG.md', '.'),
-    ('GAME_MASTER_PROTOCOL.md', '.'),
     ('LICENSE', '.'),
+    ('docs/MCP_PLAY.md', 'docs'),
     ('docs/ARCHIVE_RECOVERY.md', 'docs'),
-    ('docs/GAMEPLAY.md', 'docs'),
-    ('docs/BENCHMARK.md', 'docs'),
     ('docs/RELEASING.md', 'docs'),
     ('docs/metrics.json', 'docs'),
     ('docs/demo', 'docs/demo'),
-    ('docs/screenshots', 'docs/screenshots'),
 ]
 
 
@@ -116,7 +109,7 @@ def main() -> int:
     cmd = [
         sys.executable, '-m', 'PyInstaller',
         '--noconfirm',
-        '--name', 'world-games',
+        '--name', 'world-walker',
         '--onedir' if args.onedir else '--onefile',
         '--console',
         *hidden_args,
@@ -132,9 +125,9 @@ def main() -> int:
     if result.returncode != 0:
         return result.returncode
 
-    exe = os.path.join(ROOT, 'dist', 'world-games.exe' if os.name == 'nt' else 'world-games')
+    exe = os.path.join(ROOT, 'dist', 'world-walker.exe' if os.name == 'nt' else 'world-walker')
     if args.onedir:
-        exe = os.path.join(ROOT, 'dist', 'world-games', 'world-games.exe' if os.name == 'nt' else 'world-games')
+        exe = os.path.join(ROOT, 'dist', 'world-walker', 'world-walker.exe' if os.name == 'nt' else 'world-walker')
     size = os.path.getsize(exe) if os.path.exists(exe) else 0
     print('built %s (%.1f MB)' % (exe, size / 1024 / 1024))
     return 0

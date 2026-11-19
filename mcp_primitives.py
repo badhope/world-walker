@@ -77,7 +77,7 @@ def register_resources(server, load_state, state_path_fn, settings_dir, docs_dir
         world://summary/current   compact summary for prompts (text)
         world://rules/schema      state schema reference (JSON)
         world://settings/index    available setting bundles (JSON)
-        world://docs/protocol     the game-master protocol (markdown)
+        world://docs/protocol     the MCP play protocol (markdown)
     """
     try:
         from mcp.types import Resource
@@ -160,14 +160,12 @@ def register_resources(server, load_state, state_path_fn, settings_dir, docs_dir
 
     @server.resource('world://docs/protocol',
                      name='Game master protocol',
-                     description='How a host should run a game: turn flow, tool sequence, '
-                                 'invariants it must not break.',
+                     description='How a host runs the standalone MCP mode: session zero, '
+                                 'turn flow, prose ownership, and invariants.',
                      mime_type='text/markdown')
     def protocol_resource() -> str:
         import os
-        path = os.path.join(docs_dir, 'GAME_MASTER_PROTOCOL.md')
-        if not os.path.isfile(path):
-            path = os.path.join(docs_dir, os.pardir, 'GAME_MASTER_PROTOCOL.md')
+        path = os.path.join(docs_dir, 'MCP_PLAY.md')
         with open(path, encoding='utf-8') as fh:
             return fh.read()
 

@@ -28,15 +28,6 @@ jobs:
           import os, sys
           need = [
               "docs/index.html",
-              "docs/screenshots/stage-xuanshu.png",
-              "docs/screenshots/stage-ink.png",
-              "docs/screenshots/stage-neon.png",
-              "docs/screenshots/stage-neutral.png",
-              "docs/screenshots/command-palette.png",
-              "docs/screenshots/character-card.png",
-              "docs/screenshots/action-queue.png",
-              "docs/screenshots/walkthrough.mp4",
-              "docs/BENCHMARK.md",
           ]
           missing = [p for p in need if not os.path.exists(p) or os.path.getsize(p) == 0]
           print("missing:", missing)

@@ -310,7 +310,9 @@ def main():
             path = os.path.join(base, fname)
             rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
             # Dated audit reports are snapshots; they may cite scripts that no longer exist.
-            if rel.startswith('docs/AUDIT_') or rel.startswith('docs/PROJECT_AUDIT_'):
+            if (rel.startswith('docs/AUDIT_') or rel.startswith('docs/PROJECT_AUDIT_')
+                    or rel == 'CHANGELOG.md'):
+                # Historical snapshots and release notes may cite retired scripts.
                 continue
             with open(path, encoding='utf-8') as fh:
                 text = fh.read()

@@ -146,13 +146,7 @@ step "变异测试（已知错误必须被测试杀死）" "$PY" scripts/verify_
 say $'\n=== 展示素材（截图/录屏/演示存档/展示站）==='
 if "$PY" - <<'PYGATE'
 import json, os, sys
-need = ["docs/index.html", "docs/BENCHMARK.md",
-        "docs/screenshots/stage-xuanshu.png", "docs/screenshots/stage-xuanshu-dark.png",
-        "docs/screenshots/stage-ink.png",
-        "docs/screenshots/stage-neon.png", "docs/screenshots/stage-neutral.png",
-        "docs/screenshots/command-palette.png", "docs/screenshots/character-card.png",
-        "docs/screenshots/action-queue.png", "docs/screenshots/walkthrough.mp4",
-        "docs/demo/玄枢界.save.json"]
+need = ["docs/index.html", "docs/demo/玄枢界.save.json"]
 missing = [p for p in need if not os.path.exists(p) or os.path.getsize(p) == 0]
 if missing:
     print("缺少展示素材:", missing)

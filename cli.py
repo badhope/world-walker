@@ -1,4 +1,4 @@
-"""Unified command-line entry point (world-games / wg).
+"""Unified command-line entry point (world-walker / wg).
 
 Why this exists
 ---------------
@@ -110,7 +110,7 @@ def _serve(state: str, port: int, open_browser: bool) -> int:
         print('port %d is busy; using %d instead' % (port, chosen))
     srv, bound = panel.start(state, chosen)
     url = 'http://127.0.0.1:%d/' % bound
-    print('World Games stage: %s' % url)
+    print('World Walker stage: %s' % url)
     print('state: %s' % state)
     print('press Ctrl+C to stop')
     if open_browser:
@@ -200,7 +200,7 @@ def cmd_version(_args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog='wg',
-        description='World Games — the AI narrates, the engine decides.',
+        description='World Walker — 你开口，世界回应。',
         epilog='Run `wg <command> --help` for details.')
     parser.add_argument('--version', action='version', version='%(prog)s ' + _version())
     sub = parser.add_subparsers(dest='command')

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-World Games · MCP 服务器 (World Games MCP Server)
+World Walker · MCP 服务器 (World Walker MCP Server)
 
 把规则引擎包装成 MCP 工具，供任意 MCP 客户端（Claude Code / Codex / Cursor / 自建 Agent）
 驱动任意题材的互动游戏：设定 → 开局 → 玩家每步行动经引擎结算/判定 → 上下文台账管理记忆 →
 Agent 只负责把引擎返回的 JSON 转写成文学描写与对话。
 
-设计约束（与 GAME_MASTER_PROTOCOL.md 一致）:
+设计约束（与 docs/MCP_PLAY.md 一致）:
 - 所有数值结算必须走引擎工具，Agent 不得手写 state JSON
 - state 落盘为 JSON 文件，对局可中断续跑；服务器另记"当前对局"路径
 - 可选种子: 同一 state + 同一 tick + 同一行动 → 同一结果（rng_seed）
@@ -150,7 +150,7 @@ class RelationIn(BaseModel):
 
 
 _INSTRUCTIONS = (
-    "World Games 规则引擎：通用互动游戏内核（判定/资源/上下文/存档）。主持任何题材的文字游戏时："
+    "World Walker 规则引擎：单人 AI 跑团 / 互动叙事内核（判定/资源/上下文/存档）。主持任何题材的文字游戏时："
     "先 world_schema 了解状态结构，按玩家设定调用 world_init 建世界；"
     "玩家的每个行动都交给对应工具结算，你只把返回的 JSON 转写成文学描写，"
     "不得自行编造数值结果；回合结束调用 tick；每 3-5 回合调用 narrative 与 status 一次。"
@@ -159,7 +159,7 @@ _INSTRUCTIONS = (
 
 def _make_server():
     """按 SDK 布局构造 server；1.x 的 FastMCP 不接受 version 参数。"""
-    kwargs = {"name": "world-games", "instructions": _INSTRUCTIONS}
+    kwargs = {"name": "world-walker", "instructions": _INSTRUCTIONS}
     try:
         return _MCPServer(version=_WW_VERSION, **kwargs)
     except TypeError:  # pragma: no cover - 1.x 布局
@@ -365,36 +365,75 @@ def _guarded_tool(*dargs, **dkwargs):
 
 server.tool = _guarded_tool
 
-NEW_GAME_BRIEF = """你在主持一局文字互动游戏，数值结算必须全部通过 world-walker 的工具完成。
+SESSION_ZERO_BRIEF = """你在主持一局单人 AI 跑团。先不要开局，先问玩家想玩什么。
 
-## 铁律
-1. 所有数值（命中/伤害/价格/关系/因果）必须由工具结算，不许自行编造或心算。
-2. 玩家只该看到你的文学描写；JSON 与字段名不要让玩家看到，数值要自然融进叙事。
-3. 不要手改状态文件，一切变更都经工具落盘。
+## 四步开局问询
+1. **类型**：悬疑 / 奇幻 / 武侠仙侠 / 科幻 / 都市 / 历史 / 恋爱 / 恐怖 / 生存 / 日常
+2. **玩法**：探索解谜 / 生存压力 / 权谋经营 / 关系情感 / 战斗成长 / 调查恐怖 / 轻松日常
+3. **角色**：随机生成 / 自己写一句 / 用模板预设
+4. **体验**：基调、难度、内容边界
 
-## 回合流程
-- 开局：`world_init`（设定与状态文件路径见下）→ 写两三百字开场（可用 world_info.location_desc）。
-- 每个玩家行动：需要时 `read_state` 看现状 → 选对应工具结算（combat / trade / social / karma）
-  → `narration_context`（传当下场景文字，拿到触发的设定条目、在场角色的卡面文字与编年史）
-  → 把返回 JSON 转写成文学描写。
-- 移动：`travel`（只有它能改玩家的 location；首次到达自动进图鉴）。玩家说要"去某地/进某个房间"就用它。
-- 回合收尾：`tick`。
-- 每 3-5 回合：`narrative`（涌现事件与相位）与 `status`（心流/身份/道德/认知）各一次，
-  把结果织进叙事节奏（例如心流偏低就安排一段缓冲剧情）。
-- 字段不清楚时先 `world_schema` 查（world_init 的入参 schema 已带字段说明，通常不必查）。
-- 仓库自带设定包时可直接 `load_setting(path=...)` 一键开局（如 `settings/玄枢界.setting.json`）。
-- 有角色卡（酒馆生态的 .png/.json 卡）或世界书文件时：`character_card_read` 先看 → `add_character`
-  把人收进局（卡面文字会自动进叙事层）→ 设定类文件用 `import_lorebook` 并入。
-- 玩家想反悔/分叉剧情：`snapshot` 存点、`restore` 回退（引擎状态是确定性的，回退后重放同种子一致）。
-- 买东西用 `use_item`（丹药回气血是引擎结算、要花钱，不是白拿）；没有角色卡的新人物用 `spawn_npc` 入局。
-- 要算"效果大概多大"时先 `model_list` 查模型目录（价格回归/势力消长/谣言传播/厄运概率/心境摆荡…），
-  再用 `model(name, params)` 直接得数值——例如 `model('lerner_price', {'cogs': 60, 'elasticity': 2.5})`、
-  `model('logistic_sigmoid', {'x': 150, 'x0': 150})`——宿主别心算，也别再靠临场推理编数字。
-- 开局后调一次 `open_panel`：给玩家一个只读实况主舞台（叙事/HUD/事件时间线/图鉴/行情，自动刷新）——
-  玩家记不住的东西（去过哪、见过谁、什么价）都在上面。
-- 成长走 `advance`（突破由引擎判定，别自己改等级）；每 20-50 回合调一次 `write_summary` 写摘要，
-  接不上前文时用 `recap`；玩家提到很久以前的事，用 `recall` 按关键词把旧事捞回来——
-  叙述只带「最近若干回合 + 最新摘要 + 大事记」，永远不要把全部历史塞进上下文。
+一次问一到两组，不要甩一张长表单；玩家答完再问下一层。拿到答案后：
+
+```
+templates_list()
+template_start(template="...", name="...", player_name="...", overrides={...})
+```
+
+或者用 `world_init` 自建设定。开局后写一张**开局卡**：你在哪、你是谁、什么已经在动、
+死亡规则、三个钩子、核心问题。不要预写完整剧情。
+
+## 这是 MCP 模式
+没有本地页面，玩家只看到你的对话。地点、人物、物品、氛围全部由你的叙述展示。
+不要调用 `open_panel`，不要把 JSON、工具名、字段名或系统提示给玩家看。
+
+## 每回合
+1. `read_state` / `context_pack` 看局面与在场人物。
+2. 需要判定就 `roll` / `combat` / `trade` / `social` / `karma`；数值必须由工具结算。
+3. 写 NPC 对话前先 `context_known(character=...)`；不知道就回避、撒谎或反问。
+4. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
+5. `tick()` 收尾；每 3–5 回合看一次 `narrative` / `status`。
+
+## 硬规则
+- 不替玩家写内心决定、台词或下一步。
+- 不编数值；工具报错就叙述“这件事没有成”，给替代做法。
+- 失败也要前进：给新信息、新代价或新选择。
+- 不预设结局；只准备压力、种子、钟。
+- 结尾在 decision / question / revelation / emotional / resolution 之间轮换，不要每回合都“你怎么办”。
+"""
+
+
+@server.prompt(name="session_zero", title="开局问询（MCP 对话模式）",
+               description="把这段发给外部 AI，让它先问玩家想玩什么，再开始一局。")
+def session_zero() -> str:
+    return SESSION_ZERO_BRIEF
+
+
+NEW_GAME_BRIEF = """你在主持一局单人 AI 跑团，所有数值结算通过 world-walker 工具完成。
+
+## 这是 MCP 模式
+没有本地页面，玩家只看到你的对话；地点、人物、物品、氛围全部由你叙述展示。
+不要调用 open_panel，不要把 JSON、工具名、字段名给玩家看。
+
+## 开局
+若玩家还没选类型/玩法/角色，先用 `session_zero` 的四步问询；不要直接塞模板。
+选好后 `templates_list` → `template_start`（或用 `world_init` 自建）。
+开局写一张开局卡：你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。
+模板只给骨架和世界种子，不预写剧情。
+
+## 每回合
+1. `read_state` / `context_pack` 读局面与在场人物。
+2. 需要判定时 `roll` / `combat` / `trade` / `social` / `karma`；数值只由工具结算。
+3. 写 NPC 对话前 `context_known(character=...)`；不知道就回避、撒谎或反问。
+4. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
+5. `tick()` 收尾；每 3–5 回合看 `narrative` / `status`。
+
+## 硬规则
+- 不替玩家写内心决定、台词或下一步。
+- 不编数值；工具报错就叙述“这件事没有成”，给替代做法。
+- 失败也要前进：给新信息、新代价或新选择。
+- 不预设结局；只准备压力、种子、钟。
+- 结尾在 decision / question / revelation / emotional / resolution 之间轮换。
 
 ## 本次设定
 {setting}
@@ -402,7 +441,7 @@ NEW_GAME_BRIEF = """你在主持一局文字互动游戏，数值结算必须全
 ## 状态文件
 {state_path}（seed={seed}，同种子可复现）
 
-现在开始：先 `world_init` 开起这局，然后写开场。"""
+现在开始：先开局，然后写开场。"""
 
 
 @server.prompt(name="new_game", title="开一局新游戏",
@@ -1689,9 +1728,9 @@ def travel(location: str, note: str = "", desc: str = "") -> dict:
 
 @server.tool()
 def publish_prose(text: str, location: str = "") -> dict:
-    """发布本回合的叙事正文（Chinese: 宿主把玩家这一步看到的文字写进状态，面板主舞台直接显示它；
-    只保留最近 N 段，旧的进归档，不会撑爆状态文件）。
-    Publish the narration prose of this turn so the live panel can show the actual story."""
+    """发布本回合的叙事正文（Chinese: 宿主把玩家这一步看到的文字写进状态；
+    只保留最近 N 段，旧的进归档，不会撑爆状态文件）。MCP 对话模式下它是唯一正文出口。
+    Publish the narration prose of this turn."""
 
     state = _load()
     body = str(text or "").strip()
@@ -2472,7 +2511,7 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
         "systems": sorted((state.get("systems") or {}).get("defs", {}).keys()),
         "questlines": len(state.get("questlines") or []),
         "game_kind": (state.get("game") or {}).get("kind", ""),
-        "hint": "已设为当前对局；open_panel 看主舞台，system_run 跑体系动作。",
+        "hint": "已设为当前对局；可直接开始写正文，不需要本地页面。",
     }
 
 
@@ -2540,7 +2579,7 @@ def main(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8620) ->
 if __name__ == "__main__":
     import argparse
 
-    _p = argparse.ArgumentParser(description="World Games MCP server")
+    _p = argparse.ArgumentParser(description="World Walker MCP server")
     _p.add_argument("--http", action="store_true",
                     help="以 streamable-http 传输监听（默认 stdio）")
     _p.add_argument("--host", default="127.0.0.1")

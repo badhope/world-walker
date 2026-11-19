@@ -18,48 +18,60 @@ def _turns(state: dict) -> list:
     return [r for r in rows if isinstance(r, dict)]
 
 
+def _clean_legacy_text(text: str) -> str:
+    """Old saves append dashboard-ish recaps to prose; the rail already carries them."""
+    for marker in ("刚才发生的事还压在心上", "世界的相位落在"):
+        if marker in text:
+            text = text.split(marker)[0].rstrip("。 ，, ")
+    return text.strip()
+
+
 def _feed(vm: dict, state: dict) -> list:
     turns = _turns(state)
     items = []
-    if turns:
-        for turn in turns[-80:]:
-            role = str(turn.get("role") or "")
-            text = str(turn.get("text") or "").strip()
-            if role not in ("player", "assistant") or not text:
-                continue
-            items.append({
-                "id": str(turn.get("id") or ""),
-                "role": "player" if role == "player" else "narrator",
-                "tick": int(turn.get("tick", 0) or 0),
-                "text": text,
-                "tools": [str(t) for t in (turn.get("tools") or [])][:8],
-                "status": str(turn.get("status") or ""),
-                "_order": 0 if role == "player" else 1,
-            })
-    else:
-        prose = ((vm.get("prose") or {}).get("items") or [])
-        seen = set()
-        for entry in prose:
-            text = str(entry.get("text") or "").strip()
-            # Old saves append dashboard-ish recaps to the prose. Drop that
-            # suffix for the player feed; the structured rail already carries it.
-            for marker in ("刚才发生的事还压在心上", "世界的相位落在"):
-                if marker in text:
-                    text = text.split(marker)[0].rstrip("。 ，, ")
-            # Old saves often contain near-identical scene recaps; keep the
-            # feed readable instead of repeating the same paragraph seven times.
-            fingerprint = text[:90]
-            if text and fingerprint not in seen:
-                seen.add(fingerprint)
-                items.append({
-                    "id": "prose-%s" % entry.get("tick", 0),
-                    "role": "narrator",
-                    "tick": int(entry.get("tick", 0) or 0),
-                    "text": text,
-                    "tools": [],
-                    "status": "ok",
-                    "_order": 1,
-                })
+    turn_fingerprints = set()
+    first_turn_tick = None
+    for turn in turns[-80:]:
+        role = str(turn.get("role") or "")
+        text = str(turn.get("text") or "").strip()
+        if role not in ("player", "assistant") or not text:
+            continue
+        tick = int(turn.get("tick", 0) or 0)
+        if first_turn_tick is None:
+            first_turn_tick = tick
+        turn_fingerprints.add(text[:90])
+        items.append({
+            "id": str(turn.get("id") or ""),
+            "role": "player" if role == "player" else "narrator",
+            "tick": tick,
+            "text": text,
+            "tools": [str(t) for t in (turn.get("tools") or [])][:8],
+            "status": str(turn.get("status") or ""),
+            "_order": 1 if role == "player" else 2,
+        })
+
+    # Legacy saves have prose but no turns.  Keep that backstory when the
+    # first player turn arrives, otherwise the old scene vanishes mid-game.
+    prose = ((vm.get("prose") or {}).get("items") or [])
+    seen = set()
+    for index, entry in enumerate(prose):
+        text = _clean_legacy_text(str(entry.get("text") or ""))
+        tick = int(entry.get("tick", 0) or 0)
+        fingerprint = text[:90]
+        if not text or fingerprint in seen or fingerprint in turn_fingerprints:
+            continue
+        if turns and first_turn_tick is not None and tick > first_turn_tick:
+            continue
+        seen.add(fingerprint)
+        items.append({
+            "id": "prose-%s-%s" % (tick, index),
+            "role": "narrator",
+            "tick": tick,
+            "text": text,
+            "tools": [],
+            "status": "ok",
+            "_order": 0,
+        })
 
     checks = ((vm.get("game") or {}).get("checks") or [])
     for row in checks:
@@ -75,14 +87,13 @@ def _feed(vm: dict, state: dict) -> list:
                 row.get("dice") or "", row.get("difficulty", 0), level),
             "tools": [],
             "status": "ok",
-            "_order": 2,
+            "_order": 3,
         })
 
     items.sort(key=lambda row: (row["tick"], row["_order"], row["id"]))
     for row in items:
         row.pop("_order", None)
     return items[-80:]
-
 
 def _places(state: dict) -> list:
     raw = state.get("places") if isinstance(state.get("places"), dict) else {}

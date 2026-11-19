@@ -215,7 +215,7 @@
     $("world-name").textContent = world.name || "未命名世界";
     $("world-meta").textContent = [
       world.era, `第 ${num(world.tick)} 回合`,
-      view.player && view.player.location ? `· ${view.player.location}` : "",
+      view.player && view.player.location ? view.player.location : "",
     ].filter(Boolean).join(" · ");
     renderModelBadge(view.model || {});
     renderFeed(view.feed || []);
@@ -293,12 +293,20 @@
     return `<section class="rail-section"><h3>${esc(title)}</h3>${html}</section>`;
   }
 
+  const ATTR_LABELS = {
+    str: "力量", dex: "敏捷", int: "智力", con: "体质", cha: "魅力",
+    wis: "感知", luck: "幸运", per: "感知",
+  };
+
+  function attrLabel(key) {
+    return ATTR_LABELS[String(key || "").toLowerCase()] || key;
+  }
+
   function characterRail(character) {
     const p = character.player || {};
     const hp = Number(p.hp || 0), hpMax = Math.max(1, Number(p.hp_max || 1));
     const mp = Number(p.mp || 0), mpMax = Math.max(1, Number(p.mp_max || 1));
     const items = p.inventory || [];
-    const systems = character.systems || [];
     const checks = character.checks || [];
     const attrs = Object.entries(p.attrs || {});
     const parts = [];
@@ -317,16 +325,11 @@
 
     if (attrs.length) {
       parts.push(section("属性", `<div class="pill-row">${attrs.map(([k, v]) =>
-        `<span class="pill">${esc(k)} ${num(v)}</span>`).join("")}</div>`));
+        `<span class="pill">${esc(attrLabel(k))} ${num(v)}</span>`).join("")}</div>`));
     }
     parts.push(section("随身", items.length
       ? items.map((it) => `<div class="row"><span>${esc(it.name || it.key)}</span><b>×${num(it.quantity)}</b></div>`).join("")
       : `<p class="empty-small">空空如也。</p>`));
-
-    if (systems.length) {
-      parts.push(section("体系", systems.map((sys) =>
-        `<div class="row"><span>${esc(sys.name || sys.id || "体系")}</span><b>${esc(sys.kind || "")}</b></div>`).join("")));
-    }
 
     if (checks.length) {
       parts.push(section("最近判定", checks.slice(0, 3).map((check) =>

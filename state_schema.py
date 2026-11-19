@@ -54,13 +54,15 @@ except ImportError:  # pragma: no cover - direct source-module loading
 def new_game():
     """返回一个初始状态"""
     return {
+        "schema_version": 2,
         "tick": 0,
         "entities": {},
         "relations": {},
         "market": {},
         "karma_ledger": [],
         "world_flags": [],
-        "event_log": []
+        "event_log": [],
+        "turns": []
     }
 
 def _require_finite(value):

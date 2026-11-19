@@ -168,6 +168,7 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
         system_defs[normalized["id"]] = normalized
 
     state = {
+        "schema_version": 2,
         "tick": 0,
         "rng_seed": int(seed if seed is not None else bundle.get("seed", DEFAULT_SEED)),
         "entities": entities,
@@ -177,6 +178,7 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
         "world_flags": [str(f) for f in (bundle.get("world_flags") or [])],
         "ui": dict(bundle.get("ui") or {}),
         "event_log": [],
+        "turns": [],
         "world_info": {
             "name": str(world["name"]),
             "era": str(world.get("era", "")),

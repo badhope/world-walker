@@ -121,13 +121,15 @@ def main():
     check('S5e 资源摘要读 karma_ledger（不是不存在的 karma 字段）',
           "state.get('karma_ledger')" in prim)
 
-    # ── S6 admin console ────────────────────────────────────────────────────
+    # ── S6 player shell ─────────────────────────────────────────────────────
     with open(os.path.join(ROOT, 'panel.py'), encoding='utf-8') as fh:
         panel_src = fh.read()
-    check('S6a admin console assets are whitelisted',
-          '"/admin"' in panel_src and '"/admin.js"' in panel_src)
-    check('S9 主题引导脚本在面板白名单内（否则 404 → 首帧闪错色）',
-          '"/panel.theme.js"' in panel_src)
+    check('S6a 玩家壳三个静态资源在白名单内',
+          all(x in panel_src for x in ('"/panel.html"', '"/panel.css"', '"/panel.js"')))
+    check('S6b 旧管理台/翻译层/主题脚本不再被服务',
+          all(x not in panel_src for x in ('"/admin"', '"/panel.i18n.js"', '"/panel.theme.js"', '"/assets/echarts.min.js"')))
+    check('S6c 玩家 API v1 存在（bootstrap/state/chat）',
+          all(x in panel_src for x in ('"/api/v1/bootstrap"', '"/api/v1/state"', '"/api/v1/chat"')))
     # Release notes must quote the ledger, never a hand-typed number: the v1.9.0
     # release shipped "32 steps / 50 mutants" for weeks after the gate grew.
     release_src = open(os.path.join(ROOT, 'scripts', 'publish_release.py'),
@@ -135,9 +137,8 @@ def main():
     check('S10 发布说明的数字来自 docs/metrics.json（不硬编码）',
           '_ledger()' in release_src and "m['gate_steps']" in release_src
           and "m['mutants']" in release_src)
-    check('S6b admin console has no inline script (CSP script-src self)',
-          '"/admin.js"' in open(os.path.join(ROOT, 'admin.html'), encoding='utf-8').read()
-          and '<script>' not in open(os.path.join(ROOT, 'admin.html'), encoding='utf-8').read())
+    check('S6d 玩家壳无内联脚本（CSP script-src self）',
+          '<script>' not in open(os.path.join(ROOT, 'panel.html'), encoding='utf-8').read())
 
     # ── S11 依赖锁定必须与 requires-python 相容 ───────────────────────────
     # 2026-11-08 的 CI 红就是这个：pyproject 声明 >=3.10，而 lockfile 钉的

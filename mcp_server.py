@@ -418,6 +418,16 @@ _active = {"path": None}
 PANELS = {}
 
 
+def set_active_path(path: str | None) -> str | None:
+    """Bind the process-wide active game path (used by the player runtime and CLI)."""
+    _active["path"] = os.path.abspath(path) if path else None
+    return _active["path"]
+
+
+def get_active_path() -> str | None:
+    return _active.get("path")
+
+
 def _load_panel_module():
     """按文件路径加载 panel.py（避免与包内 import 循环，也兼容任意目录名）。
 
@@ -1702,10 +1712,11 @@ def publish_prose(text: str, location: str = "") -> dict:
         context["archive_entries"].extend({"type": "prose", **entry} for entry in overflow)
     places = state.setdefault("places", {})
     if loc:
-        places.setdefault(loc, {})
-        places[loc]["desc"] = body[:1200]
-        places[loc]["tick"] = int(state.get("tick", 0) or 0)
-    log_event(state, "prose", body[:160])
+        place = places.setdefault(loc, {})
+        # `desc` 是设定包作者写的地点描写，正文不能覆盖它；正文只写 `last_prose`。
+        place.setdefault("desc", "")
+        place["last_prose"] = body[:1200]
+        place["last_tick"] = int(state.get("tick", 0) or 0)
     return _finish(state, {"prose_count": len(state.get("prose") or []),
                            "location": loc,
                            "latest": body[:200]})

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "world-walker"
-version = "1.10.1"
-description = "World Games — 标准库游戏规则核心、可选 MCP 服务器与支持行动队列的状态展示面板"
+version = "1.11.0"
+description = "World Walker — 单人长局、对话优先的 AI 跑团游戏（OpenAI-compatible 模型，即插即玩）"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -40,14 +40,9 @@ game_engine = [
   "panel.html",
   "panel.css",
   "panel.js",
-  "panel.i18n.js",
-  "panel.theme.js",
-  "admin.html",
-  "admin.js",
   "cli.py",
   "mcp_primitives.py",
   "action_log.py",
-  "assets/*.js",
   "settings/*.json",
   "settings/*.md",
   "README.md",

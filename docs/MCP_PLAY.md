@@ -61,7 +61,7 @@ template_start(template="tabletop", name="灰岩堡", player_name="韩照",
                overrides={"game": {"tags": ["硬核"]}})
 ```
 
-模板已自带 11 条根设定和 3 个未知；开局后先 `canon_brief` 读一遍，再写开场。
+模板已自带根设定、unknown、可选 `hidden`（世界默认但主角未知）和 `revealed`（主角已知）；开局后先 `canon_brief` 读一遍，再写开场。
 
 自建世界：
 
@@ -96,6 +96,7 @@ tick()                                 # 收尾
 
 - 数值只由工具结算，宿主不心算、不编造。
 - `canon_brief` 每回合先读；状态 > 记忆 > 推理，根设定不许改，不许 retcon。
+- `hidden` 是 GM 判定用的世界真相，不是主角已知信息；不要把隐藏设定直接倒给玩家，只能通过调查/对话/踩点逐步升为 `revealed`。
 - `publish_prose` 只写玩家看到的文学描写；不写 JSON、字段名、工具名。
 - 不替玩家写内心决定、台词或下一步。
 - 正文出现新地点/新历史/新组织/新规则：先 `canon_check`，通过才 `canon_commit`；冲突就修正叙述，不许自己圆。

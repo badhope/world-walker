@@ -15,6 +15,7 @@
 """
 
 from game_engine import canon as canon_rules
+from game_engine import mapgen
 from game_engine.rules import gamesystem as game_rules
 from game_engine.rules import playbook as playbook_rules
 from game_engine.rules import questline as questline_rules
@@ -248,6 +249,24 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
     tiers = bundle.get("level_tiers")
     if isinstance(tiers, list) and tiers:
         state.setdefault("config", {})["level_tiers"] = [str(t) for t in tiers]
+    # 带蓝图模板：每次开局按 seed 生成一张“关系不变、外观与路程变化”的地图。
+    # 固定节点（青石村/灵泉/落霞山/青石镇）仍然以 bundle.places 为准；随机野外
+    # 节点只存在于生成结果里，不能覆盖核心地点。
+    blueprint = bundle.get("map_blueprint")
+    if isinstance(blueprint, dict) and blueprint.get("core_nodes"):
+        generated = mapgen.generate(blueprint, int(state.get("rng_seed", 0) or 0))
+        state["map"] = generated["map"]
+        bucket = state.setdefault("places", {})
+        for name, info in (generated.get("places") or {}).items():
+            bucket[str(name)] = {
+                "desc": str(info.get("desc", ""))[:PLACE_DESC_CAP],
+                "market": str(info.get("market", "")),
+                "tick": int(state.get("tick", 0) or 0),
+            }
+        player = (state.get("entities") or {}).get("player")
+        if isinstance(player, dict) and generated.get("start"):
+            player["location"] = generated["start"]
+
     places = bundle.get("places")
     if isinstance(places, dict):
         bucket = state.setdefault("places", {})

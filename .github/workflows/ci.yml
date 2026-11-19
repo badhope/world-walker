@@ -111,7 +111,7 @@ jobs:
       - name: 通用游戏层（判定/档案/上下文/存档库）
         run: python scripts/verify_generic.py
 
-      - name: 体系与模板（七类体系/八套模板）
+      - name: 体系与模板（七类体系/九套模板）
         run: python scripts/verify_systems.py
 
       - name: 覆盖率门禁（核心域 ≥70%）

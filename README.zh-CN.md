@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.13.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
+**v1.14.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
 
 > **你说话，AI 演，引擎判，存档记。**
 
@@ -14,7 +14,7 @@ World Walker 是**单人 AI 跑团 / 互动叙事引擎**，不是游戏助手�
 确定性的部分是叙述者不该乱编的东西：血量、价格、背包、关系、钟、线索、存档与回放。
 AI 写场面，引擎拥有事实。
 
-`206 个规则函数` · `71 个 MCP 工具` · `27 个玩家工具` · `4 套设定包` · `8 套模板` ·
+`206 个规则函数` · `71 个 MCP 工具` · `27 个玩家工具` · `4 套设定包` · `9 套模板` ·
 `21 个可执行自检` · `0 个运行时依赖`
 
 ## 它解决什么
@@ -130,7 +130,7 @@ MCP 仍可供高级宿主使用，但它不再是前门。玩家页面才是。
 全部**确定性**：时间/掉落/制造的随机都由 `sha256(seed|tick|...)` 派生，不消耗 `rng_counter`。
 运行态写进 `state["systems"]["rt"]`，快照回退会连体系一起回退。
 
-### 八套开箱即用的模板
+### 九套开箱即用的模板
 
 | 模板 | 题材 | 玩法循环 | 体系数 |
 |---|---|---|---|
@@ -142,6 +142,7 @@ MCP 仍可供高级宿主使用，但它不再是前门。玩家页面才是。
 | `cozy` | 田园生活 | freeform | 4 |
 | `tabletop` | 桌面跑团 | ttrpg | 5 |
 | `immersive` | 沉浸模拟 | ttrpg | 4 |
+| `xianxia` | 修仙成长（青冥界） | freeform | 5 |
 
 模板是起点不是锁死：`overrides` 深合并 dict、列表整体替换；
 `template_apply` 只返回 bundle 不落盘。
@@ -279,7 +280,7 @@ world-walker/                  # 仓库根即 game_engine 包
 ├── game_service.py            # 引擎上的轻量意图层
 ├── host_adapter.py            # 可选外部宿主桥（不是默认路径）
 ├── state_schema.py            # 状态模型 / 原子写 / 事务锁
-├── templates.py               # 8 套规则骨架
+├── templates.py               # 9 套规则骨架
 ├── rules/                     # 确定性结算函数
 ├── settings/                  # 可直接开玩的设定包
 ├── saves/                     # 本地存档库

@@ -18,8 +18,8 @@ import hashlib
 import re
 from datetime import datetime, timezone
 
-STATUSES = ("immutable", "revealed", "rumor", "unknown")
-LOCKED_STATUSES = ("immutable",)
+STATUSES = ("immutable", "revealed", "rumor", "unknown", "hidden")
+LOCKED_STATUSES = ("immutable", "hidden")
 MAX_FACT_TEXT = 600
 MAX_FACTS = 500
 
@@ -115,7 +115,10 @@ def normalize(raw):
     for key, status in (("immutable", "immutable"),
                         ("revealed", "revealed"),
                         ("rumors", "rumor"),
-                        ("rumor", "rumor")):
+                        ("rumor", "rumor"),
+                        ("hidden", "hidden"),
+                        ("world_default", "hidden"),
+                        ("gm_only", "hidden")):
         raw_section = src.get(key)
         if isinstance(raw_section, dict):
             raw_section = list(raw_section.values())
@@ -137,7 +140,7 @@ def normalize(raw):
     # De-duplicate by id, and by subject+predicate when ids were auto-generated.
     out = {}
     seen = set()
-    for status in ("immutable", "revealed", "rumor"):
+    for status in ("immutable", "revealed", "rumor", "hidden"):
         bucket = []
         for fact in sections.get(status, []):
             key = (fact["subject"].lower(), fact["predicate"].lower()) if fact["subject"] else ("id", fact["id"])
@@ -171,6 +174,7 @@ def normalize(raw):
         "immutable": out["immutable"],
         "revealed": out["revealed"],
         "rumors": out["rumor"],
+        "hidden": out["hidden"],
         "unknown": unknown[:120],
         "updated_tick": int(src.get("updated_tick", 0) or 0),
         "updated_at": _text(src.get("updated_at"), 40) or _now(),
@@ -223,7 +227,8 @@ def brief(state, scene_text="", limit=14):
             "world": bible.get("world") or {},
             "facts": [],
             "unknowns": [],
-            "counts": {"immutable": 0, "revealed": 0, "rumors": 0, "unknown": 0},
+            "hidden": [],
+            "counts": {"immutable": 0, "revealed": 0, "rumors": 0, "hidden": 0, "unknown": 0},
             "message": "本局还没有世界圣经。不要编造底层历史、地图或规则；先调用 canon_init 建立根设定。",
         }
     scene_tokens = _tokens(scene_text)
@@ -232,6 +237,8 @@ def brief(state, scene_text="", limit=14):
                       key=lambda f: (_score(f, scene_tokens), f.get("tick", 0)), reverse=True)
     rumors = sorted(bible.get("rumors") or [],
                     key=lambda f: _score(f, scene_tokens), reverse=True)
+    hidden = sorted(bible.get("hidden") or [],
+                    key=lambda f: (_score(f, scene_tokens), f.get("tick", 0)), reverse=True)
     facts = immutable + revealed[:max(0, limit - len(immutable))]
     facts = facts[:limit]
     unknown = sorted(bible.get("unknown") or [],
@@ -242,13 +249,15 @@ def brief(state, scene_text="", limit=14):
         "facts": [_public(f) for f in facts],
         "unknowns": unknown,
         "rumors": [_public(f) for f in rumors[:3]],
+        "hidden": [_public(f) for f in hidden[:20]],
         "counts": {
             "immutable": len(immutable),
             "revealed": len(revealed),
             "rumors": len(rumors),
+            "hidden": len(hidden),
             "unknown": len(bible.get("unknown") or []),
         },
-        "message": "canon 优先于记忆与临场推理；冲突时先修正叙述，不要改根设定。",
+        "message": "canon 优先于记忆与临场推理；hidden 是世界真相但主角不知道，只能用于判定，不能直接讲给玩家。",
     }
 
 
@@ -266,7 +275,7 @@ def check(state, facts, allow_override=False, status="revealed"):
         if fact:
             proposed.append(fact)
     existing = {}
-    for bucket in ("immutable", "revealed", "rumors"):
+    for bucket in ("immutable", "revealed", "rumors", "hidden"):
         for fact in bible.get(bucket) or []:
             existing[fact["id"]] = fact
             existing.setdefault((fact["subject"].lower(), fact["predicate"].lower()), fact)
@@ -359,15 +368,23 @@ def commit(state, facts, status="revealed", source="play", allow_override=False,
     for fact in normalized:
         if fact["status"] == "immutable":
             _upsert(bible["immutable"], fact)
-            # An immutable fact supersedes a revealed one with the same key.
-            for bucket in ("revealed", "rumors"):
+            # An immutable fact supersedes a revealed/rumour/hidden one with the same key.
+            for bucket in ("revealed", "rumors", "hidden"):
                 bible[bucket][:] = [f for f in bible[bucket]
                                     if (f.get("subject"), f.get("predicate")) !=
                                     (fact.get("subject"), fact.get("predicate"))]
         elif fact["status"] == "rumor":
             _upsert(bible["rumors"], fact)
+        elif fact["status"] == "hidden":
+            _upsert(bible["hidden"], fact)
         else:
             _upsert(bible["revealed"], fact)
+            # 主角已经知道这件事：从“世界默认但主角未知”里移出，避免同一事实
+            # 同时挂在 hidden 和 revealed 两栏，把 GM 的上下文预算吃掉。
+            bible["hidden"][:] = [f for f in bible["hidden"]
+                                  if f.get("id") != fact.get("id")
+                                  and (f.get("subject"), f.get("predicate")) !=
+                                  (fact.get("subject"), fact.get("predicate"))]
         # A revealed answer closes a matching unknown question.
         bible["unknown"][:] = [u for u in bible["unknown"]
                                if u.get("id") != fact.get("id")
@@ -396,8 +413,13 @@ def render(brief_data):
         lines.append("- [未知] %s" % u.get("question"))
     for r in data.get("rumors") or []:
         lines.append("- [传闻，可能为假] %s" % r.get("statement"))
+    hidden = data.get("hidden") or []
+    if hidden:
+        lines.append("世界默认（主角未知；GM 只能用于判定，不得直接讲给玩家）：")
+        for f in hidden:
+            lines.append("- [底] %s" % f.get("statement"))
     counts = data.get("counts") or {}
-    lines.append("台账：immutable %s / revealed %s / rumors %s / unknown %s" % (
+    lines.append("台账：immutable %s / revealed %s / rumors %s / hidden %s / unknown %s" % (
         counts.get("immutable", 0), counts.get("revealed", 0),
-        counts.get("rumors", 0), counts.get("unknown", 0)))
+        counts.get("rumors", 0), counts.get("hidden", 0), counts.get("unknown", 0)))
     return "\n".join(lines)

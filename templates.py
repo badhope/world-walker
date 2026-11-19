@@ -14,6 +14,7 @@
 """
 
 import copy
+import hashlib
 
 MAX_TEMPLATES = 40
 
@@ -42,6 +43,7 @@ def _pack(tid, name, genre, loop, **kw):
         "systems": [],
         "game": {},
         "world_bible": {},
+        "map_blueprint": {},
         "notes": "",
     }
     base.update(kw)
@@ -821,10 +823,174 @@ _IMMERSIVE = _pack(
     ],
 )
 
+_XIANXIA = _pack(
+    "xianxia", "青冥修仙", "修仙 / 成长", "freeform",
+    notes="灵气是天地底层；凡人先看见灵泉变冷，才慢慢看见宗门、灵脉和境界。",
+    world={"name": "青冥界", "era": "天衍历 317 年",
+           "location_desc": "青石村后山的灵泉边，夜雾里有一线微光。村里人说，三个月前泉水开始变冷。"},
+    player={"name": "林川", "faction": "青石村", "level": "凡人",
+            "attrs": {"str": 8, "dex": 10, "int": 11, "con": 9, "cha": 9},
+            "hp": 20, "hp_max": 20, "mp": 0, "mp_max": 0, "gold": 12,
+            "location": "青石村",
+            "skills": ["采药", "辨草"], "items": {"herb": 3, "dry_food": 2, "flint": 1}},
+    entities=[
+        {"id": "chen", "name": "陈伯", "faction": "青石村", "level": "凡人",
+         "attrs": {"str": 7, "dex": 8, "int": 12, "con": 8, "cha": 10},
+         "hp": 18, "hp_max": 18, "gold": 30, "location": "青石村",
+         "desc": "背有点驼，手指常年沾着药汁；他认得每一种草，却从不谈山上的事。",
+         "personality": "谨慎、护短", "speech": "「山上的东西，看见了也当没看见。」"},
+        {"id": "shen", "name": "沈砚", "faction": "外乡人", "level": "凡人",
+         "attrs": {"str": 10, "dex": 12, "int": 13, "con": 11, "cha": 11},
+         "hp": 26, "hp_max": 26, "gold": 0, "location": "青石村",
+         "desc": "住在村口破庙里的年轻人，脸色苍白，右手腕一直缠着布，布下有淡淡的灵纹。",
+         "personality": "寡言、戒备", "speech": "「别碰我的手腕。」"},
+    ],
+    market=[{"location": "青石村", "items": [
+        {"key": "dry_food", "name": "干粮", "price": 2, "supply": 30, "base_price": 2, "type": "食物"},
+        {"key": "herb", "name": "止血草", "price": 5, "supply": 20, "base_price": 5, "type": "草药"},
+        {"key": "flint", "name": "火折子", "price": 3, "supply": 15, "base_price": 3, "type": "工具"},
+    ]}, {"location": "青石镇", "items": [
+        {"key": "dry_food", "name": "干粮", "price": 2, "supply": 40, "base_price": 2, "type": "食物"},
+        {"key": "herb", "name": "止血草", "price": 4, "supply": 30, "base_price": 4, "type": "草药"},
+        {"key": "flint", "name": "火折子", "price": 2, "supply": 20, "base_price": 2, "type": "工具"},
+        {"key": "dagger", "name": "铁匕首", "price": 15, "supply": 8, "base_price": 15, "type": "武器"},
+    ]}],
+    relations=[{"a": "player", "b": "chen", "affinity": 10, "respect": 5},
+               {"a": "player", "b": "shen", "affinity": 0, "respect": 0}],
+    level_tiers=["凡人", "炼气", "筑基", "金丹", "元婴", "化神", "炼虚", "合体", "大乘"],
+    terms={"hero": "修士", "level": "境界", "hp": "气血", "mp": "灵力", "gold": "凡银",
+           "track": "修为", "territory": "足迹", "inventory": "行囊", "codex": "见闻录",
+           "quests": "因果"},
+    places={
+        "青石村": {"desc": "山村靠一条溪，屋后就是上山采药的石阶；夜里能听见后山的风。", "market": "青石村"},
+        "后山灵泉": {"desc": "泉眼在石壁下，水面比上个月低了一截，石缝里有细小的灵光。", "market": ""},
+        "落霞山": {"desc": "山门在雾里只剩一个轮廓，石阶尽头有断裂的牌坊。", "market": ""},
+        "青石镇": {"desc": "镇上有药铺、铁匠铺和一间挂着旧幡的当铺，凡人很少往山那边去。", "market": "青石镇"},
+    },
+    currency="凡银",
+    ui={"skin": "ink", "accent": "#7b9b8a", "motif": "修仙·青冥", "brand": "青冥界",
+        "tagline": "灵气有尽，山路无穷"},
+    playbook={"loop": "freeform", "input": "natural",
+              "progress": {"axis": "level", "label": "修为", "max": 8},
+              "failure": {"mode": "hp", "label": "气血耗尽", "max": 20},
+              "beat": {"pattern": ["日常", "异象", "入山", "斗法", "代价"], "every": 5},
+              "settlement": ["combat", "roll", "social", "trade", "use_item", "travel"],
+              "context": {"inject": ["lore", "cast", "chronicle"], "max_lore": 12, "scan_depth": 2}},
+    questlines=[{
+        "id": "spirit_spring", "title": "灵泉为什么变冷", "summary": "青石村的灵泉在三个月前开始变冷，陈伯不肯多说。",
+        "visibility": {"flag": "__start__"},
+        "stages": [
+            {"id": "ask", "title": "问陈伯", "objectives": ["向陈伯打听灵泉变冷的原因"],
+             "exit_if": {"flag": "asked_spring"}, "next": ["night"]},
+            {"id": "night", "title": "夜探灵泉", "objectives": ["夜里去后山灵泉查看"],
+             "exit_if": {"visited": "后山灵泉"}, "next": ["shen"]},
+            {"id": "shen", "title": "破庙里的人", "objectives": ["找到沈砚，问他在等什么"],
+             "exit_if": {"flag": "met_shen"}, "next": ["mountain"]},
+            {"id": "mountain", "title": "落霞山口", "objectives": ["沿灵脉走到落霞山外围"],
+             "exit_if": {"visited": "落霞山"}, "next": []},
+        ],
+        "reward": {"flags": ["spirit_spring_trace"], "items": {"spirit_stone_shard": 1}},
+    }],
+    systems=[
+        {"id": "clock", "kind": "time", "label": "山中时辰",
+         "config": {"start": {"day": 1, "hour": 18}, "days_per_season": 30,
+                    "seasons": ["春", "夏", "秋", "冬"],
+                    "weathers": [{"name": "晴", "weight": 35}, {"name": "雨", "weight": 30},
+                                 {"name": "雾", "weight": 25}, {"name": "雷", "weight": 10}]}},
+        {"id": "spirit_loot", "kind": "loot", "label": "山中掉落",
+         "config": {"tables": {"spirit": {"rolls": 2, "empty_weight": 25, "entries": [
+             {"item": "herb", "name": "灵草", "weight": 45, "qty": [1, 2]},
+             {"item": "spirit_stone_shard", "name": "灵石碎屑", "weight": 15, "qty": [1, 1]},
+             {"item": "beast_core", "name": "兽核", "weight": 8, "qty": [1, 1]},
+         ]}}}},
+        {"id": "sect_rep", "kind": "reputation", "label": "宗门声望",
+         "config": {"factions": ["青云宗", "万宝楼", "血影门", "散修盟"],
+                    "tiers": [{"min": -1000, "label": "敌对"}, {"min": -40, "label": "冷淡"},
+                              {"min": 0, "label": "无名"}, {"min": 30, "label": "记名"},
+                              {"min": 70, "label": "内门"}]}},
+        {"id": "cultivation", "kind": "custom", "label": "修行",
+         "config": {"actions": {
+             "meditate": {"label": "打坐引气",
+                          "effects": [{"op": "advance_time", "minutes": 240},
+                                      {"op": "xp", "delta": 10},
+                                      {"op": "flag", "flag": "tried_meditation"}]},
+             "gather": {"label": "上山采药",
+                        "effects": [{"op": "advance_time", "minutes": 180},
+                                    {"op": "loot", "table": "spirit"}]},
+         }}},
+        {"id": "xp", "kind": "progression", "label": "修为",
+         "config": {"base_xp": 500, "growth": 2.0, "max_level": 8,
+                    "per_level": {"int": 1, "con": 1}, "level_label": "境界"}},
+    ],
+    game={"title": "青冥界", "kind": "rpg",
+          "resources": [{"key": "hp", "label": "气血", "value": 20, "min": 0, "max": 20, "color": "hp"},
+                        {"key": "mp", "label": "灵力", "value": 0, "min": 0, "max": 0, "color": "mp"},
+                        {"key": "gold", "label": "凡银", "value": 12, "min": 0, "max": 0, "color": "gold"}],
+          "attributes": [{"key": "str", "label": "力量", "value": 8},
+                         {"key": "dex", "label": "敏捷", "value": 10},
+                         {"key": "int", "label": "根骨", "value": 11},
+                         {"key": "con", "label": "体魄", "value": 9},
+                         {"key": "cha", "label": "心性", "value": 9}],
+          "meters": [{"key": "level", "label": "境界", "value": 0, "min": 0, "max": 8}],
+          "tags": ["修仙", "灵脉"], "sheet": {"出身": "青石村采药少年", "灵根": "未检测"}},
+    lore=[
+        {"keys": ["基调", "文风"], "constant": True, "comment": "基调",
+         "content": "修仙不是一路升级：灵气有浓度，功法有门槛，突破有代价。先让玩家感到“山里有东西”，再给解释。"},
+        {"keys": ["灵泉", "后山", "水冷"], "comment": "灵泉",
+         "content": "灵泉的水温比上个月低，石缝里有细小灵光；陈伯说这是“地脉翻身”，但不肯解释。", "constant": False},
+        {"keys": ["仙人", "山上", "宗门"], "comment": "仙人传闻",
+         "content": "村里老人说山上有仙人，但没人见过；沈砚听到这句话时，会下意识按住右腕。", "constant": False},
+    ],
+    map_blueprint={
+        "start": "village",
+        "core_nodes": [
+            {"id": "village", "name": "青石村", "role": "start", "danger": 0,
+             "desc": "山村靠一条溪，屋后就是上山采药的石阶；夜里能听见后山的风。", "market": "青石村"},
+            {"id": "spring", "name": "后山灵泉", "role": "clue", "danger": 1,
+             "desc": "泉眼在石壁下，水面比上个月低了一截，石缝里有细小的灵光。"},
+            {"id": "luoxia", "name": "落霞山", "role": "gate", "danger": 2,
+             "desc": "山门在雾里只剩一个轮廓，石阶尽头有断裂的牌坊。"},
+            {"id": "town", "name": "青石镇", "role": "market", "danger": 1,
+             "desc": "镇上有药铺、铁匠铺和一间挂着旧幡的当铺，凡人很少往山那边去。", "market": "青石镇"},
+        ],
+        "random_nodes": [
+            {"id": "cave", "role": "dungeon", "danger": 3, "names": ["黑水洞", "枯藤洞", "落石洞"],
+             "descs": ["洞口被藤蔓遮了一半，里面传来水滴声。",
+                       "洞壁上有旧凿痕，深处有淡淡的灵气涌出。"]},
+            {"id": "temple", "role": "ruin", "danger": 2, "names": ["山神庙", "废弃道观", "无名祠"],
+             "descs": ["屋顶塌了一角，神像的脸被雨水磨平。",
+                       "供桌上只剩一层冷灰，墙角却有一串新脚印。"]},
+            {"id": "marsh", "role": "wild", "danger": 3, "names": ["黑水沼泽", "雾泽", "断桥泽"],
+             "descs": ["水面浮着一层黑雾，踩下去会陷到脚踝。",
+                       "断桥只剩半截，桥下有什么东西在慢慢游动。"]},
+        ],
+        "edges": [
+            {"a": "village", "b": "spring", "minutes": [10, 20], "label": "后山石阶"},
+            {"a": "village", "b": "town", "minutes": [40, 70], "label": "溪边土路"},
+            {"a": "spring", "b": "luoxia", "minutes": [60, 120], "label": "断牌坊山道"},
+            {"a": "town", "b": "luoxia", "minutes": [50, 90], "label": "官道"},
+        ],
+        "random_links": [
+            {"id": "cave", "links": ["spring", "luoxia"]},
+            {"id": "temple", "links": ["village", "luoxia"]},
+            {"id": "marsh", "links": ["town", "luoxia"]},
+        ],
+        "rules": [
+            "青石村、后山灵泉、落霞山、青石镇的名字与位置固定。",
+            "每次开局从三个野外节点里抽两个，名字、描写和路程随机，但连接关系必须在青石村/灵泉/落霞山/青石镇之间。",
+            "危险度：村 0，灵泉 1，镇 1，落霞山 2，野外节点 2-3。",
+            "地图只改变外观与路程，不改变境界体系、灵脉方向和宗门关系。",
+        ],
+    },
+)
+
+
+
 TEMPLATES = {
     t["id"]: t for t in (_JRPG, _MYSTERY, _MANAGEMENT, _SURVIVAL,
-                         _NARRATIVE, _COZY, _TABLETOP, _IMMERSIVE)
+                         _NARRATIVE, _COZY, _TABLETOP, _IMMERSIVE, _XIANXIA)
 }
+
 
 # ────────────────────────────── 世界根设定（canon） ──────────────────────────────
 #
@@ -851,14 +1017,51 @@ def _canon_unknown(question, hint=""):
     return {"question": question, "hint": hint, "status": "unknown"}
 
 
-def _canon_bible(name, era, premise, genre, tone, facts, unknowns):
+def _canon_known(subject, predicate, value, statement, tags=None):
+    fact = _canon_fact(subject, predicate, value, statement, tags)
+    fact["status"] = "revealed"
+    fact["locked"] = False
+    return fact
+
+
+def _canon_hidden(subject, predicate, value, statement, tags=None):
+    return {
+        "subject": subject,
+        "predicate": predicate,
+        "value": value,
+        "statement": statement,
+        "status": "hidden",
+        "locked": True,
+        "source": "template",
+        "tags": list(tags or []),
+        "spoiler": "gm",
+    }
+
+
+def _canon_rumor(statement, subject="传闻", predicate="内容", value="", tags=None):
+    return {
+        "subject": subject,
+        "predicate": predicate,
+        "value": value,
+        "statement": statement,
+        "status": "rumor",
+        "locked": False,
+        "source": "template",
+        "tags": list(tags or []),
+        "spoiler": "player",
+    }
+
+
+def _canon_bible(name, era, premise, genre, tone, facts, unknowns,
+                 hidden=None, revealed=None, rumors=None):
     return {
         "version": 1,
         "world": {"name": name, "era": era, "premise": premise,
                   "genre": genre, "tone": tone},
         "immutable": facts,
-        "revealed": [],
-        "rumors": [],
+        "revealed": list(revealed or []),
+        "rumors": list(rumors or []),
+        "hidden": list(hidden or []),
         "unknown": unknowns,
     }
 
@@ -1136,6 +1339,88 @@ WORLD_BIBLES = {
             _canon_unknown("钟楼的巡夜人布伦在替谁做事？", "城卫、旧贵族，或者他自己的债主。"),
         ],
     ),
+    "xianxia": _canon_bible(
+        "青冥界", "天衍历 317 年",
+        "灵气是天地根本。灵脉决定聚落、宗门和战争；三千年前灵潮退去，底层灵脉正在枯竭，凡人只看见泉水变冷。",
+        "修仙 / 成长", "山雨、古观、灵气的代价",
+        [
+            _canon_fact("世界", "前提", "灵气是天地根本，灵脉决定聚落与宗门兴衰",
+                        "青冥界的灵气来自地脉；灵脉经过的地方才有修士聚落、灵田和宗门。灵脉枯竭，法术、丹药、阵法都会失效。", ["core"]),
+            _canon_fact("力量", "规则", "修炼需要灵根、功法与灵气浓度；施法消耗灵力，不能凭空造物",
+                        "没有灵根不能引气入体；功法决定上限；同一法术在灵气稀薄处威力减半。不能复活死者，不能凭空创造活物。", ["rule", "power"]),
+            _canon_fact("力量", "代价", "突破要靠功法、丹药和灵气，失败会伤道基；越阶斗法有反噬",
+                        "每次破境都要满足资源与心境；强行越阶会损伤经脉、引爆心魔，甚至引动天劫。", ["rule", "cost"]),
+            _canon_fact("历史", "断层", "三千年前灵潮退去，宗门封山，凡俗与修真界从此断裂",
+                        "天衍历以前灵气充盈；灵潮退后，大宗门封闭山门，凡俗王朝只留下“仙人不问世事”的旧约。", ["history"]),
+            _canon_fact("历史", "近事", "三个月前青石村灵泉变冷；落霞山灵脉有异动；一名外门弟子失踪",
+                        "灵泉变冷与落霞山灵脉异动同时发生；青云宗外门弟子沈砚在附近失踪，宗门只派了一名执事来查。", ["history", "hook"]),
+            _canon_fact("地图", "框架", "青石村—后山灵泉—落霞山—青石镇；更远处是云梦泽与天衍城",
+                        "青石村在灵脉末梢；后山灵泉是末梢泉眼；落霞山是青云宗外围山门；青石镇是凡俗集市。云梦泽在西南，天衍城在东南。", ["map"]),
+            _canon_fact("地图", "通行成本", "凡人走山路和官道；修士御剑或灵舟更快，但会暴露灵气",
+                        "青石村到灵泉约一刻钟；到青石镇约一个时辰；到落霞山要走半天。夜里山路有妖兽，御剑会留下灵气痕迹。", ["map", "travel"]),
+            _canon_fact("势力", "格局", "青云宗、万宝楼、血影门、散修盟、凡俗王朝",
+                        "青云宗掌落霞山灵脉；万宝楼掌坊市与灵石兑换；血影门在云梦泽活动；散修盟无固定山门；凡俗王朝只管凡人城池。", ["faction"]),
+            _canon_fact("社会", "秩序", "仙凡有别；宗门收徒；散修无籍；魔道通缉；凡人大多不知灵气",
+                        "宗门在山门内执法；凡俗王朝管不了修士；散修没有宗门背书，进城要登记；血影门被各国通缉但仍有暗市。", ["society"]),
+            _canon_fact("经济", "底座", "凡人用铜钱和银两；修士用灵石；灵石也是修炼资源",
+                        "凡人集市用铜钱/碎银；修士坊市用下品、中品、上品灵石；灵石可被吸收修炼，也可布阵、炼器、买命。", ["economy"]),
+            _canon_fact("生死", "规则", "寿元随境界增长；死亡不可复活；夺舍是禁术；高阶修士也会死于天劫",
+                        "凡人寿约七十；修士寿元随境界增加。死亡不可逆；夺舍会留下因果；天劫失败会道消。", ["death"]),
+            _canon_fact("玩家", "位置", "林川，十六岁，青石村采药少年；没有测过灵根，只知灵泉变冷和山里有仙人传说",
+                        "林川父母早亡，靠采药换粮；他见过沈砚手腕上的灵纹，但不知道那是什么；他身上有十二枚铜钱和三日干粮。", ["player"]),
+        ],
+        [
+            _canon_unknown("灵泉下面到底有什么？", "泉眼连着一条快枯竭的灵脉；下面可能有一处旧阵或一具尸骸。"),
+            _canon_unknown("沈砚在青石村等谁？", "他在等青云宗的追兵，还是在等一个能帮他解开锁印的人？"),
+            _canon_unknown("林川有没有灵根？", "没有测过；陈伯可能知道，但不愿说。"),
+        ],
+        hidden=[
+            _canon_hidden("修仙体系", "境界阶梯", "凡人→炼气→筑基→金丹→元婴→化神→炼虚→合体→大乘→渡劫飞升",
+                          "青冥界的正统修炼路径是：凡人引气入体成为炼气修士，之后筑基、结丹、化婴、化神、炼虚、合体、大乘。大乘圆满后渡飞升天劫；此界近三千年无人成功。", ["cultivation", "system"]),
+            _canon_hidden("修仙体系·炼气", "境界职责", "引气入体，一至九层；寿元约百岁；能画符、御物、踏风；不能真正御剑飞行",
+                          "炼气期把天地灵气引入经脉，分一至九层。一层可感气，三层可画低阶符，六层可御物，九层可踏风短跃。瓶颈是灵根品质与灵气浓度；灵气不足会卡在层数上，强行冲关会伤经脉。", ["cultivation", "realm"]),
+            _canon_hidden("修仙体系·筑基", "境界职责", "筑道基，分初/中/后期；寿元约二百；可短途御剑、布小阵",
+                          "筑基期把灵气压缩成道基，决定后续金丹的品质。初期能短途御剑，中期可布小阵，后期可引动一方法术。瓶颈是道基不稳、心魔和筑基丹；失败会跌回炼气。", ["cultivation", "realm"]),
+            _canon_hidden("修仙体系·金丹", "境界职责", "结金丹；寿元约三百；可御剑飞行、祭炼本命法器",
+                          "金丹期把道基凝结成金丹，灵力性质稳定。可御剑飞行、祭炼本命法器、以丹火炼器。瓶颈是结丹失败、丹毒、雷劫；金丹品质决定能否化婴。", ["cultivation", "realm"]),
+            _canon_hidden("修仙体系·元婴", "境界职责", "碎丹成婴；寿元约五百至八百；元婴可离体、神念外放",
+                          "元婴期金丹化婴，神念可外放探查，元婴能短暂离体。可夺舍（禁术）、可布大型阵法。瓶颈是婴变、心魔、夺舍因果；元婴受损会跌境。", ["cultivation", "realm"]),
+            _canon_hidden("修仙体系·化神", "境界职责", "神念化域；寿元约一千；可引动天地灵气",
+                          "化神期神念与天地共鸣，能在一域内引动灵气、改变天象。可开辟洞天、炼制灵宝。瓶颈是神与形合、天劫；道心不稳会被天地同化。", ["cultivation", "realm"]),
+            _canon_hidden("修仙体系·炼虚", "境界职责", "炼虚合道；寿元约两千；可短暂遁入虚空、跨越阵法",
+                          "炼虚期开始触碰空间法则，能短暂遁入虚空、穿过低阶阵法。可炼制虚空法器。瓶颈是虚空反噬、道心裂痕；迷失虚空会形神俱灭。", ["cultivation", "realm"]),
+            _canon_hidden("修仙体系·合体", "境界职责", "肉身与天地合；寿元约三千；可移山填海",
+                          "合体期肉身与天地灵气合一，能移山填海、长时间不食烟火。可镇守一域灵脉。瓶颈是合体天劫、因果反噬；杀孽过重会引动心魔。", ["cultivation", "realm"]),
+            _canon_hidden("修仙体系·大乘", "境界职责", "大乘圆满；寿元约五千；可开宗立派、镇压一域",
+                          "大乘期接近此界极限，能开宗立派、镇压一域、改写小范围天象。瓶颈是飞升天劫与天道功德；功德不足会道消，功德圆满可渡劫飞升。", ["cultivation", "realm"]),
+            _canon_hidden("修仙体系·渡劫", "境界职责", "大乘之后的最后一道门；成功飞升，失败道消",
+                          "渡劫不是境界，而是大乘圆满后的飞升天劫。雷劫会照见道心与因果；此界近三千年无人成功，最近一次失败在落霞山，留下“断牌坊”。", ["cultivation", "realm", "history"]),
+            _canon_hidden("经济", "货币体系", "凡人铜钱/银两；修士下品/中品/上品灵石；1中品=100下品，1上品=100中品",
+                          "凡人用铜钱和碎银；修士坊市用灵石。下品灵石供炼气/筑基吸收，中品供金丹/元婴，上品供化神以上。灵石也是布阵、炼器、买命的硬通货；凡银买不到灵石。", ["economy", "currency"]),
+            _canon_hidden("修炼", "资源与门槛", "灵根分五行、杂灵根、天灵根；功法决定上限；丹药可辅突破但有丹毒",
+                          "灵根决定引气速度与法术亲和；杂灵根慢但稳，天灵根快但易遭觊觎。功法分凡/黄/玄/地/天五阶；丹药可辅助破境，但服多了会积丹毒，降低下一次突破成功率。", ["cultivation", "resource"]),
+            _canon_hidden("势力", "灵脉真相", "青云宗掌落霞山灵脉；万宝楼掌坊市；血影门在云梦泽；散修盟无固定山门",
+                          "青石村在灵脉末梢，所以只有一口灵泉；落霞山是青云宗外围，山门内有筑基长老；万宝楼在青石镇设暗铺；血影门在云梦泽挖一条旧灵脉；散修盟靠坊市抽成。", ["faction", "map", "truth"]),
+            _canon_hidden("人物", "沈砚身份", "青云宗外门弟子，偷带半块灵脉图逃出，被同门追杀；右腕灵纹是宗门锁印",
+                          "沈砚不是普通外乡人。他是青云宗外门弟子，偷了半块灵脉图逃到青石村，右腕的灵纹是宗门锁印，封住了大半修为。追他的同门已经在青石镇落脚。", ["npc", "secret"]),
+        ],
+        revealed=[
+            _canon_known("林川", "身世", "青石村采药少年，父母早亡，靠采药换粮",
+                        "林川十六岁，住在青石村溪边；父母早亡，靠采药和替陈伯跑腿换粮。", ["player", "known"]),
+            _canon_known("灵泉", "近况", "三个月前开始变冷，水面下降，夜里石缝有光",
+                        "林川亲眼见过灵泉变冷；水面比上个月低了一截，夜里石缝偶尔有细小灵光。", ["known", "hook"]),
+            _canon_known("陈伯", "态度", "知道些什么，但不愿说",
+                        "林川问过陈伯灵泉的事；陈伯只说“地脉翻身”，之后不再解释。", ["known", "npc"]),
+            _canon_known("沈砚", "现状", "村口破庙住着一个外乡人，右手腕缠布",
+                        "林川见过沈砚；他脸色苍白，右手腕一直缠着布，布下有淡淡的灵纹。林川不知道灵纹是什么。", ["known", "npc"]),
+            _canon_known("青石镇", "货币", "镇上用铜钱和碎银，药铺收草药",
+                        "林川去青石镇卖过草药；镇上用铜钱和碎银，药铺赵掌柜收止血草。", ["known", "economy"]),
+        ],
+        rumors=[
+            _canon_rumor("村里老人说，山上有仙人；没人见过，但每年都有人上山不回来。", "仙人", "传闻", "山上有仙人", ["rumor"]),
+            _canon_rumor("青石镇有人说，最近有外地人在打听一个手腕缠布的年轻人。", "沈砚", "被打听", "外地人在找他", ["rumor", "npc"]),
+        ],
+    ),
 }
 
 for _tid, _bible in WORLD_BIBLES.items():
@@ -1158,6 +1443,8 @@ def list_templates() -> list:
             "places": len(t.get("places") or {}),
             "lore": len(t.get("lore") or []),
             "canon_facts": len((t.get("world_bible") or {}).get("immutable") or []),
+            "canon_hidden": len((t.get("world_bible") or {}).get("hidden") or []),
+            "map": bool(t.get("map_blueprint")),
         })
     return out
 
@@ -1207,10 +1494,17 @@ def to_bundle(tid: str, overrides: dict | None = None, name: str = "",
            for q in (tpl.get("questlines") or [])):
         if "__start__" not in world_flags:
             world_flags.insert(0, "__start__")
+    bundle_name = name or tpl["name"]
+    # 带地图模板的每一局用“局名”派生 seed：同一局重开可复现，不同局名会得到不同地图。
+    # 老模板没有 map_blueprint，继续用固定 seed，避免无谓地改变既有存档行为。
+    if tpl.get("map_blueprint"):
+        seed = int(hashlib.sha1(bundle_name.encode("utf-8")).hexdigest()[:8], 16)
+    else:
+        seed = 20261014
     bundle = {
-        "name": name or tpl["name"],
+        "name": bundle_name,
         "note": tpl["notes"],
-        "seed": 20261014,
+        "seed": seed,
         "world": tpl["world"],
         "player": tpl["player"],
         "entities": tpl["entities"],
@@ -1223,6 +1517,7 @@ def to_bundle(tid: str, overrides: dict | None = None, name: str = "",
                    for k, v in (tpl.get("places") or {}).items()},
         "lore": tpl["lore"],
         "world_bible": tpl.get("world_bible") or {},
+        "map_blueprint": tpl.get("map_blueprint") or {},
         "currency": tpl["currency"],
         "ui": tpl["ui"],
         "playbook": tpl["playbook"],
@@ -1280,6 +1575,12 @@ def validate(tpl: dict) -> list:
         problems.append("world_bible.immutable 少于 8 条根设定")
     if not bible.get("unknown"):
         problems.append("world_bible.unknown 为空（探索迷雾没有入口）")
+    hidden = bible.get("hidden") or []
+    if hidden and len(hidden) < 6:
+        problems.append("world_bible.hidden 少于 6 条世界默认（主角未知）设定")
+    for i, fact in enumerate(hidden):
+        if not isinstance(fact, dict) or not fact.get("statement"):
+            problems.append("world_bible.hidden[%d] 缺 statement" % i)
     if not tpl.get("questlines"):
         problems.append("questlines 为空")
     if not tpl.get("systems"):
@@ -1296,6 +1597,22 @@ def validate(tpl: dict) -> list:
     for pname, pinfo in (tpl.get("places") or {}).items():
         if isinstance(pinfo, dict) and pinfo.get("market") and pinfo["market"] not in market_locs:
             problems.append("places[%s].market 指向不存在的市场 %r" % (pname, pinfo["market"]))
+    place_names0 = set((tpl.get("places") or {}).keys())
+    # 地图蓝图：起点必须存在；固定节点名称必须能在 places 里找到；
+    # 边必须引用已知节点。随机节点允许只存在于蓝图，由 mapgen 生成。
+    blueprint = tpl.get("map_blueprint") or {}
+    if blueprint:
+        core = {n.get("id"): n for n in (blueprint.get("core_nodes") or []) if isinstance(n, dict)}
+        if blueprint.get("start") not in core:
+            problems.append("map_blueprint.start 不在 core_nodes")
+        for node in core.values():
+            if node.get("name") and node["name"] not in place_names0:
+                problems.append("map_blueprint 固定节点 %r 不在 places" % node["name"])
+        node_ids = set(core)
+        node_ids.update(n.get("id") for n in (blueprint.get("random_nodes") or []) if isinstance(n, dict))
+        for edge in (blueprint.get("edges") or []):
+            if edge.get("a") not in node_ids or edge.get("b") not in node_ids:
+                problems.append("map_blueprint 边引用未知节点: %r" % (edge,))
     # 事业线谓词的 visited 目标必须在 places 里
     place_names = set((tpl.get("places") or {}).keys())
     for quest in tpl.get("questlines") or []:

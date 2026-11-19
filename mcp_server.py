@@ -803,6 +803,7 @@ def world_schema() -> dict:
                 "immutable": "锁死的根设定数组；每条含 id/subject/predicate/value/statement/tags",
                 "revealed": "玩出来后才成立的事实",
                 "rumors": "传闻，可能为假",
+                "hidden": "世界默认事实（主角未知；GM 只能用于判定，不能直接讲给玩家）",
                 "unknown": "迷雾问题数组；首次接触后通过 canon_commit 升为 revealed",
             },
             "entities": "entity_id -> 实体对象（见 entity_shape）",
@@ -817,6 +818,8 @@ def world_schema() -> dict:
             "rumors": "谣言 {主题: {s, i, r, heat}}（SIR 传播）",
             "culture": "风气 {tradition, innovation}（Deffuant 有界信任漂移）",
             "places": "地点描写 {地名: {desc, tick}}；面板主舞台优先显示它",
+            "map": "本局生成的地图 {start, nodes:[{id,name,role,danger}], edges:[{a,b,label,minutes}]}",
+            "map_blueprint": "模板级地图契约：固定核心节点/随机野外节点/连接关系/危险度；由 mapgen 按 seed 生成本局地图",
             "prose": "叙事正文队列（publish_prose 写入，config.prose_keep 控制保留量，溢出进归档）",
             "config.level_tiers": "等级阶梯（数组）；配了它 advance 只能逐阶递进",
         },
@@ -1029,6 +1032,7 @@ def canon_init(bible: dict) -> dict:
             "immutable": len(normalized["immutable"]),
             "revealed": len(normalized["revealed"]),
             "rumors": len(normalized["rumors"]),
+            "hidden": len(normalized.get("hidden") or []),
             "unknown": len(normalized["unknown"]),
         },
         "hint": "每回合先 canon_brief；新事实先 canon_check，再 canon_commit。",
@@ -1085,6 +1089,7 @@ def canon_commit(facts: list[dict], status: str = "revealed", source: str = "pla
         "immutable": len(_bible.get("immutable") or []),
         "revealed": len(_bible.get("revealed") or []),
         "rumors": len(_bible.get("rumors") or []),
+        "hidden": len(_bible.get("hidden") or []),
         "unknown": len(_bible.get("unknown") or []),
     }
     return _finish(state, {
@@ -2631,7 +2636,9 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
         "questlines": len(state.get("questlines") or []),
         "game_kind": (state.get("game") or {}).get("kind", ""),
         "canon_facts": len((state.get("world_bible") or {}).get("immutable") or []),
+        "canon_hidden": len((state.get("world_bible") or {}).get("hidden") or []),
         "canon_unknown": len((state.get("world_bible") or {}).get("unknown") or []),
+        "map_nodes": len((state.get("map") or {}).get("nodes") or []),
         "hint": "已设为当前对局；先 canon_brief 读世界根设定，再开始写正文。",
     }
 

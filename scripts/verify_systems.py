@@ -43,6 +43,7 @@ if 'game_engine' not in sys.modules:
     _spec.loader.exec_module(_pkg)
 
 import templates as TPL                              # noqa: E402
+from game_engine import canon                       # noqa: E402
 from game_engine import settings_loader as SL        # noqa: E402
 from game_engine.rules import gamesystem as GS       # noqa: E402
 from game_engine.rules import systems as SYS         # noqa: E402
@@ -436,6 +437,54 @@ def s8b_counters():
 
 
 # ── S9 MCP 集成 ──────────────────────────────────────────
+
+def s8c_world_layers():
+    """修仙模板的“两层世界”：hidden 是 GM 判定用，revealed 才是主角已知。
+
+    这里不做“看起来有字段”的弱断言：真的建局、真的让 hidden 升为 revealed，
+    并检查地图核心节点与危险度没有被随机生成打乱。
+    """
+    bundle = TPL.to_bundle('xianxia', name='青冥界·自检')
+    bible = bundle['world_bible']
+    check('S8c 修仙模板有 hidden 世界默认真相', len(bible.get('hidden') or []), 14)
+    check('S8c 修仙模板有主角已知起点', len(bible.get('revealed') or []), 5)
+    check('S8c 修仙模板有 unknown 迷雾', len(bible.get('unknown') or []), 3)
+
+    st = SL.build_state(bundle)
+    SL.apply_runtime_fields(st, bundle)
+    mp = st.get('map') or {}
+    node_names = {n.get('name') for n in (mp.get('nodes') or [])}
+    check('S8c 地图生成至少有六个节点', len(mp.get('nodes') or []), 6)
+    check_true('S8c 地图保留四个核心节点',
+               {'青石村', '后山灵泉', '落霞山', '青石镇'} <= node_names,
+               sorted(node_names))
+    check_true('S8c 地图危险度不是全零',
+               len({n.get('danger') for n in (mp.get('nodes') or [])}) > 1,
+               sorted({n.get('danger') for n in (mp.get('nodes') or [])}))
+    check('S8c 玩家起点与地图起点一致',
+          st['entities']['player'].get('location'), mp.get('start'))
+    check_true('S8c 地图边引用的是已生成地点',
+               all(e.get('a') in node_names and e.get('b') in node_names
+                   for e in (mp.get('edges') or [])),
+               [(e.get('a'), e.get('b')) for e in (mp.get('edges') or [])][:3])
+
+    brief = canon.brief(st, scene_text='灵泉')
+    check('S8c brief 单独返回 hidden', len(brief.get('hidden') or []), 14)
+    check_true('S8c render 警告 GM 不要把 hidden 直接讲给玩家',
+               '不得直接讲给玩家' in canon.render(brief), 'missing guard')
+
+    raw = st['world_bible']['hidden'][1]
+    fact = {k: raw[k] for k in ('id', 'subject', 'predicate', 'value', 'statement')}
+    result = canon.check(st, [fact], status='revealed')
+    check_true('S8c hidden 事实可通过 check', result.get('ok') is True, result)
+    before_hidden = len(st['world_bible']['hidden'])
+    before_revealed = len(st['world_bible']['revealed'])
+    bible2, committed = canon.commit(st, [fact], status='revealed', source='self-check')
+    check_true('S8c hidden 可升为 revealed', committed.get('ok') is True, committed.get('message'))
+    check('S8c 升级后 hidden 减一', len(bible2['hidden']), before_hidden - 1)
+    check('S8c 升级后 revealed 加一', len(bible2['revealed']), before_revealed + 1)
+
+
 def s9_mcp():
     try:
         import game_engine.mcp_server as MS
@@ -561,6 +610,8 @@ def main():
     s8_templates()
     print('\n── S8b 计数器驱动成就 ──')
     s8b_counters()
+    print('\n── S8c 两层世界与地图 ──')
+    s8c_world_layers()
     print('\n── S9 MCP 集成 ──')
     s9_mcp()
     print('\n── S10 有界性/确定性 ──')

@@ -5,6 +5,37 @@
 
 ---
 
+## v1.14.0 — 2026-11-20
+
+**世界分两层：主角知道的，与世界默认但主角不知道的。**
+
+### 新增
+
+- `templates.py` 新增 `xianxia`（青冥界）模板：灵气为底层规则，凡人开局只看见灵泉变冷；
+  内置 12 条 immutable + 14 条 `hidden`（世界默认/主角未知）+ 5 条 `revealed`（主角已知）+ 2 条传闻 + 3 个 unknown。
+- `hidden`（世界默认）事实：修仙体系总纲、炼气到渡劫 9 个境界的职责/寿元/能力/瓶颈、
+  凡银与下品/中品/上品灵石货币体系、灵根/功法/丹药门槛、宗门与灵脉真相、沈砚身份。
+- `map_blueprint` + `mapgen.py`：青石村/后山灵泉/落霞山/青石镇固定，野外节点按局名 seed 抽 2 个；
+  地点名、描写、路程可变，连接关系与危险层级不变。每局地图不同但不会跑偏。
+- `template_start` 输出的 `canon_hidden` / `map_nodes` 让宿主一眼看到本局到底加载了什么。
+
+### 变更
+
+- `canon.py`：`STATUSES` 增加 `hidden`，`LOCKED_STATUSES` 同步；`brief()` 单独返回 `hidden`；
+  `render()` 输出“世界默认（主角未知；GM 只能用于判定，不得直接讲给玩家）”；
+  `check()/commit()` 把 hidden 纳入既有事实；揭示一条 hidden 时自动从 hidden 移除，避免同一事实双挂。
+- `settings_loader.apply_runtime_fields()` 接入 `mapgen`；生成的野外地点进 `state.places`，
+  地图骨架进 `state.map`，玩家起始地点对齐 `map.start`。
+- `mcp_server.world_schema` 与 `canon` 工具计数同步 hidden/map；`template_start` 增加 `canon_hidden`、`map_nodes`。
+
+### 验证
+
+- 9 套模板 `validate()` 全部空问题；`xianxia` 可建局，12 immutable / 14 hidden / 5 revealed / 2 rumors / 3 unknown。
+- 三个不同局名实测生成三张不同地图，核心节点与边关系保持稳定。
+- `canon.check` 可通过 hidden 事实；`canon.commit(status=revealed)` 后 hidden 数 14→13、revealed 数 5→6。
+
+---
+
 ## v1.13.0 — 2026-11-19
 
 **世界圣经层：先锁根设定，再边探索边展开。**

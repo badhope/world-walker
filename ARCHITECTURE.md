@@ -1,6 +1,6 @@
 # World Walker 架构
 
-文档版本：v1.13 · 2026-11-19
+文档版本：v1.14 · 2026-11-20
 
 World Walker 有两个入口，但只有一套引擎：
 
@@ -56,10 +56,13 @@ MCP 模式走：
 
 ### 世界圣经：`canon.py`
 
-- `normalize`：把模板/设定包的 bible 归一化为 `immutable / revealed / rumors / unknown`。
-- `brief`：每回合返回根设定、相关已揭示事实、迷雾问题；GM 先读它再叙事。
-- `check`：确定性冲突检查；同 id 或同 subject+predicate 且 value 不同即冲突。
-- `commit`：把探索到的新事实写入 `revealed`/`rumor`；根设定改动必须显式 override。
+- `normalize`：把模板/设定包的 bible 归一化为 `immutable / revealed / rumors / hidden / unknown`。
+  `hidden` 是“世界默认有、但主角不知道”的真相；`revealed` 才是主角已知。
+- `brief`：每回合返回根设定、相关已揭示事实、迷雾问题，以及单独的 `hidden` 列表；GM 先读它再叙事。
+- `render`：把 `hidden` 标成“世界默认（主角未知；GM 只能用于判定，不得直接讲给玩家）”。
+- `check`：确定性冲突检查；同 id 或同 subject+predicate 且 value 不同即冲突，hidden 也参与比对。
+- `commit`：把探索到的新事实写入 `revealed`/`rumor`；揭示一条 hidden 时自动从 hidden 移除；
+  根设定改动必须显式 override。
 
 ### Session Zero：`narrative_rules.py`
 
@@ -102,7 +105,8 @@ world-walker/
 ├── game_service.py                                # 工具意图层
 ├── mcp_server.py / mcp_primitives.py              # 可选 MCP 独立接口
 ├── state_schema.py                                # 状态 / 原子写 / 锁 / 归档
-├── templates.py                                   # 8 套骨架
+├── templates.py                                   # 9 套骨架
+├── mapgen.py                                      # 蓝图 → 本局地图（固定拓扑 / 可变外观）
 ├── rules/                                         # 确定性规则
 ├── settings/                                      # 设定包
 ├── docs/MCP_PLAY.md                               # MCP 对话游玩协议

@@ -66,7 +66,7 @@ def _install_alias_finder(directory: str) -> None:
 
     names = {'mcp_server', 'engine', 'panel', 'sessions', 'templates',
              'settings_loader', 'state_schema', 'input_policy', 'viz_series',
-             'init_game', 'cli', 'action_log', 'mcp_primitives'}
+             'init_game', 'cli', 'action_log', 'mcp_primitives', 'mapgen', 'canon'}
     package = _PACKAGE
 
     class _AliasLoader(importlib.abc.Loader):

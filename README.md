@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.13.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
+**v1.14.0** · **English** · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
 
 > **You talk. The AI performs. The engine decides. The save remembers.**
 
@@ -15,7 +15,7 @@ local model or aggregator. No provider names, no SDK lock-in.
 What stays deterministic is the part a narrator should never improvise: HP, prices, inventory,
 relationships, clocks, clues, saves and replay. The AI writes the scene; the engine owns the truth.
 
-`206 rule functions` · `71 MCP tools` · `27 player tools` · `4 setting bundles` · `8 templates` ·
+`206 rule functions` · `71 MCP tools` · `27 player tools` · `4 setting bundles` · `9 templates` ·
 `21 self-check suites` · `0 runtime dependencies`
 
 ---
@@ -212,7 +212,7 @@ world-walker/                  # repo root IS the game_engine package
 ├── game_service.py            # thin intent layer over the engine
 ├── host_adapter.py            # optional external-host bridge (not the default path)
 ├── state_schema.py            # state model / atomic write / transaction lock
-├── templates.py               # 8 rule skeletons
+├── templates.py               # 9 rule skeletons
 ├── rules/                     # deterministic settlement functions
 ├── settings/                  # ready-to-play setting bundles
 ├── saves/                     # local save library

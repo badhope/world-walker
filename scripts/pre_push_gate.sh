@@ -82,7 +82,7 @@ step "动作日志与重放（seq/指纹链/确定性）" "$PY" scripts/verify_r
 step "文档一致性（版本/工具数/截图引用/演示存档/CHANGELOG）" "$PY" scripts/verify_docs.py
 step "玩法层（剧本/事业线/世界书语义）" "$PY" scripts/verify_gameplay.py
 step "通用游戏层（判定/档案/上下文/存档库）" "$PY" scripts/verify_generic.py
-step "体系与模板（七类体系/八套模板）" "$PY" scripts/verify_systems.py
+step "体系与模板（七类体系/九套模板）" "$PY" scripts/verify_systems.py
 
 # 覆盖率门禁：核心域 ≥70%。覆盖率是 CI 的硬判据，本机缺工具时不能算绿。
 if "$PY" -c "import coverage" >/dev/null 2>&1; then

@@ -163,7 +163,17 @@ def _make_server():
     try:
         return _MCPServer(version=_WW_VERSION, **kwargs)
     except TypeError:  # pragma: no cover - 1.x 布局
-        return _MCPServer(**kwargs)
+        instance = _MCPServer(**kwargs)
+        # 1.x 的 FastMCP 没有 version 形参，serverInfo 会回退成 SDK 版本
+        # （实测 1.30.0），宿主据此判断"世界引擎版本"就会错。低层 Server 才有
+        # version 字段，构造后补上（2.x 走上面的分支，不受影响）。
+        inner = getattr(instance, "_mcp_server", None)
+        if inner is not None:
+            try:
+                inner.version = _WW_VERSION
+            except Exception:  # nosec B110; aqg: boundary —— 只影响元数据，不阻断启动
+                pass
+        return instance
 
 
 server = _make_server()
@@ -406,6 +416,16 @@ def new_game(setting: str, state_path: str = "ww_state.json", seed: int = 202610
 
 _active = {"path": None}
 PANELS = {}
+
+
+def set_active_path(path: str | None) -> str | None:
+    """Bind the process-wide active game path (used by the player runtime and CLI)."""
+    _active["path"] = os.path.abspath(path) if path else None
+    return _active["path"]
+
+
+def get_active_path() -> str | None:
+    return _active.get("path")
 
 
 def _load_panel_module():
@@ -1692,10 +1712,11 @@ def publish_prose(text: str, location: str = "") -> dict:
         context["archive_entries"].extend({"type": "prose", **entry} for entry in overflow)
     places = state.setdefault("places", {})
     if loc:
-        places.setdefault(loc, {})
-        places[loc]["desc"] = body[:1200]
-        places[loc]["tick"] = int(state.get("tick", 0) or 0)
-    log_event(state, "prose", body[:160])
+        place = places.setdefault(loc, {})
+        # `desc` 是设定包作者写的地点描写，正文不能覆盖它；正文只写 `last_prose`。
+        place.setdefault("desc", "")
+        place["last_prose"] = body[:1200]
+        place["last_tick"] = int(state.get("tick", 0) or 0)
     return _finish(state, {"prose_count": len(state.get("prose") or []),
                            "location": loc,
                            "latest": body[:200]})
@@ -1749,7 +1770,7 @@ def open_panel(port: int = 8765) -> dict:
     elif existing is not None:
         try:
             panel.stop(existing)
-        except Exception:  # aqg: top-level boundary —— 旧面板关不掉也不能阻断新面板
+        except Exception:  # nosec B110; aqg: top-level boundary —— 旧面板关不掉也不能阻断新面板
             pass
         PANELS.pop("server", None)
     srv, actual = panel.start(_state_path(), port)
@@ -2487,6 +2508,17 @@ def main(transport: str = "stdio", host: str = "127.0.0.1", port: int = 8620) ->
         return
     if transport != "http":
         raise SystemExit("未知传输: %s（可用: stdio | http）" % transport)
+    # 1.x 的 FastMCP.run() 只接受 transport/mount_path：host/port 必须写进
+    # settings，否则下面的无参候选会悄悄退回 SDK 默认的 8000 端口
+    # （实测 `wg mcp --http --port 8620` 监听 8000，verify_mcp_stdio 4 项红）。
+    # 2.x 允许把 host/port 直接传给 run()；两处都对齐，保证候选链不会带错端口。
+    settings = getattr(server, "settings", None)
+    for attr, value in (("host", host), ("port", int(port))):
+        if settings is not None and hasattr(settings, attr):
+            try:
+                setattr(settings, attr, value)
+            except Exception:  # nosec B110; aqg: boundary —— 只影响 HTTP 绑定，不阻断启动
+                pass
     # 2.x：run_streamable_http_async(**{host, port})；1.x：从 settings.host/port 读。
     # 每种 SDK 布局按顺序试，签名不匹配（TypeError/ValueError）就换下一个候选。
     candidates = (

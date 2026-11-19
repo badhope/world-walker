@@ -180,8 +180,7 @@ def cmd_doctor(_args) -> int:
             report['optional'][name] = getattr(module, '__version__', 'present')
         except ImportError:
             report['optional'][name] = None
-    for rel in ('panel.html', 'panel.js', 'panel.css', 'panel.i18n.js',
-                'assets/echarts.min.js'):
+    for rel in ('panel.html', 'panel.js', 'panel.css'):
         path = os.path.join(ROOT, rel)
         report['assets'][rel] = os.path.getsize(path) if os.path.exists(path) else None
     report['bundles'] = sorted(f for f in os.listdir(os.path.join(ROOT, 'settings'))

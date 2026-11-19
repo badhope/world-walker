@@ -2,7 +2,7 @@
 
 Why this exists
 ---------------
-The server exposed 64 tools and one prompt, but zero **resources**. That matters:
+The server exposes 67 tools and one prompt, but had zero **resources** at first. That matters:
 in MCP, tools are *model-controlled* (the model decides to call them), while
 resources are *application-controlled* — a host can pin live game state, the
 current save, or the active rule set into context without asking the model to
@@ -26,13 +26,20 @@ import json
 # allow-list rather than a heuristic: if a new read-only tool is added and not
 # listed here it simply gets no annotation (safe default), it does not get
 # mislabelled as read-only.
+#
+# This list must stay disjoint from `mcp_server._STATE_TRANSACTION_TOOLS`.
+# Four tools used to sit in both: `narrative` (writes _emergent_seen + event log),
+# `narration_context` (writes lorebook sticky/cooldown + codex), `game_sheet`
+# (always writes), and `game_profile` (writes whenever a profile is passed).
+# Hosts auto-approve `readOnlyHint`, so a conditional writer cannot be listed
+# here — `verify_surface.py` S5d enforces the invariant mechanically.
 READ_ONLY_TOOLS = frozenset({
-    'world_schema', 'read_state', 'status', 'world_state', 'narrative',
+    'world_schema', 'read_state', 'status', 'world_state',
     'playbook_info', 'quest_status', 'lore_lookup', 'model', 'model_list',
     'recall', 'recap', 'templates_list', 'template_info', 'template_apply',
     'system_schema', 'system_status', 'session_list', 'pending_actions',
-    'game_profile', 'game_sheet', 'context_search', 'context_pack',
-    'character_card_read', 'narration_context',
+    'context_search', 'context_pack',
+    'character_card_read',
 })
 
 # Tools that can destroy user data if misused. Hosts should confirm these.
@@ -101,9 +108,14 @@ def register_resources(server, load_state, state_path_fn, settings_dir, docs_dir
         player = (state.get('entities') or {}).get('player') or {}
         panarchy = state.get('panarchy') or {}
         prose = state.get('prose') or []
+        # 状态里的权威字段是 karma_ledger（旧存档/夹具可能只有 karma）。
+        # 只读 karma 会永远得到 0：长局欠了几百业债，资源摘要却报 0。
+        ledger = state.get('karma_ledger')
+        if not isinstance(ledger, list):
+            ledger = state.get('karma') or []
         karma = sum(float(entry.get('amount') or 0)
-                    for entry in (state.get('karma') or [])
-                    if not entry.get('settled'))
+                    for entry in ledger
+                    if isinstance(entry, dict) and not entry.get('settled'))
         payload = {
             'tick': state.get('tick', 0),
             'world': (state.get('world_info') or {}).get('name', ''),

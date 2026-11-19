@@ -150,6 +150,35 @@ def main():
     check('N3b changing the state clears the suspicion', not after_change['loop_suspected'],
           'seen=%s' % after_change['seen'])
 
+    # N3c-f：签名必须覆盖**真实状态结构**。旧实现按旧版 `karma` / 市场
+    # `items` 包裹层 / questlines.stage 读取，而生产状态用的是 karma_ledger、
+    # 扁平市场与 quests 运行时表——三项都被静默忽略，循环检测实际只看血钱位。
+    state = base_state()
+    signature = loop_rules.state_signature(state)
+    state['karma_ledger'] = [{'from': 'player', 'to': 'world', 'type': 'theft',
+                              'amount': 20, 'tick': 1, 'settled': False}]
+    check('N3c 未清业债（karma_ledger）进入签名',
+          loop_rules.state_signature(state) != signature, signature[:8])
+
+    state = base_state()
+    state['quests'] = {'q': {'status': 'active', 'stage': 'a', 'done_stages': []}}
+    signature = loop_rules.state_signature(state)
+    state['quests']['q']['stage'] = 'b'
+    check('N3d 事业线运行时 stage 进入签名',
+          loop_rules.state_signature(state) != signature, signature[:8])
+
+    state = base_state()
+    signature = loop_rules.state_signature(state)
+    state['market'] = {'town': {'herb': {'price': 20, 'base_price': 10}}}
+    check('N3e 真实市场结构（无 items 包裹层）进入签名',
+          loop_rules.state_signature(state) != signature, signature[:8])
+
+    state = base_state()
+    signature = loop_rules.state_signature(state)
+    state['entities']['player']['items'] = {'herb': 1}
+    check('N3f 持有数量变化进入签名',
+          loop_rules.state_signature(state) != signature, signature[:8])
+
     state = base_state()
     for _ in range(3):
         loop_rules.record_edge(state, 'town', 'deadend', ok=False)
@@ -201,7 +230,6 @@ def main():
 
     # ── N9 quest stage graph (C2: Twine passage DAG, made visible) ─────────
     import shutil
-    import tempfile
     import panel as PANEL
 
     demo = os.path.join(ROOT, 'docs', 'demo', '玄枢界.save.json')

@@ -98,7 +98,7 @@ world-walker/                      # 仓库根即 game_engine 包
 ├── settings/                      # 设定包（玄枢界 / 折剑行 / 霓虹深渊 / 雾港）
 ├── docs/demo/                     # 真实演示存档（截图与视频的数据源）
 ├── docs/screenshots/              # README 预览（真实渲染 + 逐项断言 + 交互录屏）
-└── scripts/                       # 17 个自检 + 变异测试 + 演示存档 / 截图视频流水线
+└── scripts/                       # 22 个自检 + 变异测试 + 演示存档 / 截图视频流水线
 ```
 
 ## 6. 核心数据模型

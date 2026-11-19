@@ -434,11 +434,15 @@ def _targeted_failure(mid, baseline, baseline_err, code, stdout, stderr):
     if not names or code != 1:
         return False
     if mid in ('M05', 'M26', 'M28'):
-        # MCP suites legitimately log a tool error to stderr; only require that the
-        # same sentence appears before and after mutation, not identical bytes.
-        if MCP_EXPECTED_STDERR not in _normalise_stderr(baseline_err):
+        # MCP 2.x 会把"无对局"拒绝写进服务端 stderr；1.x 只把 isError 结果回给
+        # 客户端，stderr 里没有这句话。把 stderr 存在性当硬条件，会让同一套
+        # 断言在 1.x 环境永远"不确定"——真正的证据是基线里那条 PASS 断言。
+        # 因此：基线断言或 stderr 任一能证明路径被跑到即可；随后统一走
+        # 断言身份比对（杀死变异的判据），不再逐字节比较 stderr。
+        base_probe = '未 world_init 就结算会报错'
+        if base_probe not in baseline and MCP_EXPECTED_STDERR not in _normalise_stderr(baseline_err):
             return False
-        if _normalise_stderr(stderr) != _normalise_stderr(baseline_err):
+        if 'Traceback' in stderr:
             return False
     elif baseline_err.strip() != '':
         # A suite that already writes to stderr before mutation is allowed to keep

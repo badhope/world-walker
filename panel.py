@@ -1,26 +1,30 @@
 #!/usr/bin/env python3
 """
-World Games · 实况面板 (World Games Live Panel)
+World Walker · 玩家版面板 (Player Edition)
 
-一个**只读**的小型 HTTP 服务：把状态文件渲染成可以长期挂着的游戏面板
-（玩家血量/心流/图鉴/编年史/市场行情实时更新）。
+一个单人、长局、对话优先的跑团界面：大厅选世界 → 对局里直接说话 →
+AI 演，引擎判，存档记。面板只做玩家视图，不再承担仪表盘/控制台职责。
 
 单独用:
-    python panel.py --state ww_state.json --port 8765
+    python panel.py --state docs/demo/折剑行.save.json --port 8765
 由 MCP 拉起: 调工具 open_panel（会自动指向当前对局的状态文件）
 
 端点:
-    GET /          面板页面（panel.html）
-    GET /state     视图模型 JSON（状态 + 引擎推导 + 图鉴/判定/上下文/存档库/剧情）
-    GET /series    长局态势侧写（图表数据）
-    GET /history   剧情回放与归档检索（?q=关键词&scope=all|prose|archive&limit=N）
-    GET /actions   行动队列（只读）
-    GET /export    导出状态 JSON（只读）
-    GET /health    健康检查（面板版本、状态文件大小、队列长度）
-    GET /events    SSE：状态文件一变就推送（连接有最长寿命，客户端自动重连）
-    POST /action   排队一条行动（写 <state>.inbox.jsonl 侧写，状态文件仍然只读）
+    GET  /                      玩家壳（panel.html/css/js）
+    GET  /api/v1/health         健康检查
+    GET  /api/v1/bootstrap      大厅：当前局、世界目录、存档、模型状态
+    GET  /api/v1/state          当前局的玩家视图
+    GET  /api/v1/saves          存档列表
+    GET  /api/v1/model/config    模型配置（Key 掩码）
+    GET  /api/v1/export         导出当前存档
+    GET  /api/v1/events         SSE：状态文件一变就推送
+    POST /api/v1/open           打开一局
+    POST /api/v1/new            新开一局（设定包/模板）
+    POST /api/v1/chat           玩家说一句话，模型 + 工具循环推进
+    POST /api/v1/model/config   保存 OpenAI-compatible 模型配置
+    POST /api/v1/model/test     测试模型连接
 
-面板严格只读状态文件：唯一的写入是行动队列侧写（带进程内锁 + 跨进程文件锁 + 原子替换）。
+写入只发生在玩家 API（新局/对话/模型配置/打开当前局）；旧行动队列已移除。
 """
 
 import argparse
@@ -226,15 +230,24 @@ def _next_moves(state, player, playbook, quests, loop):
             moves.append({"kind": "risk", "text": "找地方疗伤，或换条安全的路",
                           "why": "气血只剩 %d%%" % round(hp * 100 / hp_max)})
 
+    # 未清业债来自总账（`karma_ledger`）。原始 player 实体没有这个字段，
+    # 旧实现读 player["unsettled_karma"] 永远拿不到值，这条建议从不出现。
     karma = player.get("unsettled_karma")
-    if isinstance(karma, (int, float)) and karma >= 30:
+    if not isinstance(karma, (int, float)):
+        karma = _unsettled_karma(state)
+    if karma >= 30:
         moves.append({"kind": "risk", "text": "还一笔业债，或做件好事抵掉",
                       "why": "未清业债 %s，会压突破成功率" % round(karma)})
 
     # 3) World: a market with bargains is a concrete, checkable opportunity.
     market = state.get("market") or {}
     here = str(player.get("location") or "")
-    local = (market.get(here) or {}).get("items") or {}
+    bucket = market.get(here) or {}
+    # 引擎现行结构是 {地点: {商品键: {...}}}；旧存档/夹具会多一层 "items"。
+    local = (bucket.get("items") if isinstance(bucket, dict)
+             and isinstance(bucket.get("items"), dict) else bucket)
+    if not isinstance(local, dict):
+        local = {}
     bargains = 0
     for item in local.values():
         if not isinstance(item, dict):
@@ -1146,13 +1159,6 @@ STATIC_WHITELIST = {
     "/panel.html": ("panel.html", "text/html; charset=utf-8"),
     "/panel.css": ("panel.css", "text/css; charset=utf-8"),
     "/panel.js": ("panel.js", "text/javascript; charset=utf-8"),
-    "/panel.theme.js": ("panel.theme.js", "text/javascript; charset=utf-8"),
-    "/panel.i18n.js": ("panel.i18n.js", "text/javascript; charset=utf-8"),
-    "/admin": ("admin.html", "text/html; charset=utf-8"),
-    "/admin.html": ("admin.html", "text/html; charset=utf-8"),
-    "/admin.js": ("admin.js", "text/javascript; charset=utf-8"),
-    "/assets/echarts.min.js": (os.path.join("assets", "echarts.min.js"),
-                               "text/javascript; charset=utf-8"),
 }
 
 from game_engine.viz_series import SERIES_CAP, load_series, record_sample, series_path  # noqa: E402
@@ -1343,6 +1349,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     MAX_BODY = 8192
+    SSE_TICK = 0.5
+    SSE_MAX_SECONDS = 1800
+    SSE_MAX_FRAMES = 3600
 
     def _json_body(self, limit=None):
         """读请求体并解析 JSON。返回 (data, error)。error 为 None 表示成功。
@@ -1390,357 +1399,321 @@ class Handler(BaseHTTPRequestHandler):
         return host.lower() in {h.lower() for h in allow}
 
     def do_POST(self):
-        """唯一写入口：行动收件箱（状态文件仍然只读，INV-V1 不变）。
-
-        本机服务不等于没有攻击面，因此：
-          · Host 必须是回环名（防 DNS rebinding）；
-          · 带 Origin 时必须与 Host 同源（跨站表单伪造会被拒）；
-          · 只收 application/json（简单请求无法跨站伪造该 Content-Type）；
-          · 请求体 ≤ 8KB、正文 ≤ 2000 字；
-          · 未知路径一律 404，不回显任何内容。
-        """
-        path = self.path.split("?")[0]
-        if path != '/action':
-            self._send(404, 'text/plain; charset=utf-8', b'not found')
+        """Player API write entry point.  The old inbox side-channel is gone."""
+        path = self.path.split('?')[0]
+        if path.startswith('/api/v1/'):
+            self._api_v1_post(path)
             return
-        if not self._host_ok():
-            self._send(403, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': 'Host 不被允许'},
-                                  ensure_ascii=False).encode('utf-8'))
-            return
-        origin = self.headers.get('Origin') or ''
-        host = self.headers.get('Host') or ''
-        if origin and origin.split('//')[-1] != host:
-            self._send(403, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': '跨站请求被拒绝'},
-                                  ensure_ascii=False).encode('utf-8'))
-            return
-        ctype = (self.headers.get('Content-Type') or '').split(';')[0].strip().lower()
-        if ctype != 'application/json':
-            self._send(415, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': '只接受 application/json'},
-                                  ensure_ascii=False).encode('utf-8'))
-            return
-        body, body_err = self._json_body()
-        if body_err is not None:
-            code, msg = body_err
-            self._send(int(code), 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': msg},
-                                  ensure_ascii=False).encode('utf-8'))
-            return
-        if not isinstance(body, dict):
-            self._send(400, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': '请求体必须是 JSON 对象'},
-                                  ensure_ascii=False).encode('utf-8'))
-            return
-        text = str(body.get('text') or '').strip()
-        if not text:
-            self._send(400, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False, 'error': '行动不能为空'},
-                                  ensure_ascii=False).encode('utf-8'))
-            return
-        if len(text) > INBOX_MAX_TEXT:
-            self._send(400, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False,
-                                   'error': '行动太长（上限 %d 字）' % INBOX_MAX_TEXT},
-                                  ensure_ascii=False).encode('utf-8'))
-            return
-        try:
-            rec = inbox_append(self._state(), text)
-        except OSError as exc:
-            self._send(500, 'application/json; charset=utf-8',
-                       json.dumps({'ok': False,
-                                   'error': '写入收件箱失败：%s' % str(exc)[:120]},
-                                  ensure_ascii=False).encode('utf-8'))
-            return
-        self._send(200, 'application/json; charset=utf-8',
-                   json.dumps({'ok': True, 'queued': rec,
-                               'pending': len(inbox_pending(self._state()))},
-                              ensure_ascii=False).encode('utf-8'))
+        self._send(404, 'text/plain; charset=utf-8', b'not found')
 
     def do_GET(self):
         if not self._host_ok():
             self._send(403, 'text/plain; charset=utf-8', b'host not allowed')
             return
         path = urllib.parse.urlsplit(self.path).path
-        if path in ('/actions', '/series', '/health'):
+        if path.startswith('/api/v1/'):
+            self._api_v1_get(path)
+            return
+        self._static(path)
+
+    def _api_json(self, code, payload):
+        body = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")
+        self._send(code, "application/json; charset=utf-8", body)
+
+    def _api_guard(self):
+        if not self._host_ok():
+            self._api_json(403, {"ok": False, "error": "Host 不被允许"})
+            return False
+        origin = self.headers.get("Origin") or ""
+        host = self.headers.get("Host") or ""
+        if origin and origin.split("//")[-1] != host:
+            self._api_json(403, {"ok": False, "error": "跨站请求被拒绝"})
+            return False
+        return True
+
+    def _api_body(self, limit=8192):
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if ctype != "application/json":
+            self._api_json(415, {"ok": False, "error": "只接受 application/json"})
+            return None
+        body, err = self._json_body(limit=limit)
+        if err is not None:
+            self._api_json(int(err[0]), {"ok": False, "error": err[1]})
+            return None
+        if not isinstance(body, dict):
+            self._api_json(400, {"ok": False, "error": "请求体必须是 JSON 对象"})
+            return None
+        return body
+
+    def _save_root(self):
+        from game_engine import sessions as session_store
+        env = os.environ.get("WORLD_GAMES_SAVES", "").strip()
+        if env:
+            return os.path.abspath(env)
+        sp = self._state()
+        if sp:
+            base = os.path.dirname(os.path.abspath(sp))
+            if os.path.basename(os.path.normpath(base)).lower() == "saves":
+                return base
+            return session_store.saves_root(base)
+        return session_store.saves_root(os.getcwd())
+
+    def _current_payload(self):
+        sp = self._state()
+        if not sp or not os.path.isfile(sp):
+            return None
+        try:
+            state = load_state(sp)
+            name = os.path.basename(sp)
+            if name.endswith(".save.json"):
+                name = name[:-len(".save.json")]
+            return {
+                "path": os.path.abspath(sp),
+                "name": name,
+                "world": str((state.get("world_info") or {}).get("name") or ""),
+                "tick": int(state.get("tick", 0) or 0),
+                "turns": len(state.get("turns") or []),
+            }
+        except (OSError, TypeError, ValueError):
+            return {"path": os.path.abspath(sp), "name": os.path.basename(sp),
+                    "world": "", "tick": 0, "turns": 0, "broken": True}
+
+    def _world_catalog(self):
+        settings_dir = os.path.join(_SCRIPT_DIR, "settings")
+        rows = []
+        try:
+            names = sorted(n for n in os.listdir(settings_dir) if n.endswith(".setting.json"))
+        except OSError:
+            names = []
+        for fname in names:
+            path = os.path.join(settings_dir, fname)
             try:
-                from game_engine.state_schema import state_lock, _recover_archive
-                with state_lock(self._state()):
-                    _recover_archive(self._state())
-            except RuntimeError as exc:
-                body = json.dumps({'error': str(exc), 'pending_review': True}, ensure_ascii=False).encode('utf-8')
-                self._send(409, 'application/json; charset=utf-8', body)
-                return
-        if path == "/state":
+                with open(path, encoding="utf-8") as fh:
+                    raw = json.load(fh)
+                world = raw.get("world") if isinstance(raw, dict) else {}
+                rows.append({
+                    "kind": "setting",
+                    "id": path,
+                    "name": str((world or {}).get("name") or fname[:-len(".setting.json")]),
+                    "notes": str((world or {}).get("location_desc") or "")[:80],
+                    "genre": "设定包",
+                })
+            except (OSError, ValueError, TypeError):
+                continue
+        try:
+            from game_engine import templates as template_store
+            for row in template_store.list_templates():
+                rows.append({
+                    "kind": "template",
+                    "id": str(row.get("id") or ""),
+                    "name": str(row.get("name") or row.get("id") or ""),
+                    "notes": str(row.get("notes") or "")[:80],
+                    "genre": str(row.get("genre") or "模板"),
+                })
+        except Exception:  # noqa: BLE001 - catalog errors must not blank the lobby
+            pass
+        return rows
+
+    def _bootstrap_payload(self):
+        from game_engine import model_config, sessions as session_store
+        root = self._save_root()
+        try:
+            saves = session_store.list_saves(root)
+        except Exception:  # noqa: BLE001
+            saves = []
+        current = self._current_payload()
+        rows = []
+        for item in saves:
+            rows.append({
+                "name": item.get("name", ""),
+                "world": item.get("world", ""),
+                "tick": item.get("tick"),
+                "protagonist": item.get("protagonist", ""),
+                "updated": item.get("updated", ""),
+                "path": item.get("path", ""),
+                "current": bool(current and os.path.abspath(item.get("path", "")) == current["path"]),
+            })
+        if current and not any(row["current"] for row in rows):
+            # A demo or an imported save may live outside the saves/ folder.
+            # It is still the game the player is in; never hide it from the lobby.
+            rows.insert(0, {
+                "name": current.get("name", ""),
+                "world": current.get("world", ""),
+                "tick": current.get("tick"),
+                "protagonist": "",
+                "updated": "",
+                "path": current.get("path", ""),
+                "current": True,
+            })
+        return {
+            "ok": True,
+            "current": current,
+            "saves": rows,
+            "worlds": self._world_catalog(),
+            "model": model_config.public_config(),
+        }
+
+    def _player_payload(self):
+        from game_engine import player_view
+        return player_view.build_player_view(self._state())
+
+    def _api_v1_get(self, path):
+        if path == "/api/v1/health":
+            self._api_json(200, {"ok": True, "version": _PANEL_VERSION,
+                                 "state": os.path.abspath(self._state() or ""),
+                                 "api": "v1"})
+            return
+        if path == "/api/v1/bootstrap":
             try:
-                vm = json.dumps(view_model(self._state()), ensure_ascii=False).encode("utf-8")
+                self._api_json(200, self._bootstrap_payload())
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:180]})
+            return
+        if path == "/api/v1/state":
+            try:
+                self._api_json(200, self._player_payload())
             except FileNotFoundError:
-                vm = json.dumps({
-                    "error": "对局状态文件不存在：%s" % self._state(),
-                    "hint": "先在对话里开一局（world_init / load_setting），本页会自动接上。",
-                }, ensure_ascii=False).encode("utf-8")
-            except Exception as e:  # aqg: top-level boundary —— HTTP 端点：任何读取失败都转成页面可读错误，不抛栈
-                vm = json.dumps({
-                    "error": "状态文件读取失败：%s" % str(e)[:180],
-                    "hint": "文件可能正在写入或格式不合法；稍候重试，或先用 snapshot 校验存档。",
-                }, ensure_ascii=False).encode("utf-8")
-            self._send(200, "application/json; charset=utf-8", vm)
-        elif path == "/actions":
-            body = json.dumps({'pending': inbox_pending(self._state())},
-                              ensure_ascii=False).encode('utf-8')
-            self._send(200, 'application/json; charset=utf-8', body)
-        elif path == "/export":
+                self._api_json(404, {"ok": False, "error": "对局状态文件不存在"})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:180]})
+            return
+        if path == "/api/v1/model/config":
+            from game_engine import model_config
+            self._api_json(200, {"ok": True, "model": model_config.public_config()})
+            return
+        if path == "/api/v1/saves":
+            self._api_json(200, {"ok": True, "saves": self._bootstrap_payload().get("saves", []),
+                                 "root": self._save_root()})
+            return
+        if path == "/api/v1/export":
+            from game_engine.state_schema import state_lock, _recover_archive
             try:
-                from game_engine.state_schema import state_lock, _recover_archive
                 with state_lock(self._state()):
                     _recover_archive(self._state())
-                    with open(self._state(), 'rb') as f:
-                        raw = f.read()
-            except RuntimeError as exc:
-                self._send(409, 'application/json; charset=utf-8',
-                           json.dumps({'error': str(exc), 'pending_review': True}, ensure_ascii=False).encode('utf-8'))
-                return
+                    with open(self._state(), "rb") as fh:
+                        raw = fh.read()
             except OSError as exc:
-                self._send(404, 'application/json; charset=utf-8',
-                           json.dumps({'error': '状态文件不可读：%s' % str(exc)[:120]},
-                                      ensure_ascii=False).encode('utf-8'))
+                self._api_json(404, {"ok": False, "error": str(exc)[:120]})
                 return
             self.send_response(200)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.send_header('Content-Length', str(len(raw)))
-            self.send_header('Content-Disposition',
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(raw)))
+            self.send_header("Content-Disposition",
                              'attachment; filename="%s"' % os.path.basename(self._state()))
             for name, val in self._SECURITY_HEADERS:
                 self.send_header(name, val)
             self.end_headers()
             self.wfile.write(raw)
-        elif path == "/series":
-            body = json.dumps(self._series_payload(), ensure_ascii=False).encode("utf-8")
-            self._send(200, "application/json; charset=utf-8", body)
-        elif path == "/health":
-            state_ok, state_note = True, ""
+            return
+        if path == "/api/v1/events":
+            self._api_sse()
+            return
+        self._api_json(404, {"ok": False, "error": "not found"})
+
+    def _api_v1_post(self, path):
+        if not self._api_guard():
+            return
+        body = self._api_body(limit=16384)
+        if body is None:
+            return
+        if path == "/api/v1/open":
+            from game_engine import input_policy, player_view
+            target = str(body.get("path") or "").strip()
             try:
-                st = os.stat(self._state())
-                state_note = "%d bytes" % st.st_size
-            except OSError as exc:
-                state_ok, state_note = False, str(exc)[:80]
-            body = json.dumps({
-                "ok": state_ok, "state": os.path.abspath(self._state()),
-                "state_note": state_note,
-                "sse_max_seconds": self.SSE_MAX_SECONDS,
-                "inbox_pending": len(inbox_pending(self._state())),
-                "version": _PANEL_VERSION,
-            }, ensure_ascii=False).encode("utf-8")
-            self._send(200, "application/json; charset=utf-8", body)
-        elif path == "/history":
-            try:
-                body = json.dumps(self._history_payload(), ensure_ascii=False).encode("utf-8")
-            except RuntimeError as exc:
-                body = json.dumps({'error': str(exc), 'pending_review': True}, ensure_ascii=False).encode('utf-8')
-                self._send(409, 'application/json; charset=utf-8', body)
-                return
-            self._send(200, "application/json; charset=utf-8", body)
-        elif path == "/admin/sessions":
-            body = json.dumps(self._sessions_payload(), ensure_ascii=False).encode('utf-8')
-            self._send(200, "application/json; charset=utf-8", body)
-        elif path == "/events":
-            self._sse()
-        else:
-            self._static(path)
-
-    def _sessions_payload(self):
-        """Read-only save-library listing for the console.
-
-        Goes through sessions.py (the same library the MCP tools use) so the
-        console cannot disagree with session_list. Never mutates anything.
-        """
-        try:
-            from game_engine import sessions as session_store
-        except ImportError:
-            return {'error': 'save library unavailable', 'count': 0, 'sessions': []}
-
-        current = os.path.abspath(self._state()) if self._state() else ''
-        root = session_store.saves_root(os.path.dirname(current) if current else '')
-        try:
-            entries = session_store.list_saves(root)
-        except Exception as exc:  # aqg: boundary — console must never 500 on a listing
-            return {'error': str(exc)[:160], 'count': 0, 'sessions': []}
-
-        rows = []
-        for item in entries:
-            path = item.get('path') or ''
-            rows.append({
-                'name': item.get('name', ''),
-                'tick': item.get('tick'),
-                'world': item.get('world', ''),
-                'size_kb': round(float(item.get('bytes') or 0) / 1024.0, 1),
-                'modified': item.get('updated', ''),
-                'pending_review': bool(item.get('pending_review')),
-                'current': bool(path) and os.path.abspath(path) == current,
-                'root': root,
-            })
-        return {'sessions': rows, 'count': len(rows), 'root': root}
-
-    def _history_payload(self, query=""):
-        from game_engine.state_schema import state_lock, _recover_archive
-        with state_lock(self._state()):
-            _recover_archive(self._state())
-            return self._history_payload_locked(query)
-
-    def _history_payload_locked(self, query=""):
-        """剧情回放 / 归档检索（只读，分页）。
-
-        数据源三层：
-          1. `state["prose"]`  —— 当前在内存里的最近正文（完整文本）
-          2. `<state>.log*.jsonl` —— 归档事件与旧正文（只读扫描，按 query 过滤）
-        返回结构固定、有上限，避免长局把响应打爆。
-        查询参数：q（关键词）、limit（默认 50，上限 200）、scope（prose|archive|all）
-        """
-        params = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
-        q = str((params.get("q") or [query or ""])[0]).strip().lower()
-        try:
-            limit = int((params.get("limit") or ["50"])[0])
-        except (TypeError, ValueError):
-            limit = 50
-        limit = max(1, min(MAX_HISTORY_PAGE, limit))
-        scope = str((params.get("scope") or ["all"])[0]).lower()
-        if scope not in ("prose", "archive", "all"):
-            scope = "all"
-
-        state = {}
-        state_error = ""
-        try:
-            state = load_state(self._state())
-        except (OSError, ValueError, TypeError) as exc:
-            state_error = str(exc)[:160]
-
-        prose_rows, prose_total = [], 0
-        if state and scope in ("prose", "all"):
-            rows = state.get("prose") if isinstance(state.get("prose"), list) else []
-            prose_total = len(rows)
-            for entry in rows:
-                if not isinstance(entry, dict):
-                    continue
-                text = str(entry.get("text") or "")
-                if q and q not in text.lower():
-                    continue
-                prose_rows.append({"tick": _int_or(entry.get("tick", 0), 0),
-                                   "location": str(entry.get("location") or ""),
-                                   "text": text, "chars": len(text)})
-            prose_rows = prose_rows[-limit:][::-1]
-
-        archive_rows, archive_scanned, archive_total = [], 0, 0
-        if scope in ("archive", "all"):
-            base = self._state()
-            folder = os.path.dirname(os.path.abspath(base)) or "."
-            prefix = os.path.basename(base) + ".log"
-            files = []
-            try:
-                files = sorted(f for f in os.listdir(folder)
-                               if f.startswith(prefix) and f.endswith(".jsonl"))
-            except OSError:
-                files = []
-            # 从最新世代往前扫；命中 limit 条即停，避免长局扫穿几个 GB
-            for fname in reversed(files):
-                path = os.path.join(folder, fname)
+                roots = []
+                sp = self._state()
+                if sp:
+                    roots.append(os.path.dirname(os.path.abspath(sp)))
+                roots.append(self._save_root())
+                resolved = None
+                last_error = None
+                for root in roots:
+                    try:
+                        resolved = input_policy.validate_state_path(target, must_exist=True, root=root)
+                        break
+                    except Exception as exc:  # noqa: BLE001
+                        last_error = exc
+                if resolved is None:
+                    raise last_error or ValueError("存档路径不在允许目录内")
+                self.server.state_path = resolved
                 try:
-                    with open(path, "r", encoding="utf-8") as fh:
-                        for line in fh:
-                            archive_scanned += 1
-                            line = line.strip()
-                            if not line:
-                                continue
-                            try:
-                                rec = json.loads(line)
-                            except ValueError:
-                                continue
-                            if not isinstance(rec, dict):
-                                continue
-                            if rec.get("type") not in (None, "prose", "combat", "social",
-                                                       "trade", "karma", "travel", "world",
-                                                       "quest", "context", "sheet", "check"):
-                                continue
-                            text = str(rec.get("text") or rec.get("desc") or "")
-                            if not text:
-                                continue
-                            if q and q not in text.lower():
-                                continue
-                            archive_total += 1
-                            if len(archive_rows) < limit:
-                                archive_rows.append({
-                                    "tick": _int_or(rec.get("tick", 0), 0),
-                                    "type": str(rec.get("type") or ""),
-                                    "text": text,
-                                })
-                            if len(archive_rows) >= limit and q:
-                                break
-                except OSError:
-                    continue
-                if len(archive_rows) >= limit and q:
-                    break
-            archive_rows.reverse()
-            archive_rows = archive_rows[:limit]
+                    from game_engine import mcp_server
+                    mcp_server.set_active_path(resolved)
+                except Exception:  # noqa: BLE001 - opening must not fail because the MCP module is absent
+                    pass
+                self._api_json(200, {"ok": True, "state": player_view.build_player_view(resolved)})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(400, {"ok": False, "error": str(exc)[:180]})
+            return
+        if path == "/api/v1/new":
+            from game_engine import mcp_server
+            kind = str(body.get("kind") or "setting")
+            ident = str(body.get("id") or "").strip()
+            name = str(body.get("name") or "").strip()
+            try:
+                if self._state():
+                    mcp_server.set_active_path(self._state())
+                if kind == "template":
+                    result = mcp_server.template_start(template=ident, name=name)
+                else:
+                    result = mcp_server.session_new(name=name or os.path.basename(ident).split(".")[0],
+                                                    setting_path=ident)
+                target = str(result.get("state_path") or "")
+                if not target:
+                    raise ValueError("开局没有返回状态路径")
+                self.server.state_path = os.path.abspath(target)
+                mcp_server.set_active_path(self.server.state_path)
+                from game_engine import player_view
+                self._api_json(200, {"ok": True, "state": player_view.build_player_view(target),
+                                     "created": result})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(400, {"ok": False, "error": str(exc)[:220]})
+            return
+        if path == "/api/v1/chat":
+            from game_engine import dialog_runtime, player_view
+            text = str(body.get("text") or "").strip()
+            try:
+                runtime = dialog_runtime.DialogRuntime(self._state())
+                result = runtime.respond(text)
+                result["state"] = player_view.build_player_view(self._state())
+                self._api_json(200, result)
+            except dialog_runtime.DialogRuntimeError as exc:
+                self._api_json(502, {"ok": False, "error": str(exc)[:240]})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:240]})
+            return
+        if path == "/api/v1/model/config":
+            from game_engine import model_config
+            old = model_config.load_config()
+            payload = dict(body)
+            if not payload.get("api_key") and old.get("api_key"):
+                payload["api_key"] = old["api_key"]
+            try:
+                cfg = model_config.save_config(payload)
+                self._api_json(200, {"ok": True, "model": model_config.public_config(cfg)})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(400, {"ok": False, "error": str(exc)[:180]})
+            return
+        if path == "/api/v1/model/test":
+            from game_engine import host_adapter, model_config
+            try:
+                adapter = host_adapter.OpenAICompatAdapter(model_config.load_config())
+                self._api_json(200, {"ok": True, **adapter.test()})
+            except host_adapter.HostAdapterError as exc:
+                self._api_json(502, {"ok": False, "error": str(exc)[:240]})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:240]})
+            return
+        self._api_json(404, {"ok": False, "error": "not found"})
 
-        return {
-            "query": q, "limit": limit, "scope": scope,
-            "prose": {"items": prose_rows, "total": prose_total,
-                      "returned": len(prose_rows)},
-            "archive": {"items": archive_rows, "scanned": archive_scanned,
-                        "matched": archive_total, "returned": len(archive_rows)},
-            "state_error": state_error,
-            "read_only": True,
-        }
-
-    def _series_payload(self):
-        """长局态势序列：直接读侧写文件（不读也不写状态文件）。"""
-        try:
-            sidecar = series_path(self._state())
-            if os.path.lexists(sidecar) and os.path.getsize(sidecar) > MAX_VIZ_SIDECAR_BYTES:
-                samples = []
-            else:
-                samples = load_series(self._state())
-        except (OSError, UnicodeError, ValueError, TypeError):
-            samples = []          # 侧写坏行/缺文件 → 图表空态，接口照常 200
-        skin = SKINS["neutral"]
-        try:
-            skin = skin_for_world(load_state_retry(self._state(), attempts=2))
-        except (OSError, ValueError, TypeError):
-            pass                  # 状态不可读时调色板退回 neutral；错误态由 /state 负责展示
-        return {"samples": samples, "cap": SERIES_CAP, "palette": skin.get("palette", {})}
-
-    def _state_payload(self):
-        """SSE 每帧的 JSON：状态不可读时不是断流，而是把原因推给页面显示。"""
-        try:
-            return json.dumps(view_model(self._state()), ensure_ascii=False)
-        except FileNotFoundError:
-            return json.dumps({
-                "error": "对局状态文件不存在：%s" % self._state(),
-                "hint": "先在对话里开一局（world_init / load_setting），本页会自动接上。",
-            }, ensure_ascii=False)
-        except Exception as e:  # aqg: top-level boundary —— SSE 端点：状态不可读时推错误帧而不是断流
-            return json.dumps({
-                "error": "状态文件读取失败：%s" % str(e)[:180],
-                "hint": "文件可能正在写入或格式不合法；稍候重试，或先用 snapshot 校验存档。",
-            }, ensure_ascii=False)
-
-    SSE_TICK = 0.5
-    SSE_MAX_SECONDS = 1800        # 单条连接最长 30 分钟；浏览器 EventSource 会自动重连
-    SSE_MAX_FRAMES = 3600
-
-    def _sse(self):
-        """SSE 推送：状态文件一变就发一帧 state；无变化时只发心跳注释。
-
-        资源护栏：
-          · 连接有最长寿命与最大帧数，不会永久占用线程；
-          · 状态没变时不重复序列化整个视图模型（长局里 /state 可能几百 KB）；
-          · 任何写失败立刻返回，交给 socketserver 回收线程。
-        """
+    def _api_sse(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Connection", "keep-alive")
         self.send_header("X-Accel-Buffering", "no")
+        for name, val in self._SECURITY_HEADERS:
+            self.send_header(name, val)
         self.end_headers()
         last = object()
         started = time.time()
@@ -1758,17 +1731,18 @@ class Handler(BaseHTTPRequestHandler):
                     sig = None
                 if sig != last:
                     last = sig
-                    body = self._state_payload()
-                    self.wfile.write(("event: state\ndata: %s\n\n" % body).encode("utf-8"))
+                    try:
+                        payload = json.dumps(self._player_payload(), ensure_ascii=False)
+                    except Exception as exc:  # noqa: BLE001
+                        payload = json.dumps({"ok": False, "error": str(exc)[:180]}, ensure_ascii=False)
+                    self.wfile.write(("event: state\ndata: %s\n\n" % payload).encode("utf-8"))
                     frames += 1
                 else:
                     self.wfile.write(b": ping\n\n")
                 self.wfile.flush()
                 time.sleep(self.SSE_TICK)
-        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError,
-                OSError, ValueError):
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError, ValueError):
             return
-
 
 class _PanelServer(ThreadingHTTPServer):
     """面板 HTTP 服务。
@@ -1844,11 +1818,11 @@ def stop(srv, timeout=5.0):
         return
     try:
         srv.shutdown()
-    except Exception:  # aqg: top-level boundary —— 已停止的 server 再 shutdown 会抛，忽略
+    except Exception:  # nosec B110; aqg: top-level boundary —— 已停止的 server 再 shutdown 会抛，忽略
         pass
     try:
         srv.server_close()
-    except Exception:  # aqg: top-level boundary —— 同上
+    except Exception:  # nosec B110; aqg: top-level boundary —— 同上
         pass
 
 

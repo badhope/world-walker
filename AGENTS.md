@@ -10,7 +10,7 @@
 - 仓库根即 `game_engine` 包（`pyproject.toml` 中 `package-dir = { "game_engine" = "." }`，内部统一 `import game_engine.*`）
 - `bootstrap.py` — 入口引导（仓库根 → `game_engine` 包，幂等；三个入口共用，别再复制粘贴）
 - `engine.py` — 规则结算内核
-- `mcp_server.py` — MCP 工具入口（64 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
+- `mcp_server.py` — MCP 工具入口（67 工具；兼容 mcp 1.x `fastmcp` 与 2.x `mcpserver` 两种布局）
 - `panel.py` / `panel.html` / `panel.css` / `panel.js` — 只读主舞台（面板不许写状态；
   行动队列只写 `<state>.inbox.jsonl` 侧写，状态仍由 MCP 单点写入）
 - `state_schema.py` — 状态模型（原子写 / 世代归档 / 种子）
@@ -21,7 +21,7 @@
 - `rules/systems.py` — 七类可插拔体系（时间/掉落/制造/声望/成就/成长/自定义）
 - `templates.py` — 八套完整游戏模板（开箱即用，可 overrides 覆盖）
 - `settings_loader.py` — 设定包 → 状态（**纯标准库**；MCP 与零依赖自检共用，不要在这里引 mcp）
-- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（17 个 `verify_*.py` + `metrics.py` + 素材流水线）
+- `rules/` — 规则数据；`settings/` — 四套设定包；`scripts/` — 验证脚本（22 个 `verify_*.py` + `metrics.py` + 素材流水线）
 - `docs/metrics.json` — 唯一数字信源（`scripts/metrics.py --write` 生成，禁止手改；文档只许引用这里）
 
 ## 运行

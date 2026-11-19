@@ -47,36 +47,79 @@ def state_signature(state: dict) -> str:
         'mp': player.get('mp'),
         'gold': player.get('gold'),
         'level': player.get('level', ''),
-        'items': sorted((player.get('items') or {}).keys()),
+        # 数量也要进哈希：用了 1 颗丹药但仍在原地，是"有进展"而不是循环。
+        'items': sorted([str(k), int(v or 0)]
+                        for k, v in (player.get('items') or {}).items()),
         'flags': sorted(str(f) for f in (state.get('world_flags') or [])),
-        'quests': [
-            [q.get('id', ''), (q.get('stage') or {}).get('id', '')]
-            for q in (state.get('questlines') or [])
-        ],
+        'quests': _quest_progress(state),
         'prices': _market_prices(state),
         'karma': round(_unsettled_karma(state), 3),
     }
     return hashlib.sha256(_canonical(summary).encode('utf-8')).hexdigest()[:16]
 
 
+def _quest_progress(state: dict) -> list:
+    """事业线的**运行时**进度（state["quests"]），不是设定里的 questlines 定义。
+
+    旧实现读 `questlines` 并取 `q["stage"]["id"]`：定义里没有 stage，于是任务
+    推进永远不会改变签名——玩家明明推进了一幕，循环检测仍判"同一状态"。
+    旧存档/夹具可能把 stage 直接放在 questlines 上，作为回退保留。
+    """
+    runtime = state.get('quests')
+    if isinstance(runtime, dict) and runtime:
+        return [[str(qid), str((row or {}).get('status') or ''),
+                 str((row or {}).get('stage') or '')]
+                for qid, row in sorted(runtime.items()) if isinstance(row, dict)]
+    rows = []
+    for quest in (state.get('questlines') or []):
+        if not isinstance(quest, dict):
+            continue
+        stage = quest.get('stage')
+        stage_id = (stage.get('id') if isinstance(stage, dict) else stage) or ''
+        rows.append([str(quest.get('id') or ''), '', str(stage_id)])
+    return rows
+
+
 def _market_prices(state: dict) -> list:
+    """各地行情按「相对基准价的档位」计入签名（0.1 = 10% 一档）。
+
+    两个结构都要认：引擎现行 `{地点: {商品键: {price, base_price}}}`，以及
+    旧存档/夹具的 `{地点: {"items": {...}}}` 包裹层。
+    为什么用档位而不是精确价格：`tick_market` 每回合都有 ±4% 的确定性抖动，
+    精确价格会让每个回合的哈希都不同，循环检测永远不会触发（与"不得把 tick
+    放进哈希"是同一条理由）。
+    """
     rows = []
     market = state.get('market') or {}
-    if isinstance(market, dict):
-        for location in sorted(market.keys()):
-            items = (market.get(location) or {}).get('items') or {}
-            if not isinstance(items, dict):
+    if not isinstance(market, dict):
+        return rows
+    for location in sorted(market.keys()):
+        bucket = market.get(location) or {}
+        if not isinstance(bucket, dict):
+            continue
+        items = bucket.get('items') if isinstance(bucket.get('items'), dict) else bucket
+        for key in sorted(items.keys()):
+            entry = items.get(key)
+            if not isinstance(entry, dict):
                 continue
-            for key in sorted(items.keys()):
-                price = (items.get(key) or {}).get('price')
-                if isinstance(price, (int, float)):
-                    rows.append([str(location), str(key), round(float(price), 3)])
+            price = entry.get('price')
+            base = entry.get('base_price') or price
+            if not isinstance(price, (int, float)):
+                continue
+            if isinstance(base, (int, float)) and base:
+                band = round(float(price) / float(base), 1)
+            else:
+                band = round(float(price), 1)
+            rows.append([str(location), str(key), band])
     return rows
 
 
 def _unsettled_karma(state: dict) -> float:
+    ledger = state.get('karma_ledger')
+    if not isinstance(ledger, list):
+        ledger = state.get('karma') or []   # 旧存档回退
     total = 0.0
-    for entry in state.get('karma') or []:
+    for entry in ledger:
         if isinstance(entry, dict) and not entry.get('settled'):
             try:
                 total += float(entry.get('amount') or 0)

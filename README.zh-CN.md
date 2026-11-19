@@ -338,13 +338,13 @@ SillyTavern 角色卡（PNG/JSON，V1–V3）与世界书。
 | `verify_formulas.py` | 122 | 按 docstring 的数学式独立重算 77 个函数 |
 | `verify_branches.py` | 192 | 低覆盖模块的异常路径与状态分支 |
 | `verify_cli.py` | 21 | CLI 只读不变量 / 写命令业务效果 / 双通道确定性 / tick 驱动世界 |
-| `verify_panel.py` | 98 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 / 主题接线 |
+| `verify_panel.py` | 103 | 视图模型契约 / 旧存档兼容 / 静态白名单 / 行动队列三道闸 / 主题接线 |
 | `verify_mcp_stdio.py` | 67 | 真实 stdio 端到端 / HTTP 传输握手 / 酒馆生态 / 只读零副作用 |
 | `verify_world.py` | 54 | 世界自演化 / 相位 / 心流 / 道德 / 术语 / 正文 / 台账 |
 | `verify_settings.py` | 17 | 四套世界观的载入与演化（零依赖路径） |
 | `verify_docs.py` | — | 版本单一信源 / 工具数 / 断言计数 / 素材引用 |
 | `verify_i18n.py` | 12 | 面板词典：键唯一 / 模板无歧义 / 输出无中文 / 双语接线 |
-| `verify_mechanics.py` | 39 | 规则书优先级与截断 / 循环检测 / NPC 知识边界 / 战斗推演 / 事业线 DAG / 访问计数 / 前缀哈希 / 谣言热度 / 势力意向 |
+| `verify_mechanics.py` | 44 | 规则书优先级与截断 / 循环检测 / NPC 知识边界 / 战斗推演 / 事业线 DAG / 访问计数 / 前缀哈希 / 谣言热度 / 势力意向 |
 | `verify_theme.py` | 25 | 亮色默认 / 两套主题实测 WCAG AA 对比度 / 图表重绘 / 骨架屏 |
 | `verify_replay.py` | 15 | 动作日志链 / seq 落盘 / canonical 哈希 / 确定性指纹 |
 | `verify_gameplay.py` | 65 | 玩法剧本 / 事业线 DAG / 世界书语义 |
@@ -366,7 +366,7 @@ bash scripts/pre_push_gate.sh     # 28 个步骤；缺必要依赖时门禁失�
 另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
 全程走真实 MCP stdio。最近一次 500 轮：0 意外错误、0 不变量破坏。
 
-覆盖率门禁：核心域 ≥70%（实测 86%，含通用游戏层）；`pyflakes` 0。
+覆盖率门禁：核心域 ≥70%（实测 82%，含通用游戏层）；`pyflakes` 0。
 `bandit` 在引擎核心为 0；仓库级扫描仍会在测试脚本里报低危项。
 
 ---

@@ -368,8 +368,11 @@ def evolve_npcs(state: dict) -> List[str]:
     if interval <= 0 or tick % interval != 0:
         return []
     seed = state.get("rng_seed") or 0
+    # `places` 是设定包、面板与正文共同维护的地点注册表；`locations` 只是旧存档兼容名。
+    # 旧实现只读 `locations`，而全仓没有写入点，导致作者写进 `places` 的地点永远不会被游走选中。
     places = sorted(set(state.get("market") or {})
                     | {str(e.get("location") or "") for e in (state.get("entities") or {}).values()}
+                    | set((state.get("places") or {}))
                     | set((state.get("locations") or {})))
     places = [p for p in places if p]
     if len(places) < 2:

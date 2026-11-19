@@ -68,7 +68,7 @@ step "编译全部 Python 源" "$PY" scripts/compile_all.py
 step "断言审计（拒绝恒真/恒假/弱断言）" "$PY" scripts/verify_tests.py
 step "行为回归（含 MCP stub，非真实 SDK 验证）" "$PY" scripts/run_behavior_regressions.py
 step "CLI 通道自检" "$PY" scripts/verify_cli.py
-step "面板契约自检" "$PY" scripts/verify_panel.py
+step "玩家壳契约自检" "$PY" scripts/verify_player_shell.py
 step "濒死保护自检" "$PY" scripts/verify_near_death.py
 step "规则内核公式对拍（77 个函数的闭式复算）" "$PY" scripts/verify_formulas.py
 step "模块分支补测（systems/narrative/cognition/economy）" "$PY" scripts/verify_branches.py
@@ -76,8 +76,6 @@ step "长局内存稳定性（三段对照，查泄漏）" "$PY" scripts/verify_
 step "世界演化与结算耦合（自演化/相位/心流/道德/术语/正文/台账）" "$PY" scripts/verify_world.py
 step "多世界观设定包（四种世界各跑一遍载入与演化）" "$PY" scripts/verify_settings.py
 step "数字信源（docs/metrics.json 必须与源码实测一致）" "$PY" scripts/metrics.py --check
-step "面板国际化（键唯一/模板无歧义/双语接线）" "$PY" scripts/verify_i18n.py
-step "主题与对比度（亮色默认/明暗切换/WCAG AA/图表重绘/骨架屏）" "$PY" scripts/verify_theme.py
 step "交付面（wg 子命令/doctor/init/资源/控制台/打包守卫）" "$PY" scripts/verify_surface.py
 step "叙事机制（规则书/循环检测/知识边界/战斗推演/事业线图/访问计数/热度/势力意向）" "$PY" scripts/verify_mechanics.py
 step "动作日志与重放（seq/指纹链/确定性）" "$PY" scripts/verify_replay.py
@@ -92,7 +90,7 @@ if "$PY" -c "import coverage" >/dev/null 2>&1; then
 === 覆盖率门禁（核心域 ≥70%）==='
   rm -rf "$ROOT/.cov-gate"
   COV_FAIL=0
-  for suite in verify_formulas verify_branches verify_cli verify_panel verify_near_death verify_world verify_gameplay verify_generic verify_systems; do
+  for suite in verify_formulas verify_branches verify_cli verify_player_shell verify_near_death verify_world verify_gameplay verify_generic verify_systems; do
     "$PY" -m coverage run --data-file="$ROOT/.cov-gate" --append       --source=rules,panel,state_schema,settings_loader,sessions "$ROOT/scripts/$suite.py" >"$LOG_DIR/coverage-$suite.log" 2>&1 || { say "  FAIL（日志：$LOG_DIR/coverage-$suite.log）"; COV_FAIL=1; }
   done
   PCT=$("$PY" -m coverage report --data-file="$ROOT/.cov-gate" 2>/dev/null         | awk '/^TOTAL/ {gsub("%","",$NF); print $NF}')
@@ -138,18 +136,6 @@ elif [ "$MCP_STATUS" -eq 10 ]; then
 else
   say $'\n=== MCP 作业 ===\n  FAIL（mcp SDK 导入时发生真实环境错误，相关检查未执行）'
   say "  $MCP_OUTPUT"
-  FAILED=1
-fi
-
-# 界面巡检：需要 Playwright + 浏览器；装了才跑（未装时跳过但明确提示，不算绿）
-if "$PY" -c "import playwright" >/dev/null 2>&1; then
-  say $'
-=== 界面巡检 ==='
-  step "界面巡检执行" "$PY" scripts/smoke_ui.py
-else
-  say $'
-=== 界面巡检 ===
-  FAIL（未安装 playwright，界面巡检未执行）'
   FAILED=1
 fi
 

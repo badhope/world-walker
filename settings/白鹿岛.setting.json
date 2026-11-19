@@ -1,0 +1,1640 @@
+{
+  "name": "白鹿岛·第一夜",
+  "note": "全民穿越求生 + 白鹿原式宗族秩序。白天争水，夜里守火；白鹿祠是岛心，也是旧代留下的债。",
+  "seed": 20261120,
+  "world": {
+    "name": "白鹿岛",
+    "era": "全民穿越 · 第 1 天 07:17",
+    "location_desc": "你趴在白鹿滩的湿沙上，嘴里全是咸味。潮水刚退，远处有一排翻倒的塑料箱、半截渔船，和一尊被海风磨掉半张脸的白鹿石像。手环在手腕上震动：『求生者 001，欢迎来到白鹿岛。距夜潮 12 小时 43 分。』"
+  },
+  "player": {
+    "name": "陈砚",
+    "faction": "散人",
+    "level": "流民",
+    "attrs": {
+      "str": 10,
+      "dex": 11,
+      "int": 12,
+      "con": 11,
+      "cha": 10
+    },
+    "hp": 40,
+    "hp_max": 40,
+    "mp": 30,
+    "mp_max": 30,
+    "gold": 3,
+    "location": "白鹿滩",
+    "items": {
+      "water": 1,
+      "canned": 1,
+      "lighter": 1,
+      "knife": 1,
+      "tape": 1
+    },
+    "desc": "二十七岁，城市里做表格的普通人。鞋里灌满沙，衬衫口袋还别着一支没水的签字笔。",
+    "personality": "谨慎、嘴硬、记仇也记恩",
+    "speech": "「先说好，我只信能喝的水。」",
+    "activity": "刚醒，正在检查手环和背包",
+    "intent": "先找淡水，再找能过夜的地方",
+    "agenda": "活过第一夜，弄清白鹿岛的规则",
+    "aliases": [
+      "陈砚",
+      "001"
+    ]
+  },
+  "entities": [
+    {
+      "id": "bai_po",
+      "name": "白婆婆",
+      "faction": "白鹿祠",
+      "level": "旧代守祠人",
+      "attrs": {
+        "str": 7,
+        "dex": 8,
+        "int": 13,
+        "con": 10,
+        "cha": 12
+      },
+      "hp": 28,
+      "hp_max": 28,
+      "mp": 20,
+      "mp_max": 20,
+      "gold": 1,
+      "location": "白鹿祠",
+      "desc": "背驼得像一张拉满的旧弓，左眼蒙着白翳，手腕上缠着一圈褪色的红绳。",
+      "personality": "慢、硬、护祠",
+      "speech": "「岛上的东西，先问祠，再问人。」",
+      "activity": "在祠前把湿盐摊在竹席上",
+      "intent": "等潮退后去滩上收供品",
+      "agenda": "守住白鹿祠最后一块碑，不让外人动祠下的土",
+      "status": "idle",
+      "aliases": [
+        "白婆婆",
+        "婆婆",
+        "守祠人"
+      ]
+    },
+    {
+      "id": "lu_qinghe",
+      "name": "鹿青禾",
+      "faction": "鹿家棚屋",
+      "level": "岛民",
+      "attrs": {
+        "str": 10,
+        "dex": 12,
+        "int": 11,
+        "con": 11,
+        "cha": 13
+      },
+      "hp": 34,
+      "hp_max": 34,
+      "mp": 24,
+      "mp_max": 24,
+      "gold": 8,
+      "location": "白鹿原",
+      "desc": "短发用鱼线扎在脑后，裤脚卷到膝盖，小腿上有一道被礁石划开的旧伤。",
+      "personality": "冷静、务实、先算账再讲情",
+      "speech": "「水可以分，规矩得先立。」",
+      "activity": "在石阶上修一条引水槽",
+      "intent": "把淡水溪的水引进鹿家棚屋",
+      "agenda": "把岛上散人并成一支能过夜的队",
+      "status": "busy",
+      "aliases": [
+        "青禾",
+        "鹿家姑娘"
+      ]
+    },
+    {
+      "id": "shi_dazhu",
+      "name": "石大柱",
+      "faction": "石家",
+      "level": "渔夫",
+      "attrs": {
+        "str": 14,
+        "dex": 9,
+        "int": 8,
+        "con": 13,
+        "cha": 9
+      },
+      "hp": 46,
+      "hp_max": 46,
+      "mp": 18,
+      "mp_max": 18,
+      "gold": 0,
+      "location": "礁石港",
+      "desc": "肩膀宽得像门板，脖子上挂着一枚磨白的贝壳，右手缺了半截小指。",
+      "personality": "直、讲义气、怕水底的影子",
+      "speech": "「海里的东西，白天不咬人，晚上才咬。」",
+      "activity": "在礁石上撬牡蛎",
+      "intent": "攒一筐牡蛎去白鹿滩换水",
+      "agenda": "找回失踪的兄弟阿海，活要见人死要见骨",
+      "status": "busy",
+      "aliases": [
+        "大柱",
+        "石老大"
+      ]
+    },
+    {
+      "id": "wei_yiming",
+      "name": "卫一鸣",
+      "faction": "新秩序",
+      "level": "前体育老师",
+      "attrs": {
+        "str": 12,
+        "dex": 11,
+        "int": 10,
+        "con": 12,
+        "cha": 11
+      },
+      "hp": 40,
+      "hp_max": 40,
+      "mp": 22,
+      "mp_max": 22,
+      "gold": 5,
+      "location": "淡水溪",
+      "desc": "哨子还挂在脖子上，运动服袖口撕开，露出小臂上纹的“秩序”两个字。",
+      "personality": "强硬、控制欲、真信自己在救人",
+      "speech": "「按人头分水，谁多拿，谁就是偷。」",
+      "activity": "带人用石头围住溪口",
+      "intent": "把淡水按人头配给，先收走散人的瓶",
+      "agenda": "控制全岛淡水，逼所有人加入新秩序",
+      "status": "alert",
+      "aliases": [
+        "卫老师",
+        "卫队长"
+      ]
+    },
+    {
+      "id": "zhou_aman",
+      "name": "周阿满",
+      "faction": "散人",
+      "level": "城市白领",
+      "attrs": {
+        "str": 8,
+        "dex": 10,
+        "int": 13,
+        "con": 9,
+        "cha": 12
+      },
+      "hp": 26,
+      "hp_max": 26,
+      "mp": 26,
+      "mp_max": 26,
+      "gold": 12,
+      "location": "白鹿滩",
+      "desc": "衬衫外面套着救生衣，眼镜断了一条腿，用胶带缠着。",
+      "personality": "圆滑、怕死、信息瘾",
+      "speech": "「消息也是物资，你说是不是？」",
+      "activity": "在沙滩上架一台捡来的破电台",
+      "intent": "监听全球频道，找空投和船的消息",
+      "agenda": "用信息差换一个不用干活的安全位",
+      "status": "busy",
+      "aliases": [
+        "阿满",
+        "周老板"
+      ]
+    },
+    {
+      "id": "xiao_man",
+      "name": "小满",
+      "faction": "散人",
+      "level": "高中生",
+      "attrs": {
+        "str": 7,
+        "dex": 12,
+        "int": 11,
+        "con": 8,
+        "cha": 14
+      },
+      "hp": 22,
+      "hp_max": 22,
+      "mp": 28,
+      "mp_max": 28,
+      "gold": 0,
+      "location": "潮汐林",
+      "desc": "校服外套大了一号，手机壳上贴着一张褪色的全家福。",
+      "personality": "话多、机灵、怕黑",
+      "speech": "「频道里有人说，白鹿会吃人，你信吗？」",
+      "activity": "举着手机在潮汐林边找信号",
+      "intent": "把全球频道的消息一条条录下来",
+      "agenda": "找到失联的父母，或者证明他们已经不在了",
+      "status": "idle",
+      "aliases": [
+        "小满",
+        "满妹"
+      ]
+    }
+  ],
+  "market": [
+    {
+      "location": "白鹿滩",
+      "items": [
+        {
+          "key": "water",
+          "name": "净水",
+          "price": 8,
+          "supply": 5,
+          "base_price": 8,
+          "type": "补给",
+          "desc": "用旧塑料瓶装的淡水，瓶口有盐渍。"
+        },
+        {
+          "key": "canned",
+          "name": "罐头",
+          "price": 6,
+          "supply": 7,
+          "base_price": 6,
+          "type": "补给"
+        },
+        {
+          "key": "bandage",
+          "name": "绷带",
+          "price": 5,
+          "supply": 4,
+          "base_price": 5,
+          "type": "医疗"
+        },
+        {
+          "key": "rope",
+          "name": "绳索",
+          "price": 4,
+          "supply": 6,
+          "base_price": 4,
+          "type": "工具"
+        },
+        {
+          "key": "flint",
+          "name": "火石",
+          "price": 3,
+          "supply": 4,
+          "base_price": 3,
+          "type": "工具"
+        },
+        {
+          "key": "salt",
+          "name": "海盐",
+          "price": 2,
+          "supply": 12,
+          "base_price": 2,
+          "type": "物资"
+        }
+      ]
+    },
+    {
+      "location": "礁石港",
+      "items": [
+        {
+          "key": "oyster",
+          "name": "牡蛎",
+          "price": 2,
+          "supply": 10,
+          "base_price": 2,
+          "type": "食物"
+        },
+        {
+          "key": "net",
+          "name": "旧渔网",
+          "price": 7,
+          "supply": 3,
+          "base_price": 7,
+          "type": "工具"
+        },
+        {
+          "key": "water",
+          "name": "净水",
+          "price": 9,
+          "supply": 3,
+          "base_price": 9,
+          "type": "补给"
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "a": "player",
+      "b": "bai_po",
+      "affinity": 5,
+      "respect": 10
+    },
+    {
+      "a": "player",
+      "b": "lu_qinghe",
+      "affinity": 0,
+      "respect": 8
+    },
+    {
+      "a": "player",
+      "b": "shi_dazhu",
+      "affinity": 5,
+      "respect": 5
+    },
+    {
+      "a": "player",
+      "b": "wei_yiming",
+      "affinity": -5,
+      "respect": 0
+    },
+    {
+      "a": "player",
+      "b": "zhou_aman",
+      "affinity": 5,
+      "respect": 0
+    },
+    {
+      "a": "player",
+      "b": "xiao_man",
+      "affinity": 10,
+      "respect": 0
+    },
+    {
+      "a": "bai_po",
+      "b": "lu_qinghe",
+      "affinity": 10,
+      "respect": 15
+    },
+    {
+      "a": "bai_po",
+      "b": "wei_yiming",
+      "affinity": -20,
+      "respect": 0
+    },
+    {
+      "a": "lu_qinghe",
+      "b": "shi_dazhu",
+      "affinity": 15,
+      "respect": 10
+    },
+    {
+      "a": "shi_dazhu",
+      "b": "wei_yiming",
+      "affinity": -10,
+      "respect": 0
+    }
+  ],
+  "world_flags": [
+    "__start__",
+    "global_channel_on"
+  ],
+  "currency": "潮币",
+  "level_tiers": [
+    "流民",
+    "拾荒者",
+    "岛民",
+    "守岛人",
+    "拓荒者",
+    "岛主"
+  ],
+  "terms": {
+    "hero": "求生者",
+    "level": "生存评级",
+    "hp": "体力",
+    "mp": "精神",
+    "gold": "潮币",
+    "track": "生存天数",
+    "territory": "营地",
+    "inventory": "背包",
+    "codex": "求生图鉴",
+    "quests": "生存目标"
+  },
+  "places": {
+    "白鹿滩": {
+      "desc": "湿沙上散着塑料箱、破渔网和半截船板。潮线以上有一尊缺了半张脸的白鹿石像，像在低头喝水。",
+      "market": "白鹿滩"
+    },
+    "潮汐林": {
+      "desc": "树干下半截全是盐渍，林子里挂着一排旧风铃。风一停，风铃还在响。",
+      "market": ""
+    },
+    "淡水溪": {
+      "desc": "一条从白鹿原石缝里渗下来的细水，汇进石坑。溪口被人用石头和渔网围了起来。",
+      "market": ""
+    },
+    "白鹿原": {
+      "desc": "岛心的高地，风比滩上大。旧石屋排成三列，田埂被野草吃掉一半，祠堂的旗杆还立着。",
+      "market": ""
+    },
+    "白鹿祠": {
+      "desc": "祠堂只剩半间，供桌上是湿盐、贝壳和一枚缺角的石鹿。祠后有一口被石板盖住的天井。",
+      "market": ""
+    },
+    "礁石港": {
+      "desc": "黑色礁石像一排牙齿，牡蛎壳在缝里反光。退潮时能走到最外那块礁，涨潮时路会消失。",
+      "market": "礁石港"
+    }
+  },
+  "lore": [
+    {
+      "keys": [
+        "基调",
+        "文风"
+      ],
+      "constant": true,
+      "comment": "基调",
+      "content": "海岛求生不是打怪升级：先活过潮汐，再谈秩序。每个选择都要拿体力、淡水、信任或时间换。"
+    },
+    {
+      "keys": [
+        "夜潮",
+        "天黑",
+        "潮水"
+      ],
+      "comment": "夜潮",
+      "content": "太阳落山后潮水会漫过白鹿滩和礁石港的低处；夜里不要贴着潮线走。手环会在夜潮前一个时辰震动。"
+    },
+    {
+      "keys": [
+        "白鹿祠",
+        "祠堂",
+        "石鹿"
+      ],
+      "comment": "白鹿祠",
+      "content": "白鹿祠在岛心高地上，供桌有一枚缺角的石鹿。白婆婆说祠下的土不能动；祠后有一口被石板盖住的天井。"
+    },
+    {
+      "keys": [
+        "淡水",
+        "溪水",
+        "配水"
+      ],
+      "comment": "淡水溪",
+      "content": "淡水溪是全岛最稳定的水源。溪口现在被卫一鸣的人用石头和渔网围住，按人头配水。"
+    },
+    {
+      "keys": [
+        "白鹿原",
+        "旧石屋",
+        "田埂"
+      ],
+      "comment": "白鹿原",
+      "content": "白鹿原上的石屋是二十年前旧代求生者留下的；田埂还在，种过东西，但土里翻出来的不只是贝壳。"
+    },
+    {
+      "keys": [
+        "全球频道",
+        "频道",
+        "手环"
+      ],
+      "comment": "全球频道",
+      "content": "手环每天开放三次全球频道：07:00、13:00、19:00。频道里可以交换消息，但不能交易实物；空投坐标会提前十分钟播报。"
+    },
+    {
+      "keys": [
+        "积分",
+        "空投",
+        "岛核"
+      ],
+      "comment": "积分与岛核",
+      "content": "活过一天、首次采集、首次建造都会给积分；积分可以在空投里换工具，但不能直接换命。岛核是升级营地和并岛的核心，位置不明。"
+    },
+    {
+      "keys": [
+        "白鹿",
+        "白鹿显灵",
+        "传说"
+      ],
+      "comment": "白鹿传说",
+      "content": "岛上老人说，白鹿会在夜潮前出现在白鹿原；看见白鹿的人会得到岛的允许。也有人说，看见白鹿的人第二天就没了。"
+    },
+    {
+      "keys": [
+        "旧代",
+        "上一批",
+        "二十年前"
+      ],
+      "comment": "旧代",
+      "content": "二十年前有一批人先被拉进这座岛；石屋、盐田、祠堂都是他们留下的。他们最后没有一个人走。"
+    },
+    {
+      "keys": [
+        "卫一鸣",
+        "新秩序",
+        "配给"
+      ],
+      "comment": "新秩序",
+      "content": "卫一鸣把散人编成队，按人头分水；不交瓶的人被赶出溪口。他相信秩序能让人活，鹿青禾相信秩序会先杀人。"
+    },
+    {
+      "keys": [
+        "鹿家",
+        "石家",
+        "棚屋"
+      ],
+      "comment": "鹿家与石家",
+      "content": "鹿家棚屋在白鹿原东侧，管水渠；石家占着礁石港，管牡蛎和潮路。两家有旧亲，也有旧账。"
+    },
+    {
+      "keys": [
+        "第一夜",
+        "过夜",
+        "庇护"
+      ],
+      "comment": "第一夜",
+      "content": "第一夜是最难的一夜：没有墙、没有火、没有干衣服。手环只给一条提示：『天黑前，到高处去。』"
+    }
+  ],
+  "playbook": {
+    "loop": "mud",
+    "input": "command",
+    "progress": {
+      "axis": "level",
+      "label": "生存评级",
+      "max": 5
+    },
+    "failure": {
+      "mode": "hp",
+      "label": "倒下",
+      "max": 0
+    },
+    "beat": {
+      "pattern": [
+        "清晨",
+        "采集",
+        "交涉",
+        "夜潮",
+        "清点"
+      ],
+      "every": 4
+    },
+    "settlement": [
+      "combat",
+      "trade",
+      "roll",
+      "travel",
+      "use_item"
+    ],
+    "context": {
+      "inject": [
+        "lore",
+        "cast",
+        "chronicle"
+      ],
+      "max_lore": 10,
+      "scan_depth": 2
+    }
+  },
+  "questlines": [
+    {
+      "id": "first_night",
+      "title": "第一夜",
+      "summary": "天黑前找到能挡潮水和风的地方。",
+      "visibility": {
+        "flag": "__start__"
+      },
+      "stages": [
+        {
+          "id": "shelter",
+          "title": "落脚",
+          "objectives": [
+            "找到一处高于潮线的庇护所"
+          ],
+          "exit_if": {
+            "flag": "shelter_found"
+          },
+          "next": [
+            "fire"
+          ]
+        },
+        {
+          "id": "fire",
+          "title": "生火",
+          "objectives": [
+            "在天黑前生起一堆火"
+          ],
+          "exit_if": {
+            "flag": "fire_lit"
+          },
+          "next": [
+            "dawn"
+          ]
+        },
+        {
+          "id": "dawn",
+          "title": "天亮",
+          "objectives": [
+            "撑过第一夜"
+          ],
+          "exit_if": {
+            "flag": "first_night_survived"
+          },
+          "next": []
+        }
+      ],
+      "reward": {
+        "flags": [
+          "first_night_survived"
+        ]
+      }
+    },
+    {
+      "id": "fresh_water",
+      "title": "淡水",
+      "summary": "溪口被卫一鸣围了，水不能只靠抢。",
+      "visibility": {
+        "flag": "__start__"
+      },
+      "stages": [
+        {
+          "id": "find",
+          "title": "找到溪",
+          "objectives": [
+            "抵达淡水溪"
+          ],
+          "exit_if": {
+            "visited": "淡水溪"
+          },
+          "next": [
+            "deal"
+          ]
+        },
+        {
+          "id": "deal",
+          "title": "谈水",
+          "objectives": [
+            "和卫一鸣或鹿青禾谈成一个分水办法"
+          ],
+          "next": [
+            "store"
+          ]
+        },
+        {
+          "id": "store",
+          "title": "存水",
+          "objectives": [
+            "把至少三份水存进营地"
+          ],
+          "exit_if": {
+            "flag": "water_stored"
+          },
+          "next": []
+        }
+      ],
+      "reward": {
+        "flags": [
+          "water_stored"
+        ]
+      }
+    },
+    {
+      "id": "white_deer",
+      "title": "白鹿祠",
+      "summary": "白婆婆守着祠，祠下有一块不能动的土。",
+      "visibility": {
+        "flag": "__start__"
+      },
+      "stages": [
+        {
+          "id": "enter",
+          "title": "进祠",
+          "objectives": [
+            "进入白鹿祠"
+          ],
+          "exit_if": {
+            "visited": "白鹿祠"
+          },
+          "next": [
+            "stone"
+          ]
+        },
+        {
+          "id": "stone",
+          "title": "石鹿",
+          "objectives": [
+            "问清石鹿缺角的事"
+          ],
+          "exit_if": {
+            "flag": "stone_deer_asked"
+          },
+          "next": [
+            "well"
+          ]
+        },
+        {
+          "id": "well",
+          "title": "天井",
+          "objectives": [
+            "决定要不要打开祠后的天井"
+          ],
+          "next": []
+        }
+      ],
+      "reward": {
+        "flags": [
+          "shrine_opened"
+        ]
+      }
+    }
+  ],
+  "systems": [
+    {
+      "id": "clock",
+      "kind": "time",
+      "label": "昼夜与潮汐",
+      "config": {
+        "start": {
+          "day": 1,
+          "hour": 7
+        },
+        "days_per_season": 30,
+        "seasons": [
+          "初夏"
+        ],
+        "weathers": [
+          {
+            "name": "晴",
+            "weight": 45
+          },
+          {
+            "name": "阴",
+            "weight": 30
+          },
+          {
+            "name": "暴雨",
+            "weight": 20
+          },
+          {
+            "name": "海雾",
+            "weight": 5
+          }
+        ]
+      }
+    },
+    {
+      "id": "scavenge",
+      "kind": "loot",
+      "label": "海滩搜刮",
+      "config": {
+        "tables": {
+          "beach": {
+            "rolls": 3,
+            "empty_weight": 35,
+            "entries": [
+              {
+                "item": "water",
+                "name": "净水",
+                "weight": 25,
+                "qty": [
+                  1,
+                  2
+                ]
+              },
+              {
+                "item": "canned",
+                "name": "罐头",
+                "weight": 25,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "rope",
+                "name": "绳索",
+                "weight": 18,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "flint",
+                "name": "火石",
+                "weight": 12,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "salt",
+                "name": "海盐",
+                "weight": 20,
+                "qty": [
+                  1,
+                  3
+                ]
+              }
+            ]
+          },
+          "forest": {
+            "rolls": 2,
+            "empty_weight": 45,
+            "entries": [
+              {
+                "item": "water",
+                "name": "净水",
+                "weight": 15,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "canned",
+                "name": "罐头",
+                "weight": 10,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "rope",
+                "name": "绳索",
+                "weight": 20,
+                "qty": [
+                  1,
+                  2
+                ]
+              },
+              {
+                "item": "salt",
+                "name": "海盐",
+                "weight": 10,
+                "qty": [
+                  1,
+                  2
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "survival",
+      "kind": "custom",
+      "label": "求生动作",
+      "config": {
+        "actions": {
+          "eat": {
+            "label": "进食",
+            "effects": [
+              {
+                "op": "resource",
+                "key": "hp",
+                "delta": 5
+              },
+              {
+                "op": "flag",
+                "flag": "fed"
+              }
+            ]
+          },
+          "sleep": {
+            "label": "睡觉",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 480
+              },
+              {
+                "op": "resource",
+                "key": "hp",
+                "delta": 8
+              }
+            ]
+          },
+          "fish": {
+            "label": "捕鱼",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 180
+              },
+              {
+                "op": "resource",
+                "key": "food",
+                "delta": 1
+              }
+            ]
+          },
+          "boil": {
+            "label": "煮水",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 60
+              },
+              {
+                "op": "flag",
+                "flag": "boiled_water"
+              }
+            ]
+          },
+          "build": {
+            "label": "搭庇护",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 240
+              },
+              {
+                "op": "flag",
+                "flag": "shelter_found"
+              }
+            ]
+          },
+          "pray": {
+            "label": "在祠前祈祷",
+            "effects": [
+              {
+                "op": "resource",
+                "key": "sanity",
+                "delta": 3
+              },
+              {
+                "op": "flag",
+                "flag": "prayed"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "rep",
+      "kind": "reputation",
+      "label": "岛上关系",
+      "config": {
+        "factions": [
+          "白鹿祠",
+          "鹿家棚屋",
+          "石家",
+          "新秩序",
+          "散人"
+        ]
+      }
+    }
+  ],
+  "game": {
+    "title": "白鹿岛",
+    "kind": "survival",
+    "resources": [
+      {
+        "key": "hp",
+        "label": "体力",
+        "value": 40,
+        "min": 0,
+        "max": 40,
+        "color": "hp"
+      },
+      {
+        "key": "water",
+        "label": "淡水",
+        "value": 1,
+        "min": 0,
+        "max": 20,
+        "color": "mp"
+      },
+      {
+        "key": "food",
+        "label": "食物",
+        "value": 1,
+        "min": 0,
+        "max": 20,
+        "color": "success"
+      },
+      {
+        "key": "sanity",
+        "label": "精神",
+        "value": 30,
+        "min": 0,
+        "max": 30,
+        "color": "accent"
+      }
+    ],
+    "attributes": [
+      {
+        "key": "str",
+        "label": "力量",
+        "value": 10
+      },
+      {
+        "key": "con",
+        "label": "体质",
+        "value": 11
+      }
+    ],
+    "meters": [
+      {
+        "key": "day",
+        "label": "生存天数",
+        "value": 0,
+        "min": 0,
+        "max": 30
+      }
+    ],
+    "tags": [
+      "全民穿越",
+      "海岛求生",
+      "白鹿原秩序"
+    ],
+    "sheet": {
+      "营地": "无",
+      "队伍": "无",
+      "水源": "未掌握",
+      "白鹿祠": "未进入"
+    }
+  },
+  "ui": {
+    "skin": "neutral",
+    "accent": "#2f7f86",
+    "motif": "海岛·白鹿",
+    "brand": "白鹿岛",
+    "tagline": "潮退之后，岛才是你的"
+  },
+  "world_bible": {
+    "world": {
+      "name": "白鹿岛",
+      "era": "全民穿越 · 第 1 天",
+      "genre": "全民求生 / 海岛",
+      "premise": "全球人类被拉入万岛海域，每人一座初始岛；白鹿岛是其中一座，白天争水，夜里守火。",
+      "tone": "湿冷、饥饿、宗族秩序、白鹿传说"
+    },
+    "immutable": [
+      {
+        "subject": "世界",
+        "predicate": "前提",
+        "value": "全球人类被拉入万岛海域，每人/每队一座初始岛",
+        "statement": "所有人都在同一天穿越；手环显示求生者编号、天数、夜潮倒计时和全球频道开放时间。没有统一的政府或主神现身。",
+        "tags": [
+          "core"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "力量",
+        "predicate": "规则与代价",
+        "value": "没有魔法，只有体力、工具、火、淡水、盐和船",
+        "statement": "不能用超自然力量；所有生存动作消耗体力或时间。所谓“白鹿显灵”只能作为信仰与叙事压力，不能当技能用。",
+        "tags": [
+          "rule",
+          "power"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "历史",
+        "predicate": "断层",
+        "value": "二十年前有一批旧代求生者先到白鹿岛，留下石屋、盐田、祠堂，最后无人生还",
+        "statement": "旧代石屋在白鹿原排成三列；祠堂供桌有缺角石鹿；岛上的老人称他们“旧代”。他们的死因没有公开记录。",
+        "tags": [
+          "history"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "地图",
+        "predicate": "节点",
+        "value": "白鹿滩—潮汐林—淡水溪—白鹿原—白鹿祠—礁石港",
+        "statement": "白鹿滩是开局滩；潮汐林在滩西；淡水溪从白鹿原石缝流下；白鹿祠在岛心高地；礁石港在东南。外围还有沉船湾/盐洞/旧灯塔/红树林等野外点。",
+        "tags": [
+          "map"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "地图",
+        "predicate": "通行成本",
+        "value": "岛不大，步行半小时到两小时；夜潮会淹没低滩和礁石港外礁",
+        "statement": "白鹿滩到潮汐林约 20 分钟；到淡水溪约 40 分钟；到白鹿原约 1 小时；白鹿原到白鹿祠约 15 分钟；礁石港退潮时可走到外礁，涨潮时路断。",
+        "tags": [
+          "map",
+          "travel"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "势力",
+        "predicate": "格局",
+        "value": "白鹿祠、鹿家棚屋、石家、新秩序、散人",
+        "statement": "白婆婆守祠但不养人；鹿青禾管水渠和棚屋；石大柱管礁石港和潮路；卫一鸣用配水控制散人；周阿满和小满代表没有队伍的散人。",
+        "tags": [
+          "faction"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "社会",
+        "predicate": "秩序",
+        "value": "淡水优先，以工换水，以物易物；夜潮时祠堂钟响三声表示闭滩",
+        "statement": "岛上没有法律；偷水的人会被绑在潮线一夜，抢粮的人会被所有人排斥。白鹿祠的钟是唯一全岛都认的信号。",
+        "tags": [
+          "society"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "经济",
+        "predicate": "底座",
+        "value": "潮币只在小市场流通；真正硬通货是淡水、盐、火种、药和船",
+        "statement": "潮币是贝壳和旧硬币；白鹿滩与礁石港有简陋市场。全球积分可以换空投工具，但不能直接买命。",
+        "tags": [
+          "economy"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "生死",
+        "predicate": "规则",
+        "value": "体力归零为濒死，不是立即死亡；夜潮前没人救就会死，无复活",
+        "statement": "濒死状态下不能行动，只能等待救治；被潮水淹没直接淘汰。死亡后留下遗物箱，同岛玩家可以拾取。",
+        "tags": [
+          "death"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "白鹿",
+        "predicate": "规则",
+        "value": "白鹿是岛民共同图腾；白鹿祠不能拆，祠下土不能随便动",
+        "statement": "白鹿祠是岛心最高处，也是夜潮时唯一不被淹的地方之一。白婆婆说动祠下土会“惊鹿”，但没人知道惊鹿之后会发生什么。",
+        "tags": [
+          "faith",
+          "rule"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "玩家",
+        "predicate": "位置",
+        "value": "陈砚，27 岁普通职员，在白鹿滩醒来，背包只有半瓶水、打火机、折叠刀和胶带",
+        "statement": "玩家编号 001；手环显示第 1 天 07:17，距夜潮 12 小时 43 分；没有队伍，没有营地，没有淡水。",
+        "tags": [
+          "player"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "岛核",
+        "predicate": "规则",
+        "value": "每座岛有岛核，能升级营地、扩岛、并岛；位置不明，不能用蛮力破坏",
+        "statement": "积分和潮汐结晶可以激活岛核；岛核不是建筑，是岛本身的一部分。白鹿祠下的天井、白鹿原的旧石屋、礁石港的潮洞都可能与岛核有关。",
+        "tags": [
+          "core",
+          "mystery"
+        ],
+        "source": "setting"
+      }
+    ],
+    "hidden": [
+      {
+        "subject": "白鹿祠",
+        "predicate": "天井",
+        "value": "祠后天井是旧代留下的岛核观察口",
+        "statement": "天井的石板下面不是井，是一条向岛心延伸的旧石道；旧代曾用它观察岛核潮位。白婆婆知道，但她不承认。",
+        "tags": [
+          "truth"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "旧代",
+        "predicate": "死因",
+        "value": "旧代不是死于饥饿，而是死于一次失败的并岛",
+        "statement": "旧代在第二十夜尝试用白鹿祠的缺口石鹿强行并岛，潮水倒灌，祠堂塌了半间。白婆婆是唯一活下来的人。",
+        "tags": [
+          "history",
+          "truth"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "白鹿",
+        "predicate": "真相",
+        "value": "白鹿不是神，是岛核在潮汐里投射的影像",
+        "statement": "白鹿的形状会出现在白鹿原的雾里；它不是实体，不能交流。看见它的人会短暂听见岛核的潮位，而不是得到祝福。",
+        "tags": [
+          "truth",
+          "mystery"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "鹿青禾",
+        "predicate": "身份",
+        "value": "鹿青禾是旧代守祠人的外孙女，不是本轮穿越者",
+        "statement": "她出生在岛上，靠旧代留下的水渠活到今天。她装作本轮玩家，是为了不让卫一鸣把她当“原住民”抓去祭祠。",
+        "tags": [
+          "identity"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "石大柱",
+        "predicate": "兄弟",
+        "value": "阿海不是失踪，是被卫一鸣的人关在淡水溪上游",
+        "statement": "石大柱找阿海时会被新秩序的人引向潮汐林；阿海知道溪口上游有一条旧代暗渠。",
+        "tags": [
+          "identity",
+          "hook"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "卫一鸣",
+        "predicate": "底牌",
+        "value": "卫一鸣手里有一枚潮汐结晶，来自一个死去的玩家",
+        "statement": "他用结晶暂时镇住了溪口的水位；结晶耗尽后，淡水溪会断流。他必须在那之前控制白鹿祠的天井。",
+        "tags": [
+          "antagonist"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "周阿满",
+        "predicate": "电台",
+        "value": "周阿满的电台能收到“主神”频道，但那是另一个玩家在骗空投",
+        "statement": "他明知道可能是假的，仍愿意用假消息换真物资；小满录下的频道里有一条坐标指向沉船湾。",
+        "tags": [
+          "hook"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "小满",
+        "predicate": "手机",
+        "value": "小满的手机里存着父母最后一条语音，语音背景里有白鹿祠的钟声",
+        "statement": "她父母是上一批被并入白鹿岛的玩家；语音里的钟声说明他们来过这座祠。",
+        "tags": [
+          "hook",
+          "emotion"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "白鹿岛",
+        "predicate": "并岛",
+        "value": "第 8 天新手保护结束，白鹿岛会被并入更大的岛",
+        "statement": "并岛方向由岛核潮位决定；如果岛核未激活，白鹿岛会被拖向盐泽，所有低地都会被淹。",
+        "tags": [
+          "world",
+          "clock"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "白鹿原",
+        "predicate": "田埂",
+        "value": "田埂下面埋着旧代的遗物箱和一层骨盐",
+        "statement": "旧代把死者的骨灰混进盐田，防止潮水把尸体带回祠堂。翻田埂会同时翻出工具和骨片。",
+        "tags": [
+          "dark",
+          "history"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "礁石港",
+        "predicate": "潮洞",
+        "value": "退潮时外礁会出现一个通向岛心的潮洞",
+        "statement": "潮洞只在最低潮的十分钟里打开；石大柱知道位置，但从不敢进去。",
+        "tags": [
+          "map",
+          "mystery"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      }
+    ],
+    "revealed": [
+      {
+        "subject": "玩家",
+        "predicate": "已知",
+        "value": "手环、全球频道、夜潮倒计时",
+        "statement": "陈砚知道手环每天三次开放全球频道，知道天黑前要到高处，知道自己没有队伍。",
+        "tags": [
+          "start"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "白鹿滩",
+        "predicate": "现状",
+        "value": "滩上有塑料箱、破船、白鹿石像和几个散人",
+        "statement": "白鹿滩是开局点；周阿满在滩上架电台；白鹿石像缺了半张脸。",
+        "tags": [
+          "start"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "白鹿原",
+        "predicate": "现状",
+        "value": "高地上有旧石屋、田埂、祠堂和鹿家棚屋",
+        "statement": "白鹿原在岛心；鹿青禾在石阶修水槽；旧石屋是旧代留下的。",
+        "tags": [
+          "start"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "淡水溪",
+        "predicate": "现状",
+        "value": "溪口被卫一鸣的人围住，按人头配水",
+        "statement": "淡水溪是全岛最稳定的水源；卫一鸣带人用石头和渔网围住溪口。",
+        "tags": [
+          "start"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "白鹿祠",
+        "predicate": "现状",
+        "value": "白婆婆在祠前晒盐，祠后有盖住的天井",
+        "statement": "白鹿祠在岛心最高处；白婆婆守祠；祠后有一口被石板盖住的天井。",
+        "tags": [
+          "start"
+        ],
+        "source": "setting"
+      }
+    ],
+    "rumors": [
+      {
+        "subject": "白鹿",
+        "predicate": "传闻",
+        "value": "看见白鹿的人会得到岛的允许",
+        "statement": "岛上老人说，夜潮前在白鹿原看见白鹿的人，会得到岛的允许；也有人说，看见白鹿的人第二天就没了。",
+        "status": "rumor",
+        "source": "setting"
+      },
+      {
+        "subject": "白鹿祠",
+        "predicate": "传闻",
+        "value": "祠里有旧代留下的粮和盐",
+        "statement": "有人说白鹿祠的供桌下面藏着旧代的粮和盐；白婆婆从不让人进祠后间。",
+        "status": "rumor",
+        "source": "setting"
+      },
+      {
+        "subject": "岛外",
+        "predicate": "传闻",
+        "value": "第 8 天会有船来并岛",
+        "statement": "全球频道里有人说，第 8 天新手保护结束后会有大船来并岛；没人知道船上是救援还是收尸。",
+        "status": "rumor",
+        "source": "setting"
+      }
+    ],
+    "unknown": [
+      {
+        "question": "白鹿祠的缺角石鹿是谁弄缺的？",
+        "hint": "白婆婆说是潮水，旧代记录说是人。"
+      },
+      {
+        "question": "旧代二十年前到底死在哪一夜？",
+        "hint": "石屋墙上有二十道刻痕，最后一道特别深。"
+      },
+      {
+        "question": "岛核在白鹿祠天井、白鹿原田埂还是礁石港潮洞？",
+        "hint": "三个地方都有旧代留下的记号。"
+      }
+    ]
+  },
+  "map_blueprint": {
+    "start": "beach",
+    "core_nodes": [
+      {
+        "id": "beach",
+        "name": "白鹿滩",
+        "role": "start",
+        "danger": 0,
+        "desc": "湿沙上散着塑料箱、破渔网和半截船板。潮线以上有一尊缺了半张脸的白鹿石像，像在低头喝水。",
+        "market": "白鹿滩"
+      },
+      {
+        "id": "forest",
+        "name": "潮汐林",
+        "role": "clue",
+        "danger": 1,
+        "desc": "树干下半截全是盐渍，林子里挂着一排旧风铃。风一停，风铃还在响。"
+      },
+      {
+        "id": "creek",
+        "name": "淡水溪",
+        "role": "resource",
+        "danger": 1,
+        "desc": "一条从白鹿原石缝里渗下来的细水，汇进石坑。溪口被人用石头和渔网围了起来。"
+      },
+      {
+        "id": "plateau",
+        "name": "白鹿原",
+        "role": "gate",
+        "danger": 2,
+        "desc": "岛心的高地，风比滩上大。旧石屋排成三列，田埂被野草吃掉一半，祠堂的旗杆还立着。"
+      },
+      {
+        "id": "shrine",
+        "name": "白鹿祠",
+        "role": "ruin",
+        "danger": 2,
+        "desc": "祠堂只剩半间，供桌上是湿盐、贝壳和一枚缺角的石鹿。祠后有一口被石板盖住的天井。"
+      },
+      {
+        "id": "harbor",
+        "name": "礁石港",
+        "role": "market",
+        "danger": 1,
+        "desc": "黑色礁石像一排牙齿，牡蛎壳在缝里反光。退潮时能走到最外那块礁，涨潮时路会消失。",
+        "market": "礁石港"
+      }
+    ],
+    "random_nodes": [
+      {
+        "id": "wreck",
+        "role": "dungeon",
+        "danger": 3,
+        "names": [
+          "沉船湾",
+          "断桅湾",
+          "铁壳滩"
+        ],
+        "descs": [
+          "半截货轮斜插在沙里，舱门被撬开，里面黑得像嘴。",
+          "船壳上长满藤壶，潮水从破洞里退出去，带出一股柴油味。"
+        ]
+      },
+      {
+        "id": "saltcave",
+        "role": "wild",
+        "danger": 2,
+        "names": [
+          "盐洞",
+          "白盐窟",
+          "咸风洞"
+        ],
+        "descs": [
+          "洞口结着一层盐霜，越往里走越干，墙上有人刻过数字。",
+          "洞顶滴下来的水落在石头上，过一夜就变成盐。"
+        ]
+      },
+      {
+        "id": "tower",
+        "role": "gate",
+        "danger": 2,
+        "names": [
+          "旧灯塔",
+          "断塔",
+          "海雾塔"
+        ],
+        "descs": [
+          "塔身塌了一半，灯室还在，玻璃上全是盐雾。",
+          "塔顶能看见其他岛的轮廓，也能看见夜潮的来路。"
+        ]
+      },
+      {
+        "id": "mangrove",
+        "role": "wild",
+        "danger": 3,
+        "names": [
+          "红树林",
+          "黑根林",
+          "潮生林"
+        ],
+        "descs": [
+          "树根泡在咸水里，底下有东西挪动。",
+          "林子里没有风，只有水从根缝里冒泡的声音。"
+        ]
+      }
+    ],
+    "random_count": 2,
+    "edges": [
+      {
+        "a": "beach",
+        "b": "forest",
+        "minutes": [
+          15,
+          30
+        ],
+        "label": "滩西沙路"
+      },
+      {
+        "a": "beach",
+        "b": "creek",
+        "minutes": [
+          30,
+          50
+        ],
+        "label": "溪口小径"
+      },
+      {
+        "a": "creek",
+        "b": "plateau",
+        "minutes": [
+          40,
+          70
+        ],
+        "label": "石阶"
+      },
+      {
+        "a": "forest",
+        "b": "shrine",
+        "minutes": [
+          30,
+          55
+        ],
+        "label": "林间旧道"
+      },
+      {
+        "a": "plateau",
+        "b": "shrine",
+        "minutes": [
+          10,
+          20
+        ],
+        "label": "祠前石阶"
+      },
+      {
+        "a": "plateau",
+        "b": "harbor",
+        "minutes": [
+          35,
+          60
+        ],
+        "label": "东侧山道"
+      },
+      {
+        "a": "beach",
+        "b": "harbor",
+        "minutes": [
+          45,
+          80
+        ],
+        "label": "环滩路"
+      }
+    ],
+    "random_links": [
+      {
+        "id": "wreck",
+        "links": [
+          "beach",
+          "harbor"
+        ],
+        "minutes": [
+          25,
+          50
+        ]
+      },
+      {
+        "id": "saltcave",
+        "links": [
+          "plateau",
+          "shrine"
+        ],
+        "minutes": [
+          15,
+          35
+        ]
+      },
+      {
+        "id": "tower",
+        "links": [
+          "harbor",
+          "forest"
+        ],
+        "minutes": [
+          25,
+          45
+        ]
+      },
+      {
+        "id": "mangrove",
+        "links": [
+          "creek",
+          "forest"
+        ],
+        "minutes": [
+          20,
+          40
+        ]
+      }
+    ],
+    "rules": [
+      "白鹿滩、潮汐林、淡水溪、白鹿原、白鹿祠、礁石港的名字与位置固定。",
+      "每局从沉船湾/盐洞/旧灯塔/红树林里抽两个野外点；名字、描写、路程可变，连接关系不变。",
+      "危险度：白鹿滩 0；潮汐林/淡水溪/礁石港 1；白鹿原/白鹿祠 2；野外点 2-3。",
+      "地图只改变外观与路程，不改变淡水溪、白鹿祠、旧石屋的方位关系。"
+    ]
+  }
+}

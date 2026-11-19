@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.16.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
+**v1.16.1** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
 
 > **你说话，AI 演，引擎判，存档记。**
 
@@ -14,7 +14,7 @@ World Walker 是**单人 AI 跑团 / 互动叙事引擎**，不是游戏助手�
 确定性的部分是叙述者不该乱编的东西：血量、价格、背包、关系、钟、线索、存档与回放。
 AI 写场面，引擎拥有事实。
 
-`206 个规则函数` · `72 个 MCP 工具` · `28 个玩家工具` · `4 套设定包` · `9 套模板` ·
+`206 个规则函数` · `72 个 MCP 工具` · `28 个玩家工具` · `5 套设定包` · `9 套模板` ·
 `21 个可执行自检` · `0 个运行时依赖`
 
 ## 它解决什么
@@ -165,7 +165,7 @@ MCP 仍可供高级宿主使用，但它不再是前门。玩家页面才是。
 循环是给宿主的指引，不由引擎强制执行。失败不等于扣血——债主上门、被人盯上、理智耗尽
 都是可配置的失败条件，由 `failure_tick` 推进。
 
-四套设定包分别演示四种循环：玄枢界 `freeform`、折剑行 `ttrpg`、霓虹深渊 `mud`、雾港 `choice`。
+五套设定包分别演示四种循环：玄枢界 `freeform`、折剑行 `ttrpg`、霓虹深渊 `mud`、雾港 `choice`、白鹿岛 `mud`（海岛求生）。
 
 ### 事业线
 
@@ -320,8 +320,8 @@ MIT 许可。演示包里的人物、势力、地名全部原创，可自由替�
 ## 重新生成演示素材
 
 ```bash
-python scripts/make_demo.py          # 4 套世界的真实演示存档 → docs/demo/
-python scripts/verify_settings.py    # 四套设定包全量校验
+python scripts/make_demo.py          # 5 套世界的真实演示存档 → docs/demo/
+python scripts/verify_settings.py    # 五套设定包全量校验
 ```
 
 ---

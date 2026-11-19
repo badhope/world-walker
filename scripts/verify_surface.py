@@ -106,6 +106,21 @@ def main():
     check('S5c resource URIs are world:// scoped',
           len(re.findall(r"world://[a-z/]+", prim)) >= 4)
 
+    # S5d：注解必须与真实写入语义一致。Hosts 把 readOnlyHint 当作"可直接放行"，
+    # 一个会落盘的工具被标成只读 = 宿主替玩家批准了一次写入。静态解析两份名单，
+    # 不需要 import mcp SDK（core 作业不装它）。
+    def _literal_frozenset(source, name):
+        match = re.search(r"%s\s*=\s*frozenset\(\{(.*?)\}\)" % re.escape(name), source, re.S)
+        return set(re.findall(r"['\"]([^'\"]+)['\"]", match.group(1))) if match else set()
+
+    read_only = _literal_frozenset(prim, 'READ_ONLY_TOOLS')
+    transactional = _literal_frozenset(server_src, '_STATE_TRANSACTION_TOOLS')
+    overlap = sorted(read_only & transactional)
+    check('S5d 只读注解不得覆盖任何状态写入工具（否则宿主会自动批准写入）',
+          bool(read_only) and bool(transactional) and not overlap, str(overlap))
+    check('S5e 资源摘要读 karma_ledger（不是不存在的 karma 字段）',
+          "state.get('karma_ledger')" in prim)
+
     # ── S6 admin console ────────────────────────────────────────────────────
     with open(os.path.join(ROOT, 'panel.py'), encoding='utf-8') as fh:
         panel_src = fh.read()

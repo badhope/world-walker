@@ -28,6 +28,7 @@ Usage:  python scripts/verify_theme.py
 Exit:   0 = all checks hold, 1 = a check failed, 2 = Playwright/Edge missing
 """
 
+import glob
 import json
 import os
 import shutil
@@ -211,7 +212,21 @@ CONTRAST_JS = r"""
 """
 
 
-def start_panel(state_path, port):
+def _pick_free_port():
+    """向系统要一个空闲端口：固定 8859 在连续运行时会被 TIME_WAIT 占住，
+    面板自动顺延到 8860，而本脚本还在等 8859，最后误报"面板没启动"。"""
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+    finally:
+        sock.close()
+
+
+def start_panel(state_path, port=0):
+    if not port:
+        port = _pick_free_port()
     env = dict(os.environ, PYTHONIOENCODING="utf-8")
     proc = subprocess.Popen(
         [sys.executable, os.path.join(ROOT, "panel.py"),
@@ -231,6 +246,34 @@ def start_panel(state_path, port):
     raise RuntimeError("panel did not start on %d" % port)
 
 
+def _launch_browser(p):
+    """Edge 优先（Windows 开发机），否则 Playwright Chromium；再否则在预装目录
+    里找任意可用 Chromium。预装镜像的 PLAYWRIGHT_BROWSERS_PATH 常与当前
+    playwright 版本错位（1.53 想要 1179，镜像里只有 1169），此时默认 launch
+    会直接报"Executable doesn't exist"，而同一台机器其实有能用的浏览器。"""
+    try:
+        return p.chromium.launch(channel="msedge", headless=True)
+    except Exception as edge_error:
+        print("NOTE  msedge 不可用（%s），改用 Playwright Chromium" % str(edge_error)[:80])
+    try:
+        return p.chromium.launch(headless=True)
+    except Exception as default_error:
+        roots = [os.environ.get("PLAYWRIGHT_BROWSERS_PATH"),
+                 os.path.expanduser("~/.cache/ms-playwright")]
+        for root in roots:
+            if not root or not os.path.isdir(root):
+                continue
+            for pattern in ("chromium-*/chrome-linux/chrome",
+                            "chromium_headless_shell-*/chrome-linux/headless_shell"):
+                for exe in sorted(glob.glob(os.path.join(root, pattern)), reverse=True):
+                    try:
+                        print("NOTE  使用已有 Chromium：%s" % exe)
+                        return p.chromium.launch(headless=True, executable_path=exe)
+                    except Exception:
+                        continue
+        raise default_error
+
+
 def browser_checks(state_path):
     try:
         from playwright.sync_api import sync_playwright
@@ -238,15 +281,18 @@ def browser_checks(state_path):
         print("SKIP  缺少 playwright：pip install playwright && python -m playwright install msedge")
         return False, "playwright missing"
 
-    proc, base = start_panel(state_path, 8859)
+    proc, base = start_panel(state_path)
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(channel="msedge", headless=True)
+            browser = _launch_browser(p)
             page = browser.new_page(viewport={"width": 1500, "height": 950})
             errors = []
             page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
-            page.goto(base, wait_until="networkidle", timeout=30000)
-            page.wait_for_timeout(1500)
+            # 面板有 SSE 长连接（/events，最长 30 分钟），"networkidle" 永远
+            # 不会到达；等 load 再等首帧数据落地即可（T8c 另有骨架断言）。
+            page.goto(base, wait_until="load", timeout=30000)
+            page.wait_for_function("document.body.dataset.boot === 'ready'", timeout=20000)
+            page.wait_for_timeout(1200)
 
             # T6: default palette is light, toggle switches it, and it sticks.
             check("T6a panel opens in light theme by default",
@@ -259,8 +305,9 @@ def browser_checks(state_path):
             dark_bg = page.evaluate("getComputedStyle(document.body).backgroundColor")
             check("T6c the rendered background actually changes",
                   light_bg != dark_bg, "%s -> %s" % (light_bg, dark_bg))
-            page.reload(wait_until="networkidle")
-            page.wait_for_timeout(900)
+            page.reload(wait_until="load")
+            page.wait_for_function("document.body.dataset.boot === 'ready'", timeout=20000)
+            page.wait_for_timeout(700)
             check("T6d the choice survives a reload (no flash back to light)",
                   page.evaluate("document.documentElement.getAttribute('data-theme')") == "dark")
             page.click('[data-set-theme="light"]')

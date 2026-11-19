@@ -26,7 +26,6 @@ Exit:   0 = all proven, 1 = a claim failed
 import os
 import shutil
 import sys
-import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)

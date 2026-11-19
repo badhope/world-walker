@@ -12,6 +12,7 @@
 退出码: 0 = 界面正常；1 = 有检查失败；2 = 缺少 playwright
 """
 
+import glob
 import json
 import os
 import subprocess
@@ -26,8 +27,46 @@ sys.path.insert(0, ROOT)
 try:
     from playwright.sync_api import sync_playwright
 except ImportError:
-    print('缺少 playwright：pip install playwright && python -m playwright install msedge')
+    print('缺少 playwright：pip install playwright && python -m playwright install chromium')
     sys.exit(2)
+
+def _pick_free_port():
+    """固定端口在连续运行时会被 TIME_WAIT 占住，面板自动顺延后本脚本会误判
+    "面板没就绪"。向系统要一个空闲端口，保证请求端口与实际绑定端口一致。"""
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(('127.0.0.1', 0))
+        return int(sock.getsockname()[1])
+    finally:
+        sock.close()
+
+
+def _launch_browser(p):
+    """与 verify_theme 同一套回退：Edge → Playwright Chromium → 预装目录里的
+    任意 Chromium（镜像的 PLAYWRIGHT_BROWSERS_PATH 可能和 SDK 版本错位）。"""
+    try:
+        return p.chromium.launch(channel='msedge', headless=True)
+    except Exception as edge_error:
+        print('NOTE  msedge 不可用（%s），改用 Playwright Chromium' % str(edge_error)[:80])
+    try:
+        return p.chromium.launch(headless=True)
+    except Exception as default_error:
+        roots = [os.environ.get('PLAYWRIGHT_BROWSERS_PATH'),
+                 os.path.expanduser('~/.cache/ms-playwright')]
+        for root in roots:
+            if not root or not os.path.isdir(root):
+                continue
+            for pattern in ('chromium-*/chrome-linux/chrome',
+                            'chromium_headless_shell-*/chrome-linux/headless_shell'):
+                for exe in sorted(glob.glob(os.path.join(root, pattern)), reverse=True):
+                    try:
+                        print('NOTE  使用已有 Chromium：%s' % exe)
+                        return p.chromium.launch(headless=True, executable_path=exe)
+                    except Exception:
+                        continue
+        raise default_error
+
 
 # 造一份最小但完整的存档：足够让面板渲染出 HUD/时间线/图鉴/市场/关系
 STATE = {
@@ -76,15 +115,16 @@ def main():
     with open(state_path, 'w', encoding='utf-8') as f:
         json.dump(STATE, f, ensure_ascii=False)
 
+    port = _pick_free_port()
     proc = subprocess.Popen(
         [sys.executable, os.path.join(ROOT, 'panel.py'),
-         '--state', state_path, '--port', '8821'],
+         '--state', state_path, '--port', str(port)],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         cwd=ROOT, env=dict(os.environ, PYTHONIOENCODING='utf-8'))
 
     try:
         # 等面板就绪（最多 15 秒），确认拿到的是**我们的**面板而不是同端口的别的服务
-        base = 'http://127.0.0.1:8821'
+        base = 'http://127.0.0.1:%d' % port
         ready = False
         for _ in range(30):
             try:
@@ -104,11 +144,13 @@ def main():
         errors = []
 
         with sync_playwright() as p:
-            browser = p.chromium.launch(channel='msedge', headless=True)
+            browser = _launch_browser(p)
             page = browser.new_page(viewport={'width': 1440, 'height': 900})
             page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
-            page.goto(base, wait_until='networkidle', timeout=20000)
-            page.wait_for_timeout(1200)
+            # SSE 长连接让 networkidle 永不成立：等 load + 首帧数据就绪。
+            page.goto(base, wait_until='load', timeout=20000)
+            page.wait_for_function("document.body.dataset.boot === 'ready'", timeout=20000)
+            page.wait_for_timeout(800)
 
             def check(name, ok, note=''):
                 results.append((name, bool(ok), str(note)[:120]))

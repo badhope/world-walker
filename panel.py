@@ -226,15 +226,24 @@ def _next_moves(state, player, playbook, quests, loop):
             moves.append({"kind": "risk", "text": "找地方疗伤，或换条安全的路",
                           "why": "气血只剩 %d%%" % round(hp * 100 / hp_max)})
 
+    # 未清业债来自总账（`karma_ledger`）。原始 player 实体没有这个字段，
+    # 旧实现读 player["unsettled_karma"] 永远拿不到值，这条建议从不出现。
     karma = player.get("unsettled_karma")
-    if isinstance(karma, (int, float)) and karma >= 30:
+    if not isinstance(karma, (int, float)):
+        karma = _unsettled_karma(state)
+    if karma >= 30:
         moves.append({"kind": "risk", "text": "还一笔业债，或做件好事抵掉",
                       "why": "未清业债 %s，会压突破成功率" % round(karma)})
 
     # 3) World: a market with bargains is a concrete, checkable opportunity.
     market = state.get("market") or {}
     here = str(player.get("location") or "")
-    local = (market.get(here) or {}).get("items") or {}
+    bucket = market.get(here) or {}
+    # 引擎现行结构是 {地点: {商品键: {...}}}；旧存档/夹具会多一层 "items"。
+    local = (bucket.get("items") if isinstance(bucket, dict)
+             and isinstance(bucket.get("items"), dict) else bucket)
+    if not isinstance(local, dict):
+        local = {}
     bargains = 0
     for item in local.values():
         if not isinstance(item, dict):
@@ -1844,11 +1853,11 @@ def stop(srv, timeout=5.0):
         return
     try:
         srv.shutdown()
-    except Exception:  # aqg: top-level boundary —— 已停止的 server 再 shutdown 会抛，忽略
+    except Exception:  # nosec B110; aqg: top-level boundary —— 已停止的 server 再 shutdown 会抛，忽略
         pass
     try:
         srv.server_close()
-    except Exception:  # aqg: top-level boundary —— 同上
+    except Exception:  # nosec B110; aqg: top-level boundary —— 同上
         pass
 
 

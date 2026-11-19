@@ -272,13 +272,13 @@ mutation testing: **an assertion must be killable, not merely covered.**
 | `verify_formulas.py` | 122 | recompute 77 functions from their docstring math |
 | `verify_branches.py` | 192 | exception paths and state branches of low-coverage modules |
 | `verify_cli.py` | 21 | read-only invariants, write effects, cross-channel determinism |
-| `verify_panel.py` | 98 | view-model contract, legacy saves, static whitelist, inbox guards, theme wiring |
+| `verify_panel.py` | 103 | view-model contract, legacy saves, static whitelist, inbox guards, theme wiring |
 | `verify_mcp_stdio.py` | 67 | real stdio e2e, HTTP transport handshake, tavern ecosystem, read-only zero side effects |
 | `verify_world.py` | 54 | self-evolution, phase, flow, morality, terms, prose, ledger |
 | `verify_settings.py` | 17 | all four bundles load and evolve (zero-dependency path) |
 | `verify_docs.py` | — | version single source, tool count, assertion counts, asset references |
 | `verify_i18n.py` | 12 | panel dictionary: unique keys, unambiguous templates, bilingual wiring |
-| `verify_mechanics.py` | 39 | rulebook priority/stop, loop detection, NPC knowledge boundary, combat preview, quest DAG, visit predicates, prefix hash, rumor heat, faction intents |
+| `verify_mechanics.py` | 44 | rulebook priority/stop, loop detection, NPC knowledge boundary, combat preview, quest DAG, visit predicates, prefix hash, rumor heat, faction intents |
 | `verify_theme.py` | 25 | light-first theme, measured WCAG AA contrast in both themes, chart repaint, boot skeleton |
 | `verify_replay.py` | 15 | action log chain, seq persistence, canonical hashing, deterministic fingerprint |
 | `verify_gameplay.py` | 65 | playbook loops, questline DAG, lorebook semantics |
@@ -297,7 +297,7 @@ mutation testing: **an assertion must be killable, not merely covered.**
 bash scripts/pre_push_gate.sh     # 32 steps; missing required dependencies fail the gate
 ```
 
-Coverage gate: core domain ≥70% (measured 86%, including the generic layer); `pyflakes` 0.
+Coverage gate: core domain ≥70% (measured 82%, including the generic layer); `pyflakes` 0.
 
 ---
 

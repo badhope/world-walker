@@ -41,8 +41,8 @@ def should_use_system2(inhibition_budget: float, mental_clarity: float, noise: f
     # 预算 0 → 0 倍；100 及以上视为充足；对数尺度避免高等级瞬间封顶
     budget_factor = min(1.0, math.log1p(budget) / math.log1p(100.0))
     p_system2 = (ability * budget_factor) / (ability * budget_factor + 1.0)
-    sample = random.random() if roll is None else max(0.0, min(1.0, float(roll)))
-    return (sample + noise) < p_system2  # nosec B311 —— 游戏骰子，非密码学用途
+    sample = random.random() if roll is None else max(0.0, min(1.0, float(roll)))  # nosec B311 —— 游戏骰子，非密码学用途
+    return (sample + noise) < p_system2
 
 # ============================================================
 # 2. 前景理论 (Prospect Theory, Kahneman & Tversky 1979)

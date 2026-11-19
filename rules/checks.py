@@ -70,13 +70,13 @@ def roll_dice(spec: str, pool_size: int = 0):
     """掷一次骰，返回 (骰面列表, 合计, 骰型说明)。不写状态。"""
     count, sides, mod = parse_dice(spec)
     if sides == "F":
-        rolls = [random.randint(-1, 1) for _ in range(count)]
+        rolls = [random.randint(-1, 1) for _ in range(count)]  # nosec B311 —— 游戏骰子，非密码学用途
         return rolls, sum(rolls) + mod, spec
     if count == 0 and str(spec).lower() == "pool":
         n = max(1, min(100, int(pool_size or 1)))
-        rolls = [random.randint(1, 6) for _ in range(n)]
+        rolls = [random.randint(1, 6) for _ in range(n)]  # nosec B311 —— 游戏骰子，非密码学用途
         return rolls, sum(rolls), "pool(%d d6)" % n
-    rolls = [random.randint(1, sides) for _ in range(count)]
+    rolls = [random.randint(1, sides) for _ in range(count)]  # nosec B311 —— 游戏骰子，非密码学用途
     return rolls, sum(rolls) + mod, spec
 
 

@@ -346,7 +346,6 @@ def main():
             ticks = [s["tick"] for s in series["samples"]]
             check("/series 样本按 tick 升序且不重复",
                   ticks == sorted(ticks) and len(ticks) == len(set(ticks)), str(ticks[:6]))
-            pi = series["samples"][-1]["price_index"]
             # rich_state 里只有两个商品：安神丹 55/50=1.1、飞剑 300/300=1.0 → 均值 1.05
             # 用精确值而不是 0.2~5 的宽区间：后者连"常量 1.0"都能通过。
             #
@@ -491,6 +490,24 @@ def main():
     check("视图模型含世界书块（rows 带 fired/sticky_left/cooldown_left）",
           isinstance(lb.get("rows"), list) and isinstance(lb.get("total"), int),
           "rows=%d" % len(lb.get("rows") or []))
+
+    # 8c. 下一步建议：这两条提示原先读错字段（player 上不存在的 unsettled_karma、
+    # 市场旧版 "items" 包裹层），在真实状态上永远不会出现。用真实结构构造一个
+    # 8 折市场 + 55 点欠债，断言两条提示都能被算出来。
+    hint_state = json.loads(json.dumps(rich_state()))
+    hint_state["market"]["临川城"]["an_shen_dan"]["price"] = 40
+    hint_state["karma_ledger"].append({"from": "player", "to": "laowang",
+                                       "type": "theft", "amount": 40, "tick": 11,
+                                       "settled": False})
+    moves = _panel._next_moves(hint_state, hint_state["entities"]["player"],
+                               hint_state.get("playbook") or {},
+                               _panel._build_quests(hint_state),
+                               _panel._build_loop(hint_state))
+    texts = [m.get("text", "") for m in moves]
+    check("下一步建议：低于基准价的机会来自真实市场结构",
+          any("低于基准" in t for t in texts), str(texts[:3]))
+    check("下一步建议：未清业债提示来自 karma_ledger",
+          any("业债" in t for t in texts), str(texts[:3]))
 
     # 9. 行动队列（双向通道）：面板只写侧写、不写状态；限额与同源校验生效
     inbox_state = os.path.join(tmp2, "inbox.save.json")

@@ -1,6 +1,6 @@
 # World Walker 架构
 
-文档版本：v1.15 · 2026-11-20
+文档版本：v1.16 · 2026-11-20
 
 World Walker 有两个入口，但只有一套引擎：
 
@@ -71,8 +71,13 @@ MCP 模式走：
 - 统一表 `items(kind, item_id, title, body, keys, tick, extra)`：角色卡、世界书、canon、
   事实、事件时间线、地点、关系、摘要都投影到这里；单角色档案另带 activity / intent / mood /
   status / last_seen_tick。
-- `knowledge` MCP 工具：`search / stats / character / update_character / worldbook_add /
-  timeline_add / sync`；玩家工具面同时暴露同一套 action。
+- `knowledge` MCP 工具：`search / pack / graph / who_knows / audit / stats / character /
+  update_character / worldbook_add / timeline_add / sync`；玩家工具面同时暴露同一套 action。
+- 别名解析：角色的 `name / aliases` 同时用于 `_entity_id` 和检索正文；NPC 的
+  `agenda`（长期动机）与 `intent`（下一步）分开存。
+- `graph` 只沿 `state.relations` 做 1–2 跳 BFS，不推断关系；`who_knows` 直接复用
+  事实台账的 `witnesses/public`；`pack` 按字符预算裁剪并去重；`audit` 检查悬空引用、
+  重复世界书主键、坏卡、未来摘要等数据质量问题。
 - 运行时写世界书仍写回 `state["lore"]`，时间线仍写回 `state["event_log"]`，不另造第二套事实源。
 - 不引入 Postgres、ORM、常驻服务或向量库；需要语义检索时再加可选 `sqlite-vec` 适配器。
 

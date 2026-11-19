@@ -204,7 +204,8 @@ class GameService:
                               personality=kwargs.get("personality", ""),
                               activity=kwargs.get("activity", ""), intent=kwargs.get("intent", ""),
                               mood=kwargs.get("mood", ""), routine=kwargs.get("routine", ""),
-                              status=kwargs.get("status", ""))
+                              status=kwargs.get("status", ""), agenda=kwargs.get("agenda", ""),
+                              aliases=kwargs.get("aliases"))
         return {"ok": False, "error": "characters.action 只能是 read/add/spawn"}
 
     def sheet(self, *, action: str = "profile", **kwargs) -> dict:

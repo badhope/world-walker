@@ -112,25 +112,31 @@ def build_specs(svc: GameService) -> list[ToolSpec]:
                     personality=_str("性格"), location=_str("所在地"), level=_str("境界/等级"),
                     hp=_int("生命"), gold=_int("钱财"), attrs={"type": "object"},
                     activity=_str("现在在做什么"), intent=_str("下一步打算"), mood=_str("情绪"),
-                    routine=_str("日常作息"), status=_str("idle/忙碌/受伤/失踪等")),
+                    routine=_str("日常作息"), status=_str("idle/忙碌/受伤/失踪等"),
+                    agenda=_str("长期目标/动机"), aliases={"type": "array", "items": {"type": "string"}}),
             svc.characters,
         ),
         ToolSpec(
             "knowledge",
             "对局知识库。search 跨角色卡/世界书/canon/事实/事件/地点/关系检索；"
-            "character 查看某个 NPC 现在在哪、在做什么、知道什么、关系如何；"
-            "stats 看索引；sync 重建索引。update_character 更新 NPC 的 activity/intent/mood/status/"
-            "location；worldbook_add 运行时写入世界书条目；timeline_add 记一条时间线。"
+            "character 查看 NPC 的位置/活动/知道什么/关系/角色卡；graph 看关系网；"
+            "who_knows 查谁知道某事实；pack 按字符预算取精简知识；audit 体检悬空引用/重复条目。"
+            "update_character 写回 NPC 的 activity/intent/mood/status/location/agenda/aliases；"
+            "worldbook_add 运行时写入世界书；timeline_add 记时间线（可带 thread/causes）。"
             "对话里问到 NPC 近况或旧事时优先 search/character，不要凭记忆编。",
-            _params(action={"type": "string", "enum": ["search", "stats", "character",
-                                                       "update_character", "worldbook_add", "timeline_add", "sync"]},
+            _params(action={"type": "string", "enum": ["search", "stats", "pack", "graph", "who_knows",
+                                                       "audit", "character", "update_character",
+                                                       "worldbook_add", "timeline_add", "sync"]},
                     query=_str("检索词"), kind=_str("character/worldbook/canon/fact/event/place/relation/summary"),
-                    name=_str("角色 id 或显示名"), fields={"type": "object"},
+                    name=_str("角色 id/显示名/别名"), fields={"type": "object"},
                     title=_str("世界书条目标题"), keys={"type": "array", "items": {"type": "string"}},
                     secondary_keys={"type": "array", "items": {"type": "string"}},
                     content=_str("世界书正文"), scope=_str("session/world"),
                     text=_str("时间线正文"), actors={"type": "array", "items": {"type": "string"}},
-                    location=_str("地点"), story_time=_str("故事内时间"), limit=_int("条数")),
+                    location=_str("地点"), story_time=_str("故事内时间"),
+                    fact_id=_str("事实 id（who_knows）"), thread=_str("剧情线/线索名"),
+                    causes={"type": "array", "items": {"type": "string"}},
+                    budget_chars=_int("pack 字符预算"), depth=_int("graph 深度 1-2"), limit=_int("条数")),
             svc.knowledge,
         ),
         ToolSpec(

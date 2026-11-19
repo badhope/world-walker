@@ -66,9 +66,20 @@ def normalize_entity(entity_id: str, raw: dict) -> dict:
     # NPC 的“现在在干嘛”不属于数值，但属于可查询的世界状态：
     # activity / intent / mood / routine / status / last_seen_tick 会跟着存档走，
     # 也进 knowledge 索引；不要把这几项塞进 desc 里靠关键词反推。
-    for extra in ("activity", "intent", "mood", "routine", "status"):
+    for extra in ("activity", "intent", "mood", "routine", "status", "agenda"):
         if raw.get(extra):
             ent[extra] = str(raw[extra])[:300]
+    aliases = raw.get("aliases")
+    if isinstance(aliases, str):
+        aliases = [aliases]
+    if isinstance(aliases, (list, tuple)):
+        clean = []
+        for alias in aliases:
+            text = str(alias or "").strip()[:40]
+            if text and text not in clean:
+                clean.append(text)
+        if clean:
+            ent["aliases"] = clean[:12]
     card = raw.get("card_json")
     if isinstance(card, dict):
         try:

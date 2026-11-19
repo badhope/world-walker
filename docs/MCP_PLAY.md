@@ -86,6 +86,8 @@ canon_brief(scene_text=...)           # 先读世界圣经
 read_state()                          # 或 context_pack(scene_text=...)
 roll(attribute="dex", difficulty=12)   # 需要判定时
 knowledge(action="character", name="roland")  # 写 NPC 对话前：位置/活动/知道什么
+knowledge(action="graph", name="roland")      # 需要关系网时
+knowledge(action="who_knows", fact_id="f12")  # 需要戏剧反讽/秘密传播时
 canon_check(facts=[...])               # 正文出现新地点/新历史/新规则时先查
 publish_prose(text="...")              # 唯一正文出口
 canon_commit(facts=[...], status="revealed")  # 通过后入账

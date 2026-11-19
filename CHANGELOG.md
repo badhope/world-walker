@@ -5,6 +5,41 @@
 
 ---
 
+## v1.16.0 — 2026-11-20
+
+**知识库从“能查”升级为“能推理关系、控制可见性、控制预算、自己体检”。**
+
+### 新增
+
+- `knowledge(action=graph, name=..., depth=1|2)`：只沿 `state.relations` 做确定性 BFS，
+  返回 NPC 关系网（节点带 location/activity/agenda，边带 affinity/respect），不推断不存在的边。
+- `knowledge(action=who_knows, fact_id=...|query=...)`：复用事实台账的 `witnesses/public`
+  语义，列出“谁知道这条秘密”，供戏剧反讽、秘密传播、NPC 撒谎判定使用。
+- `knowledge(action=pack, query=..., budget_chars=...)`：跨角色/世界书/canon/事件/地点/关系
+  去重后按字符预算裁剪；上下文太长时优先用它，而不是把所有搜索结果塞进模型。
+- `knowledge(action=audit)`：确定性体检悬空关系、重复世界书主键、坏卡、未知见证人、
+  未知事件角色、未来摘要、地图悬空边；返回 error/warn/info 三级问题。
+- 实体新增 `aliases`（别名/称呼）与 `agenda`（长期动机，区别于 `intent` 的下一步）；
+  `knowledge` 解析、检索正文、角色卡 `extensions.world_walker` 都同步这两项。
+- `timeline_add` 支持 `thread`（剧情线）与 `causes`（因果前置）；事件索引把两者写入 keys，
+  可直接用 `search` 追“灵泉线”这类线索链。
+
+### 变更
+
+- `knowledge.search` 多词查询改为“任一词命中”（FTS 短语太严会漏中文短词），
+  `灵泉 白灯` 这类混合查询不再返回空。
+- `audit` 地图边同时识别节点 `id` 与 `name`，不再把名称边误报成悬空。
+- GM TOOLS 规则增加 graph / who_knows / pack / audit 的使用时机；仍是 72 MCP / 28 玩家工具。
+
+### 验证
+
+- 临时存档实测：别名“老陈”解析到 `chen`；陈伯 graph 2 跳经 player 连到 shen；
+  `who_knows` 对含 `witnesses=[chen,player]` 的线索返回两人；`pack(300)` 用 273 字装 4 条；
+  `audit` 在修完地图节点识别后 0 error / 0 warning。
+- `verify_docs.py`、`verify_mcp_stdio.py`、`verify_systems.py`、`verify_generic.py` 回归保持全绿。
+
+---
+
 ## v1.15.0 — 2026-11-20
 
 **NPC 互动沉淀为可检索的角色卡 / 世界书 / 时间线知识库。**

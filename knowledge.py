@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 
 DB_SUFFIX = ".knowledge.db"
@@ -146,13 +147,15 @@ def sync(state: dict, state_path: str = "") -> dict:
             body_parts = [
                 ent.get("name"), ent.get("faction"), ent.get("level"),
                 ent.get("location"), ent.get("activity"), ent.get("intent"),
-                ent.get("mood"), ent.get("routine"), ent.get("status"),
+                ent.get("mood"), ent.get("routine"), ent.get("status"), ent.get("agenda"),
+                "、".join(str(a) for a in (ent.get("aliases") or [])),
                 ent.get("desc"), ent.get("personality"), ent.get("speech"),
             ]
             _item(con, fts, "character", eid, ent.get("name") or eid,
                   "；".join(str(x) for x in body_parts if x),
                   [ent.get("name"), ent.get("faction"), ent.get("location"),
-                   ent.get("activity"), ent.get("status")],
+                   ent.get("activity"), ent.get("status"), ent.get("agenda")]
+                  + [str(a) for a in (ent.get("aliases") or [])],
                   int(ent.get("last_seen_tick", tick) or tick),
                   {"entity": ent, "is_player": eid == "player"})
             counts["character"] += 1
@@ -203,7 +206,9 @@ def sync(state: dict, state_path: str = "") -> dict:
                 elif val:
                     actors.append(str(val))
             _item(con, fts, "event", eid, event.get("type") or "事件",
-                  event.get("desc") or "", actors + [event.get("location")],
+                  event.get("desc") or "",
+                  actors + [event.get("location"), event.get("thread")]
+                  + list(event.get("causes") or []),
                   int(event.get("tick", tick) or tick),
                   {"event": event, "actors": actors})
             counts["event"] += 1
@@ -220,7 +225,9 @@ def sync(state: dict, state_path: str = "") -> dict:
                 elif val:
                     actors.append(str(val))
             _item(con, fts, "event", eid, event.get("type") or "事件",
-                  event.get("desc") or "", actors + [event.get("location")],
+                  event.get("desc") or "",
+                  actors + [event.get("location"), event.get("thread")]
+                  + list(event.get("causes") or []),
                   int(event.get("tick", tick) or tick),
                   {"event": event, "actors": actors, "archived": True})
             counts["event"] += 1
@@ -289,14 +296,15 @@ def search(state_path: str, query: str = "", kind: str = "", limit: int = 12) ->
     con = sqlite3.connect(path, timeout=10)
     con.row_factory = sqlite3.Row
     q = str(query or "").strip()
+    terms = [t for t in re.split(r"\s+", q) if t][:6]
     limit = max(1, min(50, int(limit or 12)))
     params = []
     kind_clause = _where_kind(kind, params)
     rows = []
     try:
-        if q and len(q) >= 3:
+        if terms:
             try:
-                fts_q = '"%s"' % q.replace('"', '""')
+                fts_q = " OR ".join('"%s"' % t.replace('"', '""') for t in terms)
                 sql = ("SELECT kind,item_id,title,body,tick,bm25(search_fts) AS score "
                        "FROM search_fts WHERE search_fts MATCH ?" + kind_clause +
                        " ORDER BY score LIMIT ?")
@@ -304,11 +312,21 @@ def search(state_path: str, query: str = "", kind: str = "", limit: int = 12) ->
             except sqlite3.OperationalError:
                 rows = []
         if not rows:
-            like = "%" + q + "%" if q else "%"
+            if terms:
+                clauses = []
+                like_params = []
+                for term in terms:
+                    like = "%" + term + "%"
+                    clauses.append("(title LIKE ? OR body LIKE ? OR keys LIKE ?)")
+                    like_params.extend([like, like, like])
+                where = " OR ".join(clauses)
+            else:
+                where = "(title LIKE ? OR body LIKE ? OR keys LIKE ?)"
+                like_params = ["%", "%", "%"]
             sql = ("SELECT kind,item_id,title,body,tick,0.0 AS score FROM items "
-                   "WHERE (title LIKE ? OR body LIKE ? OR keys LIKE ?)" + kind_clause +
+                   "WHERE (" + where + ")" + kind_clause +
                    " ORDER BY tick DESC, kind, item_id LIMIT ?")
-            rows = [dict(r) for r in con.execute(sql, [like, like, like] + params + [limit])]
+            rows = [dict(r) for r in con.execute(sql, like_params + params + [limit])]
         for row in rows:
             row["snippet"] = str(row.get("body") or "")[:220].replace("\n", " ")
             row["tick"] = int(row.get("tick", 0) or 0)
@@ -331,6 +349,122 @@ def stats(state_path: str) -> dict:
         return {"path": path, "total": total, "counts": counts, "bytes": size}
     finally:
         con.close()
+
+
+def audit(state: dict) -> dict:
+    """确定性数据体检：悬空引用、重复条目、坏卡、过期索引源。
+
+    不改状态、不猜测修复；只把“知识库/存档哪里不可信”列出来，交给 GM 或开发者处理。
+    """
+    issues = []
+    entities = state.get("entities") or {}
+    relations = state.get("relations") or {}
+    lore = state.get("lore") or []
+    facts = (state.get("context") or {}).get("facts") or []
+    events = state.get("event_log") or []
+    map_data = state.get("map") or {}
+
+    def add(severity, code, detail, ref=""):
+        issues.append({"severity": severity, "code": code, "detail": str(detail)[:240], "ref": str(ref)})
+
+    for eid, ent in entities.items():
+        if not isinstance(ent, dict):
+            add("error", "entity_not_object", "实体不是对象", eid)
+            continue
+        if eid != "player" and not str(ent.get("activity") or "").strip():
+            add("info", "npc_without_activity", "NPC 还没有 activity；查不到“现在在干嘛”", eid)
+        card = ent.get("card_json")
+        if isinstance(card, dict):
+            data = card.get("data") if isinstance(card.get("data"), dict) else {}
+            if data.get("name") and data.get("name") != ent.get("name"):
+                add("warn", "card_name_mismatch", "角色卡名与实体名不一致", eid)
+            if not data.get("name"):
+                add("warn", "card_missing_name", "角色卡缺 data.name", eid)
+        aliases = ent.get("aliases") or []
+        if aliases and len(set(map(str, aliases))) != len(aliases):
+            add("warn", "duplicate_aliases", "别名有重复", eid)
+
+    for key in relations:
+        parts = str(key).split(":")
+        if len(parts) != 2:
+            add("error", "relation_bad_key", "关系键必须是 a:b", key)
+            continue
+        for eid in parts:
+            if eid not in entities:
+                add("error", "relation_dangling", "关系指向不存在的实体", key)
+
+    seen_lore = {}
+    for i, entry in enumerate(lore):
+        if not isinstance(entry, dict):
+            add("error", "lore_not_object", "世界书条目不是对象", "lore-%d" % i)
+            continue
+        if not str(entry.get("content") or "").strip():
+            add("error", "lore_empty", "世界书条目缺 content", entry.get("id") or "lore-%d" % i)
+        if not entry.get("keys"):
+            add("warn", "lore_no_keys", "世界书条目没有触发键，永远不会命中", entry.get("id") or "lore-%d" % i)
+        if entry.get("id") and str(entry.get("id")) in seen_lore:
+            add("warn", "duplicate_lore_id", "世界书 id 重复", entry.get("id"))
+        seen_lore[str(entry.get("id") or "lore-%d" % i)] = True
+        key_sig = tuple(sorted(str(k) for k in (entry.get("keys") or [])))
+        if key_sig and key_sig in seen_lore:
+            add("info", "duplicate_lore_keys", "两条世界书主键完全相同，可能该合并", entry.get("id") or "lore-%d" % i)
+        seen_lore[key_sig] = True
+
+    for i, fact in enumerate(facts):
+        if not isinstance(fact, dict):
+            add("error", "fact_not_object", "事实不是对象", "fact-%d" % i)
+            continue
+        witnesses = fact.get("witnesses") or []
+        if "*" not in witnesses:
+            for who in witnesses:
+                if who not in entities:
+                    add("warn", "fact_witness_unknown", "事实见证人不在实体表", who)
+        if fact.get("status") not in (None, "open", "done", "expired", "superseded"):
+            add("warn", "fact_bad_status", "事实 status 不在枚举内", fact.get("id") or "fact-%d" % i)
+
+    seen_seq = set()
+    for i, event in enumerate(events):
+        if not isinstance(event, dict):
+            add("error", "event_not_object", "事件不是对象", "event-%d" % i)
+            continue
+        seq = event.get("seq")
+        if seq is not None and seq in seen_seq:
+            add("error", "event_duplicate_seq", "事件 seq 重复", seq)
+        if seq is not None:
+            seen_seq.add(seq)
+        for key in ("actor", "target"):
+            eid = event.get(key)
+            if eid and eid not in entities:
+                add("warn", "event_actor_unknown", "事件角色不在实体表", eid)
+        for eid in event.get("actors") or []:
+            if eid not in entities:
+                add("warn", "event_actor_unknown", "事件 actors 含未知实体", eid)
+
+    nodes = set()
+    for n in (map_data.get("nodes") or []):
+        if isinstance(n, dict):
+            nodes.add(n.get("id"))
+            nodes.add(n.get("name"))
+    nodes.discard(None)
+    for edge in map_data.get("edges") or []:
+        if not isinstance(edge, dict):
+            continue
+        for side in ("a", "b"):
+            if edge.get(side) not in nodes:
+                add("warn", "map_edge_dangling", "地图边指向未知节点", edge.get(side))
+
+    summary_max = max([int((x or {}).get("upto_tick", 0) or 0) for x in (state.get("summaries") or [])
+                       if isinstance(x, dict)] or [0])
+    if summary_max > int(state.get("tick", 0) or 0):
+        add("error", "summary_future", "摘要回合超过当前 tick", summary_max)
+
+    return {"ok": not any(x["severity"] == "error" for x in issues),
+            "issues": issues[:100],
+            "counts": {"entities": len(entities), "relations": len(relations), "lore": len(lore),
+                       "facts": len(facts), "events": len(events),
+                       "errors": sum(1 for x in issues if x["severity"] == "error"),
+                       "warnings": sum(1 for x in issues if x["severity"] == "warn"),
+                       "infos": sum(1 for x in issues if x["severity"] == "info")}}
 
 
 def get_character(state_path: str, name: str = "") -> dict:

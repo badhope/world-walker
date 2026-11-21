@@ -79,23 +79,30 @@ canon_init(bible={world: {...}, immutable: [...], unknown: [...]})
 - 三个钩子
 - 核心问题
 
-## 一回合
+## 一局怎么走
+
+一局不是 2000 个 tick，而是 **3 幕、每幕 3–6 场戏**。每场戏有：目标、障碍、压力钟、最多一条线索、无论成败的代价、下一场。
 
 ```text
-canon_brief(scene_text=...)           # 先读世界圣经
-read_state()                          # 或 context_pack(scene_text=...)
+campaign(action="brief")               # 本场契约：幕/目标/障碍/压力/线索/代价
+campaign(action="open", title="...", goal="...", obstacle="...",
+         pressure="...", clue="...", cost="...", choices=["...", "..."])
+canon_brief(scene_text=...)            # 世界圣经（根设定 + 已知/迷雾）
+read_state()                           # 或 context_pack(scene_text=...)
 roll(attribute="dex", difficulty=12)   # 需要判定时
 knowledge(action="character", name="roland")  # 写 NPC 对话前：位置/活动/知道什么
-knowledge(action="graph", name="roland")      # 需要关系网时
-knowledge(action="who_knows", fact_id="f12")  # 需要戏剧反讽/秘密传播时
-canon_check(facts=[...])               # 正文出现新地点/新历史/新规则时先查
 publish_prose(text="...")              # 唯一正文出口
-canon_commit(facts=[...], status="revealed")  # 通过后入账
-tick()                                 # 收尾
+campaign(action="resolve", outcome="yes-but", cost="...",
+         clocks=[{"name": "夜潮", "delta": 1}])  # 收尾：结算这一场
 ```
 
 规则：
 
+- **一回合 = 一场戏**。没有场景就不写“过了一天”；`tick` 只是内部 debug，玩家面不要用。
+- 每场结尾必须 `campaign(action="resolve")`，`outcome` 只能是 `yes` / `yes-but` / `no-and`。失败不是重来，是 `no-and`：给新信息、新代价、新选择。
+- 每场最多 2–3 个选择；每个选择都要有**不同的代价**，不要“安全/稳妥/什么都不做”，不要预告后果，不要替玩家推荐。
+- 拖延、失败、错过时机：`campaign(action="clock", name="...", delta=1)`。钟满时世界先动手，用叙事兑现。
+- 阶段推进看 `campaign(action="brief").act`，不是看等级或日期。
 - 数值只由工具结算，宿主不心算、不编造。
 - `canon_brief` 每回合先读；状态 > 记忆 > 推理，根设定不许改，不许 retcon。
 - `hidden` 是 GM 判定用的世界真相，不是主角已知信息；不要把隐藏设定直接倒给玩家，只能通过调查/对话/踩点逐步升为 `revealed`。
@@ -107,7 +114,7 @@ tick()                                 # 收尾
 - NPC 换地点/换状态后用 `knowledge(action=update_character, ...)` 写回；稳定新设定用 `worldbook_add`，重大事件用 `timeline_add`。
 - 失败也要前进：给新信息、新代价或新选择。
 - 不预设结局；只准备压力、种子、钟。
-- 每 3–5 回合看一次 `narrative` / `status`，把世界变化织进叙事。
+- 每 3–5 场看一次 `campaign(action="journal")` / `status`，把世界变化织进叙事；不要用 `narrative` 的涌现事件刷屏。
 
 ### 改根设定
 

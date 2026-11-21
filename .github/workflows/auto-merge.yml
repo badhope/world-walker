@@ -1,0 +1,23 @@
+name: Auto merge
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: |
+      github.event.pull_request.draft == false &&
+      (github.event.pull_request.user.login == 'dependabot[bot]' ||
+       contains(github.event.pull_request.labels.*.name, 'auto-merge'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable squash auto-merge and delete the source branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge "$PR_URL" --auto --squash --delete-branch

@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: checkout
+      - name: Python version
+        run: python3 --version
+      - name: Compile and audit
+        run: |
+          python3 scripts/compile_all.py
+          python3 scripts/verify_tests.py
+          python3 scripts/run_behavior_regressions.py
+          python3 scripts/verify_cli.py
+          python3 scripts/verify_panel.py
+          python3 scripts/verify_near_death.py
+          python3 scripts/verify_formulas.py
+          python3 scripts/verify_branches.py
+          python3 scripts/verify_settings.py
+          python3 scripts/verify_domain_model.py
+          python3 scripts/metrics.py --check
+          python3 scripts/verify_surface.py
+          python3 scripts/verify_mechanics.py
+          python3 scripts/verify_replay.py
+          python3 scripts/verify_docs.py
+          python3 scripts/verify_gameplay.py
+          python3 scripts/verify_generic.py
+          python3 scripts/verify_systems.py
+          python3 scripts/verify_mcp_mode.py
+
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: checkout
+      - name: Install MCP SDK
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install -r requirements-mcp.lock.txt
+          python3 -m pip install --no-deps -e ".[mcp]"
+          python3 -m pip check
+      - name: MCP and regressions
+        env:
+          WORLD_GAMES_STRICT: "1"
+        run: |
+          python3 scripts/verify_world.py
+          python3 scripts/verify_generic.py
+          python3 scripts/verify_systems.py
+          python3 scripts/verify_audit_fix.py
+          python3 scripts/verify_mcp_stdio.py
+          python3 scripts/verify_mcp_mode.py
+          python3 scripts/verify_injection.py
+          python3 scripts/verify_mutation.py
+          python3 scripts/user_playtest.py
+          python3 scripts/stress_freeplay.py 500
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: checkout
+      - name: Build and verify wheel
+        run: |
+          python3 -m pip install --upgrade pip build
+          python3 -m build
+          python3 scripts/check_wheel.py dist

@@ -65,6 +65,9 @@ jobs:
       - name: CLI 通道自检
         run: python scripts/verify_cli.py
 
+      - name: 面板契约自检
+        run: python scripts/verify_panel.py
+
       - name: 玩家壳契约自检
         run: python scripts/verify_player_shell.py
 
@@ -104,6 +107,9 @@ jobs:
 
       - name: 文档一致性
         run: python scripts/verify_docs.py
+
+      - name: 载具与领域模型
+        run: python scripts/verify_domain_model.py
 
       - name: 玩法层（剧本/事业线/世界书语义）
         run: python scripts/verify_gameplay.py
@@ -188,6 +194,9 @@ jobs:
 
       - name: MCP 端到端自检
         run: python scripts/verify_mcp_stdio.py
+
+      - name: MCP 独立模式契约
+        run: python scripts/verify_mcp_mode.py
 
       - name: 提示词注入防护
         run: python scripts/verify_injection.py

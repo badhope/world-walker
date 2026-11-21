@@ -13,6 +13,10 @@
 设计约束与其他 rules 一致：纯标准库、纯函数、不读写文件、不依赖时间/全局随机。
 """
 
+from __future__ import annotations
+
+import json
+
 MAX_ENTRIES = 32
 MAX_LABEL = 24
 MAX_KEY = 32
@@ -180,7 +184,89 @@ def profile_of(state: dict) -> dict:
 def set_profile(state: dict, raw: dict) -> dict:
     """覆盖式设置游戏档案（会规范化并 clamp）。"""
     state["game"] = normalize(raw)
+    _sync_player_from_profile(state, state["game"])
     return state["game"]
+
+
+MIRROR_KEYS = ("hp", "mp", "gold")
+
+
+def _sync_player_from_profile(state: dict, profile: dict) -> None:
+    """把档案里的 hp/mp/gold 镜像到实体；避免两套血条各走各的。"""
+    player = (state.get("entities") or {}).get("player")
+    if not isinstance(player, dict) or not isinstance(profile, dict):
+        return
+    for row in profile.get("resources") or []:
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("key") or "")
+        if key not in MIRROR_KEYS:
+            continue
+        player[key] = row.get("value", 0)
+        if key == "hp":
+            player["hp_max"] = max(1, int(row.get("max", 0) or player.get("hp_max", 1) or 1))
+        elif key == "mp":
+            player["mp_max"] = max(0, int(row.get("max", 0) or player.get("mp_max", 0) or 0))
+
+
+def sync_from_player(state: dict) -> dict:
+    """以实体为权威回写 hp/mp/gold 到档案；只在显式 `state["game"]` 时生效。
+
+    战斗、溺水、饥饿扣的是 `entities.player.hp`；`game.resources` 只是面板读数。
+    如果不回写，玩家已经掉到 2/42，面板还显示 42/42。所有 MCP 动作在 `_finish`
+    前调用本函数，保证两条路径最终落在同一个数上。
+    """
+    if not isinstance(state.get("game"), dict):
+        return {}
+    profile = profile_of(state)
+    player = (state.get("entities") or {}).get("player")
+    if not isinstance(player, dict):
+        return profile
+    for row in profile.get("resources") or []:
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("key") or "")
+        if key not in MIRROR_KEYS or player.get(key) is None:
+            continue
+        try:
+            value = _num(player.get(key), 0)
+        except (TypeError, ValueError):
+            continue
+        if key == "hp":
+            try:
+                hp_max = max(1, int(player.get("hp_max", 0) or 0))
+            except (TypeError, ValueError):
+                hp_max = 1
+            row["max"] = max(int(row.get("max", 0) or 0), hp_max)
+            value = max(int(row.get("min", 0) or 0), min(row["max"], value))
+        elif key == "mp":
+            try:
+                mp_max = max(0, int(player.get("mp_max", 0) or 0))
+            except (TypeError, ValueError):
+                mp_max = 0
+            row["max"] = max(int(row.get("max", 0) or 0), mp_max)
+            value = max(int(row.get("min", 0) or 0), min(row["max"], value)) if row["max"] else value
+        row["value"] = int(value) if float(value).is_integer() else round(value, 3)
+    state["game"] = normalize(profile)
+    return state["game"]
+
+
+def profile_for_display(state: dict) -> dict:
+    """只读视图：档案数值按实体 hp/mp/gold 投影，不改状态。"""
+    profile = json.loads(json.dumps(profile_of(state), ensure_ascii=False))
+    player = (state.get("entities") or {}).get("player") or {}
+    for row in profile.get("resources") or []:
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("key") or "")
+        if key not in MIRROR_KEYS or player.get(key) is None:
+            continue
+        value = _num(player.get(key), row.get("value", 0))
+        lo, hi = row.get("min", 0), row.get("max", 0)
+        if hi and hi > lo:
+            value = max(lo, min(hi, value))
+        row["value"] = int(value) if float(value).is_integer() else round(value, 3)
+    return profile
 
 
 def _bucket(profile: dict, kind: str):
@@ -228,6 +314,8 @@ def adjust(state: dict, key: str, kind: str = "resources", delta=None, value=Non
         after = int(after)
     target["value"] = round(after, 3) if isinstance(after, float) else after
     state["game"] = profile
+    if target["key"] in MIRROR_KEYS:
+        _sync_player_from_profile(state, profile)
     return {
         "key": target["key"], "label": target["label"], "kind": kind,
         "before": before, "after": target["value"], "delta": _num(target["value"]) - _num(before),

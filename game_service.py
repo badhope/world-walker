@@ -298,8 +298,11 @@ class GameService:
         return self._call("karma", actor=kwargs.get("actor", "player"),
                           karma_type=kwargs.get("karma_type", ""), victim=kwargs.get("victim"))
 
-    def tick(self) -> dict:
-        return self._call("tick")
+    def campaign(self, *, action: str = "brief", **kwargs) -> dict:
+        allowed = ("title", "goal", "obstacle", "pressure", "clue", "cost", "act_id",
+                   "choices", "outcome", "note", "clocks", "name", "delta", "reason")
+        return self._call("campaign", action=action,
+                          **{k: v for k, v in kwargs.items() if k in allowed})
 
     def advance(self, **kwargs) -> dict:
         return self._call("advance", next_level=kwargs.get("next_level", ""),

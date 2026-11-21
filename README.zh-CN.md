@@ -2,332 +2,108 @@
 
 **v1.16.2** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
 
-> **你说话，AI 演，引擎判，存档记。**
+World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话，判定、价格、背包、关系、存档与回放由确定性规则引擎负责；故事由任何 OpenAI-compatible `/chat/completions` 端点来写。
 
-World Walker 是**单人 AI 跑团 / 互动叙事引擎**，不是游戏助手，也不是后台管理台。
-打开一个页面，先告诉它你想玩什么类型、怎么玩、以谁的身份进去，然后就像和真人 GM
-聊天一样直接玩。没有外部宿主要接，没有第二个 App 要开。
+不用宿主 App，不绑定模型厂商。AI 写场面，引擎管事实。
 
-模型层是厂商中立的：任何支持 OpenAI-compatible `/chat/completions` 的端点都能用。
-你只填 `base_url`、`api_key`、`model`；自带网关、本地模型、聚合平台都行，没有厂商绑定。
-
-确定性的部分是叙述者不该乱编的东西：血量、价格、背包、关系、钟、线索、存档与回放。
-AI 写场面，引擎拥有事实。
-
-`206 个规则函数` · `72 个 MCP 工具` · `28 个玩家工具` · `6 套设定包` · `9 套模板` ·
-`21 个可执行自检` · `0 个运行时依赖`
+`217 个规则函数` · `73 个 MCP 工具` · `28 个玩家工具` · `6 套设定包` · `9 套模板` · `23 个可执行自检` · `0 个运行时依赖`
 
 ## 它解决什么
 
-多数“AI 跑团”死在三个地方。World Walker 把这三件事写进契约，而不是写进更长的提示词。
+多数 AI 跑团会坏在同样的地方。World Walker 把这些边界写进引擎，而不是写进更长的提示词。
 
-| 失败 | 常见情况 | World Walker 的做法 |
-|---|---|---|
-| **AI 替你玩** | 它写你的内心、决定、下一句话 | GM 只能写世界和 NPC，不能替玩家做决定；玩家代理权是硬规则 |
-| **NPC 全知** | 每个 NPC 都像读过整本设定集 | NPC 只能用 `memory(action=known, character=...)` 返回的事实；不知道就回避、撒谎或反问 |
-| **回合没有代价** | 文笔很好，但血量、线索、钟、关系一项都没变 | 每回合先填场面卡，回合后做审计；没有可见变化的回合会被标出来 |
+- **GM 不能替你玩。** 它只写世界和 NPC；你的决定始终由你来做。
+- **NPC 只知道亲眼见过的事。** 角色不能引用自己没见证过的事实。
+- **一回合必须留下痕迹。** 每次回复都有场面卡和审计；没有可见后果的回合会被标出来。
 
-战役是**玩出来的**，像真人 GM 带桌，不是小说式预写。开局先问类型、玩法、角色、基调、
-难度和边界；之后每回合是 `场面卡 → 玩家行动 → 世界反应 → 状态变化 → 下一个钩子`。
+战役是玩出来的，不是预写的。开局先问类型、玩法、角色、基调、难度和边界；之后每一回合走 `场面卡 → 你的行动 → 世界反应 → 状态变化 → 下一个钩子`。
 
-## 安装
+## 安装与开玩
 
 ```bash
-pip install -e ".[mcp]"      # 核心仅标准库；mcp 是 MCP 模式的可选依赖
-```
-
-接入任意 MCP 客户端（Claude Code / Codex / Cursor / opencode）：
-
-```json
-{ "mcpServers": { "world-walker": { "command": "world-walker-mcp" } } }
-```
-
-`world-walker-mcp` 仍作为兼容别名可用。
-
-远程 agent 也可以走 HTTP 接入，不必经 stdio：
-
-```bash
-wg mcp --http --port 8620   # 客户端连 http://127.0.0.1:8620/mcp 即可
-```
-
-## 直接开玩
-
-```bash
-pip install -e ".[mcp]"
+pip install -e ".[mcp]"      # 核心只用标准库；mcp 是可选依赖
 wg init my-game.json
 wg play --state my-game.json
 ```
 
-`wg play` 启动本地页面。打开 `http://127.0.0.1:8899/` 就是大厅：继续旧局，或开一个新世界。
-不需要外部宿主、插件或第二个 App。
+`wg play` 会打开本地页面 `http://127.0.0.1:8899/`。可以继续旧局，也可以开新世界。玩家界面只有一屏：左边是叙事，右边是窄栏（角色、任务、人情、世界），底部一个输入框。
 
-玩家界面只有一屏：左边叙事流，右边窄栏（角色/任务/人情/世界），底部一个输入框。
-旧管理台、翻译层、主题脚本和离线图表库都已移除；玩家壳是原生 HTML/CSS/JS，没有构建链。
+`wg` 是统一入口：`init`、`play`、`serve`、`mcp`、`run`、`doctor`、`version`。完整列表见 `wg --help`。
 
-## 模型
+## 用你自己的模型
 
-World Walker 不绑定厂商。模型层只假设一个 OpenAI-compatible `/chat/completions` 端点：
+模型层只假设一个 OpenAI-compatible 端点：
 
 ```json
 { "base_url": "https://你的网关/v1", "api_key": "sk-...", "model": "任意模型" }
 ```
 
-在页面里点“模型 · 去设置”，或用 `WW_MODEL_BASE_URL / WW_MODEL_API_KEY / WW_MODEL_NAME`。
-配置文件在 `~/.world-walker/model.json`，权限 `0600`。没有厂商列表、没有厂商 SDK、没有隐藏回退。
+在页面的模型设置里填写，或使用 `WW_MODEL_BASE_URL`、`WW_MODEL_API_KEY`、`WW_MODEL_NAME`。配置保存在 `~/.world-walker/model.json`，权限为 `0600`。
 
-## 开局先问你想玩什么（Session Zero）
-
-新游戏不是先选模板，而是先问四步：
-
-1. **类型** — 悬疑、奇幻、武侠仙侠、科幻、都市、历史、恋爱、恐怖、生存、日常。
-2. **玩法** — 探索解谜、生存压力、权谋经营、关系情感、战斗成长、调查恐怖、轻松日常。
-3. **角色** — 随机、自己写一句、用模板预设。
-4. **体验** — 基调、难度、内容边界、可选世界覆盖。
-
-引擎按类型自动配规则骨架（武侠仙侠→`tabletop`，悬疑→`mystery`），然后写一张**开局卡**：
-你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。模板只给骨架和种子，不预写剧情。
-
-## 一回合，完整流程
-
-**玩家：** 我推门进去，先看柜台后面的人。
-
-```
-场面卡      → 你在灰岩堡的酒馆；罗兰在柜台后；他不想让你下墓穴；悬赏还贴着
-玩家行动    → 推门、观察
-世界反应    → 罗兰先开口，试图把话题岔开
-状态变化    → 关系/线索/钟至少变一项
-下一个钩子  → 他手边有一把不属于他的钥匙
-```
-
-模型写正文，引擎结算数值并落盘。如果这一回合没有产生任何后果，审计会标出来，下一回合可以修正。
-
-## 工具
-
-模型看到的是 28 个玩家工具，不是旧的 72 个 MCP 工具面：
-
-`inspect` `progress` `story` `memory` `context` `canon` `characters` `knowledge` `sheet` `systems` `worlds` `calc`
-`panel` `new_game` `open_game` `saves` `snapshot` `combat` `combat_preview` `trade` `social`
-`karma` `tick` `advance` `travel` `use_item` `roll` `configure`
-
-MCP 仍可供高级宿主使用，但它不再是前门。玩家页面才是。
-
-## 体系与模板
-
-### 七类可插拔体系
-
-玩法机制是**数据**，不是代码。运行时随时增删。
-
-| 体系 | kind | 管什么 | 动作 |
-|---|---|---|---|
-| 时间 | `time` | 日/时/分、季节、天气 | `advance(minutes)`、`status` |
-| 掉落 | `loot` | 加权掉落表、数量区间、空掉落 | `roll(table, times, grant)`、`list` |
-| 制造 | `craft` | 配方、材料校验、技能判定、失败返还 | `craft(recipe)`、`list` |
-| 声望 | `reputation` | 势力声望 −100..100 + 分档 | `adjust(faction, delta)`、`status` |
-| 成就 | `achievement` | 条件（复用事业线谓词）+ 奖励 | `check`、`list` |
-| 成长 | `progression` | XP 曲线、等级、每级属性成长 | `grant(amount)`、`status` |
-| 自定义 | `custom` | 受限效果列表（资源/属性/进度轨/标签/事实/声望/XP/时间/掉落） | `<动作名>`、`list` |
-
-全部**确定性**：时间/掉落/制造的随机都由 `sha256(seed|tick|...)` 派生，不消耗 `rng_counter`。
-运行态写进 `state["systems"]["rt"]`，快照回退会连体系一起回退。
-
-### 九套开箱即用的模板
-
-| 模板 | 题材 | 玩法循环 | 体系数 |
-|---|---|---|---|
-| `jrpg` | 日式奇幻冒险 | freeform | 7 |
-| `mystery` | 本格推理调查 | choice | 5 |
-| `management` | 店铺经营 | mud | 4 |
-| `survival` | 末日生存 | mud | 4 |
-| `narrative` | 情感叙事 | freeform | 4 |
-| `cozy` | 田园生活 | freeform | 4 |
-| `tabletop` | 桌面跑团 | ttrpg | 5 |
-| `immersive` | 沉浸模拟 | ttrpg | 4 |
-| `xianxia` | 修仙成长（青冥界） | freeform | 5 |
-
-模板是起点不是锁死：`overrides` 深合并 dict、列表整体替换；
-`template_apply` 只返回 bundle 不落盘。
-
----
-
-## 四种玩法循环，同一套规则
-
-`playbook` 描述一局游戏怎么玩，并为宿主提供叙事指引。
-
-| 字段 | 可选值 | 作用 |
-|---|---|---|
-| `loop` | `freeform` / `choice` / `mud` / `ttrpg` | 自由推进 / 选项推进 / 地点命令 / 声明→判定→后果 |
-| `input` | `natural` / `choice` / `command` | 玩家输入形态 |
-| `progress` | `{axis, label, max}` | 进度轴：`level` / `gold` / `reputation` / `knowledge` / `clock` |
-| `failure` | `{mode, label, max}` | 失败条件：`hp` / `sanity` / `clock` / `deadline` / `none` |
-| `beat` | `{pattern, every}` | 节拍序列，如「日常·摩擦·升级·代价·回收」 |
-| `context` | `{inject, max_lore, scan_depth}` | 每回合上下文注入策略 |
-
-循环是给宿主的指引，不由引擎强制执行。失败不等于扣血——债主上门、被人盯上、理智耗尽
-都是可配置的失败条件，由 `failure_tick` 推进。
-
-六套设定包覆盖同一套循环的多种变体：玄枢界 `freeform`、折剑行 `ttrpg`、霓虹深渊 `mud`、雾港 `choice`、白鹿岛 `mud`（海岛求生）、九荒 `freeform`（凡人流修仙）。
-
-### 事业线
-
-事业线是 stage DAG，谓词只读世界状态：
+## 通过 MCP 接入 agent
 
 ```json
-{
-  "id": "fog_lighthouse",
-  "title": "别让灯塔亮起来",
-  "visibility": {"flag": "无署名信"},
-  "stages": [
-    {"id": "letter", "title": "信", "objectives": ["弄清信是谁写的"],
-     "exit_if": {"visited": "雾港码头"}, "next": ["keeper"]},
-    {"id": "keeper", "title": "看守", "objectives": ["找到沈伯"], "next": []}
-  ],
-  "reward": {"flags": ["灯塔真相"]}
-}
+{ "mcpServers": { "world-walker": { "command": "world-walker-mcp" } } }
 ```
 
-- **谓词：** `flag` / `visited` / `gold_gte` / `karma_gte` / `tier_gte` / `relation_gte` / `item_gte` / `counter_gte` / `stage_done`，支持 `all` / `any` / `not` 组合。
-- **dormant 不显示** —— 没满足 `visibility` 的事业线不进面板，避免变成待办清单。
-- **只有 `exit_if` 才推进** —— 没有它的一幕永不自动往前跑；由宿主调用 `quest_advance`。
-- **失败优先** —— `fail_if` 或 `deadline_tick` 命中直接判失败。
-- **奖励只发一次** —— 完成后反复 tick 不会重复给钱。
-- 载入时校验 DAG：有环、`next` 指向不存在的 stage 一律报错。
+任何 MCP 客户端都能接。远程 agent 可以用 HTTP，不必走 stdio：
 
-### 世界书
+```bash
+wg mcp --http --port 8620
+```
 
-与 SillyTavern 语义对齐，但逐回合确定性：
+然后把客户端指向 `http://127.0.0.1:8620/mcp`。一套设定包加一次交易，就能开始一局完整的游戏：
 
-| 语义 | 状态 |
-|---|---|
-| `keys` / `secondary_keys` / `selective` | 支持 |
-| `selectiveLogic` 四值（AND_ANY / NOT_ALL / NOT_ANY / AND_ALL） | 支持 |
-| `constant` / `insertion_order` / `enabled` | 支持 |
-| `probability` / `use_probability` | 支持，由 `sha256(seed|tick|entry)` 派生 |
-| `sticky` / `cooldown` / `delay` | 支持，按 tick 计，写进状态 |
-| `group` / `group_weight` / `group_override` | 支持，同组只出一条 |
-| `scan_depth` / `match_whole_words` / `exclude_recursion` | 支持 |
-| 递归扫描 | 支持，但**默认关闭** |
-| `position` / `depth` / `role` / `outlet` | 不支持 —— 提示词布局属于宿主 |
-| `vectorized` / `automationId` / `characters` 过滤器 | 不支持 —— 需要嵌入模型或前端脚本 |
+```
+load_setting(path="settings/玄枢界.setting.json")
+trade(location="临川城", item="ningyuan_dan", direction="buy", quantity=1)
+```
 
-面板「世界书」抽屉显示每条设定的触发次数与 sticky/cooldown 剩余，
-用来回答"为什么这一段被触发了"。`lore_lookup` 可以按任意文本预演一次触发，
-不写状态也不消耗冷却。
+宿主只在需要数字时调用工具，正文留在对话里。
 
-### 设定包
+## 引擎管什么
 
-一个 JSON 就是一个世界。格式说明：[settings/README.md](settings/README.md)。
+- **判定与战斗：** d20、2d6、d100、4dF、骰池、对抗判定、伤害与死亡规则。
+- **经济与人：** 价格、背包、关系、声望、债务与势力变化。
+- **世界推进：** 钟、传闻、游走 NPC、线索、事业线阶段与长局后果。
+- **回放：** 单一事务写入源、带状态指纹的动作日志、可检查的存档。
+- **上下文边界：** NPC 知情范围、canon 事实、世界书触发，以及每次回复前的场面卡。
 
-| 设定包 | 类型 | 特色 |
-|---|---|---|
-| [`玄枢界`](settings/玄枢界.setting.json) | 东方玄幻 | 十阶修行、玄晶经济、八股势力、21 条世界书 |
-| [`折剑行`](settings/折剑行.setting.json) | 武侠 | 七阶身手、断剑主线、当铺经济 |
-| [`霓虹深渊`](settings/霓虹深渊.setting.json) | 赛博朋克 | F–S 评级、信用点、义体与记忆、雨季氛围 |
-| [`雾港`](settings/雾港.setting.json) | 调查悬疑 | 六阶调查、理智/体力、灯塔谜题 |
-
-`scripts/verify_settings.py` 对每个包断言：载入完整、术语覆盖生效且无未声明的外来词、
-货币与品牌落盘、地点描写生效、连跑 15 回合后势力与相位都在动。
-
----
-
-## 项目范围
-
-**在范围内：** 单人 AI GM、Session Zero、回合契约与审计、确定性规则结算、
-设定包、存档、上下文台账、NPC 知情边界、回放。
-
-**明确不做：** 多人联机、云端账号、插件市场、以售卖内容为目的的预写战役、图像生成。
-
----
+玩家界面只暴露 28 个工具；73 个 MCP 工具留给高级宿主。两条入口共用同一套规则、存档与写入源。
 
 ## 质量
 
-项目没有 pytest 套件，这是设计选择。验证由 `scripts/verify_*.py`、行为回归和变异测试组成：
-**断言必须能被杀死，而不是只被覆盖率统计到。**
-
-| 自检 | 断言数 | 锁住什么 |
-|---|---|---|
-| `verify_player_shell.py` | 23 | 真实浏览器：大厅 / Session Zero / 开局卡 / 对局视图 / 正文不重复 |
-| `verify_surface.py` | 27 | 玩家 API / 模型配置 / 存档列表 / 静态资源 / 单写入源不变量 |
-| `verify_docs.py` | 27 | 版本 / 链接 / 当前文档 / 无幽灵脚本或素材 |
-| `verify_mcp_stdio.py` | 72 | stdio + HTTP MCP 握手 / Session Zero 提示词 / 不依赖面板 |
-| `verify_mcp_mode.py` | 8 | MCP 独立模式契约：开局问询 / 正文归属 / 不调用 open_panel |
+验证是用来失败的，不是用来好看的。`scripts/verify_*.py`、行为回归和变异测试都会在代码被改坏时变红。主门禁跑 23 个可执行自检，核心域有覆盖率要求，变异测试要求零存活。
 
 ```bash
-python3 scripts/verify_player_shell.py
-python3 scripts/verify_surface.py
 python3 scripts/verify_docs.py
+python3 scripts/verify_player_shell.py
 python3 scripts/verify_mcp_stdio.py
 ```
 
-另有两套端到端压测：`stress_freeplay.py 500`（CI）与 `stress_freeplay.py 2000`（本机），
-全程走真实 MCP stdio。最近一次 500 轮：0 意外错误、0 不变量破坏。
+## 存档与故障
 
-覆盖率门禁：核心域 ≥70%（实测 82%，含通用游戏层）；`pyflakes` 0。
-`bandit` 在引擎核心为 0；仓库级扫描仍会在测试脚本里报低危项。
+存档使用原子替换和 `.bak` 降级，并带 Windows/POSIX 可重入锁。崩溃测试覆盖多个中断窗口。
 
----
+如果存在 `<state>.archive-pending` 或 `.ww-session-transaction-pending`，受保护的读写会被拒绝。这里**不会自动恢复**：请停止写入、保留现场并人工核对。保存失败后恢复调用方内存中的状态对象，**不等于磁盘归档回滚**。详见[归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。
+
+## 项目范围
+
+面向单人 AI GM、设定包、本地存档和 MCP 宿主。明确不做多人联机、云端账号、插件市场，也不把预写战役当内容售卖。
 
 ## 项目结构
 
 ```
 world-walker/                  # 仓库根即 game_engine 包
-├── panel.py                   # 玩家 HTTP/SSE 服务 + 开局/新局/对话 API
-├── panel.html / .css / .js    # 原生玩家壳：大厅、向导、对局、右栏
-├── dialog_runtime.py          # GM 系统提示、工具循环、回合收尾与审计
-├── narrative_rules.py         # Session Zero、开局卡、场面卡、回合审计
-├── player_view.py             # 存档 -> 玩家视图
-├── model_config.py            # OpenAI-compatible base_url / key / model
-├── tool_registry.py           # 28 个玩家工具
-├── game_service.py            # 引擎上的轻量意图层
-├── host_adapter.py            # 可选外部宿主桥（不是默认路径）
-├── state_schema.py            # 状态模型 / 原子写 / 事务锁
-├── templates.py               # 9 套规则骨架
-├── rules/                     # 确定性结算函数
-├── settings/                  # 可直接开玩的设定包
+├── panel.py                   # 玩家 HTTP/SSE 服务与游戏 API
+├── dialog_runtime.py          # GM 提示词、工具循环、回合收尾与审计
+├── narrative_rules.py         # Session Zero、场面卡、回合审计
+├── rules/                     # 确定性结算
+├── settings/                  # 六套可直接开玩的世界
 ├── saves/                     # 本地存档库
-└── scripts/                   # 自检 + 构建工具
+└── scripts/                   # 验证与构建工具
 ```
-
----
-
-## 常见问题
-
-**需要联网吗？**
-只有模型端点在远端时才需要。引擎与存档都在本地；任何 OpenAI-compatible 网关、本地模型或聚合平台都行。
-
-**需要 OpenAI / Claude 的 API Key 吗？**
-真实模型端点通常需要。Key 存在 `~/.world-walker/model.json`，权限 `0600`，接口永远只返回掩码。
-
-**能用于商业项目吗？**
-MIT 许可。演示包里的人物、势力、地名全部原创，可自由替换。
-
-**为什么不用 pytest？**
-断言必须经得起"改坏代码看测试红不红"的检验。`verify_tests.py` 静态拒绝恒真断言，
-`verify_mutation.py` 注入 50 个真实缺陷并要求全部被杀。两者都在门禁里。
-
-**谁写存档？**
-引擎。玩家页面调用本地 API，模型调用工具；所有变更都穿过同一个事务写入源，
-确定性与回退才可信。
-
-**保证断电安全吗？**
-不保证，我们也不这样宣称。存档使用原子替换 + `.bak` 降级 + Windows/POSIX 可重入锁，
-崩溃测试覆盖多个中断窗口。若存在 `<state>.archive-pending` 或 `.ww-session-transaction-pending`，
-相关受保护读写会被拒绝，且不会自动恢复——请停止写入、保留现场并人工核对。
-保存失败时恢复调用方内存中的状态对象，不等于磁盘归档回滚。
-详见[归档人工恢复指南](docs/ARCHIVE_RECOVERY.md)。
-
----
-
-## 重新生成演示素材
-
-```bash
-python scripts/make_demo.py          # 6 套世界的真实演示存档 → docs/demo/
-python scripts/verify_settings.py    # 六套设定包全量校验
-```
-
----
 
 ## 许可
 
-MIT。
-酒馆生态格式的兼容实现参考了 SillyTavern 社区公开的角色卡与世界书规范；
-本项目不复用任何作品的名词与设定。
+MIT。演示包里的人物、势力与地名均为原创，不复用任何现有作品的名词与设定。

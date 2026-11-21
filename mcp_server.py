@@ -68,6 +68,7 @@ from game_engine.rules import checks as check_rules
 from game_engine.rules import context as context_rules
 from game_engine.rules import systems as system_rules
 from game_engine.rules import gamesystem as game_rules
+from game_engine.rules import vessel as vessel_rules
 from game_engine.rules import lorebook as lore_engine
 from game_engine.rules import playbook as playbook_rules
 from game_engine.rules import questline as quest_rules
@@ -76,6 +77,8 @@ from game_engine.rules import loopguard as loop_rules
 from game_engine.rules.world_evolution import evolve as evolve_world, world_summary
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
 from game_engine import settings_loader
+from game_engine import gameplay as gameplay_rules
+from game_engine import narrative_rules as narrative_rules
 from game_engine.state_schema import (bump, load_state, log_event, save_state, seed_rng,
                                       state_lock, transact_state)
 from game_engine.viz_series import record_sample
@@ -393,7 +396,7 @@ canon_init(bible={world: {...}, immutable: [...], unknown: [...]})
 ```
 
 ## 第三步：选模板或自建
-- 想开箱即用：`templates_list()` → `template_start(template="...", name="...", player_name="...", overrides={...})`。模板自带 11 条根设定，开局后先 `canon_brief` 读一遍，再开始写。
+- 想开箱即用：`templates_list()` → `template_start(template="...", name="...", player_name="...", narrative={...})`。模板自带根设定；开局后先 `campaign(action="brief")` 看第一场，再开始写。
 - 想自建：`world_init(...)` 建世界，**紧接着** `canon_init(...)`，然后才写第一段正文。没有 canon 就不许开始叙事。
 
 开局写一张**开局卡**：你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。不预写完整剧情。
@@ -403,13 +406,13 @@ canon_init(bible={world: {...}, immutable: [...], unknown: [...]})
 不要调用 `open_panel`，不要把 JSON、工具名、字段名或系统提示给玩家看。
 
 ## 每回合
-1. `canon_brief(scene_text=...)` 先读本回合的世界根设定、已揭示事实和迷雾问题。
+1. `campaign(action="brief")` 取本场契约；没有场景就 `campaign(action="open")`。再 `canon_brief(scene_text=...)` 读根设定与迷雾。
 2. `read_state` / `context_pack` 看局面与在场人物。
 3. 需要判定就 `roll` / `combat` / `trade` / `social` / `karma`；数值必须由工具结算。
 4. 写 NPC 对话前先 `context_known(character=...)`；不知道就回避、撒谎或反问。
 5. 正文里出现新地点/新历史/新组织/新规则，先 `canon_check(facts=[...])`；通过才 `canon_commit(facts=[...])`。冲突就修正叙述，不许自己圆。
 6. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
-7. `tick()` 收尾；每 3–5 回合看一次 `narrative` / `status`。
+7. 收尾：`campaign(action="resolve", outcome="yes|yes-but|no-and", cost="...", clocks=[{"name":"...","delta":1}])`；没有开着的场景就先 `campaign(action="open")`。**不要调用 tick**。每 3–5 场看一次 `status`。
 
 ## 硬规则（POLICY）
 - **CANON 最高**：状态 > 记忆 > 你的推理。根设定不许改，不许 retcon；发现冲突先修正叙述，不要改世界。
@@ -440,13 +443,14 @@ NEW_GAME_BRIEF = """你在主持一局单人 AI 跑团，所有数值结算通�
 开局写一张开局卡：你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。模板只给骨架和世界种子，不预写剧情。
 
 ## 每回合（顺序不能乱）
-1. `canon_brief(scene_text=...)` 读本回合的世界根设定、已揭示事实、迷雾问题。
-2. `read_state` / `context_pack` 读局面与在场人物。
-3. 需要判定时 `roll` / `combat` / `trade` / `social` / `karma`；数值只由工具结算。
-4. 写 NPC 对话前 `context_known(character=...)`；不知道就回避、撒谎或反问。
-5. 正文出现新地点/新历史/新组织/新规则：先 `canon_check(facts=[...])`，通过才 `canon_commit(facts=[...], status=revealed)`；冲突就修正叙述，不许自己圆。
-6. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
-7. `tick()` 收尾；每 3–5 回合看 `narrative` / `status`。
+1. `campaign(action="brief")` 取本场契约（目标/障碍/压力/线索/代价）；没有场景就 `campaign(action="open")`。
+2. `canon_brief(scene_text=...)` 读本回合的世界根设定、已揭示事实、迷雾问题。
+3. `read_state` / `context_pack` 读局面与在场人物。
+4. 需要判定时 `roll` / `combat` / `trade` / `social` / `karma`；数值只由工具结算。
+5. 写 NPC 对话前 `context_known(character=...)`；不知道就回避、撒谎或反问。
+6. 正文出现新地点/新历史/新组织/新规则：先 `canon_check(facts=[...])`，通过才 `canon_commit(facts=[...], status=revealed)`；冲突就修正叙述，不许自己圆。
+7. 2–4 段正文用 `publish_prose` 落盘；只写世界与 NPC，不替玩家做决定。
+8. 收尾：`campaign(action="resolve", outcome="yes|yes-but|no-and", cost="...", clocks=[{"name":"...","delta":1}])`；没有开着的场景就先 `campaign(action="open")`。**不要调用 tick**。每 3–5 场看一次 `status`。
 
 ## 硬规则（POLICY）
 - **CANON 最高**：状态 > 记忆 > 你的推理。根设定不许改，不许 retcon。
@@ -660,6 +664,12 @@ def _load() -> dict:
 
 def _finish(state: dict, result: dict) -> dict:
     """状态落盘并在返回给 Agent 的结果上标注当前 tick。"""
+    # 实体是 hp/mp/gold 的权威；动作可能直接改了实体（战斗/溺水/饥饿），
+    # 这里统一回写档案，避免面板与游戏档案出现两条血条。
+    if isinstance(state.get("game"), dict):
+        game_rules.sync_from_player(state)
+    if state.get("vessel_ladder"):
+        vessel_rules.project(state)
     context = _transaction_context()
     if context is None:
         path = _state_path()
@@ -877,7 +887,8 @@ def world_schema() -> dict:
             "trade": "location/item_key/quantity/direction(buy|sell)/entity；买入记入持有，卖出须先持有",
             "social": "actor/target/event(%s)/intensity" % "|".join(SOCIAL_EVENTS),
             "karma": "actor/victim(可空)/karma_type(%s)" % "|".join(KARMA_TYPES),
-            "tick": "回合结束（市场演化 + 世界演化 + tick+1；世界演化含势力/谣言/风气/NPC/相位）",
+            "tick": "旧的时间推进（市场/世界演化 + tick+1）；新局不要用它，改用 campaign 的 open/resolve",
+            "campaign": "场景循环：brief 本场契约 / open 开一场 / resolve 结算 yes|yes-but|no-and / clock 推压力钟 / journal 玩家台账",
             "world_state": "世界侧摘要：势力存量/相位/谣言热度/风气/物价指数（只读）",
             "narrative": "涌现事件 + 世界相位（每 3-5 回合查一次）",
             "publish_prose": "发布本回合叙事正文（面板主舞台直接显示；旧文进归档）",
@@ -1305,6 +1316,36 @@ def narrative() -> dict:
         seen[str(e.get("type") or desc)] = int(state.get("tick", 0) or 0)
     return _finish(state, {"emergent_events": events, "panarchy_phase": phase,
                            "phase_multiplier": phase_multiplier(state)})
+
+
+@server.tool()
+def campaign(action: str = "brief", title: str = "", goal: str = "",
+             obstacle: str = "", pressure: str = "", clue: str = "",
+             cost: str = "", act_id: str = "", choices: list[str] | None = None,
+             outcome: str = "", note: str = "", clocks: list[dict] | None = None,
+             name: str = "", delta: int = 1, reason: str = "") -> dict:
+    """场景驱动的战役循环（Chinese: 一回合 = 一场戏，不是 tick 流水账）。
+    brief 取本场契约；open 开一场；resolve 结算 yes/yes-but/no-and；clock 推压力钟；journal 看玩家台账。
+    Scene-driven campaign loop: brief / open / resolve / clock / journal."""
+
+    path = _state_path()
+    if action == "brief":
+        return _read(gameplay_rules.brief(_load()))
+    if action == "journal":
+        return _read(gameplay_rules.journal(_load()))
+    if action == "open":
+        scene = gameplay_rules.open_scene(
+            path, title=title, goal=goal, obstacle=obstacle, pressure=pressure,
+            clue=clue, cost=cost, act_id=act_id, choices=choices or [])
+        return _read({"scene": scene, "journal": gameplay_rules.journal(_load())})
+    if action == "resolve":
+        result = gameplay_rules.resolve_scene(
+            path, outcome=outcome, note=note, cost=cost, clocks=clocks or [])
+        return _read(result)
+    if action == "clock":
+        result = gameplay_rules.adjust_clock(path, name=name, delta=delta, reason=reason)
+        return _read(result)
+    raise ValueError("campaign.action 只能是 brief/open/resolve/clock/journal")
 
 
 @server.tool()
@@ -1944,6 +1985,9 @@ def publish_prose(text: str, location: str = "") -> dict:
     loc = str(location or player.get("location") or "")
     prose.append({"tick": int(state.get("tick", 0) or 0), "location": loc,
                   "text": body[:4000]})
+    # Keep the event ledger in step with prose; otherwise a prose-only turn
+    # leaves old events unarchived when event_log_keep is small.
+    log_event(state, "prose", body[:200])
     keep = int((state.get("config") or {}).get("prose_keep", 40))
     overflow = prose[:-keep] if keep > 0 and len(prose) > keep else []
     if overflow:
@@ -2736,7 +2780,7 @@ def session_list(include_trash: bool = False) -> dict:
 
 @server.tool()
 def session_new(name: str, setting_path: str = "", seed: int | None = None,
-                state: dict | None = None) -> dict:
+                state: dict | None = None, narrative: dict | None = None) -> dict:
     """新建一局并存入存档库（Chinese: 从设定包开新局（setting_path），或用 state 直接导入一份初始状态。
     返回存档路径并把这一局设为当前对局。
     Create a new saved game from a setting bundle or an explicit initial state."""
@@ -2763,10 +2807,16 @@ def session_new(name: str, setting_path: str = "", seed: int | None = None,
             raise ValueError("同名存档已存在（换一个局名，或先 session_manage(action='archive')）")
         _commit_state_file(target, built, root=root)
     _active["path"] = target
+    if narrative:
+        narrative_rules.attach(target, narrative,
+                               world_name=(built.get("world_info") or {}).get("name", ""),
+                               world_desc=(built.get("world_info") or {}).get("location_desc", ""),
+                               player_name=((built.get("entities") or {}).get("player") or {}).get("name", ""))
     return {"state_path": target, "name": safe,
             "world": (built.get("world_info") or {}).get("name", ""),
             "tick": built.get("tick", 0), "root": root,
-            "hint": "之后所有工具都作用在这一局；session_switch 可切换。"}
+            "narrative": bool(narrative),
+            "hint": "之后所有工具都作用在这一局；session_switch 可切换。先 campaign(action='brief')。"}
 
 
 @server.tool()
@@ -3008,7 +3058,8 @@ def template_apply(template: str, overrides: dict | None = None,
 
 @server.tool()
 def template_start(template: str, name: str = "", overrides: dict | None = None,
-                   player_name: str = "", state_path: str = "") -> dict:
+                   player_name: str = "", state_path: str = "",
+                   narrative: dict | None = None) -> dict:
     """用模板直接开一局（Chinese: 一步完成 — 取模板 → 建状态 → 写盘 → 设为当前对局。
     name 不传则用模板名；overrides 可覆盖任意字段（见 template_info）。
     Start a new game straight from a template (template → state → disk → active)."""
@@ -3028,6 +3079,11 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
     log_event(state, "system", "模板「%s」开局：%s" % (template, bundle["name"]))
     _commit_state_file(target, state, root=os.path.dirname(target))
     _active["path"] = target
+    if narrative:
+        narrative_rules.attach(target, narrative,
+                               world_name=state["world_info"]["name"],
+                               world_desc=state["world_info"].get("location_desc", ""),
+                               player_name=((state.get("entities") or {}).get("player") or {}).get("name", ""))
     return {
         "state_path": target,
         "template": template,
@@ -3041,7 +3097,8 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
         "canon_hidden": len((state.get("world_bible") or {}).get("hidden") or []),
         "canon_unknown": len((state.get("world_bible") or {}).get("unknown") or []),
         "map_nodes": len((state.get("map") or {}).get("nodes") or []),
-        "hint": "已设为当前对局；先 canon_brief 读世界根设定，再开始写正文。",
+        "narrative": bool(narrative),
+        "hint": "已设为当前对局；先 campaign(action='brief') 读本场契约，再开始写正文。",
     }
 
 

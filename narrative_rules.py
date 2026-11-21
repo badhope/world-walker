@@ -304,7 +304,31 @@ def attach(state_path, raw, world_name="", world_desc="", player_name=""):
         state["narrative"] = cfg
 
     transact_state(edit, state_path, allow_create=False)
+    # The gameplay contract is attached in the same breath as the narrative
+    # profile.  A game may have no authored gameplay block; normalize() still
+    # gives it a three-act skeleton rather than a blank screen.
+    try:
+        from game_engine import gameplay as gameplay_rules
+        gameplay_rules.attach(state_path, raw=state.get("gameplay"),
+                              narrative=cfg, bundle=state)
+    except Exception:
+        pass
     return cfg
+
+
+def _player_gameplay(state):
+    """Player-facing slice of the scene contract: act, scene, clocks, journal."""
+    try:
+        from game_engine import gameplay as gameplay_rules
+        brief = gameplay_rules.brief(state)
+        return {
+            "act": brief.get("act") or {},
+            "scene": {k: (brief.get("scene") or {}).get(k) for k in
+                      ("title", "goal", "obstacle", "pressure", "clue", "cost")},
+            "journal": brief.get("journal") or {},
+        }
+    except Exception:
+        return {}
 
 
 def player_narrative(state):
@@ -345,6 +369,7 @@ def player_narrative(state):
         "front_count": len(cfg["fronts"]),
         "brief": brief,
         "opening": str(raw.get("opening") or ""),
+        "gameplay": _player_gameplay(state),
     }
 
 
@@ -376,6 +401,11 @@ def turn_brief(state):
         if isinstance(clock, dict):
             clocks.append("%s %s/%s" % (
                 clock.get("name") or "局势", clock.get("filled", 0), clock.get("segments", 6)))
+    try:
+        from game_engine import gameplay as gameplay_rules
+        scene_card = gameplay_rules.brief(state)
+    except Exception:
+        scene_card = {}
     return {
         "location": location,
         "present": present,
@@ -387,6 +417,12 @@ def turn_brief(state):
         },
         "facts": facts,
         "clocks": clocks,
+        "gameplay": {
+            "act": scene_card.get("act"),
+            "scene": scene_card.get("scene"),
+            "clocks": scene_card.get("clocks"),
+            "choice_policy": scene_card.get("choice_policy"),
+        } if scene_card else {},
     }
 
 
@@ -423,6 +459,23 @@ def audit_turn(reply, tools_used, before, after):
     if not changed:
         findings.append({"severity": "S3", "category": "continuity",
                          "issue": "这一回合没有可见的状态变化", "fix": "推进时间/信息/关系/资源之一"})
+    before_scene = int(before.get("scene_count", 0) or 0)
+    after_scene = int(after.get("scene_count", 0) or 0)
+    if after_scene <= before_scene:
+        findings.append({"severity": "S2", "category": "scene",
+                         "issue": "这一回合没有结算任何场景，可能又退回了 tick 流水账",
+                         "fix": "用 campaign(action='resolve', outcome=..., cost=...) 收尾"})
+    open_scene = after.get("scene") if isinstance(after.get("scene"), dict) else None
+    if not open_scene:
+        findings.append({"severity": "S3", "category": "scene",
+                         "issue": "回合结束后没有下一场已开的戏", "fix": "用 campaign(action='open') 开下一场"})
+    policy = ((after.get("gameplay") or {}).get("choice_policy") or {})
+    if policy.get("must_cost"):
+        # Cheap heuristic: choices that all look like "safe / safer / safest"
+        # are not choices.  This only flags; it never rewrites prose.
+        if re.search(r"(安全|稳妥|保险|什么都不做|原地等待)", text):
+            findings.append({"severity": "S2", "category": "choice",
+                             "issue": "选项/叙述出现无代价的安全牌", "fix": "让每个选择都失去一点东西"})
     return findings
 
 

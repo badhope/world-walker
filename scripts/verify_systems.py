@@ -461,8 +461,9 @@ def s8c_world_layers():
     check_true('S8c 地图危险度不是全零',
                len({n.get('danger') for n in (mp.get('nodes') or [])}) > 1,
                sorted({n.get('danger') for n in (mp.get('nodes') or [])}))
-    check('S8c 玩家起点与地图起点一致',
-          st['entities']['player'].get('location'), mp.get('start'))
+    check_true('S8c 玩家起点与地图起点一致',
+               st['entities']['player'].get('location') == mp.get('start'),
+               '%s vs %s' % (st['entities']['player'].get('location'), mp.get('start')))
     check_true('S8c 地图边引用的是已生成地点',
                all(e.get('a') in node_names and e.get('b') in node_names
                    for e in (mp.get('edges') or [])),

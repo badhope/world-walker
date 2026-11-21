@@ -249,8 +249,21 @@ def build_specs(svc: GameService) -> list[ToolSpec]:
             _params(actor=_str("行为者 id"), karma_type=_str("因果类型"), victim=_str("受害者 id")),
             svc.karma,
         ),
-        ToolSpec("tick", "推进一个回合：市场、势力、谣言、文化、NPC 与相位都会动。每回合收尾调一次。",
-                 _params(), svc.tick),
+        ToolSpec(
+            "campaign",
+            "场景驱动的战役循环。brief 取本场契约（目标/障碍/压力/线索/代价）；"
+            "open 开一场；resolve 用 yes / yes-but / no-and 结算并付代价；clock 推压力钟；journal 看玩家台账。"
+            "一回合 = 一场戏；不要用 tick 或“过了一天”代替场景。",
+            _params(action={"type": "string", "enum": ["brief", "open", "resolve", "clock", "journal"]},
+                    title=_str("本场标题"), goal=_str("本场目标"), obstacle=_str("谁/什么在阻止"),
+                    pressure=_str("哪只钟会因拖延前进"), clue=_str("本场最多揭示的一条线索"),
+                    cost=_str("无论成败的代价"), act_id=_str("幕 id"),
+                    choices={"type": "array", "items": {"type": "string"}},
+                    outcome={"type": "string", "enum": ["yes", "yes-but", "no-and"]},
+                    note=_str("结果说明"), clocks={"type": "array", "items": {"type": "object"}},
+                    name=_str("钟名"), delta=_int("钟变化量"), reason=_str("原因")),
+            svc.campaign,
+        ),
         ToolSpec("advance", "尝试突破。next_level 是设定里的下一层名；insight 0-1 表示叙事依据强弱。",
                  _params(next_level=_str("下一层名"), insight=_num("顿悟程度")), svc.advance),
         ToolSpec("travel", "移动玩家。只有它改玩家 location；首次到达自动进图鉴。desc 给一句场景描写。",

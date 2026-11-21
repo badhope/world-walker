@@ -3,10 +3,11 @@
 
 include LICENSE
 include README.md
-include README.en.md
+include README.zh-CN.md
 include BRAND.md
 include ARCHITECTURE.md
-include GAME_MASTER_PROTOCOL.md
+include ROADMAP.md
+include CHANGELOG.md
 include pyproject.toml
 
 recursive-include settings *.json *.md

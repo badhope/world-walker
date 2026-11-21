@@ -1,45 +1,50 @@
 {
-  "name": "白鹿岛·第一夜",
-  "note": "全民穿越求生 + 白鹿原式宗族秩序。白天争水，夜里守火；白鹿祠是岛心，也是旧代留下的债。",
+  "name": "万岛海域·救生筏",
+  "note": "首批一百万人同时投放，每人一艘普通充气救生筏；艇就是唯一的家、仓库、领地和移动基地。艇底漏水，必须先排水、堵漏、加固，再通过艇核升级。",
   "seed": 20261120,
   "world": {
-    "name": "白鹿岛",
-    "era": "全民穿越 · 第 1 天 07:17",
-    "location_desc": "你趴在白鹿滩的湿沙上，嘴里全是咸味。潮水刚退，远处有一排翻倒的塑料箱、半截渔船，和一尊被海风磨掉半张脸的白鹿石像。手环在手腕上震动：『求生者 001，欢迎来到白鹿岛。距夜潮 12 小时 43 分。』"
+    "name": "万岛海域",
+    "era": "全民投放 · 第 1 天 · 低潮窗口",
+    "location_desc": "你在一条充气救生筏上醒来。筏身是灰橙色橡皮浮筒，长约两米四，没有硬甲板，也没有舱壁；筏底有积水，左舷浮筒的气阀在慢漏。你只能坐在浮筒上，物资塞在筏包的两格网袋里。海面上不止你一条筏，远处是一排排灰橙色小点。三百米外的外礁正在退潮，露出湿黑礁盘；手环标着：【安全窗口 12:10-12:50，低潮 40 分钟。超时将被高潮切断退路。】手环强制播报：【全球求生公告 · 第 1 批】。区域频道里有人在喊漏气、换胶水、抢潮窗。"
   },
   "player": {
     "name": "陈砚",
     "faction": "散人",
-    "level": "流民",
+    "level": "求生者",
     "attrs": {
       "str": 10,
-      "dex": 11,
+      "dex": 10,
       "int": 12,
       "con": 11,
       "cha": 10
     },
-    "hp": 40,
-    "hp_max": 40,
-    "mp": 30,
-    "mp_max": 30,
-    "gold": 3,
-    "location": "白鹿滩",
+    "hp": 42,
+    "hp_max": 42,
+    "mp": 32,
+    "mp_max": 32,
+    "gold": 2,
+    "location": "救生筏",
     "items": {
-      "water": 1,
-      "canned": 1,
-      "lighter": 1,
-      "knife": 1,
-      "tape": 1
+      "water": 2,
+      "biscuit": 2,
+      "signal_flare": 1,
+      "first_aid": 1,
+      "phone": 1,
+      "student_card": 1,
+      "rope": 1,
+      "hand_pump": 1,
+      "patch_cloth": 1
     },
-    "desc": "二十七岁，城市里做表格的普通人。鞋里灌满沙，衬衫口袋还别着一支没水的签字笔。",
-    "personality": "谨慎、嘴硬、记仇也记恩",
-    "speech": "「先说好，我只信能喝的水。」",
-    "activity": "刚醒，正在检查手环和背包",
-    "intent": "先找淡水，再找能过夜的地方",
-    "agenda": "活过第一夜，弄清白鹿岛的规则",
+    "desc": "二十一岁，普通二本大三，信息管理专业。会写字算数、记账、用手机电脑，会一点基础急救和天气常识；会游泳，但只是泳池和浅水水平。不会木工、机械、种地、捕鱼，也不会打架。现在和上百万人一起被投放，唯一拥有的是一条正在慢漏气的充气救生筏。",
+    "personality": "谨慎、怕死、记性好、算得清账；不会硬撑英雄",
+    "speech": "「艇就是家。先把水排出去，再谈别的。」",
+    "activity": "坐在充气浮筒上，用手压着左舷气阀，听着漏气的嘶嘶声",
+    "intent": "先听完公告、清点筏包，再决定先打气还是趁低潮去捡胶水和阀夹",
+    "agenda": "把筏补到能过夜，再升成橡皮艇；在升出第一块甲板之前，所有东西只能塞在筏包里",
     "aliases": [
       "陈砚",
-      "001"
+      "001",
+      "大学生"
     ]
   },
   "entities": [
@@ -60,12 +65,12 @@
       "mp": 20,
       "mp_max": 20,
       "gold": 1,
-      "location": "白鹿祠",
+      "location": "区域频道/其他救生筏",
       "desc": "背驼得像一张拉满的旧弓，左眼蒙着白翳，手腕上缠着一圈褪色的红绳。",
-      "personality": "慢、硬、护祠",
+      "personality": "慢、硬、护祠；对岛上每一块石头都有账",
       "speech": "「岛上的东西，先问祠，再问人。」",
       "activity": "在祠前把湿盐摊在竹席上",
-      "intent": "等潮退后去滩上收供品",
+      "intent": "等雾退后去滩上收供品",
       "agenda": "守住白鹿祠最后一块碑，不让外人动祠下的土",
       "status": "idle",
       "aliases": [
@@ -82,7 +87,7 @@
       "attrs": {
         "str": 10,
         "dex": 12,
-        "int": 11,
+        "int": 12,
         "con": 11,
         "cha": 13
       },
@@ -91,13 +96,13 @@
       "mp": 24,
       "mp_max": 24,
       "gold": 8,
-      "location": "白鹿原",
+      "location": "区域频道/其他救生筏",
       "desc": "短发用鱼线扎在脑后，裤脚卷到膝盖，小腿上有一道被礁石划开的旧伤。",
       "personality": "冷静、务实、先算账再讲情",
       "speech": "「水可以分，规矩得先立。」",
       "activity": "在石阶上修一条引水槽",
-      "intent": "把淡水溪的水引进鹿家棚屋",
-      "agenda": "把岛上散人并成一支能过夜的队",
+      "intent": "把淡水溪的水引进鹿家棚屋，也引进新开的田",
+      "agenda": "把岛上散人并成一支能过夜的队，但队里不能有白吃饭的人",
       "status": "busy",
       "aliases": [
         "青禾",
@@ -121,7 +126,7 @@
       "mp": 18,
       "mp_max": 18,
       "gold": 0,
-      "location": "礁石港",
+      "location": "区域频道/其他救生筏",
       "desc": "肩膀宽得像门板，脖子上挂着一枚磨白的贝壳，右手缺了半截小指。",
       "personality": "直、讲义气、怕水底的影子",
       "speech": "「海里的东西，白天不咬人，晚上才咬。」",
@@ -151,7 +156,7 @@
       "mp": 22,
       "mp_max": 22,
       "gold": 5,
-      "location": "淡水溪",
+      "location": "区域频道/其他救生筏",
       "desc": "哨子还挂在脖子上，运动服袖口撕开，露出小臂上纹的“秩序”两个字。",
       "personality": "强硬、控制欲、真信自己在救人",
       "speech": "「按人头分水，谁多拿，谁就是偷。」",
@@ -168,7 +173,7 @@
       "id": "zhou_aman",
       "name": "周阿满",
       "faction": "散人",
-      "level": "城市白领",
+      "level": "前房产中介",
       "attrs": {
         "str": 8,
         "dex": 10,
@@ -181,8 +186,8 @@
       "mp": 26,
       "mp_max": 26,
       "gold": 12,
-      "location": "白鹿滩",
-      "desc": "衬衫外面套着救生衣，眼镜断了一条腿，用胶带缠着。",
+      "location": "区域频道/其他救生筏",
+      "desc": "衬衫外面套着救生衣，眼镜断了一条腿，用胶带缠着；胸前挂着一台捡来的破电台。",
       "personality": "圆滑、怕死、信息瘾",
       "speech": "「消息也是物资，你说是不是？」",
       "activity": "在沙滩上架一台捡来的破电台",
@@ -198,7 +203,7 @@
       "id": "xiao_man",
       "name": "小满",
       "faction": "散人",
-      "level": "高中生",
+      "level": "高三学生",
       "attrs": {
         "str": 7,
         "dex": 12,
@@ -211,7 +216,7 @@
       "mp": 28,
       "mp_max": 28,
       "gold": 0,
-      "location": "潮汐林",
+      "location": "区域频道/其他救生筏",
       "desc": "校服外套大了一号，手机壳上贴着一张褪色的全家福。",
       "personality": "话多、机灵、怕黑",
       "speech": "「频道里有人说，白鹿会吃人，你信吗？」",
@@ -223,89 +228,198 @@
         "小满",
         "满妹"
       ]
+    },
+    {
+      "id": "xu_lan",
+      "name": "许岚",
+      "faction": "散人",
+      "level": "护理专业学生",
+      "attrs": {
+        "str": 8,
+        "dex": 11,
+        "int": 12,
+        "con": 10,
+        "cha": 12
+      },
+      "hp": 28,
+      "hp_max": 28,
+      "mp": 24,
+      "mp_max": 24,
+      "gold": 4,
+      "location": "区域频道/其他救生筏",
+      "desc": "二十二岁，护理专业实习刚结束；白大褂剪成短褂，随身带着一小卷绷带和半瓶碘伏。",
+      "personality": "温和、边界清楚、见血不慌",
+      "speech": "「我可以救人，但我不替人还债。」",
+      "activity": "在旧石屋给一个发烧的人擦身",
+      "intent": "找一个能放下伤员的干净地方",
+      "agenda": "把白鹿原的旧石屋改成诊所，顺便查清旧代的药箱是谁留下的",
+      "status": "busy",
+      "aliases": [
+        "许岚",
+        "许护士"
+      ]
+    },
+    {
+      "id": "he_jiang",
+      "name": "何江",
+      "faction": "散人",
+      "level": "外卖骑手",
+      "attrs": {
+        "str": 13,
+        "dex": 12,
+        "int": 9,
+        "con": 12,
+        "cha": 9
+      },
+      "hp": 42,
+      "hp_max": 42,
+      "mp": 20,
+      "mp_max": 20,
+      "gold": 6,
+      "location": "区域频道/其他救生筏",
+      "desc": "三十五岁，皮肤晒得黑，电动车头盔还挂在腰上；他总说只要找到发动机就能走。",
+      "personality": "嘴碎、胆大、认路",
+      "speech": "「岛不大，路我熟；就缺一艘能出雾的船。」",
+      "activity": "在礁石港拆一台锈掉的舷外机",
+      "intent": "凑木头和铁片，造一艘能穿过雾墙的船",
+      "agenda": "找到雾墙外的航线，带愿意走的人离开",
+      "status": "busy",
+      "aliases": [
+        "何江",
+        "老何"
+      ]
+    },
+    {
+      "id": "ma_dong",
+      "name": "马东",
+      "faction": "新秩序",
+      "level": "前房产中介",
+      "attrs": {
+        "str": 10,
+        "dex": 9,
+        "int": 13,
+        "con": 10,
+        "cha": 13
+      },
+      "hp": 34,
+      "hp_max": 34,
+      "mp": 26,
+      "mp_max": 26,
+      "gold": 15,
+      "location": "区域频道/其他救生筏",
+      "desc": "四十岁，衬衫扎在裤腰里，嗓子永远像在开会；他替卫一鸣管账，也替自己留账。",
+      "personality": "圆滑、记仇、永远给自己留后手",
+      "speech": "「规矩是死的，分水的人是活的。」",
+      "activity": "在溪口记人头账",
+      "intent": "把配给权从卫一鸣手里一点点挪到自己手里",
+      "agenda": "等卫一鸣出错，接管新秩序",
+      "status": "busy",
+      "aliases": [
+        "马东",
+        "马会计"
+      ]
     }
   ],
   "market": [
     {
-      "location": "白鹿滩",
+      "location": "求生艇",
       "items": [
         {
           "key": "water",
           "name": "净水",
-          "price": 8,
-          "supply": 5,
-          "base_price": 8,
+          "price": 10,
+          "supply": 4,
+          "base_price": 10,
           "type": "补给",
-          "desc": "用旧塑料瓶装的淡水，瓶口有盐渍。"
+          "desc": "手环商城每日限量，瓶口有盐渍。"
         },
         {
-          "key": "canned",
-          "name": "罐头",
-          "price": 6,
-          "supply": 7,
-          "base_price": 6,
-          "type": "补给"
+          "key": "biscuit",
+          "name": "压缩饼干",
+          "price": 4,
+          "supply": 6,
+          "base_price": 4,
+          "type": "食物"
         },
         {
           "key": "bandage",
           "name": "绷带",
-          "price": 5,
-          "supply": 4,
-          "base_price": 5,
+          "price": 6,
+          "supply": 3,
+          "base_price": 6,
           "type": "医疗"
         },
         {
           "key": "rope",
           "name": "绳索",
-          "price": 4,
-          "supply": 6,
-          "base_price": 4,
+          "price": 5,
+          "supply": 4,
+          "base_price": 5,
           "type": "工具"
         },
         {
           "key": "flint",
           "name": "火石",
-          "price": 3,
-          "supply": 4,
-          "base_price": 3,
+          "price": 4,
+          "supply": 2,
+          "base_price": 4,
           "type": "工具"
         },
         {
           "key": "salt",
           "name": "海盐",
           "price": 2,
-          "supply": 12,
+          "supply": 8,
           "base_price": 2,
           "type": "物资"
-        }
-      ]
-    },
-    {
-      "location": "礁石港",
-      "items": [
+        },
         {
-          "key": "oyster",
-          "name": "牡蛎",
+          "key": "seed",
+          "name": "菜种",
+          "price": 4,
+          "supply": 2,
+          "base_price": 4,
+          "type": "种子"
+        },
+        {
+          "key": "cloth",
+          "name": "旧布",
+          "price": 5,
+          "supply": 3,
+          "base_price": 5,
+          "type": "材料"
+        },
+        {
+          "key": "herb",
+          "name": "草药",
+          "price": 5,
+          "supply": 2,
+          "base_price": 5,
+          "type": "医疗"
+        },
+        {
+          "key": "wood",
+          "name": "木料",
+          "price": 3,
+          "supply": 6,
+          "base_price": 3,
+          "type": "材料"
+        },
+        {
+          "key": "stone",
+          "name": "石料",
+          "price": 3,
+          "supply": 4,
+          "base_price": 3,
+          "type": "材料"
+        },
+        {
+          "key": "fiber",
+          "name": "纤维",
           "price": 2,
-          "supply": 10,
+          "supply": 6,
           "base_price": 2,
-          "type": "食物"
-        },
-        {
-          "key": "net",
-          "name": "旧渔网",
-          "price": 7,
-          "supply": 3,
-          "base_price": 7,
-          "type": "工具"
-        },
-        {
-          "key": "water",
-          "name": "净水",
-          "price": 9,
-          "supply": 3,
-          "base_price": 9,
-          "type": "补给"
+          "type": "材料"
         }
       ]
     }
@@ -348,6 +462,24 @@
       "respect": 0
     },
     {
+      "a": "player",
+      "b": "xu_lan",
+      "affinity": 8,
+      "respect": 4
+    },
+    {
+      "a": "player",
+      "b": "he_jiang",
+      "affinity": 4,
+      "respect": 3
+    },
+    {
+      "a": "player",
+      "b": "ma_dong",
+      "affinity": 0,
+      "respect": 0
+    },
+    {
       "a": "bai_po",
       "b": "lu_qinghe",
       "affinity": 10,
@@ -370,19 +502,51 @@
       "b": "wei_yiming",
       "affinity": -10,
       "respect": 0
+    },
+    {
+      "a": "wei_yiming",
+      "b": "ma_dong",
+      "affinity": 15,
+      "respect": 5
+    },
+    {
+      "a": "xu_lan",
+      "b": "bai_po",
+      "affinity": 8,
+      "respect": 12
+    },
+    {
+      "a": "he_jiang",
+      "b": "shi_dazhu",
+      "affinity": 10,
+      "respect": 8
     }
   ],
   "world_flags": [
     "__start__",
-    "global_channel_on"
+    "raft_start",
+    "vessel_base",
+    "no_initial_island",
+    "tide_cycle",
+    "safe_windows",
+    "system_guide",
+    "vessel_ladder",
+    "facility_ladder",
+    "world_channel_on",
+    "region_channel_on",
+    "nearby_channel_on",
+    "trade_channel_on",
+    "newbie_protection",
+    "system_decomp",
+    "space_slots_6"
   ],
   "currency": "潮币",
   "level_tiers": [
-    "流民",
+    "求生者",
     "拾荒者",
-    "岛民",
-    "守岛人",
-    "拓荒者",
+    "筏长",
+    "艇长",
+    "船长",
     "岛主"
   ],
   "terms": {
@@ -392,35 +556,31 @@
     "mp": "精神",
     "gold": "潮币",
     "track": "生存天数",
-    "territory": "营地",
+    "territory": "艇体基地",
     "inventory": "背包",
     "codex": "求生图鉴",
     "quests": "生存目标"
   },
   "places": {
-    "白鹿滩": {
-      "desc": "湿沙上散着塑料箱、破渔网和半截船板。潮线以上有一尊缺了半张脸的白鹿石像，像在低头喝水。",
-      "market": "白鹿滩"
+    "救生筏": {
+      "desc": "你的唯一领地：一条灰橙色充气救生筏，长约两米四。没有硬甲板、没有舱壁；筏面 0 格，筏包 2 格，载重 30kg。左舷气阀慢漏。睡觉、储物、做饭、修筏、升级都只能在筏上想办法。",
+      "market": "救生筏"
     },
-    "潮汐林": {
-      "desc": "树干下半截全是盐渍，林子里挂着一排旧风铃。风一停，风铃还在响。",
+    "外礁浅滩": {
+      "desc": "潮汐礁：低潮时露出约四十米宽的礁盘，能捡牡蛎、海藻、石料、旧布和胶水管；高潮时整片礁盘没入水下 1.5-3 米。手环给安全窗口，误差随航海等级缩小。",
       "market": ""
     },
-    "淡水溪": {
-      "desc": "一条从白鹿原石缝里渗下来的细水，汇进石坑。溪口被人用石头和渔网围了起来。",
+    "沉船残骸": {
+      "desc": "半截船壳卡在礁盘外缘，舱门被撬开过；木板、铁片、旧布、橡胶胶水和艇核碎片缠在一起。只有低潮窗口才能靠近。",
       "market": ""
     },
-    "白鹿原": {
-      "desc": "岛心的高地，风比滩上大。旧石屋排成三列，田埂被野草吃掉一半，祠堂的旗杆还立着。",
+    "雾线": {
+      "desc": "海面尽头的一道灰白雾墙，贴着水面向外推；雾里能见度不到十步。",
       "market": ""
     },
-    "白鹿祠": {
-      "desc": "祠堂只剩半间，供桌上是湿盐、贝壳和一枚缺角的石鹿。祠后有一口被石板盖住的天井。",
+    "邻岛": {
+      "desc": "雾里隐约的大岛影，约八百米外；主岛大部分低地被高潮淹没，只有高处和退潮滩能落脚。",
       "market": ""
-    },
-    "礁石港": {
-      "desc": "黑色礁石像一排牙齿，牡蛎壳在缝里反光。退潮时能走到最外那块礁，涨潮时路会消失。",
-      "market": "礁石港"
     }
   },
   "lore": [
@@ -431,115 +591,198 @@
       ],
       "constant": true,
       "comment": "基调",
-      "content": "海岛求生不是打怪升级：先活过潮汐，再谈秩序。每个选择都要拿体力、淡水、信任或时间换。"
+      "content": "一百万人同时投放，每人一条正在慢漏气的充气救生筏。筏没有甲板，只能坐浮筒；先打气、补气阀，再升橡皮艇、装第一块甲板，之后才是船、游艇、邮轮、航母，最后才是浮空和飞天。"
+    },
+    {
+      "keys": [
+        "投放",
+        "百万",
+        "首批"
+      ],
+      "comment": "投放",
+      "content": "首批投放一百万人，分批进入万岛海域；每人一条标准充气救生筏，随机坐标，没有初始岛。附近频道里全是人，区域频道按二十公里划片。"
+    },
+    {
+      "keys": [
+        "救生筏",
+        "充气筏",
+        "橡皮筏"
+      ],
+      "comment": "救生筏",
+      "content": "标准充气救生筏：二点四米长，四个独立气室，没有硬甲板、没有舱壁；筏面0格，筏包2格，载重30kg。只能坐、不能站；所有储物都塞在筏包网袋里。"
+    },
+    {
+      "keys": [
+        "气室",
+        "漏气",
+        "气阀"
+      ],
+      "comment": "气室",
+      "content": "左舷气阀慢漏：每30分钟掉6点浮力；气室完整度64/100。打气10分钟回6点，耗1劳力；补气阀需要修补片1、橡胶胶水1、阀夹1，耗时2小时；补好后漏气-1、气室+18。"
+    },
+    {
+      "keys": [
+        "筏即基地",
+        "筏上功能",
+        "领地"
+      ],
+      "comment": "筏即基地",
+      "content": "筏就是唯一基地，但充气筏没有甲板：不能装床、灶、集雨器、菜畦、修船台。只有升到橡皮艇，才有1格甲板；升到玻璃钢小艇，才有2格。所有功能都要跟着载具品阶解锁。"
+    },
+    {
+      "keys": [
+        "潮汐",
+        "涨潮",
+        "退潮",
+        "安全窗口"
+      ],
+      "comment": "潮汐",
+      "content": "万岛海域是浅陆棚+海峡漏斗，潮差6-9米；低平礁岛高潮时没入水下1.5-3米，低潮才露出。系统按潮汐表给安全窗口，基础误差±15分钟；超时先断退路，再被困。"
+    },
+    {
+      "keys": [
+        "系统引导",
+        "每日任务",
+        "活动",
+        "能力选择"
+      ],
+      "comment": "系统引导",
+      "content": "手环给主线、每日任务、潮汐活动、能力模块选项和推荐路线；推荐可忽略，选择仍由玩家判断。任务奖励是潮币/SP/经验，不直接送高级载具。"
+    },
+    {
+      "keys": [
+        "能力选择",
+        "初始能力",
+        "模块槽"
+      ],
+      "comment": "能力选择",
+      "content": "每个求生者开局都有一次初始能力选择：分解、采集、编织、净水、烹饪、急救、航海、防御八系；每系一个主动+一个被动，都有SP/劳力/时间/容器/窗口限制。第一次使用前可免费重选一次。"
+    },
+    {
+      "keys": [
+        "官方公告",
+        "系统公告",
+        "警告"
+      ],
+      "comment": "官方公告",
+      "content": "手环会在开局强制播报投放人数、海域、72小时新手保护、频道规则和六条警告。公告不能跳过，但可以边听边打气。"
+    },
+    {
+      "keys": [
+        "频道",
+        "世界频道",
+        "区域频道",
+        "附近频道"
+      ],
+      "comment": "频道",
+      "content": "世界频道全服可见，发言1SP/条、冷却10分钟；区域频道按二十公里划片，每天3条免费；附近频道一公里内实时；交易频道挂单，实物见面交接。"
+    },
+    {
+      "keys": [
+        "新手保护",
+        "72小时"
+      ],
+      "comment": "新手保护",
+      "content": "前72小时降低外来袭击概率，但不取消漏气、饥饿、脱水、失温和夜潮。保护期不会替人挡灾。"
     },
     {
       "keys": [
         "夜潮",
-        "天黑",
-        "潮水"
+        "潮水",
+        "涨潮"
       ],
       "comment": "夜潮",
-      "content": "太阳落山后潮水会漫过白鹿滩和礁石港的低处；夜里不要贴着潮线走。手环会在夜潮前一个时辰震动。"
+      "content": "太阳落山后潮水会漫过低处；筏要下锚或系在固定物上，否则会被潮水推走。手环会在夜潮前一个时辰震动。"
     },
     {
       "keys": [
-        "白鹿祠",
-        "祠堂",
-        "石鹿"
+        "雾墙",
+        "海雾",
+        "迷雾"
       ],
-      "comment": "白鹿祠",
-      "content": "白鹿祠在岛心高地上，供桌有一枚缺角的石鹿。白婆婆说祠下的土不能动；祠后有一口被石板盖住的天井。"
+      "comment": "雾墙",
+      "content": "每天05:30和18:30，雾墙向投放区推进一次，持续约两小时。雾里能见度不到十步；没有筏灯、罗盘和潮汐表的人容易划错。"
     },
     {
       "keys": [
         "淡水",
-        "溪水",
-        "配水"
+        "海水",
+        "渗水"
       ],
-      "comment": "淡水溪",
-      "content": "淡水溪是全岛最稳定的水源。溪口现在被卫一鸣的人用石头和渔网围住，按人头配水。"
+      "comment": "淡水",
+      "content": "海水不能直接喝；筏包里只有两瓶净水。集雨器要等升到橡皮艇、有甲板格才能装；没有集雨器之前，只能靠频道换水或接雨水。"
     },
     {
       "keys": [
-        "白鹿原",
-        "旧石屋",
-        "田埂"
+        "材料",
+        "木料",
+        "石料",
+        "纤维"
       ],
-      "comment": "白鹿原",
-      "content": "白鹿原上的石屋是二十年前旧代求生者留下的；田埂还在，种过东西，但土里翻出来的不只是贝壳。"
+      "comment": "材料",
+      "content": "船板出木料和铁钉，礁盘出石料，旧网出纤维，沉船出旧布、橡胶胶水和阀夹。材料优先给补气阀、升橡皮艇、装第一块甲板。"
     },
     {
       "keys": [
-        "全球频道",
-        "频道",
-        "手环"
+        "载具阶位",
+        "升级树",
+        "品阶"
       ],
-      "comment": "全球频道",
-      "content": "手环每天开放三次全球频道：07:00、13:00、19:00。频道里可以交换消息，但不能交易实物；空投坐标会提前十分钟播报。"
+      "comment": "载具阶位",
+      "content": "载具分17大品阶、每阶5个细分阶，共85级：充气筏→橡皮艇→玻璃钢小艇→快艇→渔船→普通游艇→中型游艇→大型游艇→豪华游艇→超级游艇→探险船→小型邮轮→大型邮轮→航空母舰→浮空艇→浮空岛→飞天浮岛。同级升小阶只加数值，跨品阶要蓝图、船坞、完整度、载具核和长工期。"
     },
     {
       "keys": [
-        "积分",
-        "空投",
-        "岛核"
+        "艇核",
+        "载具核",
+        "升级"
       ],
-      "comment": "积分与岛核",
-      "content": "活过一天、首次采集、首次建造都会给积分；积分可以在空投里换工具，但不能直接换命。岛核是升级营地和并岛的核心，位置不明。"
+      "comment": "载具核",
+      "content": "每条救生筏的浮筒龙骨里嵌着一枚半休眠载具核。补气阀完成后它才响应升级；载具核碎片来自沉船和旧浮标。升级不是三次到顶，85级要一层层走。"
     },
     {
       "keys": [
-        "白鹿",
-        "白鹿显灵",
-        "传说"
+        "邻岛",
+        "主岛",
+        "白鹿岛"
       ],
-      "comment": "白鹿传说",
-      "content": "岛上老人说，白鹿会在夜潮前出现在白鹿原；看见白鹿的人会得到岛的允许。也有人说，看见白鹿的人第二天就没了。"
+      "comment": "邻岛",
+      "content": "雾里八百米外是白鹿岛主岛；低地大部分时间被高潮淹没，只有高处和退潮滩能落脚。没有升级艇/船之前，只能看见，不能过去。"
     },
     {
       "keys": [
-        "旧代",
-        "上一批",
-        "二十年前"
+        "B-07",
+        "旧铁牌"
       ],
-      "comment": "旧代",
-      "content": "二十年前有一批人先被拉进这座岛；石屋、盐田、祠堂都是他们留下的。他们最后没有一个人走。"
+      "comment": "B-07",
+      "content": "筏侧浮筒的旧铁牌刻着B-07。手环背面也有一串编号，只差最后两位；频道里有人用B-07报过坐标。"
     },
     {
       "keys": [
-        "卫一鸣",
-        "新秩序",
-        "配给"
+        "死亡",
+        "沉筏",
+        "淘汰"
       ],
-      "comment": "新秩序",
-      "content": "卫一鸣把散人编成队，按人头分水；不交瓶的人被赶出溪口。他相信秩序能让人活，鹿青禾相信秩序会先杀人。"
+      "comment": "死亡",
+      "content": "体力归零是濒死；气室完整度归零是筏沉。沉筏比濒死更快，物资和基地一起没。没有复活。"
     },
     {
       "keys": [
-        "鹿家",
-        "石家",
-        "棚屋"
+        "交易",
+        "诈骗",
+        "频道骗子"
       ],
-      "comment": "鹿家与石家",
-      "content": "鹿家棚屋在白鹿原东侧，管水渠；石家占着礁石港，管牡蛎和潮路。两家有旧亲，也有旧账。"
-    },
-    {
-      "keys": [
-        "第一夜",
-        "过夜",
-        "庇护"
-      ],
-      "comment": "第一夜",
-      "content": "第一夜是最难的一夜：没有墙、没有火、没有干衣服。手环只给一条提示：『天黑前，到高处去。』"
+      "comment": "交易",
+      "content": "频道里最常见的骗局是“免费送船”“内部坐标”“先交水再给升级件”。交易频道只保证挂单信息，不保证人；实物交接要当面验。"
     }
   ],
   "playbook": {
-    "loop": "mud",
-    "input": "command",
+    "loop": "choice",
+    "input": "natural",
     "progress": {
       "axis": "level",
       "label": "生存评级",
-      "max": 5
+      "max": 6
     },
     "failure": {
       "mode": "hp",
@@ -548,11 +791,13 @@
     },
     "beat": {
       "pattern": [
-        "清晨",
-        "采集",
-        "交涉",
-        "夜潮",
-        "清点"
+        "公告",
+        "打气",
+        "补阀",
+        "升艇",
+        "装甲板",
+        "潮汐",
+        "频道"
       ],
       "every": 4
     },
@@ -561,7 +806,10 @@
       "trade",
       "roll",
       "travel",
-      "use_item"
+      "use_item",
+      "craft",
+      "farm",
+      "assign"
     ],
     "context": {
       "inject": [
@@ -575,44 +823,122 @@
   },
   "questlines": [
     {
-      "id": "first_night",
-      "title": "第一夜",
-      "summary": "天黑前找到能挡潮水和风的地方。",
+      "id": "tutorial",
+      "title": "漏气的筏",
+      "summary": "先听公告、打气、补气阀；升到橡皮艇才有第一块甲板。",
       "visibility": {
         "flag": "__start__"
       },
       "stages": [
         {
-          "id": "shelter",
-          "title": "落脚",
+          "id": "broadcast",
+          "title": "公告",
           "objectives": [
-            "找到一处高于潮线的庇护所"
+            "听完官方公告"
           ],
           "exit_if": {
-            "flag": "shelter_found"
+            "flag": "heard_broadcast"
           },
           "next": [
-            "fire"
+            "check"
           ]
         },
         {
-          "id": "fire",
-          "title": "生火",
+          "id": "check",
+          "title": "清点",
           "objectives": [
-            "在天黑前生起一堆火"
+            "打开筏包清点物资"
           ],
           "exit_if": {
-            "flag": "fire_lit"
+            "flag": "raft_checked"
           },
           "next": [
-            "dawn"
+            "pump"
           ]
         },
         {
-          "id": "dawn",
-          "title": "天亮",
+          "id": "pump",
+          "title": "打气",
           "objectives": [
-            "撑过第一夜"
+            "把气室完整度打回72以上"
+          ],
+          "exit_if": {
+            "flag": "raft_pumped"
+          },
+          "next": [
+            "patch"
+          ]
+        },
+        {
+          "id": "patch",
+          "title": "补气阀",
+          "objectives": [
+            "补好左舷气阀（修补片1/胶水1/阀夹1）"
+          ],
+          "exit_if": {
+            "flag": "raft_patched"
+          },
+          "next": [
+            "upgrade"
+          ]
+        },
+        {
+          "id": "upgrade",
+          "title": "升橡皮艇",
+          "objectives": [
+            "升到橡皮艇I阶，获得第一块甲板"
+          ],
+          "exit_if": {
+            "flag": "raft_upgraded"
+          },
+          "next": [
+            "deck"
+          ]
+        },
+        {
+          "id": "deck",
+          "title": "第一块甲板",
+          "objectives": [
+            "在甲板装第一件设施"
+          ],
+          "exit_if": {
+            "flag": "deck_built"
+          },
+          "next": []
+        }
+      ],
+      "reward": {
+        "flags": [
+          "tutorial_done"
+        ]
+      }
+    },
+    {
+      "id": "first_night",
+      "title": "筏上第一夜",
+      "summary": "没有甲板的时候，连睡觉都要算潮水。",
+      "visibility": {
+        "flag": "raft_patched"
+      },
+      "stages": [
+        {
+          "id": "anchor",
+          "title": "下锚",
+          "objectives": [
+            "把筏固定在潮线以外"
+          ],
+          "exit_if": {
+            "flag": "raft_anchored"
+          },
+          "next": [
+            "sleep"
+          ]
+        },
+        {
+          "id": "sleep",
+          "title": "睡觉",
+          "objectives": [
+            "在筏上睡过第一夜"
           ],
           "exit_if": {
             "flag": "first_night_survived"
@@ -627,100 +953,90 @@
       }
     },
     {
-      "id": "fresh_water",
-      "title": "淡水",
-      "summary": "溪口被卫一鸣围了，水不能只靠抢。",
+      "id": "upgrade_vessel",
+      "title": "升级载具",
+      "summary": "从橡皮艇到游艇，再到航母；每一阶都要蓝图、船坞和核。",
       "visibility": {
-        "flag": "__start__"
+        "flag": "raft_patched"
       },
       "stages": [
         {
-          "id": "find",
-          "title": "找到溪",
+          "id": "parts",
+          "title": "升级件",
           "objectives": [
-            "抵达淡水溪"
+            "找到载具核×1、橡皮艇蓝图×1"
           ],
           "exit_if": {
-            "visited": "淡水溪"
+            "all": [
+              {
+                "item_gte": {
+                  "key": "vehicle_core",
+                  "n": 1
+                }
+              },
+              {
+                "item_gte": {
+                  "key": "blueprint_rubber_boat",
+                  "n": 1
+                }
+              }
+            ]
           },
           "next": [
-            "deal"
+            "upgrade"
           ]
         },
         {
-          "id": "deal",
-          "title": "谈水",
+          "id": "upgrade",
+          "title": "第一次升级",
           "objectives": [
-            "和卫一鸣或鹿青禾谈成一个分水办法"
-          ],
-          "next": [
-            "store"
-          ]
-        },
-        {
-          "id": "store",
-          "title": "存水",
-          "objectives": [
-            "把至少三份水存进营地"
+            "升到橡皮艇I阶"
           ],
           "exit_if": {
-            "flag": "water_stored"
+            "flag": "raft_upgraded"
           },
           "next": []
         }
       ],
       "reward": {
         "flags": [
-          "water_stored"
+          "raft_upgraded"
         ]
       }
     },
     {
-      "id": "white_deer",
-      "title": "白鹿祠",
-      "summary": "白婆婆守着祠，祠下有一块不能动的土。",
+      "id": "fog_wall",
+      "title": "雾墙",
+      "summary": "雾里有人喊你的编号；频道里也有人喊。",
       "visibility": {
         "flag": "__start__"
       },
       "stages": [
         {
-          "id": "enter",
-          "title": "进祠",
+          "id": "listen",
+          "title": "听见",
           "objectives": [
-            "进入白鹿祠"
+            "在雾里听清一次呼叫"
           ],
           "exit_if": {
-            "visited": "白鹿祠"
+            "flag": "fog_heard"
           },
           "next": [
-            "stone"
+            "decide"
           ]
         },
         {
-          "id": "stone",
-          "title": "石鹿",
+          "id": "decide",
+          "title": "回应",
           "objectives": [
-            "问清石鹿缺角的事"
-          ],
-          "exit_if": {
-            "flag": "stone_deer_asked"
-          },
-          "next": [
-            "well"
-          ]
-        },
-        {
-          "id": "well",
-          "title": "天井",
-          "objectives": [
-            "决定要不要打开祠后的天井"
+            "决定要不要回应雾里的呼叫"
           ],
           "next": []
         }
       ],
       "reward": {
         "flags": [
-          "shrine_opened"
+          "fog_answered"
         ]
       }
     }
@@ -729,11 +1045,12 @@
     {
       "id": "clock",
       "kind": "time",
-      "label": "昼夜与潮汐",
+      "label": "昼夜、潮汐与雾墙",
       "config": {
         "start": {
           "day": 1,
-          "hour": 7
+          "hour": 6,
+          "minute": 40
         },
         "days_per_season": 30,
         "seasons": [
@@ -742,19 +1059,23 @@
         "weathers": [
           {
             "name": "晴",
-            "weight": 45
-          },
-          {
-            "name": "阴",
             "weight": 30
           },
           {
-            "name": "暴雨",
-            "weight": 20
+            "name": "阴",
+            "weight": 25
           },
           {
             "name": "海雾",
-            "weight": 5
+            "weight": 25
+          },
+          {
+            "name": "暴雨",
+            "weight": 12
+          },
+          {
+            "name": "闷热",
+            "weight": 8
           }
         ]
       }
@@ -762,44 +1083,71 @@
     {
       "id": "scavenge",
       "kind": "loot",
-      "label": "海滩搜刮",
+      "label": "海滩与野外搜刮",
       "config": {
         "tables": {
           "beach": {
             "rolls": 3,
-            "empty_weight": 35,
+            "empty_weight": 30,
             "entries": [
               {
                 "item": "water",
                 "name": "净水",
-                "weight": 25,
+                "weight": 20,
                 "qty": [
                   1,
                   2
                 ]
               },
               {
-                "item": "canned",
-                "name": "罐头",
-                "weight": 25,
+                "item": "biscuit",
+                "name": "饼干",
+                "weight": 18,
                 "qty": [
                   1,
-                  1
+                  2
                 ]
               },
               {
                 "item": "rope",
                 "name": "绳索",
-                "weight": 18,
+                "weight": 15,
                 "qty": [
                   1,
-                  1
+                  2
                 ]
               },
               {
-                "item": "flint",
-                "name": "火石",
-                "weight": 12,
+                "item": "wood",
+                "name": "木料",
+                "weight": 16,
+                "qty": [
+                  1,
+                  3
+                ]
+              },
+              {
+                "item": "stone",
+                "name": "石料",
+                "weight": 14,
+                "qty": [
+                  1,
+                  3
+                ]
+              },
+              {
+                "item": "fiber",
+                "name": "纤维",
+                "weight": 14,
+                "qty": [
+                  1,
+                  3
+                ]
+              },
+              {
+                "item": "scrap",
+                "name": "铁片",
+                "weight": 8,
                 "qty": [
                   1,
                   1
@@ -808,7 +1156,7 @@
               {
                 "item": "salt",
                 "name": "海盐",
-                "weight": 20,
+                "weight": 12,
                 "qty": [
                   1,
                   3
@@ -818,20 +1166,47 @@
           },
           "forest": {
             "rolls": 2,
-            "empty_weight": 45,
+            "empty_weight": 35,
             "entries": [
               {
-                "item": "water",
-                "name": "净水",
-                "weight": 15,
+                "item": "wood",
+                "name": "木料",
+                "weight": 28,
                 "qty": [
                   1,
-                  1
+                  3
                 ]
               },
               {
-                "item": "canned",
-                "name": "罐头",
+                "item": "fiber",
+                "name": "纤维",
+                "weight": 24,
+                "qty": [
+                  1,
+                  3
+                ]
+              },
+              {
+                "item": "herb",
+                "name": "草药",
+                "weight": 14,
+                "qty": [
+                  1,
+                  2
+                ]
+              },
+              {
+                "item": "seed",
+                "name": "菜种",
+                "weight": 10,
+                "qty": [
+                  1,
+                  2
+                ]
+              },
+              {
+                "item": "water",
+                "name": "净水",
                 "weight": 10,
                 "qty": [
                   1,
@@ -839,8 +1214,83 @@
                 ]
               },
               {
+                "item": "cloth",
+                "name": "旧布",
+                "weight": 8,
+                "qty": [
+                  1,
+                  1
+                ]
+              }
+            ]
+          },
+          "sea": {
+            "rolls": 2,
+            "empty_weight": 40,
+            "entries": [
+              {
+                "item": "fish",
+                "name": "咸鱼",
+                "weight": 34,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "oyster",
+                "name": "牡蛎",
+                "weight": 30,
+                "qty": [
+                  1,
+                  2
+                ]
+              },
+              {
                 "item": "rope",
                 "name": "绳索",
+                "weight": 12,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "scrap",
+                "name": "铁片",
+                "weight": 10,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "cloth",
+                "name": "旧布",
+                "weight": 8,
+                "qty": [
+                  1,
+                  1
+                ]
+              }
+            ]
+          },
+          "farm": {
+            "rolls": 1,
+            "empty_weight": 0,
+            "entries": [
+              {
+                "item": "vegetable",
+                "name": "青菜",
+                "weight": 60,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "seed",
+                "name": "菜种",
                 "weight": 20,
                 "qty": [
                   1,
@@ -848,8 +1298,59 @@
                 ]
               },
               {
-                "item": "salt",
-                "name": "海盐",
+                "item": "herb",
+                "name": "草药",
+                "weight": 10,
+                "qty": [
+                  1,
+                  1
+                ]
+              }
+            ]
+          },
+          "wreck": {
+            "rolls": 2,
+            "empty_weight": 10,
+            "entries": [
+              {
+                "item": "wood",
+                "name": "木料",
+                "weight": 30,
+                "qty": [
+                  2,
+                  4
+                ]
+              },
+              {
+                "item": "scrap",
+                "name": "铁片",
+                "weight": 20,
+                "qty": [
+                  1,
+                  2
+                ]
+              },
+              {
+                "item": "nail",
+                "name": "铁钉",
+                "weight": 18,
+                "qty": [
+                  1,
+                  2
+                ]
+              },
+              {
+                "item": "rope",
+                "name": "绳索",
+                "weight": 12,
+                "qty": [
+                  1,
+                  1
+                ]
+              },
+              {
+                "item": "fiber",
+                "name": "纤维",
                 "weight": 10,
                 "qty": [
                   1,
@@ -862,18 +1363,193 @@
       }
     },
     {
+      "id": "craft",
+      "kind": "craft",
+      "label": "制造与建造",
+      "config": {
+        "recipes": [
+          {
+            "id": "stone_axe",
+            "name": "石斧",
+            "inputs": {
+              "wood": 1,
+              "stone": 2,
+              "fiber": 1
+            },
+            "output": {
+              "item": "stone_axe",
+              "name": "石斧",
+              "qty": 1
+            },
+            "difficulty": 8,
+            "attribute": "str",
+            "fail_consume": 0.4
+          },
+          {
+            "id": "fishing_rod",
+            "name": "钓竿",
+            "inputs": {
+              "wood": 2,
+              "fiber": 2,
+              "rope": 1
+            },
+            "output": {
+              "item": "fishing_rod",
+              "name": "钓竿",
+              "qty": 1
+            },
+            "difficulty": 8,
+            "attribute": "dex",
+            "fail_consume": 0.4
+          },
+          {
+            "id": "water_filter",
+            "name": "滤水器",
+            "inputs": {
+              "stone": 2,
+              "cloth": 1,
+              "wood": 1
+            },
+            "output": {
+              "item": "water_filter",
+              "name": "滤水器",
+              "qty": 1
+            },
+            "difficulty": 10,
+            "attribute": "int",
+            "fail_consume": 0.5
+          },
+          {
+            "id": "shelter_kit",
+            "name": "棚屋套件",
+            "inputs": {
+              "wood": 4,
+              "fiber": 3,
+              "rope": 2,
+              "nail": 2
+            },
+            "output": {
+              "item": "shelter_kit",
+              "name": "棚屋套件",
+              "qty": 1
+            },
+            "difficulty": 10,
+            "attribute": "str",
+            "fail_consume": 0.5
+          },
+          {
+            "id": "farm_plot",
+            "name": "菜畦",
+            "inputs": {
+              "wood": 2,
+              "fiber": 2,
+              "seed": 1
+            },
+            "output": {
+              "item": "farm_plot",
+              "name": "菜畦",
+              "qty": 1
+            },
+            "difficulty": 9,
+            "attribute": "con",
+            "fail_consume": 0.5
+          },
+          {
+            "id": "bandage",
+            "name": "草药绷带",
+            "inputs": {
+              "cloth": 1,
+              "herb": 1
+            },
+            "output": {
+              "item": "bandage",
+              "name": "草药绷带",
+              "qty": 1
+            },
+            "difficulty": 6,
+            "attribute": "int",
+            "fail_consume": 0.3
+          },
+          {
+            "id": "signal_fire",
+            "name": "信号火堆",
+            "inputs": {
+              "wood": 3,
+              "fiber": 2,
+              "cloth": 1
+            },
+            "output": {
+              "item": "signal_fire",
+              "name": "信号火堆",
+              "qty": 1
+            },
+            "difficulty": 8,
+            "attribute": "dex",
+            "fail_consume": 0.4
+          },
+          {
+            "id": "raft",
+            "name": "出雾木筏",
+            "inputs": {
+              "wood": 6,
+              "rope": 3,
+              "cloth": 2,
+              "scrap": 2
+            },
+            "output": {
+              "item": "raft",
+              "name": "出雾木筏",
+              "qty": 1
+            },
+            "difficulty": 14,
+            "attribute": "str",
+            "fail_consume": 0.6
+          }
+        ]
+      }
+    },
+    {
       "id": "survival",
       "kind": "custom",
       "label": "求生动作",
       "config": {
         "actions": {
+          "drink": {
+            "label": "喝水",
+            "effects": [
+              {
+                "op": "resource",
+                "key": "water",
+                "delta": -1
+              },
+              {
+                "op": "resource",
+                "key": "hp",
+                "delta": 2
+              },
+              {
+                "op": "resource",
+                "key": "sanity",
+                "delta": 1
+              },
+              {
+                "op": "flag",
+                "flag": "hydrated"
+              }
+            ]
+          },
           "eat": {
             "label": "进食",
             "effects": [
               {
                 "op": "resource",
+                "key": "food",
+                "delta": -1
+              },
+              {
+                "op": "resource",
                 "key": "hp",
-                "delta": 5
+                "delta": 3
               },
               {
                 "op": "flag",
@@ -881,8 +1557,8 @@
               }
             ]
           },
-          "sleep": {
-            "label": "睡觉",
+          "rest": {
+            "label": "歇一会",
             "effects": [
               {
                 "op": "advance_time",
@@ -892,11 +1568,42 @@
                 "op": "resource",
                 "key": "hp",
                 "delta": 8
+              },
+              {
+                "op": "resource",
+                "key": "sanity",
+                "delta": 4
+              },
+              {
+                "op": "resource",
+                "key": "labor",
+                "delta": 4
+              }
+            ]
+          },
+          "forage": {
+            "label": "滩上搜刮",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 120
+              },
+              {
+                "op": "resource",
+                "key": "labor",
+                "delta": -1
+              },
+              {
+                "op": "loot",
+                "system": "scavenge",
+                "table": "beach",
+                "times": 1,
+                "grant": true
               }
             ]
           },
           "fish": {
-            "label": "捕鱼",
+            "label": "下海捕鱼",
             "effects": [
               {
                 "op": "advance_time",
@@ -904,8 +1611,67 @@
               },
               {
                 "op": "resource",
-                "key": "food",
-                "delta": 1
+                "key": "labor",
+                "delta": -1
+              },
+              {
+                "op": "loot",
+                "system": "scavenge",
+                "table": "sea",
+                "times": 1,
+                "grant": true
+              }
+            ]
+          },
+          "farm": {
+            "label": "照看菜地",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 240
+              },
+              {
+                "op": "resource",
+                "key": "labor",
+                "delta": -2
+              },
+              {
+                "op": "loot",
+                "system": "scavenge",
+                "table": "farm",
+                "times": 1,
+                "grant": true
+              }
+            ]
+          },
+          "build": {
+            "label": "搭棚/砌墙",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 240
+              },
+              {
+                "op": "resource",
+                "key": "labor",
+                "delta": -2
+              },
+              {
+                "op": "flag",
+                "flag": "shelter_started"
+              }
+            ]
+          },
+          "cook": {
+            "label": "生火做饭",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 60
+              },
+              {
+                "op": "flag",
+                "flag": "cooked"
               }
             ]
           },
@@ -922,19 +1688,6 @@
               }
             ]
           },
-          "build": {
-            "label": "搭庇护",
-            "effects": [
-              {
-                "op": "advance_time",
-                "minutes": 240
-              },
-              {
-                "op": "flag",
-                "flag": "shelter_found"
-              }
-            ]
-          },
           "pray": {
             "label": "在祠前祈祷",
             "effects": [
@@ -946,6 +1699,115 @@
               {
                 "op": "flag",
                 "flag": "prayed"
+              }
+            ]
+          },
+          "assign": {
+            "label": "做一次配给",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 30
+              },
+              {
+                "op": "reputation",
+                "system": "rep",
+                "faction": "营地",
+                "delta": 1,
+                "reason": "配给"
+              },
+              {
+                "op": "flag",
+                "flag": "rationed"
+              }
+            ]
+          },
+          "scan": {
+            "label": "手环扫描",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 10
+              },
+              {
+                "op": "resource",
+                "key": "sp",
+                "delta": 1
+              },
+              {
+                "op": "flag",
+                "flag": "tutorial_scan"
+              }
+            ]
+          },
+          "dismantle": {
+            "label": "物质分解",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 10
+              },
+              {
+                "op": "resource",
+                "key": "labor",
+                "delta": -1
+              },
+              {
+                "op": "resource",
+                "key": "sp",
+                "delta": -1
+              },
+              {
+                "op": "loot",
+                "system": "scavenge",
+                "table": "wreck",
+                "times": 1,
+                "grant": true
+              },
+              {
+                "op": "flag",
+                "flag": "first_decompose"
+              }
+            ]
+          },
+          "expand": {
+            "label": "扩建岛屿",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 240
+              },
+              {
+                "op": "resource",
+                "key": "labor",
+                "delta": -2
+              },
+              {
+                "op": "meter",
+                "key": "area",
+                "delta": 2
+              },
+              {
+                "op": "flag",
+                "flag": "island_expanded"
+              }
+            ]
+          },
+          "repair_boat": {
+            "label": "修补破艇",
+            "effects": [
+              {
+                "op": "advance_time",
+                "minutes": 180
+              },
+              {
+                "op": "resource",
+                "key": "labor",
+                "delta": -2
+              },
+              {
+                "op": "flag",
+                "flag": "boat_repaired"
               }
             ]
           }
@@ -962,35 +1824,175 @@
           "鹿家棚屋",
           "石家",
           "新秩序",
-          "散人"
+          "散人",
+          "营地"
         ]
+      }
+    },
+    {
+      "id": "achievement",
+      "kind": "achievement",
+      "label": "求生里程碑",
+      "config": {
+        "items": [
+          {
+            "id": "first_night",
+            "name": "活过第一夜",
+            "desc": "有水、有火、有地方睡。",
+            "condition": {
+              "flag": "first_night_survived"
+            },
+            "reward": {
+              "gold": 3,
+              "flags": [
+                "milestone_first_night"
+              ]
+            }
+          },
+          {
+            "id": "water_stored",
+            "name": "水缸不空",
+            "desc": "营地里存下三份以上的水。",
+            "condition": {
+              "flag": "water_stored"
+            },
+            "reward": {
+              "gold": 4,
+              "flags": [
+                "milestone_water"
+              ]
+            }
+          },
+          {
+            "id": "field_planted",
+            "name": "第一块田",
+            "desc": "把菜种按进旧盐田的土里。",
+            "condition": {
+              "flag": "field_planted"
+            },
+            "reward": {
+              "gold": 4,
+              "flags": [
+                "milestone_farm"
+              ]
+            }
+          },
+          {
+            "id": "camp_rules",
+            "name": "规矩比火重要",
+            "desc": "营地有了一条所有人都认的分配规矩。",
+            "condition": {
+              "flag": "camp_rules"
+            },
+            "reward": {
+              "gold": 5,
+              "flags": [
+                "milestone_camp"
+              ]
+            }
+          },
+          {
+            "id": "fog_scouted",
+            "name": "雾里回来的人",
+            "desc": "从雾线边上带回一条能用的消息。",
+            "condition": {
+              "flag": "fog_scouted"
+            },
+            "reward": {
+              "gold": 3,
+              "flags": [
+                "milestone_fog"
+              ]
+            }
+          },
+          {
+            "id": "first_scan",
+            "name": "第一次扫描",
+            "desc": "手环第一次把滩涂变成可读的数据。",
+            "condition": {
+              "flag": "tutorial_scan"
+            },
+            "reward": {
+              "gold": 3,
+              "xp": 10,
+              "flags": [
+                "milestone_scan"
+              ]
+            }
+          },
+          {
+            "id": "first_craft",
+            "name": "第一件工具",
+            "desc": "用系统配方造出一件能用的东西。",
+            "condition": {
+              "flag": "stone_axe_crafted"
+            },
+            "reward": {
+              "gold": 5,
+              "xp": 30,
+              "flags": [
+                "milestone_craft"
+              ]
+            }
+          },
+          {
+            "id": "first_base",
+            "name": "第一座庇护所",
+            "desc": "把面板上的“基地”从无变成有。",
+            "condition": {
+              "flag": "shelter_built"
+            },
+            "reward": {
+              "gold": 10,
+              "xp": 60,
+              "flags": [
+                "milestone_base"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "growth",
+      "kind": "progression",
+      "label": "生存成长",
+      "config": {
+        "base_xp": 100,
+        "growth": 1.4,
+        "max_level": 10,
+        "per_level": {
+          "hp": 2,
+          "labor": 1
+        },
+        "level_label": "生存评级"
       }
     }
   ],
   "game": {
-    "title": "白鹿岛",
+    "title": "万岛海域",
     "kind": "survival",
     "resources": [
       {
         "key": "hp",
         "label": "体力",
-        "value": 40,
+        "value": 42,
         "min": 0,
-        "max": 40,
+        "max": 42,
         "color": "hp"
       },
       {
         "key": "water",
-        "label": "淡水",
-        "value": 1,
+        "label": "水分",
+        "value": 2,
         "min": 0,
         "max": 20,
         "color": "mp"
       },
       {
         "key": "food",
-        "label": "食物",
-        "value": 1,
+        "label": "饱食",
+        "value": 2,
         "min": 0,
         "max": 20,
         "color": "success"
@@ -998,10 +2000,26 @@
       {
         "key": "sanity",
         "label": "精神",
-        "value": 30,
+        "value": 32,
         "min": 0,
-        "max": 30,
+        "max": 32,
         "color": "accent"
+      },
+      {
+        "key": "labor",
+        "label": "劳力",
+        "value": 6,
+        "min": 0,
+        "max": 12,
+        "color": "warning"
+      },
+      {
+        "key": "sp",
+        "label": "生存点",
+        "value": 5,
+        "min": 0,
+        "max": 9999,
+        "color": "gold"
       }
     ],
     "attributes": [
@@ -1009,6 +2027,16 @@
         "key": "str",
         "label": "力量",
         "value": 10
+      },
+      {
+        "key": "dex",
+        "label": "敏捷",
+        "value": 10
+      },
+      {
+        "key": "int",
+        "label": "头脑",
+        "value": 12
       },
       {
         "key": "con",
@@ -1020,172 +2048,401 @@
       {
         "key": "day",
         "label": "生存天数",
+        "value": 1,
+        "min": 1,
+        "max": 8
+      },
+      {
+        "key": "hull",
+        "label": "气室完整度",
+        "value": 64,
+        "min": 0,
+        "max": 100
+      },
+      {
+        "key": "bilge",
+        "label": "筏底积水",
+        "value": 20,
+        "min": 0,
+        "max": 60
+      },
+      {
+        "key": "area",
+        "label": "筏面面积",
+        "value": 3.4,
+        "min": 3.4,
+        "max": 80
+      },
+      {
+        "key": "base",
+        "label": "载具阶位",
+        "value": 1,
+        "min": 1,
+        "max": 85
+      },
+      {
+        "key": "camp",
+        "label": "筏上人口",
+        "value": 1,
+        "min": 1,
+        "max": 12
+      },
+      {
+        "key": "defense",
+        "label": "筏体防御",
         "value": 0,
         "min": 0,
-        "max": 30
+        "max": 100
       }
     ],
     "tags": [
-      "全民穿越",
-      "海岛求生",
-      "白鹿原秩序"
+      "全民投放",
+      "百万求生",
+      "充气救生筏",
+      "筏即基地",
+      "潮汐窗口",
+      "系统引导",
+      "85级载具",
+      "世界频道",
+      "区域频道"
     ],
     "sheet": {
-      "营地": "无",
-      "队伍": "无",
-      "水源": "未掌握",
-      "白鹿祠": "未进入"
+      "求生者": "001 陈砚",
+      "海域": "E-07 投放区",
+      "载具": "普通充气救生筏 R-1",
+      "基地": "筏上（唯一领地）",
+      "完整度": "气室 64/100",
+      "渗水": "气阀慢漏2/10 · 积水20/60L",
+      "甲板": "0格（充气筏不能装设施）",
+      "舱内": "2格（筏包）",
+      "载重": "12/30kg",
+      "升级": "Lv1/85 → 橡皮艇 I",
+      "艇体品阶": "充气筏→橡皮艇→小艇→快艇→渔船→游艇→航母→浮空艇→浮空岛",
+      "队友": "0",
+      "频道": "世界/区域/附近/交易",
+      "投放": "第 1 批 1,000,000 人",
+      "系统路线": "分解系",
+      "主动模块": "物质分解 Lv1",
+      "被动模块": "空间仓格（6 格）",
+      "模块槽": "1/3",
+      "个人能力": "游泳（浅水自保）/写字算数/记账/基础急救",
+      "个人限制": "不会木工/机械/种地/捕鱼/战斗",
+      "主线": "第 1 天 · 打气 → 补气阀 → 升橡皮艇",
+      "系统引导": "主线/每日任务/活动/能力选择",
+      "潮汐": "低潮 12:10-12:50 / 高潮 18:20",
+      "灾害": "雾墙 01:20:00 / 夜潮 12:50:00",
+      "初始能力": "分解系（已选，可免费重选一次）"
     }
   },
   "ui": {
     "skin": "neutral",
     "accent": "#2f7f86",
-    "motif": "海岛·白鹿",
-    "brand": "白鹿岛",
-    "tagline": "潮退之后，岛才是你的"
+    "motif": "灰橙筏群·漏气基地",
+    "brand": "万岛海域",
+    "tagline": "筏就是你的第一块地"
   },
   "world_bible": {
     "world": {
-      "name": "白鹿岛",
-      "era": "全民穿越 · 第 1 天",
-      "genre": "全民求生 / 海岛",
-      "premise": "全球人类被拉入万岛海域，每人一座初始岛；白鹿岛是其中一座，白天争水，夜里守火。",
-      "tone": "湿冷、饥饿、宗族秩序、白鹿传说"
+      "name": "万岛海域",
+      "era": "全民投放 · 第 1 天",
+      "genre": "全民求生 / 艇基地 / 百万投放 / 频道",
+      "premise": "首批一百万人同时投放，每人一艘标准求生艇，没有初始岛。艇就是唯一的家、仓库、领地和移动基地；艇底漏水，先排水、补漏、加固，再用艇核升级。",
+      "tone": "漏水、灰橙艇群、嘈杂频道、抢修、升级、雾海"
     },
     "immutable": [
       {
         "subject": "世界",
-        "predicate": "前提",
-        "value": "全球人类被拉入万岛海域，每人/每队一座初始岛",
-        "statement": "所有人都在同一天穿越；手环显示求生者编号、天数、夜潮倒计时和全球频道开放时间。没有统一的政府或主神现身。",
+        "predicate": "投放",
+        "value": "首批1,000,000人同时投放；每人一条标准充气救生筏；没有初始岛；潮差6-9米",
+        "statement": "所有人同一天在万岛海域醒来。没有出生岛；充气筏是唯一基地。浅陆棚和海峡漏斗造成大潮差，低平礁岛大部分时间在水下，只有低潮窗口能上。",
         "tags": [
           "core"
         ],
         "source": "setting"
       },
       {
-        "subject": "力量",
-        "predicate": "规则与代价",
-        "value": "没有魔法，只有体力、工具、火、淡水、盐和船",
-        "statement": "不能用超自然力量；所有生存动作消耗体力或时间。所谓“白鹿显灵”只能作为信仰与叙事压力，不能当技能用。",
+        "subject": "身体",
+        "predicate": "规则",
+        "value": "整个肉体穿越；饥饿、脱水、伤口、体温、体力都按现实结算",
+        "statement": "没有免体力、没有无限背包、没有自动恢复。划艇、搬木头、游泳都会消耗体力；海水、低温、伤口感染会带来真实后果。",
         "tags": [
-          "rule",
-          "power"
+          "body",
+          "rule"
         ],
         "source": "setting"
       },
       {
-        "subject": "历史",
-        "predicate": "断层",
-        "value": "二十年前有一批旧代求生者先到白鹿岛，留下石屋、盐田、祠堂，最后无人生还",
-        "statement": "旧代石屋在白鹿原排成三列；祠堂供桌有缺角石鹿；岛上的老人称他们“旧代”。他们的死因没有公开记录。",
+        "subject": "系统",
+        "predicate": "权限",
+        "value": "手环提供面板、配方、任务、频道、空间仓格、分解和艇核升级；不提供个人技能",
+        "statement": "系统能改变规则权限，但不能让没学过游泳的人会游泳，也不能让普通学生变成木工。个人能力只来自穿越前的经历。",
         "tags": [
-          "history"
+          "system",
+          "rule"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "初始载具",
+        "predicate": "唯一基地",
+        "value": "普通充气救生筏R-1：长2.4m，筏面0格，筏包2格，载重30kg，气室完整度64/100",
+        "statement": "没有硬甲板、没有舱壁；睡觉、储物、做饭、修筏、升级都只能在筏上想办法。升到橡皮艇才有1格甲板；升到玻璃钢小艇才有2格。",
+        "tags": [
+          "start",
+          "vehicle",
+          "base"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "初始载具",
+        "predicate": "损伤",
+        "value": "左舷气阀慢漏：每30分钟掉6点浮力；气室完整度64/100；筏底积水20/60L",
+        "statement": "打气10分钟回6点，耗1劳力；补气阀需要修补片1、橡胶胶水1、阀夹1，耗时2小时。气室完整度归零，筏沉。",
+        "tags": [
+          "damage",
+          "clock"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "潮汐",
+        "predicate": "规则",
+        "value": "潮周期约12小时25分；低潮窗口40-90分钟；高潮4-6小时；潮差6-9米",
+        "statement": "万岛海域是浅陆棚+海峡漏斗地形，低平礁岛高潮时没入水下1.5-3米。系统按潮汐表给安全窗口，基础误差±15分钟；航海/潮汐模块升级后误差缩小。",
+        "tags": [
+          "tide",
+          "clock"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "系统引导",
+        "predicate": "职责",
+        "value": "主线、每日任务、潮汐活动、能力模块、推荐路线",
+        "statement": "手环给引导和推荐，但不替玩家做决定；推荐可以忽略，任务奖励是潮币/SP/经验，不直接送高级载具。",
+        "tags": [
+          "system",
+          "guide"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "载具阶位",
+        "predicate": "升级",
+        "value": "17大品阶×5细分阶=85级；从充气筏到飞天浮岛",
+        "statement": "同级升小阶只加数值；跨品阶要蓝图、船坞/干船坞、完整度、载具核、材料与长工期。浮空/飞天阶段需要反重力核心、稳定场、气象稳定器，不是白送。",
+        "tags": [
+          "progression"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "能力选择",
+        "predicate": "规则",
+        "value": "每个求生者开局一次；八系可选；1/3模块槽",
+        "statement": "分解、采集、编织、净水、烹饪、急救、航海、防御八系，每系一个主动+一个被动。能力不是白送：有SP/劳力/时间/容器/潮汐窗口限制。第一次使用前可免费重选一次。",
+        "tags": [
+          "ability",
+          "system"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "潮汐",
+        "predicate": "规则",
+        "value": "潮周期约12小时25分；低潮窗口40-90分钟；高潮4-6小时；潮差6-9米",
+        "statement": "万岛海域是浅陆棚+海峡漏斗地形，低平礁岛高潮时没入水下1.5-3米。系统按潮汐表给安全窗口，基础误差±15分钟；航海/潮汐模块升级后误差缩小。",
+        "tags": [
+          "tide",
+          "clock"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "系统引导",
+        "predicate": "职责",
+        "value": "主线、每日任务、潮汐活动、能力模块、推荐路线",
+        "statement": "手环给引导和推荐，但不替玩家做决定；推荐可以忽略，任务奖励是潮币/SP/经验，不直接送高级艇。",
+        "tags": [
+          "system",
+          "guide"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "初始载具",
+        "predicate": "物资",
+        "value": "筏包：2瓶净水、2块压缩饼干、1支信号弹、1个急救包、1个打气筒、1块修补片",
+        "statement": "没有橡胶胶水、没有阀夹、没有备用筏。补气阀材料要去外礁浅滩、沉船残骸或筏群里找。",
+        "tags": [
+          "start",
+          "supply"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "修理",
+        "predicate": "规则",
+        "value": "补气阀：修补片1、橡胶胶水1、阀夹1；2小时；气室+18，漏气-1",
+        "statement": "打气只能拖时间；补气阀才算修好。补好后载具核才会响应升级。",
+        "tags": [
+          "repair"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "升级",
+        "predicate": "规则",
+        "value": "17大品阶×5细分阶，共85级；跨品阶要蓝图、船坞、完整度、载具核和长工期",
+        "statement": "充气筏→橡皮艇→玻璃钢小艇→快艇→渔船→普通游艇→中型游艇→大型游艇→豪华游艇→超级游艇→探险船→小型邮轮→大型邮轮→航空母舰→浮空艇→浮空岛→飞天浮岛。三次升级走不完。",
+        "tags": [
+          "upgrade"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "基地",
+        "predicate": "功能",
+        "value": "甲板 2 格、舱内 4 格、载重 40kg；床/灶/集雨器/菜畦/修船台都占格",
+        "statement": "充气筏没有甲板，不能装床/灶/集雨器/菜畦/修船台；只有筏包2格。升到橡皮艇有1格甲板，升到玻璃钢小艇有2格。床/灶/集雨器/菜畦/修船台/储物架/净水器/防撞栏/帆/舷外机各有5级。",
+        "tags": [
+          "base",
+          "slot"
         ],
         "source": "setting"
       },
       {
         "subject": "地图",
         "predicate": "节点",
-        "value": "白鹿滩—潮汐林—淡水溪—白鹿原—白鹿祠—礁石港",
-        "statement": "白鹿滩是开局滩；潮汐林在滩西；淡水溪从白鹿原石缝流下；白鹿祠在岛心高地；礁石港在东南。外围还有沉船湾/盐洞/旧灯塔/红树林等野外点。",
+        "value": "救生筏—外礁浅滩（潮汐礁）—沉船残骸—雾线—邻岛",
+        "statement": "救生筏是移动基地；外礁浅滩低潮露出、高潮淹没；沉船残骸只有低潮窗口能靠近；雾线每天两次推进；邻岛低地也会被高潮淹没。",
         "tags": [
           "map"
         ],
         "source": "setting"
       },
       {
-        "subject": "地图",
-        "predicate": "通行成本",
-        "value": "岛不大，步行半小时到两小时；夜潮会淹没低滩和礁石港外礁",
-        "statement": "白鹿滩到潮汐林约 20 分钟；到淡水溪约 40 分钟；到白鹿原约 1 小时；白鹿原到白鹿祠约 15 分钟；礁石港退潮时可走到外礁，涨潮时路断。",
+        "subject": "频道",
+        "predicate": "规则",
+        "value": "世界频道全服；区域频道 20km；附近频道 1km；交易频道挂单",
+        "statement": "世界频道发言 1 SP/条、冷却 10 分钟；区域频道每天 3 条免费；附近频道实时；交易频道只保证挂单信息，实物要见面交接。系统不会私聊索要物资。",
         "tags": [
-          "map",
-          "travel"
+          "channel",
+          "social"
         ],
         "source": "setting"
       },
       {
-        "subject": "势力",
-        "predicate": "格局",
-        "value": "白鹿祠、鹿家棚屋、石家、新秩序、散人",
-        "statement": "白婆婆守祠但不养人；鹿青禾管水渠和棚屋；石大柱管礁石港和潮路；卫一鸣用配水控制散人；周阿满和小满代表没有队伍的散人。",
+        "subject": "新手保护",
+        "predicate": "规则",
+        "value": "前 72 小时降低外来袭击概率，但不取消进水、饥饿、脱水、失温和夜潮",
+        "statement": "保护期只降低其他求生者/雾里东西的主动袭击概率；艇底裂口仍然按时进水。",
         "tags": [
-          "faction"
+          "clock",
+          "rule"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "夜潮",
+        "predicate": "周期",
+        "value": "太阳落山后潮水漫过低处；手环提前一个时辰震动",
+        "statement": "外海潮差6-9米，夜里高潮会漫过低处；筏要下锚或系在固定物上，否则会被潮水推走。",
+        "tags": [
+          "clock",
+          "danger"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "雾墙",
+        "predicate": "周期",
+        "value": "每天 05:30 和 18:30 推进，约持续两小时",
+        "statement": "雾墙让能见度降到十步，声音传错方向；没有艇灯和罗盘的人容易划错。雾里有人声，但不一定是人。",
+        "tags": [
+          "clock",
+          "danger"
         ],
         "source": "setting"
       },
       {
         "subject": "社会",
-        "predicate": "秩序",
-        "value": "淡水优先，以工换水，以物易物；夜潮时祠堂钟响三声表示闭滩",
-        "statement": "岛上没有法律；偷水的人会被绑在潮线一夜，抢粮的人会被所有人排斥。白鹿祠的钟是唯一全岛都认的信号。",
+        "predicate": "规模",
+        "value": "首批一百万人；区域频道按 20km 划片；附近频道 1km 内实时",
+        "statement": "不是单机孤岛：同一片海里有大量求生艇、抢修材料的人、骗子和愿意换水的人。频道是信息场，不是安全区。",
         "tags": [
-          "society"
+          "society",
+          "channel"
         ],
         "source": "setting"
       },
       {
-        "subject": "经济",
-        "predicate": "底座",
-        "value": "潮币只在小市场流通；真正硬通货是淡水、盐、火种、药和船",
-        "statement": "潮币是贝壳和旧硬币；白鹿滩与礁石港有简陋市场。全球积分可以换空投工具，但不能直接买命。",
-        "tags": [
-          "economy"
-        ],
-        "source": "setting"
-      },
-      {
-        "subject": "生死",
+        "subject": "死亡",
         "predicate": "规则",
-        "value": "体力归零为濒死，不是立即死亡；夜潮前没人救就会死，无复活",
-        "statement": "濒死状态下不能行动，只能等待救治；被潮水淹没直接淘汰。死亡后留下遗物箱，同岛玩家可以拾取。",
+        "value": "体力归零为濒死；艇体完整度归零为沉艇；无复活",
+        "statement": "沉艇比濒死更快，物资和基地一起没。濒死状态下不能行动；第一夜没有人守艇，体温下降会加速恶化。",
         "tags": [
           "death"
         ],
         "source": "setting"
       },
       {
-        "subject": "白鹿",
-        "predicate": "规则",
-        "value": "白鹿是岛民共同图腾；白鹿祠不能拆，祠下土不能随便动",
-        "statement": "白鹿祠是岛心最高处，也是夜潮时唯一不被淹的地方之一。白婆婆说动祠下土会“惊鹿”，但没人知道惊鹿之后会发生什么。",
-        "tags": [
-          "faith",
-          "rule"
-        ],
-        "source": "setting"
-      },
-      {
         "subject": "玩家",
-        "predicate": "位置",
-        "value": "陈砚，27 岁普通职员，在白鹿滩醒来，背包只有半瓶水、打火机、折叠刀和胶带",
-        "statement": "玩家编号 001；手环显示第 1 天 07:17，距夜潮 12 小时 43 分；没有队伍，没有营地，没有淡水。",
+        "predicate": "身份",
+        "value": "陈砚，21 岁普通二本大三，信息管理专业；在标准求生艇上醒来",
+        "statement": "会写字算数、记账、基础急救；会游泳但只能浅水自保；不会木工、机械、种地、捕鱼、战斗。系统路线：分解系。",
         "tags": [
           "player"
         ],
         "source": "setting"
       },
       {
-        "subject": "岛核",
-        "predicate": "规则",
-        "value": "每座岛有岛核，能升级营地、扩岛、并岛；位置不明，不能用蛮力破坏",
-        "statement": "积分和潮汐结晶可以激活岛核；岛核不是建筑，是岛本身的一部分。白鹿祠下的天井、白鹿原的旧石屋、礁石港的潮洞都可能与岛核有关。",
+        "subject": "官方公告",
+        "predicate": "内容",
+        "value": "投放人数、海域、72 小时保护、频道规则、六条警告",
+        "statement": "公告会说明：海水不能直接喝；夜潮会推走艇；失温比饥饿更快；不要相信免费送艇/内部坐标；系统不会私聊索要物资；艇底进水要定时排。",
         "tags": [
-          "core",
-          "mystery"
+          "start",
+          "warning"
         ],
         "source": "setting"
       }
     ],
     "hidden": [
       {
-        "subject": "白鹿祠",
-        "predicate": "天井",
-        "value": "祠后天井是旧代留下的岛核观察口",
-        "statement": "天井的石板下面不是井，是一条向岛心延伸的旧石道；旧代曾用它观察岛核潮位。白婆婆知道，但她不承认。",
+        "subject": "艇核",
+        "predicate": "来源",
+        "value": "每艘标准艇的龙骨里嵌着一枚半休眠艇核",
+        "statement": "它会在第一次补漏后响应升级；艇核碎片来自沉船和旧浮标，升级方向会改变艇的最终形态。",
         "tags": [
-          "truth"
+          "truth",
+          "upgrade"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "B-07",
+        "predicate": "编号",
+        "value": "B-07 是旧代实验艇编号，不是本轮求生者编号",
+        "statement": "艇侧板夹层的旧铁牌和手环背面编号只差两位；频道里有人用 B-07 报坐标，是在找旧代留下的艇核。",
+        "tags": [
+          "hook"
+        ],
+        "status": "hidden",
+        "locked": true,
+        "source": "setting"
+      },
+      {
+        "subject": "邻岛",
+        "predicate": "主岛",
+        "value": "雾里的邻岛是白鹿岛主岛，旧代石屋和祠堂都在那里",
+        "statement": "主岛上有白婆婆、鹿青禾、石大柱等人；没有升级艇或筏之前，只能看见岛影和频道消息。",
+        "tags": [
+          "map",
+          "hook"
         ],
         "status": "hidden",
         "locked": true,
@@ -1194,8 +2451,8 @@
       {
         "subject": "旧代",
         "predicate": "死因",
-        "value": "旧代不是死于饥饿，而是死于一次失败的并岛",
-        "statement": "旧代在第二十夜尝试用白鹿祠的缺口石鹿强行并岛，潮水倒灌，祠堂塌了半间。白婆婆是唯一活下来的人。",
+        "value": "旧代在第二十夜强行并岛，潮水倒灌，主岛祠堂塌了半间",
+        "statement": "白婆婆是唯一活下来的人；B-07 艇核是那次并岛留下的实验件。",
         "tags": [
           "history",
           "truth"
@@ -1205,50 +2462,26 @@
         "source": "setting"
       },
       {
-        "subject": "白鹿",
-        "predicate": "真相",
-        "value": "白鹿不是神，是岛核在潮汐里投射的影像",
-        "statement": "白鹿的形状会出现在白鹿原的雾里；它不是实体，不能交流。看见它的人会短暂听见岛核的潮位，而不是得到祝福。",
+        "subject": "雾墙",
+        "predicate": "里面的人",
+        "value": "雾里有一部分是上一轮被淘汰但没死透的求生者",
+        "statement": "他们靠雾里的盐水和旧罐头活着，会跟着艇灯走，也会把活人拖进雾里当替身。",
         "tags": [
-          "truth",
-          "mystery"
+          "danger",
+          "truth"
         ],
         "status": "hidden",
         "locked": true,
         "source": "setting"
       },
       {
-        "subject": "鹿青禾",
-        "predicate": "身份",
-        "value": "鹿青禾是旧代守祠人的外孙女，不是本轮穿越者",
-        "statement": "她出生在岛上，靠旧代留下的水渠活到今天。她装作本轮玩家，是为了不让卫一鸣把她当“原住民”抓去祭祠。",
+        "subject": "艇核碎片",
+        "predicate": "来源",
+        "value": "沉船残骸和旧浮标里有旧代艇核碎片",
+        "statement": "每次升级需要 3 片；碎片在退潮时才会露出，涨潮前必须离开。",
         "tags": [
-          "identity"
-        ],
-        "status": "hidden",
-        "locked": true,
-        "source": "setting"
-      },
-      {
-        "subject": "石大柱",
-        "predicate": "兄弟",
-        "value": "阿海不是失踪，是被卫一鸣的人关在淡水溪上游",
-        "statement": "石大柱找阿海时会被新秩序的人引向潮汐林；阿海知道溪口上游有一条旧代暗渠。",
-        "tags": [
-          "identity",
+          "upgrade",
           "hook"
-        ],
-        "status": "hidden",
-        "locked": true,
-        "source": "setting"
-      },
-      {
-        "subject": "卫一鸣",
-        "predicate": "底牌",
-        "value": "卫一鸣手里有一枚潮汐结晶，来自一个死去的玩家",
-        "statement": "他用结晶暂时镇住了溪口的水位；结晶耗尽后，淡水溪会断流。他必须在那之前控制白鹿祠的天井。",
-        "tags": [
-          "antagonist"
         ],
         "status": "hidden",
         "locked": true,
@@ -1257,8 +2490,8 @@
       {
         "subject": "周阿满",
         "predicate": "电台",
-        "value": "周阿满的电台能收到“主神”频道，但那是另一个玩家在骗空投",
-        "statement": "他明知道可能是假的，仍愿意用假消息换真物资；小满录下的频道里有一条坐标指向沉船湾。",
+        "value": "周阿满的电台能收到 B-07 的假坐标",
+        "statement": "他在邻岛，靠卖消息换水；他知道白鹿礁的位置，但不会免费说。",
         "tags": [
           "hook"
         ],
@@ -1269,8 +2502,8 @@
       {
         "subject": "小满",
         "predicate": "手机",
-        "value": "小满的手机里存着父母最后一条语音，语音背景里有白鹿祠的钟声",
-        "statement": "她父母是上一批被并入白鹿岛的玩家；语音里的钟声说明他们来过这座祠。",
+        "value": "小满的手机里存着父母最后一条语音，背景有白鹿祠的钟声",
+        "statement": "她父母是旧代之后被并入主岛的求生者；语音里的钟声说明他们去过祠堂。",
         "tags": [
           "hook",
           "emotion"
@@ -1280,10 +2513,10 @@
         "source": "setting"
       },
       {
-        "subject": "白鹿岛",
-        "predicate": "并岛",
-        "value": "第 8 天新手保护结束，白鹿岛会被并入更大的岛",
-        "statement": "并岛方向由岛核潮位决定；如果岛核未激活，白鹿岛会被拖向盐泽，所有低地都会被淹。",
+        "subject": "并岛",
+        "predicate": "规则",
+        "value": "第 8 天新手保护结束，所有未升级到 Lv3 的艇会被潮水拖向主岛或盐泽",
+        "statement": "升级方向决定艇被拖向哪边；没有甲板设施和防御，低舱会被淹。",
         "tags": [
           "world",
           "clock"
@@ -1293,26 +2526,13 @@
         "source": "setting"
       },
       {
-        "subject": "白鹿原",
-        "predicate": "田埂",
-        "value": "田埂下面埋着旧代的遗物箱和一层骨盐",
-        "statement": "旧代把死者的骨灰混进盐田，防止潮水把尸体带回祠堂。翻田埂会同时翻出工具和骨片。",
+        "subject": "投放",
+        "predicate": "筛选",
+        "value": "首批一百万人里，只有少数人的艇核编号带 B-07 后缀",
+        "statement": "系统在找能承受旧代艇核的人；陈砚的艇漂到 B-07 浮标附近，不是偶然。",
         "tags": [
-          "dark",
-          "history"
-        ],
-        "status": "hidden",
-        "locked": true,
-        "source": "setting"
-      },
-      {
-        "subject": "礁石港",
-        "predicate": "潮洞",
-        "value": "退潮时外礁会出现一个通向岛心的潮洞",
-        "statement": "潮洞只在最低潮的十分钟里打开；石大柱知道位置，但从不敢进去。",
-        "tags": [
-          "map",
-          "mystery"
+          "truth",
+          "hook"
         ],
         "status": "hidden",
         "locked": true,
@@ -1321,320 +2541,1443 @@
     ],
     "revealed": [
       {
-        "subject": "玩家",
+        "subject": "投放",
         "predicate": "已知",
-        "value": "手环、全球频道、夜潮倒计时",
-        "statement": "陈砚知道手环每天三次开放全球频道，知道天黑前要到高处，知道自己没有队伍。",
+        "value": "首批 1,000,000 人；同一天；同一片万岛海域；每人一艘标准求生艇",
+        "statement": "世界频道的人数还在跳；区域频道里全是附近的人。",
         "tags": [
           "start"
         ],
         "source": "setting"
       },
       {
-        "subject": "白鹿滩",
+        "subject": "求生艇",
         "predicate": "现状",
-        "value": "滩上有塑料箱、破船、白鹿石像和几个散人",
-        "statement": "白鹿滩是开局点；周阿满在滩上架电台；白鹿石像缺了半张脸。",
+        "value": "标准艇 Lv.1；甲板 2 格、舱内 4 格、载重 40kg；完整度 64/100；左舷裂口漏水",
+        "statement": "艇上只有你一个人；附近两百米有别的艇。",
         "tags": [
           "start"
         ],
         "source": "setting"
       },
       {
-        "subject": "白鹿原",
+        "subject": "艇底",
         "predicate": "现状",
-        "value": "高地上有旧石屋、田埂、祠堂和鹿家棚屋",
-        "statement": "白鹿原在岛心；鹿青禾在石阶修水槽；旧石屋是旧代留下的。",
+        "value": "积水 18/60L；每 30 分钟进水 6L；排水 10 分钟降 6L、耗 1 劳力",
+        "statement": "积水超过 60L 完整度开始掉；完整度归零，艇沉。",
+        "tags": [
+          "start",
+          "damage"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "频道",
+        "predicate": "现状",
+        "value": "世界/区域/附近/交易全开；区域频道已经有人喊漏水、换木板",
+        "statement": "世界频道发言 1 SP/条、冷却 10 分钟；区域频道每天 3 条免费。",
+        "tags": [
+          "start",
+          "channel"
+        ],
+        "source": "setting"
+      },
+      {
+        "subject": "官方公告",
+        "predicate": "现状",
+        "value": "已播报投放人数、72 小时保护、六条警告和频道规则",
+        "statement": "公告不能跳过，但可以边听边排水；手环不会私聊索要物资。",
         "tags": [
           "start"
         ],
         "source": "setting"
       },
       {
-        "subject": "淡水溪",
+        "subject": "雾墙",
         "predicate": "现状",
-        "value": "溪口被卫一鸣的人围住，按人头配水",
-        "statement": "淡水溪是全岛最稳定的水源；卫一鸣带人用石头和渔网围住溪口。",
+        "value": "第一道雾墙将在 1 小时 30 分后抵达投放区",
+        "statement": "手环给出倒计时；艇在雾里容易划错。",
         "tags": [
-          "start"
-        ],
-        "source": "setting"
-      },
-      {
-        "subject": "白鹿祠",
-        "predicate": "现状",
-        "value": "白婆婆在祠前晒盐，祠后有盖住的天井",
-        "statement": "白鹿祠在岛心最高处；白婆婆守祠；祠后有一口被石板盖住的天井。",
-        "tags": [
-          "start"
+          "start",
+          "clock"
         ],
         "source": "setting"
       }
     ],
     "rumors": [
       {
-        "subject": "白鹿",
+        "subject": "艇核",
         "predicate": "传闻",
-        "value": "看见白鹿的人会得到岛的允许",
-        "statement": "岛上老人说，夜潮前在白鹿原看见白鹿的人，会得到岛的允许；也有人说，看见白鹿的人第二天就没了。",
+        "value": "艇核能直接把标准艇升级成浮岛",
+        "statement": "附近频道有人说，只要凑齐三片黑石，艇就能长出一块甲板；也有人说，升级失败会直接沉艇。",
         "status": "rumor",
         "source": "setting"
       },
       {
-        "subject": "白鹿祠",
+        "subject": "B-07",
         "predicate": "传闻",
-        "value": "祠里有旧代留下的粮和盐",
-        "statement": "有人说白鹿祠的供桌下面藏着旧代的粮和盐；白婆婆从不让人进祠后间。",
+        "value": "B-07 是旧代留下的物资艇",
+        "statement": "有人用 B-07 报坐标，换水、换绳、换艇核碎片。",
         "status": "rumor",
         "source": "setting"
       },
       {
-        "subject": "岛外",
+        "subject": "频道",
         "predicate": "传闻",
-        "value": "第 8 天会有船来并岛",
-        "statement": "全球频道里有人说，第 8 天新手保护结束后会有大船来并岛；没人知道船上是救援还是收尸。",
+        "value": "区域频道里有官方管理员，报编号能领修船材料",
+        "statement": "系统公告说不会私聊索要物资；没人见过管理员。",
+        "status": "rumor",
+        "source": "setting"
+      },
+      {
+        "subject": "雾里",
+        "predicate": "传闻",
+        "value": "雾里有一个不用潮币的修艇厂",
+        "statement": "把真名报出去，就能换一箱旧代材料；周阿满说这是假消息，但他自己在卖坐标。",
         "status": "rumor",
         "source": "setting"
       }
     ],
     "unknown": [
       {
-        "question": "白鹿祠的缺角石鹿是谁弄缺的？",
-        "hint": "白婆婆说是潮水，旧代记录说是人。"
+        "question": "标准艇龙骨里的艇核是什么？",
+        "hint": "它会在第一次补漏后响应升级。"
       },
       {
-        "question": "旧代二十年前到底死在哪一夜？",
-        "hint": "石屋墙上有二十道刻痕，最后一道特别深。"
+        "question": "为什么首批一百万人里，只有少数人的艇核编号带 B-07 后缀？",
+        "hint": "陈砚的艇漂到 B-07 浮标附近，不像随机。"
       },
       {
-        "question": "岛核在白鹿祠天井、白鹿原田埂还是礁石港潮洞？",
-        "hint": "三个地方都有旧代留下的记号。"
+        "question": "邻岛的白鹿祠还剩下什么？",
+        "hint": "雾里传来的钟声，和旧代记录里的三声不一样。"
       }
     ]
   },
   "map_blueprint": {
-    "start": "beach",
+    "start": "raft",
     "core_nodes": [
       {
-        "id": "beach",
-        "name": "白鹿滩",
+        "id": "raft",
+        "name": "救生筏",
         "role": "start",
         "danger": 0,
-        "desc": "湿沙上散着塑料箱、破渔网和半截船板。潮线以上有一尊缺了半张脸的白鹿石像，像在低头喝水。",
-        "market": "白鹿滩"
+        "desc": "你的唯一领地：一条灰橙色充气救生筏，长约两米四。没有硬甲板、没有舱壁；筏面 0 格，筏包 2 格，载重 30kg。左舷气阀慢漏。睡觉、储物、做饭、修筏、升级都只能在筏上想办法。",
+        "market": "救生筏"
       },
       {
-        "id": "forest",
-        "name": "潮汐林",
-        "role": "clue",
-        "danger": 1,
-        "desc": "树干下半截全是盐渍，林子里挂着一排旧风铃。风一停，风铃还在响。"
-      },
-      {
-        "id": "creek",
-        "name": "淡水溪",
+        "id": "shallow",
+        "name": "外礁浅滩",
         "role": "resource",
         "danger": 1,
-        "desc": "一条从白鹿原石缝里渗下来的细水，汇进石坑。溪口被人用石头和渔网围了起来。"
+        "desc": "潮汐礁：低潮时露出约四十米宽的礁盘，能捡牡蛎、海藻、石料、旧布和胶水管；高潮时整片礁盘没入水下 1.5-3 米。手环给安全窗口，误差随航海等级缩小。",
+        "tide": "low_window_40m"
       },
       {
-        "id": "plateau",
-        "name": "白鹿原",
+        "id": "wreck",
+        "name": "沉船残骸",
+        "role": "dungeon",
+        "danger": 2,
+        "desc": "半截船壳卡在礁盘外缘，舱门被撬开过；木板、铁片、旧布、橡胶胶水和艇核碎片缠在一起。只有低潮窗口才能靠近。"
+      },
+      {
+        "id": "fogline",
+        "name": "雾线",
+        "role": "gate",
+        "danger": 3,
+        "desc": "海面尽头的一道灰白雾墙，贴着水面向外推；雾里能见度不到十步。"
+      },
+      {
+        "id": "neighbor",
+        "name": "邻岛",
         "role": "gate",
         "danger": 2,
-        "desc": "岛心的高地，风比滩上大。旧石屋排成三列，田埂被野草吃掉一半，祠堂的旗杆还立着。"
-      },
-      {
-        "id": "shrine",
-        "name": "白鹿祠",
-        "role": "ruin",
-        "danger": 2,
-        "desc": "祠堂只剩半间，供桌上是湿盐、贝壳和一枚缺角的石鹿。祠后有一口被石板盖住的天井。"
-      },
-      {
-        "id": "harbor",
-        "name": "礁石港",
-        "role": "market",
-        "danger": 1,
-        "desc": "黑色礁石像一排牙齿，牡蛎壳在缝里反光。退潮时能走到最外那块礁，涨潮时路会消失。",
-        "market": "礁石港"
+        "desc": "雾里隐约的大岛影，约八百米外；主岛大部分低地被高潮淹没，只有高处和退潮滩能落脚。"
       }
     ],
     "random_nodes": [
       {
-        "id": "wreck",
-        "role": "dungeon",
-        "danger": 3,
-        "names": [
-          "沉船湾",
-          "断桅湾",
-          "铁壳滩"
-        ],
-        "descs": [
-          "半截货轮斜插在沙里，舱门被撬开，里面黑得像嘴。",
-          "船壳上长满藤壶，潮水从破洞里退出去，带出一股柴油味。"
-        ]
-      },
-      {
-        "id": "saltcave",
+        "id": "raftcluster",
         "role": "wild",
-        "danger": 2,
+        "danger": 1,
         "names": [
-          "盐洞",
-          "白盐窟",
-          "咸风洞"
+          "筏群",
+          "漂浮筏堆",
+          "灰橙筏群"
         ],
         "descs": [
-          "洞口结着一层盐霜，越往里走越干，墙上有人刻过数字。",
-          "洞顶滴下来的水落在石头上，过一夜就变成盐。"
+          "三条充气筏用绳子绑在一起，筏上的人正在分水和胶水。",
+          "两条空筏互相撞着，筏包里只剩下湿透的救生衣和半截打气筒。"
         ]
       },
       {
-        "id": "tower",
-        "role": "gate",
-        "danger": 2,
-        "names": [
-          "旧灯塔",
-          "断塔",
-          "海雾塔"
-        ],
-        "descs": [
-          "塔身塌了一半，灯室还在，玻璃上全是盐雾。",
-          "塔顶能看见其他岛的轮廓，也能看见夜潮的来路。"
-        ]
-      },
-      {
-        "id": "mangrove",
+        "id": "buoy",
         "role": "wild",
-        "danger": 3,
+        "danger": 1,
         "names": [
-          "红树林",
-          "黑根林",
-          "潮生林"
+          "旧浮标",
+          "红色浮标",
+          "漂标"
         ],
         "descs": [
-          "树根泡在咸水里，底下有东西挪动。",
-          "林子里没有风，只有水从根缝里冒泡的声音。"
+          "一个红色旧浮标，下面挂着物资箱和缠成一团的渔网。",
+          "浮标上刻着 B-07，箱子里有防水布、阀夹和铁钉。"
         ]
       }
     ],
-    "random_count": 2,
+    "random_count": 1,
     "edges": [
       {
-        "a": "beach",
-        "b": "forest",
-        "minutes": [
-          15,
-          30
-        ],
-        "label": "滩西沙路"
-      },
-      {
-        "a": "beach",
-        "b": "creek",
-        "minutes": [
-          30,
-          50
-        ],
-        "label": "溪口小径"
-      },
-      {
-        "a": "creek",
-        "b": "plateau",
-        "minutes": [
-          40,
-          70
-        ],
-        "label": "石阶"
-      },
-      {
-        "a": "forest",
-        "b": "shrine",
-        "minutes": [
-          30,
-          55
-        ],
-        "label": "林间旧道"
-      },
-      {
-        "a": "plateau",
-        "b": "shrine",
+        "a": "raft",
+        "b": "shallow",
         "minutes": [
           10,
           20
         ],
-        "label": "祠前石阶"
+        "label": "划筏/顺潮"
       },
       {
-        "a": "plateau",
-        "b": "harbor",
+        "a": "raft",
+        "b": "wreck",
         "minutes": [
-          35,
-          60
+          20,
+          40
         ],
-        "label": "东侧山道"
+        "label": "划筏"
       },
       {
-        "a": "beach",
-        "b": "harbor",
+        "a": "raft",
+        "b": "fogline",
         "minutes": [
-          45,
+          20,
+          40
+        ],
+        "label": "向雾划"
+      },
+      {
+        "a": "raft",
+        "b": "neighbor",
+        "minutes": [
+          40,
           80
         ],
-        "label": "环滩路"
+        "label": "需升级艇/船"
+      },
+      {
+        "a": "shallow",
+        "b": "wreck",
+        "minutes": [
+          5,
+          10
+        ],
+        "label": "礁盘边"
       }
     ],
     "random_links": [
       {
-        "id": "wreck",
+        "id": "raftcluster",
         "links": [
-          "beach",
-          "harbor"
+          "raft",
+          "shallow"
         ],
         "minutes": [
-          25,
-          50
+          10,
+          25
         ]
       },
       {
-        "id": "saltcave",
+        "id": "buoy",
         "links": [
-          "plateau",
-          "shrine"
+          "wreck",
+          "fogline"
         ],
         "minutes": [
-          15,
-          35
-        ]
-      },
-      {
-        "id": "tower",
-        "links": [
-          "harbor",
-          "forest"
-        ],
-        "minutes": [
-          25,
-          45
-        ]
-      },
-      {
-        "id": "mangrove",
-        "links": [
-          "creek",
-          "forest"
-        ],
-        "minutes": [
-          20,
-          40
+          10,
+          20
         ]
       }
     ],
     "rules": [
-      "白鹿滩、潮汐林、淡水溪、白鹿原、白鹿祠、礁石港的名字与位置固定。",
-      "每局从沉船湾/盐洞/旧灯塔/红树林里抽两个野外点；名字、描写、路程可变，连接关系不变。",
-      "危险度：白鹿滩 0；潮汐林/淡水溪/礁石港 1；白鹿原/白鹿祠 2；野外点 2-3。",
-      "地图只改变外观与路程，不改变淡水溪、白鹿祠、旧石屋的方位关系。"
+      "充气救生筏没有甲板，不能装床/灶/集雨器；只有筏包两格储物。",
+      "外礁是潮汐礁：低潮露出，高潮淹没；系统给安全窗口，超时会切断退路。",
+      "救生筏到外礁浅滩10-20分钟；到沉船20-40分钟；到邻岛需要升级艇/船。"
     ]
+  },
+  "gameplay": {
+    "acts": [
+      {
+        "id": "act1",
+        "title": "漏水的艇",
+        "question": "一百万人同时投放，你的基地是一条正在漏水的艇；低潮窗口只有四十分钟，先排水、先上礁，还是先看系统引导？",
+        "set_pieces": [
+          "官方公告：投放人数、72小时保护、六条警告、频道规则",
+          "潮汐窗口：低潮 12:10-12:50；外礁露出；高潮 18:20 淹没",
+          "艇底积水：20/60L；每30分钟进水6L；完整度64/100",
+          "系统引导：主线/每日任务/活动/能力选择；推荐不是强制",
+          "甲板0格/筏包2格/载重30kg；升橡皮艇I阶才有第一格甲板，床/灶/集雨器都不能凭空装"
+        ]
+      },
+      {
+        "id": "act2",
+        "title": "第一块甲板",
+        "question": "升出第一格甲板之后，这一格先放什么？",
+        "set_pieces": [
+          "床：占这唯一一格，夜里恢复精神；没有床睡艇底会掉体力",
+          "集雨器：占这唯一一格，下雨出水；白鹿礁没有淡水",
+          "灶：占这唯一一格，烧水/做饭；烟会暴露位置",
+          "菜畦：占这唯一一格，需要淡水、种子和日照"
+        ]
+      },
+      {
+        "id": "act3",
+        "title": "升级与远航",
+        "question": "升出第一块甲板之后，先扩甲板、扩舱，还是去八百米外的邻岛？",
+        "set_pieces": [
+          "载具核与蓝图：橡皮艇要载具核×1+蓝图×1；再往上要修船台/干船坞/完整度/更多核",
+          "升级树：17大品阶×5细阶，充气筏→橡皮艇→小艇→快艇→渔船→游艇→邮轮→航母→浮空艇→浮空岛→飞天浮岛",
+          "舷外机/帆：升级后可选，速度与载重取捨",
+          "B-07 坐标：有人卖，有人骗"
+        ]
+      }
+    ],
+    "clocks": [
+      {
+        "name": "艇底积水",
+        "segments": 5,
+        "filled": 0,
+        "on_full": "积水没过座板，艇速减半；再不清，完整度开始掉。"
+      },
+      {
+        "name": "夜潮",
+        "segments": 6,
+        "filled": 0,
+        "on_full": "潮水把艇推离锚点，艇身横过来，甲板上的东西全滑进海里。"
+      },
+      {
+        "name": "潮汐窗口",
+        "segments": 4,
+        "filled": 1,
+        "on_full": "高潮淹没外礁，退路被切断；还在礁上的人会被困或卷走。"
+      },
+      {
+        "name": "淡水见底",
+        "segments": 5,
+        "filled": 0,
+        "on_full": "没有安全水，脱水开始扣体力；喝海水会腹泻。"
+      },
+      {
+        "name": "雾墙",
+        "segments": 5,
+        "filled": 0,
+        "on_full": "雾墙吞掉投放区，雾里的东西跟着艇灯靠近。"
+      }
+    ],
+    "fronts": [
+      {
+        "name": "区域频道的抢修者",
+        "want": "抢在你的艇沉之前收走甲板设施",
+        "move": "在附近频道问你的坐标，靠过来“帮忙”"
+      },
+      {
+        "name": "频道里的收购者",
+        "want": "低价收水、盐和艇核碎片",
+        "move": "用假坐标换真物资"
+      },
+      {
+        "name": "雾里的船",
+        "want": "跟着艇灯找一条能靠的艇",
+        "move": "在雾墙最厚的时候靠近"
+      }
+    ],
+    "progression": [
+      {
+        "id": "survival",
+        "label": "活过的夜",
+        "max": 7,
+        "note": "每一夜都要有干舱、锚和灯"
+      },
+      {
+        "id": "hull",
+        "label": "艇体修复",
+        "max": 3,
+        "note": "64→82→90→100"
+      },
+      {
+        "id": "deck",
+        "label": "甲板设施",
+        "max": 10,
+        "note": "床/灶/集雨器/菜畦/修船台等，每件占格"
+      },
+      {
+        "id": "upgrade",
+        "label": "艇体阶位（17品阶×5细阶）",
+        "max": 85,
+        "note": "普通充气筏I→橡皮艇I→…→航空母舰V→浮空艇→浮空岛→飞天浮岛V；跨品阶要蓝图/船坞/完整度/载具核"
+      },
+      {
+        "id": "channel",
+        "label": "频道信用",
+        "max": 5,
+        "note": "世界/区域/附近/交易；说真话还是骗水"
+      },
+      {
+        "id": "truth",
+        "label": "艇核真相",
+        "max": 6,
+        "note": "B-07、艇核碎片、邻岛祠堂"
+      }
+    ],
+    "session": {
+      "length": "6-8 次",
+      "scenes": "每次 3-5 场",
+      "ending": "由你把艇修成什么样、升级到几级、以及第 8 天跟谁走决定"
+    },
+    "choice_policy": {
+      "min": 2,
+      "max": 3,
+      "free_input": true,
+      "must_cost": true,
+      "no_advice": false,
+      "no_consequence_preview": false
+    }
+  },
+  "vessel_ladder": {
+    "note": "17大品阶×每阶5个细分阶，共85级。同级升小阶只加数值；跨品阶要蓝图、船坞/干船坞、完整度、载具核、材料与长工期。",
+    "grade_modifiers": {
+      "I": 1.0,
+      "II": 1.08,
+      "III": 1.16,
+      "IV": 1.24,
+      "V": 1.32
+    },
+    "classes": [
+      {
+        "class": "普通充气救生筏",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          2.4,
+          2.8
+        ],
+        "deck_slots": [
+          0,
+          0
+        ],
+        "storage_slots": [
+          2,
+          3
+        ],
+        "cargo_kg": [
+          30,
+          40
+        ],
+        "hull_max": [
+          100,
+          110
+        ],
+        "speed": "1-2km/h",
+        "gate": "初始"
+      },
+      {
+        "class": "橡皮艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          2.8,
+          3.4
+        ],
+        "deck_slots": [
+          1,
+          1
+        ],
+        "storage_slots": [
+          4,
+          5
+        ],
+        "cargo_kg": [
+          60,
+          80
+        ],
+        "hull_max": [
+          120,
+          135
+        ],
+        "speed": "3-5km/h",
+        "gate": "气室80+补气阀+载具核1+橡皮艇蓝图"
+      },
+      {
+        "class": "玻璃钢小艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          3.5,
+          4.2
+        ],
+        "deck_slots": [
+          2,
+          2
+        ],
+        "storage_slots": [
+          6,
+          8
+        ],
+        "cargo_kg": [
+          100,
+          130
+        ],
+        "hull_max": [
+          150,
+          170
+        ],
+        "speed": "6-10km/h",
+        "gate": "修船台Lv1+完整度120+核3+小艇蓝图"
+      },
+      {
+        "class": "快艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          4.5,
+          5.5
+        ],
+        "deck_slots": [
+          3,
+          4
+        ],
+        "storage_slots": [
+          8,
+          10
+        ],
+        "cargo_kg": [
+          160,
+          220
+        ],
+        "hull_max": [
+          180,
+          210
+        ],
+        "speed": "15-25km/h",
+        "gate": "修船台Lv2+完整度150+核6+快艇蓝图"
+      },
+      {
+        "class": "普通渔船",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          5.8,
+          7.0
+        ],
+        "deck_slots": [
+          4,
+          5
+        ],
+        "storage_slots": [
+          10,
+          12
+        ],
+        "cargo_kg": [
+          250,
+          350
+        ],
+        "hull_max": [
+          220,
+          250
+        ],
+        "speed": "8-12km/h",
+        "gate": "修船台Lv2+完整度180+核10+渔船蓝图"
+      },
+      {
+        "class": "普通游艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          7.5,
+          9.0
+        ],
+        "deck_slots": [
+          5,
+          6
+        ],
+        "storage_slots": [
+          12,
+          14
+        ],
+        "cargo_kg": [
+          400,
+          550
+        ],
+        "hull_max": [
+          260,
+          300
+        ],
+        "speed": "12-18km/h",
+        "gate": "修船台Lv3+完整度220+核15+游艇蓝图"
+      },
+      {
+        "class": "中型游艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          10,
+          12
+        ],
+        "deck_slots": [
+          7,
+          8
+        ],
+        "storage_slots": [
+          16,
+          18
+        ],
+        "cargo_kg": [
+          700,
+          900
+        ],
+        "hull_max": [
+          320,
+          360
+        ],
+        "speed": "14-20km/h",
+        "gate": "修船台Lv4+完整度260+核24+中型游艇蓝图"
+      },
+      {
+        "class": "大型游艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          14,
+          18
+        ],
+        "deck_slots": [
+          9,
+          10
+        ],
+        "storage_slots": [
+          20,
+          24
+        ],
+        "cargo_kg": [
+          1200,
+          1600
+        ],
+        "hull_max": [
+          400,
+          450
+        ],
+        "speed": "16-22km/h",
+        "gate": "干船坞+完整度320+核36+大型游艇蓝图"
+      },
+      {
+        "class": "豪华游艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          20,
+          26
+        ],
+        "deck_slots": [
+          12,
+          14
+        ],
+        "storage_slots": [
+          28,
+          32
+        ],
+        "cargo_kg": [
+          2000,
+          2800
+        ],
+        "hull_max": [
+          500,
+          560
+        ],
+        "speed": "18-24km/h",
+        "gate": "干船坞Lv3+完整度400+核48+豪华游艇蓝图"
+      },
+      {
+        "class": "超级游艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          30,
+          40
+        ],
+        "deck_slots": [
+          16,
+          18
+        ],
+        "storage_slots": [
+          36,
+          44
+        ],
+        "cargo_kg": [
+          3500,
+          5000
+        ],
+        "hull_max": [
+          650,
+          750
+        ],
+        "speed": "20-26km/h",
+        "gate": "干船坞Lv4+完整度500+核72+超级游艇蓝图"
+      },
+      {
+        "class": "探险船",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          45,
+          60
+        ],
+        "deck_slots": [
+          20,
+          24
+        ],
+        "storage_slots": [
+          45,
+          52
+        ],
+        "cargo_kg": [
+          6000,
+          8000
+        ],
+        "hull_max": [
+          800,
+          900
+        ],
+        "speed": "18-24km/h",
+        "gate": "船厂+完整度650+核100+探险船蓝图"
+      },
+      {
+        "class": "小型邮轮",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          70,
+          100
+        ],
+        "deck_slots": [
+          26,
+          30
+        ],
+        "storage_slots": [
+          55,
+          65
+        ],
+        "cargo_kg": [
+          10000,
+          15000
+        ],
+        "hull_max": [
+          1000,
+          1150
+        ],
+        "speed": "20-24km/h",
+        "gate": "船厂Lv3+完整度800+核150+小型邮轮蓝图"
+      },
+      {
+        "class": "大型邮轮",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          120,
+          180
+        ],
+        "deck_slots": [
+          34,
+          40
+        ],
+        "storage_slots": [
+          70,
+          85
+        ],
+        "cargo_kg": [
+          20000,
+          30000
+        ],
+        "hull_max": [
+          1300,
+          1500
+        ],
+        "speed": "22-26km/h",
+        "gate": "船厂Lv4+完整度1000+核220+大型邮轮蓝图"
+      },
+      {
+        "class": "航空母舰",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          200,
+          300
+        ],
+        "deck_slots": [
+          40,
+          48
+        ],
+        "storage_slots": [
+          90,
+          110
+        ],
+        "cargo_kg": [
+          50000,
+          70000
+        ],
+        "hull_max": [
+          1800,
+          2100
+        ],
+        "speed": "25-30km/h",
+        "gate": "军港/船厂Lv5+完整度1300+核350+航母蓝图+动力核心"
+      },
+      {
+        "class": "浮空艇",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          120,
+          180
+        ],
+        "deck_slots": [
+          30,
+          36
+        ],
+        "storage_slots": [
+          80,
+          95
+        ],
+        "cargo_kg": [
+          30000,
+          40000
+        ],
+        "hull_max": [
+          1500,
+          1700
+        ],
+        "speed": "空中30-50km/h",
+        "gate": "反重力核心+稳定场+核400+浮空蓝图"
+      },
+      {
+        "class": "浮空岛",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          300,
+          500
+        ],
+        "deck_slots": [
+          60,
+          70
+        ],
+        "storage_slots": [
+          120,
+          140
+        ],
+        "cargo_kg": [
+          100000,
+          150000
+        ],
+        "hull_max": [
+          2500,
+          2800
+        ],
+        "speed": "空中10-30km/h",
+        "gate": "岛核+反重力阵列+气象稳定器+核600"
+      },
+      {
+        "class": "飞天浮岛",
+        "grades": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ],
+        "length_m": [
+          500,
+          800
+        ],
+        "deck_slots": [
+          80,
+          100
+        ],
+        "storage_slots": [
+          160,
+          200
+        ],
+        "cargo_kg": [
+          200000,
+          300000
+        ],
+        "hull_max": [
+          3500,
+          4000
+        ],
+        "speed": "自由飞行",
+        "gate": "天空城核心+气象稳定器Lv5+核900"
+      }
+    ]
+  },
+  "facility_ladder": [
+    {
+      "key": "bed",
+      "name": "床",
+      "slot": "甲板1格",
+      "levels": [
+        "吊床",
+        "折叠床",
+        "固定床",
+        "双层床",
+        "恒温舱"
+      ],
+      "effect": "恢复精神/体力；等级越高，夜里掉体力越少。"
+    },
+    {
+      "key": "stove",
+      "name": "灶",
+      "slot": "甲板1格",
+      "levels": [
+        "火盆",
+        "酒精炉",
+        "煤油炉",
+        "双灶",
+        "封闭厨房"
+      ],
+      "effect": "烧水/做饭；烟会暴露位置，等级越高越省燃料。"
+    },
+    {
+      "key": "rain",
+      "name": "集雨器",
+      "slot": "甲板1格",
+      "levels": [
+        "帆布",
+        "塑料布",
+        "导流槽",
+        "滤芯",
+        "自动集雨"
+      ],
+      "effect": "下雨出水；等级越高，收集率和净水率越高。"
+    },
+    {
+      "key": "garden",
+      "name": "菜畦",
+      "slot": "甲板1格",
+      "levels": [
+        "泡沫箱",
+        "浮筏",
+        "水培",
+        "温室",
+        "多层菜架"
+      ],
+      "effect": "种菜；需要淡水、种子和日照；等级越高，产量和抗盐性越高。"
+    },
+    {
+      "key": "dock",
+      "name": "修船台",
+      "slot": "甲板1格",
+      "levels": [
+        "木板",
+        "支架",
+        "滑轨",
+        "干船坞",
+        "移动船坞"
+      ],
+      "effect": "补漏和升级的必要设施；等级决定能修到哪一品阶。"
+    },
+    {
+      "key": "storage",
+      "name": "储物架",
+      "slot": "舱内1格",
+      "levels": [
+        "木箱",
+        "铁架",
+        "防潮柜",
+        "模块柜",
+        "恒温仓"
+      ],
+      "effect": "增加载重和防潮；等级越高，食物/材料损耗越低。"
+    },
+    {
+      "key": "purifier",
+      "name": "净水器",
+      "slot": "舱内1格",
+      "levels": [
+        "滤布",
+        "砂滤",
+        "活性炭",
+        "反渗透",
+        "太阳能蒸馏"
+      ],
+      "effect": "把海水/渗水变安全水；等级越高，出水量和寿命越高。"
+    },
+    {
+      "key": "guard",
+      "name": "防撞栏",
+      "slot": "甲板1格",
+      "levels": [
+        "木栏",
+        "轮胎",
+        "铁栏",
+        "缓冲架",
+        "装甲带"
+      ],
+      "effect": "防靠帮、防撞、防登艇；等级越高，防御值越高。"
+    },
+    {
+      "key": "sail",
+      "name": "帆",
+      "slot": "甲板1格",
+      "levels": [
+        "布帆",
+        "三角帆",
+        "纵帆",
+        "翼帆",
+        "硬帆"
+      ],
+      "effect": "借风航行；等级越高，逆风/侧风能力越好。"
+    },
+    {
+      "key": "motor",
+      "name": "舷外机",
+      "slot": "艇尾",
+      "levels": [
+        "2马力",
+        "5马力",
+        "15马力",
+        "30马力",
+        "双机"
+      ],
+      "effect": "速度和油耗；等级越高，越能逆流和远航。"
+    }
+  ],
+  "module_ladder": [
+    {
+      "key": "decompose",
+      "name": "物质分解",
+      "levels": [
+        "Lv1 废料",
+        "Lv2 木石",
+        "Lv3 金属",
+        "Lv4 复合",
+        "Lv5 艇核"
+      ],
+      "effect": "把废料拆成材料；等级越高，可拆物越多，SP/劳力成本越低。"
+    },
+    {
+      "key": "gather",
+      "name": "采集",
+      "levels": [
+        "Lv1 礁盘",
+        "Lv2 潮池",
+        "Lv3 沉船",
+        "Lv4 深海",
+        "Lv5 潮间带"
+      ],
+      "effect": "提高采集产量和发现率；等级越高，越能在危险潮窗里多拿一点。"
+    },
+    {
+      "key": "weave",
+      "name": "编织",
+      "levels": [
+        "Lv1 草绳",
+        "Lv2 渔网",
+        "Lv3 帆布",
+        "Lv4 复合布",
+        "Lv5 防水层"
+      ],
+      "effect": "把纤维变成绳/网/布/防水层；补漏和帆都靠它。"
+    },
+    {
+      "key": "water",
+      "name": "净水",
+      "levels": [
+        "Lv1 砂滤",
+        "Lv2 煮沸",
+        "Lv3 活性炭",
+        "Lv4 反渗透",
+        "Lv5 蒸馏"
+      ],
+      "effect": "把海水/渗水变安全水；等级越高，出水量和安全性越高。"
+    },
+    {
+      "key": "cook",
+      "name": "烹饪",
+      "levels": [
+        "Lv1 烤",
+        "Lv2 煮",
+        "Lv3 炖",
+        "Lv4 熏",
+        "Lv5 保存"
+      ],
+      "effect": "提高食物恢复和保存时间；等级越高，越不容易食物中毒。"
+    },
+    {
+      "key": "medic",
+      "name": "急救",
+      "levels": [
+        "Lv1 包扎",
+        "Lv2 止血",
+        "Lv3 缝合",
+        "Lv4 抗感染",
+        "Lv5 手术"
+      ],
+      "effect": "处理伤口/感染/低温；等级越高，濒死救援成功率越高。"
+    },
+    {
+      "key": "nav",
+      "name": "航海",
+      "levels": [
+        "Lv1 近岸",
+        "Lv2 潮汐",
+        "Lv3 罗盘",
+        "Lv4 夜航",
+        "Lv5 远海"
+      ],
+      "effect": "提高潮汐窗口精度、航向和避礁；等级越高，安全窗口误差越小。"
+    },
+    {
+      "key": "defense",
+      "name": "防御",
+      "levels": [
+        "Lv1 推挡",
+        "Lv2 棍棒",
+        "Lv3 鱼叉",
+        "Lv4 投掷",
+        "Lv5 艇防"
+      ],
+      "effect": "防登艇/防抢；等级越高，艇上防守越强。"
+    }
+  ],
+  "tide_rules": {
+    "why": "万岛海域是浅陆棚+海峡漏斗地形，潮差6-9米；低平礁岛在高潮时被淹没1.5-3米，退潮才露出。风暴会叠加0.5-1.5米增水。",
+    "cycle": "约12小时25分一个潮周期；低潮窗口通常40-90分钟，高潮持续4-6小时。",
+    "safe_window": "手环按潮汐表给出安全窗口；基础误差±15分钟，航海Lv2降到±8分钟，Lv4降到±3分钟。",
+    "overstay": "超时未离开礁盘：先断退路，再被潮水围困；体力/体温/装备决定能不能撑到下一次低潮。",
+    "islands": "外礁浅滩、沉船残骸都是潮汐点；主岛低地也会被高潮淹没，只有高处和退潮滩能落脚。",
+    "system_role": "系统只给潮汐表、安全窗、任务和活动；是否上礁、是否冒险多拿一筐，由玩家判断。"
+  },
+  "guidance": {
+    "mode": "system_suggestions_not_forced",
+    "main": "把筏撑过第一夜：打气到72以上 → 补气阀（修补片1/胶水1/阀夹1）→ 升橡皮艇I阶（第一块甲板）→ 装床/集雨器 → 下锚。",
+    "daily_tasks": [
+      {
+        "id": "pump",
+        "title": "打气12点",
+        "reward": "潮币5/SP1",
+        "note": "气室低于50会加速塌陷。"
+      },
+      {
+        "id": "glue",
+        "title": "找橡胶胶水/阀夹",
+        "reward": "补气阀配方进度+1",
+        "note": "外礁低潮窗口12:10-12:50；沉船残骸也有。"
+      },
+      {
+        "id": "tide",
+        "title": "记录一次潮汐",
+        "reward": "航海经验+1",
+        "note": "高潮前30分钟回筏，系统记录安全窗。"
+      }
+    ],
+    "activities": [
+      {
+        "id": "low_tide",
+        "title": "低潮采集",
+        "window": "12:10-12:50",
+        "risk": "超时困礁",
+        "reward": "木/纤/布/胶水/阀夹"
+      },
+      {
+        "id": "pump_drill",
+        "title": "打气演练",
+        "window": "任意",
+        "risk": "耗劳力",
+        "reward": "筏务经验+1"
+      },
+      {
+        "id": "channel_trade",
+        "title": "频道换胶水",
+        "window": "07:00/13:00/19:00",
+        "risk": "假坐标/骗水",
+        "reward": "胶水/阀夹/信息"
+      }
+    ],
+    "ability_choices": [
+      {
+        "module": "采集Lv1",
+        "cost": "1模块槽+2SP",
+        "effect": "礁盘采集产量+20%"
+      },
+      {
+        "module": "编织Lv1",
+        "cost": "1模块槽+2SP",
+        "effect": "纤维→绳/布，补筏更快"
+      },
+      {
+        "module": "净水Lv1",
+        "cost": "1模块槽+3SP",
+        "effect": "海水/渗水→安全水"
+      },
+      {
+        "module": "航海Lv1",
+        "cost": "1模块槽+2SP",
+        "effect": "潮汐窗口误差±15→±10分钟"
+      }
+    ],
+    "recommendation": "系统建议（可忽略）：先打气到72，再趁12:10低潮上外礁找胶水和阀夹；不要空手回来。",
+    "ability_selection": {
+      "scope": "每个求生者开局都有一次初始能力选择，不是主角特权。",
+      "current": "分解系",
+      "slots": "1/3",
+      "reselect": "第一次使用前可免费重选一次；使用后只能靠升阶/任务开新槽，不能换系。",
+      "options": [
+        {
+          "id": "decompose",
+          "name": "分解系",
+          "active": "物质分解：1SP+1劳力+10分钟，把废料拆成基础材料",
+          "passive": "空间仓格：6格，每格5件，不减轻重量",
+          "limit": "只能拆废料/木石/金属；活物和未知核心不能拆"
+        },
+        {
+          "id": "gather",
+          "name": "采集系",
+          "active": "潮间采集：1劳力+20分钟，礁盘产量+50%",
+          "passive": "湿货保鲜：海藻/牡蛎保存时间+50%",
+          "limit": "必须在低潮窗口内；超时困礁"
+        },
+        {
+          "id": "weave",
+          "name": "编织系",
+          "active": "纤维编织：1SP+1劳力+30分钟，纤维→绳/布",
+          "passive": "绳结：绳/布耐久+30%",
+          "limit": "需要纤维；不能凭空织帆"
+        },
+        {
+          "id": "water",
+          "name": "净水系",
+          "active": "海水蒸馏：1SP+1劳力+30分钟，海水→安全水1L",
+          "passive": "雨水收集：下雨自动+2L",
+          "limit": "需要容器/热源；蒸馏耗燃料"
+        },
+        {
+          "id": "cook",
+          "name": "烹饪系",
+          "active": "火候控制：1SP+10分钟，食物恢复+30%",
+          "passive": "食物保存：熟食保存+1天",
+          "limit": "需要火和锅；烟会暴露位置"
+        },
+        {
+          "id": "medic",
+          "name": "急救系",
+          "active": "止血包扎：1SP+10分钟，止血/防感染",
+          "passive": "低温处置：失温恢复+30%",
+          "limit": "只处理常识范围；重伤要药/手术"
+        },
+        {
+          "id": "nav",
+          "name": "航海系",
+          "active": "航线校正：1SP，下一次划行不偏航",
+          "passive": "潮汐读表：安全窗误差-5分钟",
+          "limit": "不替代罗盘；雾里仍会迷向"
+        },
+        {
+          "id": "defense",
+          "name": "防御系",
+          "active": "筏边推挡：1劳力，防靠帮/防登筏",
+          "passive": "鱼叉：可捕鱼/近战",
+          "limit": "充气筏没有甲板，防守空间小"
+        }
+      ]
+    }
+  },
+  "items": {
+    "water": {
+      "name": "饮用水",
+      "type": "消耗",
+      "desc": "一瓶淡水；海水不能直接喝。"
+    },
+    "biscuit": {
+      "name": "压缩饼干",
+      "type": "食物",
+      "desc": "一小块，能压住饿。"
+    },
+    "signal_flare": {
+      "name": "信号棒",
+      "type": "工具",
+      "desc": "夜里能让人看见你，也能让不该看见的人看见你。"
+    },
+    "first_aid": {
+      "name": "急救包",
+      "type": "医疗",
+      "desc": "绷带、碘伏和一把剪刀。"
+    },
+    "phone": {
+      "name": "手机",
+      "type": "工具",
+      "desc": "没有信号；电量要省着用。"
+    },
+    "student_card": {
+      "name": "学生证",
+      "type": "杂物",
+      "desc": "证明你原来是谁。"
+    },
+    "rope": {
+      "name": "绳索",
+      "type": "材料",
+      "desc": "十米尼龙绳；能绑筏，也能绑人。"
+    },
+    "hand_pump": {
+      "name": "手动打气筒",
+      "type": "工具",
+      "desc": "给气室打气；每次10分钟。"
+    },
+    "patch_cloth": {
+      "name": "补片布",
+      "type": "材料",
+      "desc": "补气阀用的橡胶布。"
+    },
+    "rubber_glue": {
+      "name": "橡胶胶水",
+      "type": "材料",
+      "desc": "补漏用；见水后要压紧。"
+    },
+    "valve_clamp": {
+      "name": "阀夹",
+      "type": "材料",
+      "desc": "固定气阀阀芯。"
+    },
+    "cloth": {
+      "name": "旧布",
+      "type": "材料",
+      "desc": "从沉船里扯下来的帆布。"
+    },
+    "vehicle_core": {
+      "name": "载具核",
+      "type": "核心",
+      "desc": "锁进核座，载具才能升阶。"
+    },
+    "blueprint_rubber_boat": {
+      "name": "橡皮艇蓝图",
+      "type": "蓝图",
+      "desc": "写着橡皮艇I阶的骨架与气室布局。"
+    },
+    "bandage": {
+      "name": "绷带",
+      "type": "医疗",
+      "desc": "止血用。"
+    },
+    "flint": {
+      "name": "火石",
+      "type": "工具",
+      "desc": "能点火，但湿了就难。"
+    },
+    "salt": {
+      "name": "盐",
+      "type": "材料",
+      "desc": "少量盐；缺盐会没力气。"
+    },
+    "seed": {
+      "name": "种子",
+      "type": "材料",
+      "desc": "菜畦用；需要淡水。"
+    },
+    "herb": {
+      "name": "草药",
+      "type": "医疗",
+      "desc": "当地人用来退烧。"
+    },
+    "wood": {
+      "name": "木头",
+      "type": "材料",
+      "desc": "浮木或拆船料。"
+    },
+    "stone": {
+      "name": "石头",
+      "type": "材料",
+      "desc": "压舱、磨刀、垒灶。"
+    },
+    "fiber": {
+      "name": "纤维",
+      "type": "材料",
+      "desc": "编绳/织布用。"
+    }
   }
 }

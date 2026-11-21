@@ -17,11 +17,14 @@
 import json
 
 from game_engine import canon as canon_rules
+from game_engine import gameplay as gameplay_rules
 from game_engine import mapgen
+from game_engine.rules import domain_packs as domain_rules
 from game_engine.rules import gamesystem as game_rules
 from game_engine.rules import playbook as playbook_rules
 from game_engine.rules import questline as questline_rules
 from game_engine.rules import systems as system_rules
+from game_engine.rules import vessel as vessel_rules
 from game_engine.state_schema import entity_key, log_event
 
 ATTR_KEYS = ("str", "dex", "int", "con", "cha")
@@ -156,6 +159,51 @@ def normalize_relations(relations: list, entity_ids) -> dict:
     return out
 
 
+def apply_domain_packs(state: dict, bundle: dict, force_sheet: bool = False) -> None:
+    """把设定包里的载具/设施/模块/引导/潮汐/能力/物品目录写进状态。
+
+    为什么放在 settings_loader 而不是各 UI：这些字段一旦只在 setting JSON 里，
+    `build_state` 建局与 `load_setting` 续跑就会得到两份不同的世界；面板也只能
+    读到手写的 `game.sheet`。这里统一规范化并落盘，UI 只消费状态。
+    """
+    if not isinstance(bundle, dict):
+        return
+    if bundle.get("vessel_ladder"):
+        state["vessel_ladder"] = vessel_rules.normalize(bundle["vessel_ladder"])
+    if bundle.get("facility_ladder"):
+        state["facility_ladder"] = domain_rules.normalize_catalog(
+            bundle["facility_ladder"], "facility_ladder")
+    if bundle.get("module_ladder"):
+        state["module_ladder"] = domain_rules.normalize_catalog(
+            bundle["module_ladder"], "module_ladder")
+    if bundle.get("tide_rules"):
+        state["tide_rules"] = domain_rules.normalize_tide(bundle["tide_rules"])
+
+    guidance = domain_rules.normalize_guidance(bundle.get("guidance"))
+    if guidance:
+        state["guidance"] = guidance
+    ability = domain_rules.normalize_ability(
+        bundle.get("ability_selection")
+        or (bundle.get("guidance") or {}).get("ability_selection")
+    )
+    if ability:
+        state["ability_selection"] = ability
+
+    catalog = domain_rules.normalize_items(
+        bundle.get("item_catalog") or bundle.get("items")
+    )
+    if catalog:
+        existing = state.get("item_catalog") if isinstance(state.get("item_catalog"), dict) else {}
+        catalog = {**existing, **catalog}
+    market_catalog = domain_rules.merge_market(catalog, bundle.get("market"))
+    if market_catalog:
+        state["item_catalog"] = market_catalog
+
+    # 当前阶位从 game.meters.base 派生；project 只补缺失的 base 进度轨，
+    # 不覆盖玩家手写的编号（如 R-1），除非显式要求 force_sheet。
+    vessel_rules.project(state, force_sheet=force_sheet)
+
+
 def build_state(bundle: dict, seed: int | None = None) -> dict:
     """设定包 → 初始状态（不落盘、不写文件）。
 
@@ -223,11 +271,18 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
         "playbook_notes": pb_notes,
         "questlines": quests,
         "quests": {},
+        "gameplay": gameplay_rules.normalize(
+            bundle.get("gameplay"), narrative=None, bundle=bundle),
+        "scene": None,
+        "scene_log": [],
+        "scene_count": 0,
     }
     if profile:
         state["game"] = profile
+        game_rules.sync_from_player(state)
     if system_defs:
         state["systems"] = {"defs": system_defs, "rt": {}}
+    apply_domain_packs(state, bundle)
     return state
 
 
@@ -259,6 +314,8 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
         state.setdefault("quests", {})
     if bundle.get("game"):
         state["game"] = game_rules.normalize(bundle["game"])
+    if isinstance(state.get("game"), dict):
+        game_rules.sync_from_player(state)
     if bundle.get("rules"):
         # World-specific exceptions live in the bundle, not in the engine:
         # this is what keeps "swap worlds without changing code" true.
@@ -272,6 +329,9 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
             except ValueError as exc:
                 raise ValueError("systems 定义非法: %s" % exc)
             defs[normalized["id"]] = normalized
+    if bundle.get("gameplay"):
+        state["gameplay"] = gameplay_rules.normalize(
+            bundle["gameplay"], narrative=state.get("narrative"), bundle=bundle)
     if bundle.get("currency"):
         state["currency"] = str(bundle["currency"])
     terms = bundle.get("terms")
@@ -324,6 +384,8 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
     if lore_n:
         log_event(state, "system", "设定包「%s」载入：世界书 %d 条"
                   % (bundle.get("name", ""), lore_n))
+    # 运行期载入也要补齐领域包：旧存档续跑不会因为只读 setting 而丢载具梯/物品目录。
+    apply_domain_packs(state, bundle)
     return lore_n
 
 

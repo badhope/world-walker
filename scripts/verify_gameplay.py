@@ -35,6 +35,7 @@ if 'game_engine' not in sys.modules:
     _spec.loader.exec_module(_pkg)
 
 from game_engine import settings_loader as SL              # noqa: E402
+from game_engine import gameplay as GP                     # noqa: E402
 from game_engine.state_schema import load_state, save_state, seed_rng  # noqa: E402
 from game_engine.rules import lorebook as LB              # noqa: E402
 from game_engine.rules import playbook as PB              # noqa: E402
@@ -479,12 +480,54 @@ def g5_determinism():
     check('G5 两个副本连跑 3 回合后逐字节一致', fa == fb, '%d vs %d 字节' % (len(fa), len(fb)))
 
 
+# ── G6 场景驱动 ───────────────────────────────────────────
+def g6_scene_loop():
+    tmp = tempfile.mkdtemp(prefix='ww-gameplay-scene-')
+    for name in ('九荒', '白鹿岛', '折剑行', '玄枢界', '雾港', '霓虹深渊'):
+        sp = os.path.join(tmp, name + '.json')
+        st = _load_bundle(name, sp)
+        gp = st.get('gameplay') or {}
+        check('G6 %s 有 3 幕结构' % name, len(gp.get('acts') or []) == 3,
+              str(len(gp.get('acts') or [])))
+        check('G6 %s 至少 3 只压力钟' % name, len(gp.get('clocks') or []) >= 3,
+              str([c.get('name') for c in gp.get('clocks') or []]))
+        check('G6 %s 有隐藏前线' % name, len(gp.get('fronts') or []) >= 2,
+              str(len(gp.get('fronts') or [])))
+        check('G6 %s 的选择策略要求代价且 2-3 个' % name,
+              bool((gp.get('choice_policy') or {}).get('must_cost'))
+              and int((gp.get('choice_policy') or {}).get('min', 0)) >= 2,
+              str(gp.get('choice_policy')))
+        before_tick = int(st.get('tick', 0) or 0)
+        GP.open_scene(sp, title='验证场景', goal='拿到一样东西',
+                      obstacle='有人先到', pressure='钟会走', clue='一条线索',
+                      cost='失去一点东西', choices=['付钱', '欠人情'])
+        res = GP.resolve_scene(sp, 'yes-but', cost='欠一个人情',
+                               clocks=[{'name': gp['clocks'][0]['name'], 'delta': 1}])
+        after = load_state(sp)
+        check('G6 %s 结算场景不推进 tick' % name,
+              int(after.get('tick', 0) or 0) == before_tick,
+              '%s -> %s' % (before_tick, after.get('tick')))
+        check('G6 %s 场景进入日志且时钟前进一步' % name,
+              len(after.get('scene_log') or []) == 1
+              and res['clocks'] and res['clocks'][0]['filled'] == 1,
+              str(res.get('clocks')))
+        GP.adjust_clock(sp, gp['clocks'][0]['name'], delta=99, reason='验证')
+        after_full = load_state(sp)
+        check('G6 %s 钟满写 world_flags' % name,
+              any(str(f).startswith('钟满:') for f in after_full.get('world_flags') or []),
+              str([f for f in after_full.get('world_flags') or [] if str(f).startswith('钟满:')]))
+        check('G6 %s 玩家台账不泄露隐藏前线' % name,
+              'fronts' not in GP.journal(after_full),
+              str(sorted(GP.journal(after))))
+
+
 def main():
     g1_playbook()
     g2_questline()
     g3_lorebook()
     g4_integration()
     g5_determinism()
+    g6_scene_loop()
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))
     return 0 if passed == len(RESULTS) else 1

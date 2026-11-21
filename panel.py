@@ -370,11 +370,16 @@ def _num_or(value, default=0.0):
 
 
 def build_inventory(state, player):
-    """随身物品：以 player.items 为准，用市场元数据补显示名与类别。"""
+    """随身物品：以 player.items 为准，用物品目录/市场元数据补显示名与类别。"""
     items = player.get("items")
     if not isinstance(items, dict):
         return []
     meta = {}
+    catalog = state.get("item_catalog")
+    if isinstance(catalog, dict):
+        for k, it in catalog.items():
+            if isinstance(it, dict):
+                meta[str(k)] = it
     for mk in (state.get("market") or {}).values():
         if isinstance(mk, dict):
             for k, it in mk.items():
@@ -486,16 +491,24 @@ def _build_events(state):
 
 def _build_player(state, player, loc, karma):
     """HUD 用的玩家切片：所有数值保持为数字，格式化留给前端（千分位/百分比）。"""
+    stage = _int_or(player.get("stage", 0), 0)
+    stage_max = max(1, _int_or((state.get("config") or {}).get("stage_max", 20), 20))
+    game = state.get("game") if isinstance(state.get("game"), dict) else {}
+    for row in game.get("meters") or []:
+        if isinstance(row, dict) and str(row.get("key") or "") == "base":
+            stage = _int_or(row.get("value", stage), stage)
+            stage_max = max(1, _int_or(row.get("max", stage_max), stage_max))
+            break
     return {
         "name": str(player.get("name") or "玩家"), "level": str(player.get("level") or ""),
-        "stage": _int_or(player.get("stage", 0), 0),
-        "stage_max": max(1, _int_or((state.get("config") or {}).get("stage_max", 20), 20)),
+        "stage": stage,
+        "stage_max": stage_max,
         "mind_scars": _int_or(player.get("mind_scars", 0), 0),
         "near_death_count": _int_or(player.get("near_death_count", 0), 0),
         "hp": _int_or(player.get("hp", 0), 0), "hp_max": max(1, _int_or(player.get("hp_max", 1), 1)),
         "mp": _int_or(player.get("mp", 0), 0), "mp_max": max(0, _int_or(player.get("mp_max", 0), 0)),
         "gold": _int_or(player.get("gold", 0), 0), "location": str(loc or ""),
-        "currency": str(state.get("currency") or "灵石"),
+        "currency": str(state.get("currency") or (build_terms(state).get("gold")) or "钱财"),
         "karma": karma,
         "attrs": player.get("attrs", {}),
         "inventory": build_inventory(state, player),
@@ -933,10 +946,18 @@ def _build_game(state):
     out = {"profile": {}, "checks": [], "check_rate": {}, "context": {}}
     try:
         from game_engine.rules import gamesystem as game_rules
-        out["profile"] = game_rules.profile_of(state)
+        out["profile"] = game_rules.profile_for_display(state)
     except Exception as exc:  # aqg: top-level boundary —— 档案坏了不影响其余面板
         out["profile"] = {"error": str(exc)[:120], "resources": [], "attributes": [],
                           "meters": [], "tags": [], "sheet": {}}
+    try:
+        from game_engine.rules import vessel as vessel_rules
+        out["vessel"] = vessel_rules.status(state)
+    except Exception as exc:  # aqg: boundary — 载具梯坏了只降级这一块
+        out["vessel"] = {"error": str(exc)[:120]}
+    out["guidance"] = state.get("guidance") if isinstance(state.get("guidance"), dict) else {}
+    out["tide"] = state.get("tide_rules") if isinstance(state.get("tide_rules"), dict) else {}
+    out["abilities"] = state.get("ability_selection") if isinstance(state.get("ability_selection"), dict) else {}
     try:
         from game_engine.rules import checks as check_rules
         out["checks"] = check_rules.summary(state, 10)
@@ -1401,7 +1422,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Player API write entry point.  The old inbox side-channel is gone."""
         path = self.path.split('?')[0]
-        if path.startswith('/api/v1/'):
+        if path.startswith('/api/v1/') or path == '/action':
             self._api_v1_post(path)
             return
         self._send(404, 'text/plain; charset=utf-8', b'not found')
@@ -1444,6 +1465,14 @@ class Handler(BaseHTTPRequestHandler):
             self._api_json(400, {"ok": False, "error": "请求体必须是 JSON 对象"})
             return None
         return body
+
+    def _history_payload(self):
+        """正文与归档的统一检索入口；先经过 pending 历史守卫再读盘。"""
+        state = load_state_retry(self._state())
+        prose = state.get('prose') if isinstance(state.get('prose'), list) else []
+        return {'ok': True, 'prose': prose[-MAX_HISTORY_PAGE:],
+                'archived_events': int(state.get('archived_events', 0) or 0),
+                'tick': int(state.get('tick', 0) or 0)}
 
     def _save_root(self):
         from game_engine import sessions as session_store

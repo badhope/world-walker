@@ -152,6 +152,10 @@ def build_player_view(state_path: str) -> dict:
             "character": {
                 "player": player,
                 "game": game.get("profile") or {},
+                "vessel": game.get("vessel") or {},
+                "abilities": game.get("abilities") or {},
+                "guidance": game.get("guidance") or {},
+                "tide": game.get("tide") or {},
                 "checks": game.get("checks") or [],
                 "systems": (vm.get("systems") or {}).get("rows") or [],
                 "insights": vm.get("insights") or {},

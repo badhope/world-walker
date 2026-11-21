@@ -33,8 +33,8 @@ fails the gate if they disagree.
    bash scripts/pre_push_gate.sh
    ```
 
-   All 33 steps must pass. Coverage must be ≥70%, mutation survival must be 0%, and no check may
-   be skipped for a missing dependency — a missing tool fails the gate.
+   Every step in `scripts/pre_push_gate.sh` must pass. Coverage must be ≥70%, mutation survival
+   must be 0%, and no check may be skipped for a missing dependency — a missing tool fails the gate.
 
 6. **Commit and tag:**
 
@@ -44,18 +44,25 @@ fails the gate if they disagree.
    git tag -a vX.Y.Z -m "World Walker vX.Y.Z"
    ```
 
-7. **Push `main` and the tag:**
+7. **Push `main` and the tag to every mirror:**
 
    ```bash
-   git push origin main
-   git push origin vX.Y.Z
+   for remote in github-x33834 github-morningstar github-badhope gitee gitcode; do
+     git push "$remote" main
+     git push "$remote" "vX.Y.Z"
+   done
    ```
 
-8. **Verify the remote actually has it:**
+   Every remote keeps `main` as its only branch. A release is not done until all five mirrors
+   answer.
+
+8. **Verify the remotes actually have it:**
 
    ```bash
-   git ls-remote --tags origin vX.Y.Z
-   git ls-remote --heads origin main
+   for remote in github-x33834 github-morningstar github-badhope gitee gitcode; do
+     git ls-remote --tags "$remote" "vX.Y.Z"
+     git ls-remote --heads "$remote" main
+   done
    ```
 
    Report the remote commit hash, never "should be pushed".

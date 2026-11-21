@@ -31,7 +31,7 @@ SERVER = os.path.join(ROOT, 'mcp_server.py')
 
 EXPECTED_TOOLS = {
     'world_schema', 'world_init', 'world_open', 'read_state', 'combat', 'trade',
-    'social', 'karma', 'tick', 'narrative', 'status', 'merit', 'narrative_weight',
+    'social', 'karma', 'tick', 'campaign', 'narrative', 'status', 'merit', 'narrative_weight',
     'narration_context', 'character_card_read', 'add_character', 'import_lorebook',
     'snapshot', 'restore', 'travel', 'open_panel', 'load_setting',
     'advance', 'recall', 'write_summary', 'recap', 'configure',

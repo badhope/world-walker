@@ -46,7 +46,6 @@ game_engine = [
   "README.zh-CN.md",
   "BRAND.md",
   "ARCHITECTURE.md",
-  "GAME_MASTER_PROTOCOL.md",
   "CHANGELOG.md",
   "ROADMAP.md",
   "CONTRIBUTING.md",

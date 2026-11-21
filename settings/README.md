@@ -6,7 +6,7 @@
 load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市场 + 关系 + 世界书，一次到位
 ```
 
-载入后建议紧接着 `open_panel`，给玩家一块可一直看的实况主舞台（叙事/HUD/长局图表/皮肤）。
+载入后玩家页面直接使用这个世界的标题、地点和视觉风格；MCP 宿主不需要调用 `open_panel`，正文由对话承载。
 
 **换世界只需换这个包**：世界观词、等级阶梯、地点描写、货币、皮肤与品牌全在里面；
 引擎侧不需要改一行代码。
@@ -28,6 +28,7 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | `places` | | 地点描写 `{地名: {desc}}` 或 `{地名: "描写"}`。走到该地时面板主舞台显示它，而不是开场那句 |
 | `lore` | | 世界书条目，**与酒馆 character_book 同形**：`keys` / `secondary_keys` / `selective` / `constant` / `insertion_order` / `content` / `comment`。`narration_context` 按关键词触发它们 |
 | `playbook` | | 玩法剧本 `{loop, input, progress, failure, beat, settlement, context}`；决定这一局"怎么玩"（详见 `docs/MCP_PLAY.md`）。缺省为自由推进 + 气血失败 |
+| `gameplay` | | 场景契约 `{acts, clocks, fronts, choice_policy, progression, session}`：3 幕、压力钟、隐藏前线、每场选择必须付代价。缺省退回三幕骨架，不会空白 |
 | `questlines` | | 事业线数组（stage DAG + 谓词 + 奖励）。载入时校验环与幽灵 next；未满足 `visibility` 的线保持 dormant，不占面板 |
 | `seed` | | 随机种子（可复现） |
 | `state_path_hint` | | 默认状态文件名 |
@@ -40,7 +41,7 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | `折剑行.setting.json` | 武侠 | 七阶（不入流→大宗师） | 银两 | 10 条 | 克制的冷叙事：断剑主线、当铺经济、三方立场 |
 | `霓虹深渊.setting.json` | 赛博朋克 | 七级（F级→S级） | 信用点 | 9 条 | 义体与记忆题材、阶级隐喻、AI 角色 ECHO |
 | `雾港.setting.json` | 调查悬疑 | 六阶（外行→传奇） | 法币 | 9 条 | 线索链与理智消耗、克苏鲁式"越查越冷" |
-| `白鹿岛.setting.json` | 全民穿越 / 海岛求生 | 六阶（流民→岛主） | 潮币 | 12 条 | 白鹿原式宗族秩序、淡水配给、夜潮、白鹿祠与岛核；固定岛图 + 每局随机野外点 |
+| `白鹿岛.setting.json` | 全民穿越 / 海岛求生 | 六阶生存评级 + 17×5 载具阶位 | 潮币 | 首批 100 万人同时投放；普通充气救生筏即唯一初始基地（无甲板/无初始岛）；潮汐礁安全窗；系统引导/任务/活动/能力；17 大品阶×5 细分阶共 85 级 | 普通大学生在漏气救生筏上醒来；救生筏开局、手环面板、分解系、修筏、扩载具、雾墙、夜潮与邻岛主岛 |
 | `九荒.setting.json` | 修仙 / 凡人流 | 十阶（凡人→渡劫） | 碎银 | 8 条 | 普通大学生坠入古仙坟场：无系统、骨片读残念、青岚宗测骨、裂谷与失踪同学 |
 
 六套共用同一套规则内核：战斗、交易、社交、因果、势力演化、长局记忆全部一致，
@@ -52,7 +53,7 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | 折剑行 | 声明→判定→后果（ttrpg） | 身手 0–7 | 债主上门（clock 12） |
 | 霓虹深渊 | 地点与命令（mud） | 评级 0–7 | 被盯上（clock 10） |
 | 雾港 | 选项推进（choice） | 线索 0–24 | 理智（sanity） |
-| 白鹿岛 | 地点与命令（mud） | 生存评级 0–5 | 倒下（hp） |
+| 白鹿岛 | 选项推进（choice） | 生存评级 0–5 | 倒下（hp） |
 | 九荒 | 自由推进（freeform） | 修为 0–9 | 气血（hp） |
 `scripts/verify_settings.py` 会逐包断言载入完整、术语无泄漏、连跑 15 回合后世界仍在演化。
 

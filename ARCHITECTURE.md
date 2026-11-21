@@ -1,6 +1,6 @@
 # World Walker 架构
 
-文档版本：v1.16 · 2026-11-20
+文档版本：v1.16.2 · 2026-11-21
 
 World Walker 有两个入口，但只有一套引擎：
 
@@ -31,7 +31,7 @@ panel.py ──► dialog_runtime.py ──► tool_registry.py ──► game_s
 MCP 模式走：
 
 ```
-外部 AI ──► mcp_server.py ──► 同一 rules/ + state_schema.py
+外部 AI ──► mcp_server.py ──► 同一 rules/ + state_schema.py + gameplay.py
 ```
 
 `mcp_server.py` 不依赖 `panel.py`。MCP 模式不需要页面、SSE 或前端资源。
@@ -44,12 +44,21 @@ MCP 模式走：
   `session-zero/preview`、`model/config`、`model/test`、`saves`、`export`、`events`。
 - `bootstrap` 返回大厅、世界目录、模型状态和 Session Zero 选项。
 - `new` 接受 `narrative`；未指定模板时按类型自动配骨架。
-- `chat` 调 `DialogRuntime.respond()`，模型通过 28 个玩家工具推进。
+- `chat` 调 `DialogRuntime.respond()`，模型通过 28 个玩家工具推进；其中 `campaign` 负责“一回合一场戏”，`tick` 不再是玩家工具。
+
+### 场景层：`gameplay.py`
+
+- 把“时间驱动的 tick”换成“场景驱动”的战役循环：3 幕、每幕 3–6 场；
+  每场有目标、障碍、压力钟、最多一条线索、无论成败的代价、下一场。
+- `campaign(action=brief|open|resolve|clock|journal)` 是 MCP 与玩家页面共用的入口；
+  `resolve` 只接受 `yes / yes-but / no-and`，结算场景但不推进 `tick`。
+- 六套设定包各带 `gameplay`：`acts / clocks / fronts / choice_policy / progression / session`；
+  缺失时退回三幕骨架，而不是空白。
 
 ### 对话运行时：`dialog_runtime.py`
 
-- 组装 GM 系统提示：POLICY（15 条绝对规则）、CANON（只读世界圣经）、当前局面、
-  GAME PROFILE、CONTRACT（本回合场面卡）、TOOLS。
+- 组装 GM 系统提示：POLICY（绝对规则）、CANON（只读世界圣经）、当前局面、
+  GAME PROFILE、CONTRACT（本场契约：幕/目标/障碍/压力/线索/代价）、TOOLS。
 - 跑 OpenAI-compatible 工具循环；模型可以多轮调用工具。
 - 收尾时写 `turns`，并把 `narrative_rules.audit_turn` 的发现写入 `audit`。
 - 不直接改写游戏数值；所有数值变更由工具完成。

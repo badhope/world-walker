@@ -7,7 +7,6 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
-      - "auto-merge"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -15,4 +14,3 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
-      - "auto-merge"

@@ -583,6 +583,15 @@
     return esc(JSON.stringify(value));
   }
 
+  function fractionText(value, fallback) {
+    const label = value && (value.label || value.title || value.name) || fallback;
+    if (!value || value.value === undefined || value.value === null) return esc(label);
+    const max = value.max;
+    return esc(max === undefined || max === null || Number(max) <= 0
+      ? `${label} ${value.value}`
+      : `${label} ${value.value}/${max}`);
+  }
+
   function questsRail(quests) {
     const playbook = quests.playbook || {};
     const rows = quests.rows || [];
@@ -597,8 +606,8 @@
     if (playbook.beat || playbook.progress || playbook.failure) {
       front += `<div class="quest-facts">
         ${playbook.beat ? `<div class="row"><span>当前节拍</span><b>${esc(summaryObject(playbook.beat))}</b></div>` : ""}
-        ${playbook.progress ? `<div class="row"><span>进度</span><b>${esc(summaryObject(playbook.progress))}</b></div>` : ""}
-        ${playbook.failure ? `<div class="row"><span>压力</span><b>${esc(summaryObject(playbook.failure))}</b></div>` : ""}
+        ${playbook.progress ? `<div class="row"><span>进度</span><b>${fractionText(playbook.progress, "进度")}</b></div>` : ""}
+        ${playbook.failure ? `<div class="row"><span>压力</span><b>${fractionText(playbook.failure, "失败")}</b></div>` : ""}
       </div>`;
     }
     if (active) {
@@ -674,9 +683,33 @@
       : `<p class="empty-small">还没有势力数据。</p>`;
   }
 
+  const FLAG_LABELS = {
+    "__start__": "投放开始",
+    "raft_start": "救生筏开局",
+    "vessel_base": "载具基地",
+    "no_initial_island": "无初始岛屿",
+    "tide_cycle": "潮汐周期",
+    "safe_windows": "安全窗口",
+    "system_guide": "系统引导",
+    "vessel_ladder": "载具阶梯",
+    "facility_ladder": "设施阶梯",
+    "world_channel_on": "世界频道",
+    "region_channel_on": "区域频道",
+    "nearby_channel_on": "附近频道",
+    "trade_channel_on": "交易频道",
+    "newbie_protection": "新手保护",
+    "system_decomp": "系统分解",
+    "space_slots_6": "六格空间",
+  };
+
+  function flagLabel(flag) {
+    const key = String(flag || "");
+    return FLAG_LABELS[key] || key.replace(/^__|__$/g, "").replace(/_/g, " ");
+  }
+
   function flagPills(flags) {
     return flags.length
-      ? `<div class="pill-row">${flags.map((flag) => `<span class="pill">${esc(flag)}</span>`).join("")}</div>`
+      ? `<div class="pill-row">${flags.map((flag) => `<span class="pill">${esc(flagLabel(flag))}</span>`).join("")}</div>`
       : `<p class="empty-small">没有世界标记。</p>`;
   }
 

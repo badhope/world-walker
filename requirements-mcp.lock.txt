@@ -15,7 +15,7 @@
 
 mcp==2.3.0
 mcp-types==2.3.0
-anyio==4.15.1
+anyio==4.16.0
 httpx2==2.14.0
 httpx==0.28.1
 httpx-sse==0.4.3

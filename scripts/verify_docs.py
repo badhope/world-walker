@@ -245,11 +245,22 @@ def main():
     missing = sorted(name for name in required
                      if name not in modules or not os.path.isfile(os.path.join(ROOT, name + '.py')))
     runner_path = 'scripts/run_behavior_regressions.py'
-    gates = ('scripts/pre_push_gate.sh', '.github/workflows/ci.yml', '.workflow/ci.yml')
-    missing_gates = [gate for gate in gates if not re.search(
-        r'^[^\n#]*\bpython\s+' + re.escape(runner_path) + r'\b', read(gate), re.M)
-        and not re.search(r'^step\s+[^\n]*"\$PY"\s+' + re.escape(runner_path) + r'\b',
-                          read(gate), re.M)]
+    gates = ('scripts/pre_push_gate.sh', '.github/workflows/ci.yml', '.workflow/ci.yml',
+             '.gitcode/workflows/ci.yml')
+    # The three platform gates may delegate the whole core list to
+    # scripts/ci_core.sh.  Accept that only when the shared script itself
+    # really contains the behavior-regression runner; a YAML comment cannot
+    # satisfy the check.
+    core_gate = read('scripts/ci_core.sh')
+    shared_wired = 'run_behavior_regressions' in core_gate
+    def _gate_wired(gate):
+        text = read(gate)
+        if re.search(r'^[^\n#]*\bpython\s+' + re.escape(runner_path) + r'\b', text, re.M):
+            return True
+        if re.search(r'^step\s+[^\n]*"\$PY"\s+' + re.escape(runner_path) + r'\b', text, re.M):
+            return True
+        return shared_wired and 'scripts/ci_core.sh' in text
+    missing_gates = [gate for gate in gates if not _gate_wired(gate)]
     check('D12b behavior regressions are registered and wired into all gates',
           not missing and not missing_gates,
           'missing=%s gates=%s' % (missing, missing_gates))

@@ -340,7 +340,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .map-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--paper-2); }
 .map-card h3 { margin: 0 0 4px; font-family: var(--serif); font-size: 18px; font-weight: 600; }
 .map-card p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
-.faction-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
 .archive-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .archive-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--paper-2); }
 .archive-card .v { font-size: 22px; font-weight: 650; font-family: var(--serif); }

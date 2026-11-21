@@ -32,26 +32,7 @@ stages:
               ln -sf "$PYBIN" "$HOME/.local/bin/python"
               export PATH="$HOME/.local/bin:$PATH"
               python --version
-              python scripts/compile_all.py
-              python scripts/verify_tests.py
-              python scripts/run_behavior_regressions.py
-              python scripts/verify_cli.py
-              python scripts/verify_panel.py
-              python scripts/verify_player_shell.py
-              python scripts/verify_near_death.py
-              python scripts/verify_formulas.py
-              python scripts/verify_branches.py
-              python scripts/verify_settings.py
-              python scripts/verify_domain_model.py
-              python scripts/metrics.py --check
-              python scripts/verify_surface.py
-              python scripts/verify_mechanics.py
-              python scripts/verify_replay.py
-              python scripts/verify_docs.py
-              python scripts/verify_gameplay.py
-              python scripts/verify_generic.py
-              python scripts/verify_systems.py
-              python scripts/verify_mcp_mode.py
+              bash scripts/ci_core.sh
 
   - stage:
       name: mcp

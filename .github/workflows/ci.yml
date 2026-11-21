@@ -53,32 +53,8 @@ jobs:
           raise SystemExit(1 if failed else 0)
           PY
 
-      - name: 编译全部 Python 源
-        run: python scripts/compile_all.py
-
-      - name: 断言审计（拒绝恒真/恒假/弱断言）
-        run: python scripts/verify_tests.py
-
-      - name: 行为回归（MCP 使用 stub）
-        run: python scripts/run_behavior_regressions.py
-
-      - name: CLI 通道自检
-        run: python scripts/verify_cli.py
-
-      - name: 面板契约自检
-        run: python scripts/verify_panel.py
-
-      - name: 玩家壳契约自检
-        run: python scripts/verify_player_shell.py
-
-      - name: 濒死保护自检
-        run: python scripts/verify_near_death.py
-
-      - name: 规则内核公式对拍
-        run: python scripts/verify_formulas.py
-
-      - name: 模块分支补测
-        run: python scripts/verify_branches.py
+      - name: 零依赖核心套件（唯一清单）
+        run: bash scripts/ci_core.sh
 
       - name: 长局内存稳定性
         run: |

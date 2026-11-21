@@ -624,8 +624,7 @@
     parts.push(section("眼前", front));
 
     if (milestones.length) {
-      parts.push(section("记录", milestones.slice(-3).map((m) =>
-        `<div class="row"><span>${esc(m.title || m.desc || "")}</span><b>${esc(m.tick == null ? "" : `第 ${m.tick} 回合`)}</b></div>`).join("")));
+      parts.push(section("记录", milestoneRows(milestones.slice(-3))));
     }
     return parts.join("");
   }
@@ -656,20 +655,45 @@
     return parts.join("");
   }
 
+  function worldParts(world) {
+    const summary = world.summary || world.world_state || {};
+    return {
+      summary,
+      flags: world.flags || [],
+      places: world.places || [],
+      market: world.market || [],
+      milestones: world.milestones || [],
+      factions: summary.factions || [],
+    };
+  }
+
+  function factionRows(factions) {
+    return factions.length
+      ? factions.slice(0, 3).map((f) =>
+        `<div class="row"><span>${esc(f.name)}</span><b>${num(f.power)}</b></div>`).join("")
+      : `<p class="empty-small">还没有势力数据。</p>`;
+  }
+
+  function flagPills(flags) {
+    return flags.length
+      ? `<div class="pill-row">${flags.map((flag) => `<span class="pill">${esc(flag)}</span>`).join("")}</div>`
+      : `<p class="empty-small">没有世界标记。</p>`;
+  }
+
+  function milestoneRows(milestones) {
+    return milestones.length
+      ? milestones.map((m) => `<div class="row"><span>${esc(m.title || m.desc || "")}</span><b>${m.tick == null ? "" : `第 ${m.tick} 回合`}</b></div>`).join("")
+      : `<p class="empty-small">还没有大事记。</p>`;
+  }
+
   function worldRail(world) {
-    const summary = world.summary || {};
-    const flags = world.flags || [];
-    const places = world.places || [];
-    const market = world.market || [];
+    const { summary, flags, places, market, factions } = worldParts(world);
     const parts = [];
     parts.push(section("世界", `
       ${summary.phase ? `<div class="row"><span>相位</span><b>${esc(summaryObject(summary.phase))}</b></div>` : ""}
       ${summary.market_index != null ? `<div class="row"><span>物价指数</span><b>${num(summary.market_index)}</b></div>` : ""}
-      ${(summary.factions || []).slice(0, 3).map((f) =>
-        `<div class="row"><span>${esc(f.name)}</span><b>${num(f.power)}</b></div>`).join("")}`));
-    parts.push(section("标记", flags.length
-      ? `<div class="pill-row">${flags.map((flag) => `<span class="pill">${esc(flag)}</span>`).join("")}</div>`
-      : `<p class="empty-small">没有世界标记。</p>`));
+      ${factionRows(factions)}`));
+    parts.push(section("标记", flagPills(flags)));
     parts.push(section("地点", places.length ? places.slice(0, 5).map((place) =>
       `<div class="row"><span>${esc(place.name)}</span><b>${place.last_tick ? `第 ${place.last_tick} 回合` : ""}</b></div>`).join("")
       : `<p class="empty-small">还没走过什么地方。</p>`));
@@ -732,9 +756,7 @@
   }
 
   function mapView(world) {
-    const places = world.places || [];
-    const summary = world.world_state || {};
-    const factions = summary.factions || [];
+    const { places, factions } = worldParts(world);
     return `
       <div class="map-list">
         ${places.length ? places.map((place) => `
@@ -743,8 +765,7 @@
           : `<p class="empty">地图还是空的。走一走，它会慢慢长出来。</p>`}
       </div>
       <div class="rail-section" style="margin-top:16px"><h3>势力</h3>
-        ${factions.length ? factions.map((f) => `<div class="faction-row"><span>${esc(f.name)}</span><b>${num(f.power)}</b></div>`).join("")
-          : `<p class="empty-small">还没有势力数据。</p>`}
+        ${factionRows(factions)}
       </div>`;
   }
 
@@ -761,23 +782,19 @@
   }
 
   function archiveView(world) {
-    const summary = world.world_state || {};
-    const milestones = world.milestones || [];
+    const { summary, flags, places, milestones } = worldParts(world);
     return `
       <div class="archive-grid">
         <div class="archive-card"><div class="v">${num(summary.collapses)}</div><div class="k">崩溃次数</div></div>
         <div class="archive-card"><div class="v">${num(world.summaries)}</div><div class="k">章节摘要</div></div>
-        <div class="archive-card"><div class="v">${num((world.places || []).length)}</div><div class="k">地点</div></div>
+        <div class="archive-card"><div class="v">${num(places.length)}</div><div class="k">地点</div></div>
         <div class="archive-card"><div class="v">${num(world.archived_events)}</div><div class="k">归档事件</div></div>
       </div>
       <div class="rail-section" style="margin-top:16px"><h3>大事记</h3>
-        ${milestones.length ? milestones.slice().reverse().map((m) => `
-          <div class="row"><span>${esc(m.title || m.desc || "")}</span><b>${m.tick == null ? "" : `第 ${m.tick} 回合`}</b></div>`).join("")
-          : `<p class="empty-small">还没有大事记。</p>`}
+        ${milestoneRows(milestones.slice().reverse())}
       </div>
       <div class="rail-section"><h3>世界标记</h3>
-        ${(world.flags || []).length ? `<div class="pill-row">${world.flags.map((f) => `<span class="pill">${esc(f)}</span>`).join("")}</div>`
-          : `<p class="empty-small">没有。</p>`}
+        ${flagPills(flags)}
       </div>`;
   }
 

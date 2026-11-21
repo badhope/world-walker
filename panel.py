@@ -199,7 +199,7 @@ def _scene_summary(state):
     return str(summaries[-1].get("text", "") or "")
 
 
-def _next_moves(state, player, playbook, quests, loop):
+def _next_moves(state, player, loop):
     """Concrete "what can I do now" hints, derived from state alone.
 
     Why this exists: a rule engine is invisible until you know what it will
@@ -207,22 +207,16 @@ def _next_moves(state, player, playbook, quests, loop):
     generic placeholder, which is not an answer. These hints are computed from
     the same state the tools read, so they cannot drift from what is possible.
 
-    Each hint is {kind, text, why}. Ordered by how likely it is to unblock the
-    player: active quest objectives first, then survival, then world, then loop.
+    Quest objectives stay in the quest card, not here: copying them into the
+    same rail as "can try" made one objective appear twice. This block now
+    carries only survival, world and loop pressures that are not already a
+    visible objective.
     """
     moves = []
     if not isinstance(player, dict):
         return moves
 
-    # 1) A quest objective you have not met yet is the strongest signal.
-    for row in (quests.get("rows") or [])[:2]:
-        if row.get("status") in ("done", "failed"):
-            continue
-        for objective in (row.get("objectives") or [])[:2]:
-            moves.append({"kind": "quest", "text": str(objective)[:80],
-                          "why": "推进「%s」" % (row.get("title") or row.get("id", ""))})
-
-    # 2) Survival: low HP or a heavy debt changes what a sensible next move is.
+    # 1) Survival: low HP or a heavy debt changes what a sensible next move is.
     hp = player.get("hp")
     hp_max = player.get("hp_max")
     if isinstance(hp, (int, float)) and isinstance(hp_max, (int, float)) and hp_max > 0:
@@ -239,7 +233,7 @@ def _next_moves(state, player, playbook, quests, loop):
         moves.append({"kind": "risk", "text": "还一笔业债，或做件好事抵掉",
                       "why": "未清业债 %s，会压突破成功率" % round(karma)})
 
-    # 3) World: a market with bargains is a concrete, checkable opportunity.
+    # 2) World: a market with bargains is a concrete, checkable opportunity.
     market = state.get("market") or {}
     here = str(player.get("location") or "")
     bucket = market.get(here) or {}
@@ -261,12 +255,12 @@ def _next_moves(state, player, playbook, quests, loop):
         moves.append({"kind": "opportunity", "text": "看看本地市价，有 %d 样低于基准" % bargains,
                       "why": "低价买入，离开后可能卖得更高"})
 
-    # 4) Loop: if the player is circling, say so plainly.
+    # 3) Loop: if the player is circling, say so plainly.
     if loop.get("loop_suspected"):
         moves.append({"kind": "loop", "text": "换个地方，或推进一个没试过的交互",
                       "why": "同一状态已经重复出现"})
 
-    # 5) Always offer the fallback that always works.
+    # 4) Always offer the fallback that always works.
     if not moves:
         moves.append({"kind": "free", "text": "描述你想做的事，或先去别处看看",
                       "why": "自由推进：引擎会结算，结果由规则决定"})
@@ -893,11 +887,7 @@ def view_model(state_path):
         "rules": _build_rules(state),
         "loop": _build_loop(state),
         "replay": _build_replay(state_path, state),
-        "next_moves": _next_moves(
-            state, player,
-            state.get("playbook") or {},
-            _build_quests(state),
-            _build_loop(state)),
+        "next_moves": _next_moves(state, player, _build_loop(state)),
     }
 
 

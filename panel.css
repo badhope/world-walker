@@ -282,6 +282,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .meter-list { display: flex; flex-direction: column; gap: 7px; }
 .meter { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
 .empty-small { color: var(--muted); font-size: 12px; padding: 6px 0; }
+.rail-fold { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.rail-fold summary { cursor: pointer; color: var(--muted); font-size: 12px; letter-spacing: .02em; }
+.rail-fold[open] summary { color: var(--ink-2); margin-bottom: 4px; }
+.rail-fold p { margin: 6px 0 0; }
+.quest-facts { margin-bottom: 8px; }
 .world-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 
 /* ---------- overlays ---------- */

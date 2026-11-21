@@ -105,6 +105,10 @@ def main():
         check("feed 不再包含旧仪表盘尾巴",
               all("刚才发生的事还压在心上" not in (row.get("text") or "")
                   for row in ((view or {}).get("feed") or [])))
+        moves = (((view or {}).get("rail") or {}).get("quests") or {}).get("next_moves") or []
+        check("下一步提示不重复任务目标",
+              all((row or {}).get("kind") != "quest" for row in moves),
+              str([row.get("text") for row in moves]))
         check("模型默认未配置", not (view or {}).get("model", {}).get("configured"))
 
         state_path = os.path.join(temp, "折剑行.save.json")

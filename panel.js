@@ -588,29 +588,43 @@
     const rows = quests.rows || [];
     const moves = quests.next_moves || [];
     const milestones = quests.milestones || [];
+    const active = rows.find((q) => q.status === "active") || rows[0];
     const parts = [];
 
-    if (playbook.loop_guide || playbook.beat || playbook.progress || playbook.failure) {
-      parts.push(section("这一局怎么玩", `
-        ${playbook.loop_guide ? `<p class="empty-small">${esc(playbook.loop_guide)}</p>` : ""}
+    // 同一件事只留一个入口：当前节拍 + 当前委托 + 一个非任务提示。
+    // 完整任务链与玩法说明都折叠到“全部委托 / 这一局怎么玩”，不占据视线。
+    let front = "";
+    if (playbook.beat || playbook.progress || playbook.failure) {
+      front += `<div class="quest-facts">
         ${playbook.beat ? `<div class="row"><span>当前节拍</span><b>${esc(summaryObject(playbook.beat))}</b></div>` : ""}
         ${playbook.progress ? `<div class="row"><span>进度</span><b>${esc(summaryObject(playbook.progress))}</b></div>` : ""}
-        ${playbook.failure ? `<div class="row"><span>失败</span><b>${esc(summaryObject(playbook.failure))}</b></div>` : ""}`));
+        ${playbook.failure ? `<div class="row"><span>压力</span><b>${esc(summaryObject(playbook.failure))}</b></div>` : ""}
+      </div>`;
     }
-
-    parts.push(section("当前目标", rows.length ? rows.map((q) => `
-      <div class="quest-card">
-        <b>${esc(q.title || q.id)}</b><span class="q-state">${esc(q.status || "")}</span>
-        <small>${esc(q.stage_title || q.stage || "尚未开始")}</small>
-        ${(q.objectives || []).length ? `<p>${esc(q.objectives.join("；"))}</p>` : ""}
-      </div>`).join("") : `<p class="empty-small">还没有浮现的目标。先四处走走。</p>`));
-
+    if (active) {
+      front += `<div class="quest-card">
+        <b>${esc(active.title || active.id)}</b><span class="q-state">${esc(active.status || "")}</span>
+        <small>${esc(active.stage_title || active.stage || "尚未开始")}</small>
+        ${(active.objectives || []).length ? `<p>${esc(active.objectives.join("；"))}</p>` : ""}
+      </div>`;
+    } else {
+      front += `<p class="empty-small">眼下还没有谁把事托到你手上。先四处走走，或开口问人。</p>`;
+    }
     if (moves.length) {
-      parts.push(section("可以试试", moves.slice(0, 4).map((move) =>
-        `<div class="row"><span>${esc(typeof move === "string" ? move : move.text || move.hint || "")}</span></div>`).join("")));
+      front += `<div class="row"><span>${esc(typeof moves[0] === "string" ? moves[0] : moves[0].text || moves[0].hint || "")}</span><b>风声</b></div>`;
     }
+    if (rows.length > 1) {
+      front += `<details class="rail-fold"><summary>全部委托 · ${rows.length}</summary>
+        ${rows.map((q) => `<div class="row"><span>${esc(q.title || q.id)}</span><b>${esc(q.stage_title || q.status || "")}</b></div>`).join("")}
+      </details>`;
+    }
+    if (playbook.loop_guide) {
+      front += `<details class="rail-fold"><summary>这一局怎么玩</summary><p class="empty-small">${esc(playbook.loop_guide)}</p></details>`;
+    }
+    parts.push(section("眼前", front));
+
     if (milestones.length) {
-      parts.push(section("大事记", milestones.slice(-3).map((m) =>
+      parts.push(section("记录", milestones.slice(-3).map((m) =>
         `<div class="row"><span>${esc(m.title || m.desc || "")}</span><b>${esc(m.tick == null ? "" : `第 ${m.tick} 回合`)}</b></div>`).join("")));
     }
     return parts.join("");

@@ -1476,16 +1476,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _save_root(self):
         from game_engine import sessions as session_store
-        env = os.environ.get("WORLD_GAMES_SAVES", "").strip()
-        if env:
-            return os.path.abspath(env)
-        sp = self._state()
-        if sp:
-            base = os.path.dirname(os.path.abspath(sp))
-            if os.path.basename(os.path.normpath(base)).lower() == "saves":
-                return base
-            return session_store.saves_root(base)
-        return session_store.saves_root(os.getcwd())
+        return session_store.root_for_state(self._state() or "")
 
     def _current_payload(self):
         sp = self._state()
@@ -1543,8 +1534,9 @@ class Handler(BaseHTTPRequestHandler):
             pass
         return rows
 
-    def _bootstrap_payload(self):
-        from game_engine import model_config, narrative_rules, sessions as session_store
+    def _save_rows(self):
+        """存档列表的唯一实现；bootstrap 与 /api/v1/saves 共用，避免两套字段漂移。"""
+        from game_engine import sessions as session_store
         root = self._save_root()
         try:
             saves = session_store.list_saves(root)
@@ -1574,10 +1566,15 @@ class Handler(BaseHTTPRequestHandler):
                 "path": current.get("path", ""),
                 "current": True,
             })
+        return {"root": root, "current": current, "saves": rows}
+
+    def _bootstrap_payload(self):
+        from game_engine import model_config, narrative_rules
+        listing = self._save_rows()
         return {
             "ok": True,
-            "current": current,
-            "saves": rows,
+            "current": listing["current"],
+            "saves": listing["saves"],
             "worlds": self._world_catalog(),
             "model": model_config.public_config(),
             "session_zero": narrative_rules.options(),
@@ -1612,8 +1609,8 @@ class Handler(BaseHTTPRequestHandler):
             self._api_json(200, {"ok": True, "model": model_config.public_config()})
             return
         if path == "/api/v1/saves":
-            self._api_json(200, {"ok": True, "saves": self._bootstrap_payload().get("saves", []),
-                                 "root": self._save_root()})
+            listing = self._save_rows()
+            self._api_json(200, {"ok": True, "saves": listing["saves"], "root": listing["root"]})
             return
         if path == "/api/v1/export":
             from game_engine.state_schema import state_lock, _recover_archive
@@ -1689,8 +1686,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._api_json(400, {"ok": False, "error": str(exc)[:180]})
             return
         if path == "/api/v1/new":
-            from game_engine import input_policy, narrative_rules, player_view
-            from game_engine import sessions as session_store, settings_loader, state_schema, templates
+            from game_engine import narrative_rules, player_view, session_factory
             kind = str(body.get("kind") or "setting")
             ident = str(body.get("id") or "").strip()
             name = str(body.get("name") or "").strip()
@@ -1704,26 +1700,16 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 root = self._save_root()
                 if kind == "template":
-                    problems = templates.validate(templates.get(ident))
-                    if problems:
-                        raise ValueError("模板 %s 结构不完整: %s" % (ident, "; ".join(problems[:4])))
-                    bundle = templates.to_bundle(
+                    built, bundle = session_factory.build_from_template(
                         ident, overrides=narrative_rules.template_overrides(narrative),
                         name=name, player_name=narrative.get("player_name") or "")
-                    built = settings_loader.build_state(bundle)
-                    settings_loader.apply_runtime_fields(built, bundle)
                     save_name = name or bundle["name"]
                 else:
-                    bundle = input_policy.load_setting(ident, package_root=_SCRIPT_DIR)
-                    built = settings_loader.build_state(bundle, seed=body.get("seed"))
-                    settings_loader.apply_runtime_fields(built, bundle)
+                    built, bundle = session_factory.build_from_setting(
+                        ident, seed=body.get("seed"), package_root=_SCRIPT_DIR)
                     save_name = name or os.path.basename(ident).split(".")[0]
-                safe = session_store.safe_name(save_name)
-                target = session_store.save_path(root, safe, create_dir=True)
-                if os.path.lexists(target):
-                    raise ValueError("同名存档已存在（换一个局名，或先归档旧局）")
-                target = input_policy.validate_state_path(target, must_exist=False, root=root)
-                state_schema.save_state(built, target, allow_create=True)
+                target, safe = session_factory.write_new_state(
+                    built, root=root, name=save_name)
                 narrative_rules.attach(
                     target, narrative,
                     world_name=str((built.get("world_info") or {}).get("name") or ""),

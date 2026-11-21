@@ -48,6 +48,22 @@ def saves_root(base_dir: str = "") -> str:
     return os.path.join(base, "saves")
 
 
+def root_for_state(state_path: str = "") -> str:
+    """Archive root for a state file: its own ``saves/`` when already inside one.
+
+    Both the HTTP panel and the MCP server need exactly this rule; keeping it
+    here prevents the two entry points from drifting on ``WORLD_GAMES_SAVES``
+    or on a state file that already lives in a saves directory.
+    """
+    env = os.environ.get("WORLD_GAMES_SAVES", "").strip()
+    if env:
+        return os.path.abspath(env)
+    base = os.path.dirname(os.path.abspath(state_path)) if state_path else os.getcwd()
+    if os.path.basename(os.path.normpath(base)).lower() == "saves":
+        return base
+    return saves_root(base)
+
+
 def safe_name(name: str) -> str:
     """把用户给的局名变成安全文件名：保留中英文数字与 -_，其余折叠为 _。"""
     text = str(name or "").strip()

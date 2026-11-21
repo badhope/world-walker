@@ -76,6 +76,7 @@ from game_engine.rules import rulebook as rulebook_rules
 from game_engine.rules import loopguard as loop_rules
 from game_engine.rules.world_evolution import evolve as evolve_world, world_summary
 from game_engine.rules.models import model as _model_fn, model_names as _model_names
+from game_engine import session_factory
 from game_engine import settings_loader
 from game_engine import gameplay as gameplay_rules
 from game_engine import narrative_rules as narrative_rules
@@ -2747,18 +2748,11 @@ def knowledge(action: str = "search", query: str = "", kind: str = "", name: str
 
 def _saves_root() -> str:
     """存档库根目录：当前对局所在目录的 saves/；没有对局时用工作目录。"""
-    configured = os.environ.get("WORLD_GAMES_SAVES", "").strip()
-    if configured:
-        return input_policy.validate_root(configured)
     try:
-        base = os.path.dirname(_state_path())
+        state_path = _state_path()
     except ValueError:
-        base = os.getcwd()
-    if os.path.basename(os.path.normpath(base)).lower() == "saves":
-        candidate = base
-    else:
-        candidate = session_store.saves_root(base)
-    return input_policy.validate_root(candidate)
+        state_path = ""
+    return input_policy.validate_root(session_store.root_for_state(state_path))
 
 
 @server.tool()
@@ -2785,27 +2779,17 @@ def session_new(name: str, setting_path: str = "", seed: int | None = None,
     返回存档路径并把这一局设为当前对局。
     Create a new saved game from a setting bundle or an explicit initial state."""
 
-    safe = session_store.safe_name(name)
     root = _saves_root()
-    path = session_store.save_path(root, safe, create_dir=False)
-    if os.path.exists(path):
-        raise ValueError("同名存档已存在（换一个局名，或先 session_manage(action='archive')）")
     if state is not None:
-        input_policy.validate_state_data(state)
-        built = json.loads(json.dumps(state, ensure_ascii=False, allow_nan=False))
+        built = session_factory.build_from_state(state)
     elif setting_path:
-        bundle = input_policy.load_setting(setting_path, package_root=_SCRIPT_DIR)
-        built = settings_loader.build_state(bundle, seed=seed)
-        settings_loader.apply_runtime_fields(built, bundle)
+        built, _bundle = session_factory.build_from_setting(
+            setting_path, seed=seed, package_root=_SCRIPT_DIR)
     else:
         raise ValueError("session_new 需要 setting_path 或 state 之一")
-    input_policy.validate_state_data(built)
+    safe = session_store.safe_name(name)
     log_event(built, "system", "新局「%s」创建" % safe)
-    target = input_policy.validate_state_path(path, must_exist=False, root=root)
-    with state_lock(target):
-        if os.path.lexists(target):
-            raise ValueError("同名存档已存在（换一个局名，或先 session_manage(action='archive')）")
-        _commit_state_file(target, built, root=root)
+    target, safe = session_factory.write_new_state(built, root=root, name=name)
     _active["path"] = target
     if narrative:
         narrative_rules.attach(target, narrative,
@@ -3064,20 +3048,13 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
     name 不传则用模板名；overrides 可覆盖任意字段（见 template_info）。
     Start a new game straight from a template (template → state → disk → active)."""
 
-    tpl = _load_templates_module()
-    bundle = tpl.to_bundle(template, overrides=overrides, name=name, player_name=player_name)
-    problems = tpl.validate(tpl.get(template))
-    if problems:
-        raise ValueError("模板 %s 结构不完整: %s" % (template, "; ".join(problems[:4])))
+    state, bundle = session_factory.build_from_template(
+        template, overrides=overrides, name=name, player_name=player_name)
     save_root = session_store.saves_root(
         os.path.dirname(os.path.abspath(_active.get("path") or os.getcwd())))
-    path = state_path or session_store.save_path(save_root, name or bundle["name"], create_dir=False)
-    target = input_policy.validate_state_path(
-        path, must_exist=False, root=(None if state_path else save_root))
-    state = settings_loader.build_state(bundle)
-    settings_loader.apply_runtime_fields(state, bundle)
     log_event(state, "system", "模板「%s」开局：%s" % (template, bundle["name"]))
-    _commit_state_file(target, state, root=os.path.dirname(target))
+    target, _safe = session_factory.write_new_state(
+        state, root=save_root, name=name or bundle["name"], path=state_path)
     _active["path"] = target
     if narrative:
         narrative_rules.attach(target, narrative,

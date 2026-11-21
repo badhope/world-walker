@@ -132,6 +132,8 @@ world-walker/
 ├── game_service.py                                # 工具意图层
 ├── mcp_server.py / mcp_primitives.py              # 可选 MCP 独立接口
 ├── state_schema.py                                # 状态 / 原子写 / 锁 / 归档
+├── sessions.py                                    # 存档库路径 / 快照 / 回收站
+├── session_factory.py                             # 设定/模板 → 新局的唯一建局入口
 ├── templates.py                                   # 9 套骨架
 ├── mapgen.py                                      # 蓝图 → 本局地图（固定拓扑 / 可变外观）
 ├── rules/                                         # 确定性规则

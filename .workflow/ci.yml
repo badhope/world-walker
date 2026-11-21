@@ -37,6 +37,7 @@ stages:
               python scripts/run_behavior_regressions.py
               python scripts/verify_cli.py
               python scripts/verify_panel.py
+              python scripts/verify_player_shell.py
               python scripts/verify_near_death.py
               python scripts/verify_formulas.py
               python scripts/verify_branches.py

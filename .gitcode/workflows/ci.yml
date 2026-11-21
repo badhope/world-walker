@@ -21,6 +21,7 @@ jobs:
           python3 scripts/run_behavior_regressions.py
           python3 scripts/verify_cli.py
           python3 scripts/verify_panel.py
+          python3 scripts/verify_player_shell.py
           python3 scripts/verify_near_death.py
           python3 scripts/verify_formulas.py
           python3 scripts/verify_branches.py

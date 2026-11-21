@@ -33,7 +33,7 @@ jobs:
           print("missing:", missing)
           sys.exit(1 if missing else 0)
           PY
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
         with:
           # 仓库第一次跑时自动启用 Pages（否则 deploy-pages 会因为站点不存在而失败）。
           # 需要本文件顶部的 pages: write 权限。

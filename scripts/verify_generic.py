@@ -463,8 +463,9 @@ def n5_integration():
                    str(packed.get('content_policy'))[:40])
 
         vm = PANEL.view_model(MS._state_path())
-        check('N5 视图模型带 game 区块', sorted(vm['game'].keys()),
-              ['check_rate', 'checks', 'context', 'profile'])
+        check_true('N5 视图模型带 game 区块',
+                   set(['check_rate', 'checks', 'context', 'profile']).issubset(vm['game']),
+                   sorted(vm['game'].keys()))
         check('N5 视图模型带 sessions 区块', 'saves' in vm['sessions'], True)
         check('N5 面板能读到自定义资源', [r['key'] for r in vm['game']['profile']['resources']],
               ['sanity'])

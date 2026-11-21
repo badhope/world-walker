@@ -1689,7 +1689,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._api_json(400, {"ok": False, "error": str(exc)[:180]})
             return
         if path == "/api/v1/new":
-            from game_engine import mcp_server, narrative_rules
+            from game_engine import input_policy, narrative_rules, player_view
+            from game_engine import sessions as session_store, settings_loader, state_schema, templates
             kind = str(body.get("kind") or "setting")
             ident = str(body.get("id") or "").strip()
             name = str(body.get("name") or "").strip()
@@ -1701,27 +1702,40 @@ class Handler(BaseHTTPRequestHandler):
                     and not narrative.get("player_name")):
                 narrative["player_name"] = narrative_rules.random_name(narrative["genre"])
             try:
-                if self._state():
-                    mcp_server.set_active_path(self._state())
+                root = self._save_root()
                 if kind == "template":
-                    result = mcp_server.template_start(
-                        template=ident, name=name,
-                        overrides=narrative_rules.template_overrides(narrative),
-                        player_name=narrative.get("player_name") or "")
+                    problems = templates.validate(templates.get(ident))
+                    if problems:
+                        raise ValueError("模板 %s 结构不完整: %s" % (ident, "; ".join(problems[:4])))
+                    bundle = templates.to_bundle(
+                        ident, overrides=narrative_rules.template_overrides(narrative),
+                        name=name, player_name=narrative.get("player_name") or "")
+                    built = settings_loader.build_state(bundle)
+                    settings_loader.apply_runtime_fields(built, bundle)
+                    save_name = name or bundle["name"]
                 else:
-                    result = mcp_server.session_new(
-                        name=name or os.path.basename(ident).split(".")[0],
-                        setting_path=ident)
-                target = str(result.get("state_path") or "")
-                if not target:
-                    raise ValueError("开局没有返回状态路径")
+                    bundle = input_policy.load_setting(ident, package_root=_SCRIPT_DIR)
+                    built = settings_loader.build_state(bundle, seed=body.get("seed"))
+                    settings_loader.apply_runtime_fields(built, bundle)
+                    save_name = name or os.path.basename(ident).split(".")[0]
+                safe = session_store.safe_name(save_name)
+                target = session_store.save_path(root, safe, create_dir=True)
+                if os.path.lexists(target):
+                    raise ValueError("同名存档已存在（换一个局名，或先归档旧局）")
+                target = input_policy.validate_state_path(target, must_exist=False, root=root)
+                state_schema.save_state(built, target, allow_create=True)
                 narrative_rules.attach(
                     target, narrative,
-                    world_name=str(result.get("world") or ""),
+                    world_name=str((built.get("world_info") or {}).get("name") or ""),
                     player_name=narrative.get("player_name") or "")
                 self.server.state_path = os.path.abspath(target)
-                mcp_server.set_active_path(self.server.state_path)
-                from game_engine import player_view
+                result = {
+                    "state_path": target,
+                    "name": safe,
+                    "template": ident if kind == "template" else "",
+                    "world": str((built.get("world_info") or {}).get("name") or ""),
+                    "tick": int(built.get("tick", 0) or 0),
+                }
                 self._api_json(200, {"ok": True, "state": player_view.build_player_view(target),
                                      "created": result, "narrative": narrative})
             except Exception as exc:  # noqa: BLE001

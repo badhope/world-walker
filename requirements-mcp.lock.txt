@@ -19,7 +19,7 @@ anyio==4.15.1
 httpx2==2.14.0
 httpx==0.28.1
 httpx-sse==0.4.3
-pydantic==2.14.1
+pydantic==2.14.3
 pydantic-core==2.50.1
 pydantic-settings==2.15.0
 sse-starlette==3.5.0

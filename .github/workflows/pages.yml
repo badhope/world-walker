@@ -38,7 +38,7 @@ jobs:
           # 仓库第一次跑时自动启用 Pages（否则 deploy-pages 会因为站点不存在而失败）。
           # 需要本文件顶部的 pages: write 权限。
           enablement: true
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: docs
 

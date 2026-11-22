@@ -71,12 +71,22 @@ def main():
         fog_power = SL.build_state(fog_bundle, mode='power')
         edge = (fog_power.get('mode') or {}).get('edge', '')
         items = fog_power['entities']['player'].get('items') or {}
-        check('迷雾小屋·爽文模式给可清点的实用工具箱',
+        player = fog_power['entities']['player']
+        weapon = player.get('weapon') or {}
+        check('迷雾小屋·爽文模式给可清点的实用工具箱 + 体力 + 柴刀',
               '旧五金工具箱' in edge and '4块' in edge and '16枚' in edge
+              and '羊角锤' in edge and '柴刀' in edge and '力量12' in edge
               and items.get('plank') == 4 and items.get('nails') == 16
               and items.get('hinge') == 1 and items.get('rope') == 1
-              and items.get('lighter') == 1 and items.get('thermo') == 1,
-              '%s ｜ items=%s' % (edge[:36], sorted(items)))
+              and items.get('lighter') == 1 and items.get('thermo') == 1
+              and items.get('hammer') == 1 and items.get('machete') == 1
+              and player.get('attrs', {}).get('str') == 12
+              and weapon.get('name') == '旧柴刀'
+              and float(weapon.get('power') or 0) > 1.0
+              and int(weapon.get('durability') or 0) == 20,
+              '%s ｜ str=%s weapon=%s items=%s' % (
+                  edge[:46], player.get('attrs', {}).get('str'),
+                  weapon.get('name'), sorted(items)))
 
     tmp = tempfile.mkdtemp(prefix='ww-settings-')
     for fn in files:

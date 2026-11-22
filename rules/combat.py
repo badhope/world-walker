@@ -16,6 +16,26 @@
 import random
 
 
+def _weapon_bonus(entity):
+    """A weapon adds its power only while it has durability left.
+
+    This is intentionally small and local: the engine already resolves damage;
+    weapons are an input, not a second combat system.  A broken weapon falls
+    back to fists instead of silently disappearing from the inventory.
+    """
+    weapon = entity.get("weapon") if isinstance(entity, dict) else None
+    if not isinstance(weapon, dict):
+        return 1.0
+    try:
+        uses = int(weapon.get("durability", 1) or 0)
+        power = float(weapon.get("power", 1.0) or 1.0)
+    except (TypeError, ValueError):
+        return 1.0
+    if uses <= 0:
+        return 1.0
+    return max(1.0, power)
+
+
 def _combat_modifiers(state):
     """返回 (命中倍率, 伤害倍率)。缺失/异常一律回退 1.0，不影响结算可用性。"""
     hit_mult = 1.0
@@ -158,6 +178,8 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
 
     # 计算伤害
     base_damage = atk_attrs.get("str", 10) * 1.5 + atk_tier_bonus * 1.5
+    weapon_bonus = _weapon_bonus(atk_ent)
+    base_damage *= weapon_bonus
 
     # action 加成
     if action == "heavy":
@@ -206,8 +228,20 @@ def resolve_combat(state, attacker_id, defender_id, action="attack", skill=None)
     
     damage = max(1, int(damage))
     result["damage"] = damage
+    result["weapon_bonus"] = weapon_bonus
     
     # 扣除血量
+    weapon = atk_ent.get("weapon") if isinstance(atk_ent, dict) else None
+    if isinstance(weapon, dict) and weapon_bonus > 1.0:
+        try:
+            uses = int(weapon.get("durability", 0) or 0)
+        except (TypeError, ValueError):
+            uses = 0
+        if uses > 0:
+            weapon["durability"] = uses - 1
+            result["weapon_durability"] = weapon["durability"]
+            if weapon["durability"] == 0:
+                result["events"].append("%s卷刃了，下一击只能靠拳脚。" % weapon.get("name", "武器"))
     def_ent["hp"] = max(0, def_ent.get("hp", 0) - damage)
     result["defender_hp_after"] = def_ent["hp"]
     # 结构化胜负：flow_channel_status 直接读它，不再用中文关键词猜
@@ -314,7 +348,7 @@ def preview(state, attacker_id, defender_id, action="attack", skill=None):
     if action == "heavy":
         hit_chance = max(0.1, hit_chance * 0.7)
 
-    base_damage = atk_attrs.get("str", 10) * 1.5 + bonus_atk * 1.5
+    base_damage = (atk_attrs.get("str", 10) * 1.5 + bonus_atk * 1.5) * _weapon_bonus(atk)
     if action == "heavy":
         base_damage *= 1.8
     if isinstance(skill, dict) and skill.get("power"):

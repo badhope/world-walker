@@ -18,11 +18,11 @@ MODE_SPECS = {
     "power": {
         "id": "power",
         "label": "爽文",
-        "short": "物资更足，全是实物",
-        "description": "前两类主耗材 +50%，口粮钱 +50%，物价 -15%，库存 +2，压力钟 -1；失败通常留一口气。所有好处都是可清点的实物：会吃掉、烧掉、用坏或被抢走。",
+        "short": "工具齐全，力气够用",
+        "description": "前两类主耗材 +50%，口粮钱 +50%，物价 -15%，库存 +2，压力钟 -1；失败通常留一口气。爽文给的是可清点的工具和搬货练出的身板：会用坏、会累、会被抢。",
         "world_intensity": "低",
         "play_style": "爽文推进",
-        "system_strength": "无系统；可清点的起始物资（会损耗/被抢）",
+        "system_strength": "无系统；可清点的工具与体力（会累/会坏/被抢）",
         "death_rule": "重伤留一口气，不直接抹掉角色",
         "resource_curve": "宽裕",
         "encounter_pressure": "低",
@@ -33,8 +33,8 @@ MODE_SPECS = {
         "clock_delta": -1,
         "price_mult": 0.85,
         "supply_delta": 2,
-        "edge": "起始前两类主耗材 +50%，口粮钱 +50%，物价 -15%、库存 +2；所有加成都是实物，能清点、会损耗。",
-        "narrative_rule": "给玩家留退路：失败先给代价和转机，不连续下死手；爽文加成只能落在可清点的物资、价格、库存和耐久上，不提供任何超自然能力。",
+        "edge": "起始前两类主耗材 +50%，口粮钱 +50%，物价 -15%、库存 +2；所有加成都是可清点的物资和体力。",
+        "narrative_rule": "给玩家留退路：失败先给代价和转机，不连续下死手；爽文加成只能落在可清点的物资、价格、库存、耐久和体力上，不提供任何超自然能力。",
     },
     "balanced": {
         "id": "balanced",
@@ -126,7 +126,7 @@ def _world_overrides(bundle: dict, mode: str) -> dict:
         return {}
     allowed = {"edge", "description", "narrative_rule", "world_intensity",
                "system_strength", "death_rule", "start_items", "start_gold",
-               "label", "short"}
+               "start_weapon", "attr_bonus", "label", "short"}
     return {k: copy.deepcopy(item[k]) for k in allowed if k in item}
 
 
@@ -198,6 +198,17 @@ def apply(state: dict, bundle: dict | None = None, mode=None) -> dict:
                 player["gold"] = int(player.get("gold", 0)) + int(spec["start_gold"])
             except (TypeError, ValueError):
                 pass
+        attrs = player.get("attrs")
+        bonus = spec.get("attr_bonus")
+        if isinstance(attrs, dict) and isinstance(bonus, dict):
+            for attr, delta in bonus.items():
+                try:
+                    attrs[str(attr)] = int(attrs.get(str(attr), 10) or 10) + int(delta)
+                except (TypeError, ValueError):
+                    continue
+        weapon = spec.get("start_weapon")
+        if isinstance(weapon, dict) and weapon.get("name"):
+            player["weapon"] = copy.deepcopy(weapon)
 
     # Initial clock pressure: 爽文 starts one tick calmer, 硬核 one tick hotter.
     gameplay = state.get("gameplay")
@@ -244,7 +255,8 @@ def apply(state: dict, bundle: dict | None = None, mode=None) -> dict:
         k: copy.deepcopy(spec.get(k)) for k in (
             "id", "label", "short", "description", "world_intensity",
             "play_style", "system_strength", "death_rule", "resource_curve",
-            "encounter_pressure", "difficulty", "edge", "narrative_rule"
+            "encounter_pressure", "difficulty", "edge", "narrative_rule",
+            "attr_bonus", "start_weapon"
         ) if k in spec
     }
     return state["mode"]

@@ -6,7 +6,7 @@ World Walker is a single-player AI tabletop RPG engine. You talk to the GM in pl
 
 No host app. No provider lock-in. The model writes the scene; the engine owns the truth.
 
-`217 rule functions` · `73 MCP tools` · `28 player tools` · `6 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
+`217 rule functions` · `73 MCP tools` · `28 player tools` · `7 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
 
 ## Screens
 
@@ -40,7 +40,7 @@ wg play --state my-game.json
 
 ## Knowledge library
 
-The lobby's “Start from a prefab or archive” entry offers one selectable start: island survival in the Ten Thousand Islands Sea. The prefab fixes the world, play loop, difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
+The lobby's “Start from a prefab or archive” entry offers two selectable starts: island survival in the Ten Thousand Islands Sea, and the hardcore fog-cabin survival of Grey Fog Waste. The fog-cabin prefab is marked `Hardcore`, `No cheat`, `No system`, `Permadeath`. The prefab fixes the world, play loop, difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
 
 “Design archives” holds the raft, prefab-authoring and release-discipline notes. The data lives in `library/playbooks/*.json` and `library/archives/*.md` and ships with the package.
 
@@ -124,7 +124,7 @@ world-walker/                  # repo root is the game_engine package
 ├── dialog_runtime.py          # GM prompt, tool loop, turn finish and audit
 ├── narrative_rules.py         # Session Zero, scene cards, turn audit
 ├── rules/                     # deterministic settlement
-├── settings/                  # six ready-to-play worlds
+├── settings/                  # seven ready-to-play worlds
 ├── saves/                     # local save library
 └── scripts/                   # verification and build tools
 ```

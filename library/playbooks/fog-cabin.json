@@ -1,0 +1,34 @@
+{
+  "id": "fog-cabin",
+  "order": 11,
+  "title": "迷雾小屋：第一夜",
+  "summary": "没有系统，没有金手指。你只有一间漏风桦木小屋、半盒受潮火柴和三天口粮。先补窗、烧水、守门，再决定要不要给敲门的人开门。",
+  "genre": "生存",
+  "play": "生存压力",
+  "difficulty": "硬核",
+  "tone": [
+    "冷硬",
+    "克制",
+    "压迫"
+  ],
+  "role": "random",
+  "style": "短句，冷硬；先写身体和物件，再写情绪。不解释设定，不替玩家做判断；每个选项都要有代价。",
+  "world": {
+    "kind": "setting",
+    "id": "settings/迷雾小屋.setting.json",
+    "name": "灰雾荒原"
+  },
+  "save_name": "迷雾小屋·第一夜",
+  "skills": [
+    "survival-pressure",
+    "ledger-economy"
+  ],
+  "tags": [
+    "迷雾",
+    "小屋",
+    "无金手指",
+    "无系统",
+    "永久死亡",
+    "硬核"
+  ]
+}

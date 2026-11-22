@@ -8,6 +8,12 @@ No host app. No provider lock-in. The model writes the scene; the engine owns th
 
 `217 rule functions` · `73 MCP tools` · `28 player tools` · `6 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
 
+## Screens
+
+| Lobby | Knowledge library | At the table |
+| --- | --- | --- |
+| ![Lobby](docs/assets/lobby.png) | ![Knowledge library](docs/assets/library.png) | ![At the table](docs/assets/table.png) |
+
 ## Why it exists
 
 Most AI RPGs fail in the same places. World Walker puts the boundaries in the engine, not in a longer prompt.

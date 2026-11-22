@@ -38,6 +38,8 @@ MCP 不要求模型厂商；宿主 AI 用哪个模型由你的客户端决定。
 
 ## 开局
 
+如果设定包带 `world.opening`，`load_setting` / `session_new` / `template_start` 会返回 `opening.brief_line`、`opening.prologue` 和 `opening.actions`。宿主先把序章逐段讲给玩家，再把三枚动作当作可选开头；不要改写系统公告。没有 `opening` 的模板才由宿主自己写开局卡。
+
 外部 AI 先使用 `session_zero` 提示词（或直接把同样的问法发给模型）：
 
 1. 想玩什么类型？

@@ -595,6 +595,27 @@ async def main():
                   and {'locations', 'people', 'items', 'lore'} <= set(codex)
                   and bool((vm.get('rail') or {}).get('world', {}).get('market')))
 
+            # 17c. 设定包带序章：MCP 必须把世界公告与第一反应按钮原样交还宿主（独立对局，不影响前面的长局）
+            fog = os.path.join(ROOT, 'settings', '迷雾小屋.setting.json')
+            fog_path = os.path.join(tmp, 'fog-opening.save.json')
+            fog_r = data(await session.call_tool('load_setting', {
+                'path': fog, 'state_path': fog_path, 'seed': 7, 'mode': 'power'}))
+            opening = fog_r.get('opening') or {}
+            check('MCP load_setting 返回五段序章与三枚第一反应',
+                  len(opening.get('prologue') or []) == 5
+                  and len(opening.get('actions') or []) == 3
+                  and opening.get('brief_line') == '北坳·桦木林，编号 0341。',
+                  'prologue=%d actions=%d brief=%r' % (
+                      len(opening.get('prologue') or []),
+                      len(opening.get('actions') or []), opening.get('brief_line')))
+            check('MCP 提示明确禁止开面板，不把宿主引向 open_panel',
+                  '不要调用 open_panel' in (fog_r.get('hint') or ''), fog_r.get('hint'))
+            fog_state = data(await session.call_tool('read_state', {}))
+            check('序章也写进状态，面板/MCP 共用同一来源',
+                  len((fog_state.get('world_info') or {}).get('prologue') or []) == 5
+                  and len((fog_state.get('world_info') or {}).get('opening_actions') or []) == 3,
+                  'state prologue=%d' % len((fog_state.get('world_info') or {}).get('prologue') or []))
+
     # 14. CLI 冒烟（验证导入别名让任意目录名都能跑）
     cli = subprocess.run([sys.executable, os.path.join(ROOT, 'engine.py'),
                           'world_state', '--state', state_a],

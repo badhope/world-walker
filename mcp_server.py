@@ -443,6 +443,9 @@ NEW_GAME_BRIEF = """你在主持一局单人 AI 跑团，所有数值结算通�
 - 自建：`world_init` 之后立刻 `canon_init(bible={...})`，至少 8 条 immutable，细节放 unknown。没有 canon 不许开始叙事。
 开局写一张开局卡：你在哪、你是谁、什么已经在动、死亡规则、三个钩子、核心问题。模板只给骨架和世界种子，不预写剧情。
 
+## 序章（如果 state 有）
+`load_setting` / `session_new` / `template_start` 返回的 `opening.prologue` 是作者写好的系统公告与落地描写。先按原顺序逐段呈现，不要改写公告、不要提前解释规则；`opening.actions` 作为 2–3 个可选开头，不要替玩家选。没有 `opening` 才按开局卡自己写。
+
 ## 每回合（顺序不能乱）
 1. `campaign(action="brief")` 取本场契约（目标/障碍/压力/线索/代价）；没有场景就 `campaign(action="open")`。
 2. `canon_brief(scene_text=...)` 读本回合的世界根设定、已揭示事实、迷雾问题。
@@ -1903,6 +1906,16 @@ def _apply_bundle_extras(state_path: str, bundle: dict) -> int:
     return result_box["lore"]
 
 
+def _opening_payload(state: dict) -> dict:
+    """MCP 宿主开局用：把设定包里的序章/第一反应按钮原样带出去。"""
+    info = state.get("world_info") or {}
+    return {
+        "brief_line": str(info.get("brief_line") or ""),
+        "prologue": [str(x).strip() for x in (info.get("prologue") or []) if str(x).strip()],
+        "actions": [str(x).strip() for x in (info.get("opening_actions") or []) if str(x).strip()],
+    }
+
+
 @server.tool()
 def load_setting(path: str, state_path: str = "", seed: int | None = None,
                  mode: str = "balanced") -> dict:
@@ -1945,7 +1958,8 @@ def load_setting(path: str, state_path: str = "", seed: int | None = None,
     return {**result, "setting": bundle.get("name", ""),
             "lore_entries": len(bundle.get("lore") or []),
             "player_level": (bundle.get("player") or {}).get("level", ""),
-            "hint": "开局前可先 open_panel 把实况主舞台给玩家；行动用 combat/trade/social/karma 结算，移动用 travel。"}
+            "opening": _opening_payload(state),
+            "hint": "MCP 模式不要调用 open_panel；先按 opening.prologue 写序章，再把 opening.actions 作为可选开头。行动用 combat/trade/social/karma 结算，移动用 travel。"}
 
 
 @server.tool()
@@ -2815,7 +2829,8 @@ def session_new(name: str, setting_path: str = "", seed: int | None = None,
             "world": (built.get("world_info") or {}).get("name", ""),
             "tick": built.get("tick", 0), "root": root,
             "narrative": bool(narrative),
-            "hint": "之后所有工具都作用在这一局；session_switch 可切换。先 campaign(action='brief')。"}
+            "opening": _opening_payload(built),
+            "hint": "之后所有工具都作用在这一局；session_switch 可切换。先按 opening.prologue 写序章，再 campaign(action='brief')。"}
 
 
 @server.tool()
@@ -3090,7 +3105,8 @@ def template_start(template: str, name: str = "", overrides: dict | None = None,
         "canon_unknown": len((state.get("world_bible") or {}).get("unknown") or []),
         "map_nodes": len((state.get("map") or {}).get("nodes") or []),
         "narrative": bool(narrative),
-        "hint": "已设为当前对局；先 campaign(action='brief') 读本场契约，再开始写正文。",
+        "opening": _opening_payload(state),
+        "hint": "已设为当前对局；先按 opening.prologue 写序章，再 campaign(action='brief') 读本场契约。",
     }
 
 

@@ -1,0 +1,16 @@
+{
+  "id": "ninewild",
+  "order": 20,
+  "title": "九荒·凡骨",
+  "summary": "一个普通大学生掉进古仙坟场。没有金手指，只有一块会吃掉记忆的骨片和一条通向山门的路。",
+  "genre": "武侠仙侠",
+  "play": "战斗成长",
+  "difficulty": "标准",
+  "tone": ["阴郁", "克制"],
+  "role": "random",
+  "style": "短句，先写代价；修行不是升级，是拿什么东西去换。",
+  "world": {"kind": "setting", "id": "settings/九荒.setting.json", "name": "九荒"},
+  "save_name": "九荒·凡骨",
+  "skills": ["survival-pressure", "clue-discipline"],
+  "tags": ["修仙", "凡人流", "记忆代价"]
+}

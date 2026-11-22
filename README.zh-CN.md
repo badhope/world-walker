@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.17.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
+**v1.18.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
 
 World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话，判定、价格、背包、关系、存档与回放由确定性规则引擎负责；故事由任何 OpenAI-compatible `/chat/completions` 端点来写。
 
@@ -28,7 +28,15 @@ wg play --state my-game.json
 
 `wg play` 会打开本地页面 `http://127.0.0.1:8899/`。可以继续旧局，也可以开新世界。玩家界面只有一屏：左边是叙事，右边是窄栏（角色、任务、人情、世界），底部一个输入框。
 
-`wg` 是统一入口：`init`、`play`、`serve`、`mcp`、`run`、`doctor`、`version`。完整列表见 `wg --help`。
+`wg` 是统一入口：`init`、`setup`、`play`、`serve`、`mcp`、`run`、`doctor`、`version`。完整列表见 `wg --help`。
+
+`wg setup` 会把五个内置叙事技能、导演备注和两条桌面规则写入 `~/.world-walker/harness.json`，权限 `0600`；已有配置不会覆盖，`--force` 才重写。
+
+## 知识库与预制玩法
+
+大厅的“从预制玩法或档案开始”里有六套可直接选择的入口：海岛求生、九荒凡骨、雾港疑云、霓虹深渊、折剑行旧债、玄枢界门。预制包只固定世界、循环、难度、基调和叙述风格；名字、角色、边界和之后发生什么仍由玩家决定。
+
+“设计档案”里有救生筏、预制玩法规范和发布纪律三份底稿。数据在 `library/playbooks/*.json` 与 `library/archives/*.md`，随安装包一起分发。
 
 ## 用你自己的模型
 

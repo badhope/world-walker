@@ -1,6 +1,6 @@
 # World Walker 架构
 
-文档版本：v1.17.0 · 2026-11-22
+文档版本：v1.18.0 · 2026-11-22
 
 World Walker 有两个入口，但只有一套引擎：
 
@@ -65,6 +65,14 @@ MCP 模式走：
 - `before_turn` 钩子可以注入提示词或阻断回合；`after_tool` / `after_turn` 钩子只追加 note。
 - 收尾时写 `turns`，并把 `narrative_rules.audit_turn` 的发现写入 `audit`。
 - 不直接改写游戏数值；所有数值变更由工具完成。
+
+### 知识库：`library.py`
+
+- `library/playbooks/*.json` 是预制玩法，只固定世界、循环、难度、基调和风格；
+  不写剧情，不替玩家做决定。开局仍走标准 Session Zero。
+- `library/archives/*.md` 是设计档案：救生筏、预制玩法规范、发布纪律。
+- `GET /api/v1/library` 只读；面板“知识库”按预制玩法/设计档案两页展示。
+- `wg setup` 写入内置技能与导演备注；`library` 与 `narrative_skills` 都进 wheel 和 exe。
 
 ### 调校层：`harness_config.py` / `harness_hooks.py`
 
@@ -138,6 +146,7 @@ world-walker/
 ├── harness_config.py                              # 导演备注 / 桌面规则 / 技能 / 运行开关
 ├── harness_hooks.py                               # 本地 before_turn / after_tool / after_turn
 ├── narrative_skills/                              # GM 提示词包
+├── library.py / library/                          # 预制玩法与设计档案
 ├── narrative_rules.py                             # Session Zero / 开局卡 / 场面卡 / 审计
 ├── canon.py                                       # 世界圣经 / 硬 canon / 冲突检查
 ├── knowledge.py                                   # SQLite sidecar 索引：角色卡 / 世界书 / 时间线

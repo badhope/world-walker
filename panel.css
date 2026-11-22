@@ -537,3 +537,37 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
 }
+
+/* ---------- knowledge library ---------- */
+.library-entry { margin-top: 8px; }
+.library-panel { width: min(800px, 100%); }
+.library-note { margin: 0 22px 12px; font-size: 12.5px; line-height: 1.7; }
+#library-body { padding: 0; }
+.playbook-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px 22px 24px; }
+#library-body .playbook-grid, #library-body .archive-list { overflow-wrap: anywhere; }
+.playbook-card {
+  display: flex; flex-direction: column; min-width: 0;
+  border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px;
+  background: linear-gradient(160deg, var(--paper), var(--paper-2));
+}
+.playbook-card .eyebrow { margin-bottom: 7px; }
+.playbook-card h3 { margin: 0 0 7px; font-family: var(--serif); font-size: 21px; font-weight: 600; }
+.playbook-card p { margin: 0 0 9px; color: var(--ink-2); font-size: 13px; line-height: 1.7; }
+.playbook-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 12px; }
+.playbook-tags span {
+  padding: 2px 8px; border-radius: 999px; background: var(--paper-2);
+  border: 1px solid var(--line); color: var(--muted); font-size: 11px;
+}
+.playbook-meta { margin-top: auto; color: var(--muted); font-size: 12px; }
+.playbook-actions { display: flex; gap: 8px; margin-top: 12px; }
+.playbook-actions button { flex: 1; }
+.archive-list { padding: 18px 22px 24px; display: flex; flex-direction: column; gap: 10px; }
+.archive-card { border: 1px solid var(--line); border-radius: 12px; background: var(--paper-2); padding: 0 14px; }
+.archive-card summary { cursor: pointer; padding: 13px 0; font-size: 15px; font-weight: 650; }
+.archive-card summary small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.archive-body { padding: 0 0 14px; color: var(--ink-2); font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.archive-tags { display: flex; gap: 5px; flex-wrap: wrap; margin: 0 0 8px; }
+.archive-tags span { color: var(--muted); font-size: 11px; }
+@media (max-width: 640px) {
+  .playbook-grid { grid-template-columns: 1fr; }
+}

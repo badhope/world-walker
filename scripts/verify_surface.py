@@ -52,7 +52,7 @@ def main():
     # ── S1 subcommands ──────────────────────────────────────────────────────
     help_out = run([cli, '--help'])
     text = help_out.stdout
-    documented = ['init', 'play', 'serve', 'mcp', 'run', 'doctor', 'version']
+    documented = ['init', 'setup', 'play', 'serve', 'mcp', 'run', 'doctor', 'version']
     missing = [cmd for cmd in documented if cmd not in text]
     check('S1a wg --help lists every documented subcommand', not missing, str(missing))
     check('S1b wg --help exits 0', help_out.returncode == 0, help_out.returncode)
@@ -223,7 +223,7 @@ def main():
     check('S7 exe build refuses to ship with missing data files',
           'refusing to build an incomplete exe' in build_src)
     check('S7b exe build declares hidden imports for dynamic modules',
-          '--hidden-import' in build_src and 'game_engine.mcp_server' in build_src)
+          '--hidden-import' in build_src and 'game_engine.library' in build_src)
 
     # ── S8 release tooling is versioned, not scratch ───────────────────────
     import os as _os

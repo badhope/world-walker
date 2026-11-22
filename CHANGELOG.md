@@ -5,6 +5,37 @@
 
 ---
 
+## v1.18.0 — 2026-11-22
+
+**收尾版：内置调校一次装好，知识库可读、可玩、可选。**
+
+### 新增
+
+- `library.py` / `library/playbooks/`：六个预制玩法——海岛求生、九荒凡骨、雾港疑云、霓虹深渊、折剑行旧债、玄枢界门。
+  每个包只锁定世界、循环、难度、基调和叙述风格，不预写剧情；选择后仍走标准开局向导。
+- `library/archives/`：三份设计档案，解释救生筏、预制玩法规范和五平台发布纪律。
+- 面板大厅“从预制玩法或档案开始”：预制玩法卡片与档案阅读器；`GET /api/v1/library` 只读接口。
+- `wg setup`：首次写入 `~/.world-walker/harness.json`，启用五个内置叙事技能包，写入通用导演备注与两条桌面规则；
+  已存在配置时默认不覆盖，`--force` 才重写。
+- 叙事配置新增 `prefab` 与 `skill_ids`；预制玩法的技能包会随本局注入系统提示。
+- `scripts/build_exe.py` 补齐 `harness_config` / `harness_hooks` / `library` / `narrative_rules` 等动态模块，
+  并把 `narrative_skills/`、`library/` 打进安装包。
+- `.github/workflows/release-windows.yml`：在 Windows runner 构建单文件 exe，附 SHA256 并上传 GitHub Release。
+
+### 变更
+
+- `pyproject.toml` / `MANIFEST.in` / `check_wheel.py` 补入叙事技能与知识库资源；安装后不再只有代码、没有提示词包。
+- `wg doctor` 增加内置技能数和预制玩法数的检查；`wg --help` 登记 `setup`。
+- 预制玩法的默认存档名与玩家名分开，不再把“万岛海域·救生筏”误当成角色名。
+
+### 验证
+
+- `verify_harness` 49/49（含知识库、预制包和档案）。
+- `verify_panel` 6/6、`verify_player_shell` 24/24、`verify_settings` 25/25、`verify_mcp_mode` 8/8。
+- wheel 资源检查、Windows 构建工作流与五平台 Release 附件在发布后复核。
+
+---
+
 ## v1.17.0 — 2026-11-22
 
 **给面板 GM 补上四层可调校的 harness：提示词、叙事技能、确定性规则事件和本地钩子。**

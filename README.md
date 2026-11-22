@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.17.0** · English · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
+**v1.18.0** · English · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
 
 World Walker is a single-player AI tabletop RPG engine. You talk to the GM in plain language; a deterministic rules engine owns checks, prices, inventory, relationships, saves and replay. Any OpenAI-compatible `/chat/completions` endpoint can drive the story.
 
@@ -28,7 +28,15 @@ wg play --state my-game.json
 
 `wg play` opens the local page at `http://127.0.0.1:8899/`. Continue a save or start a new world. The player view is one screen: narrative on the left, a narrow character and quest rail on the right, one input at the bottom.
 
-`wg` is the entry point: `init`, `play`, `serve`, `mcp`, `run`, `doctor`, `version`. `wg --help` lists the rest.
+`wg` is the entry point: `init`, `setup`, `play`, `serve`, `mcp`, `run`, `doctor`, `version`. `wg --help` lists the rest.
+
+`wg setup` writes the five built-in narrative skill packs, a director note and two table rules to `~/.world-walker/harness.json` with `0600` permissions. An existing config is kept; use `--force` to rewrite it.
+
+## Knowledge library
+
+The lobby's “Start from a prefab or archive” entry offers six selectable starts: island survival, Nine Wastes, Fog Port, Neon Abyss, Sword Break, and the Xuan Gate. A prefab fixes the world, play loop, difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
+
+“Design archives” holds the raft, prefab-authoring and release-discipline notes. The data lives in `library/playbooks/*.json` and `library/archives/*.md` and ships with the package.
 
 ## Use your own model
 

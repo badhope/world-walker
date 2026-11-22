@@ -27,6 +27,7 @@ AI 演，引擎判，存档记。面板只做玩家视图，不再承担仪表�
     POST /api/v1/harness/config 保存叙事调校
     GET  /api/v1/rules          当前存档的确定性规则本
     POST /api/v1/rules          校验并替换规则本
+    GET  /api/v1/library        知识库：预制玩法与设计档案
 
 写入只发生在玩家 API（新局/对话/模型配置/打开当前局）；旧行动队列已移除。
 """
@@ -59,8 +60,19 @@ from game_engine.state_schema import load_state  # noqa: E402
 from game_engine import input_policy  # noqa: E402
 
 _PANEL_VERSION = __import__("game_engine").__version__
-HTML_FILE = os.path.join(_SCRIPT_DIR, "panel.html")
-HTML_DIR = _SCRIPT_DIR
+def _assets_dir(here: str) -> str:
+    probes = ("panel.html", "settings", "narrative_skills", "library")
+    if any(os.path.exists(os.path.join(here, name)) for name in probes):
+        return here
+    parent = os.path.dirname(here)
+    if any(os.path.exists(os.path.join(parent, name)) for name in probes):
+        return parent
+    return here
+
+
+_ASSET_DIR = _assets_dir(_SCRIPT_DIR)
+HTML_FILE = os.path.join(_ASSET_DIR, "panel.html")
+HTML_DIR = _ASSET_DIR
 MORAL_DIMS = ("关怀", "公平", "忠诚", "权威", "圣洁", "自由")
 EVENTS_CAP = 40
 MAX_VIZ_SIDECAR_BYTES = 4 * 1024 * 1024
@@ -1493,7 +1505,7 @@ class Handler(BaseHTTPRequestHandler):
                     "world": "", "tick": 0, "turns": 0, "broken": True}
 
     def _world_catalog(self):
-        settings_dir = os.path.join(_SCRIPT_DIR, "settings")
+        settings_dir = os.path.join(_ASSET_DIR, "settings")
         rows = []
         try:
             names = sorted(n for n in os.listdir(settings_dir) if n.endswith(".setting.json"))
@@ -1644,6 +1656,13 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:  # noqa: BLE001
                 self._api_json(500, {"ok": False, "error": str(exc)[:180]})
             return
+        if path == "/api/v1/library":
+            try:
+                from game_engine import library as library_store
+                self._api_json(200, library_store.payload())
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:180]})
+            return
         if path == "/api/v1/saves":
             listing = self._save_rows()
             self._api_json(200, {"ok": True, "saves": listing["saves"], "root": listing["root"]})
@@ -1742,7 +1761,7 @@ class Handler(BaseHTTPRequestHandler):
                     save_name = name or bundle["name"]
                 else:
                     built, bundle = session_factory.build_from_setting(
-                        ident, seed=body.get("seed"), package_root=_SCRIPT_DIR)
+                        ident, seed=body.get("seed"), package_root=_ASSET_DIR)
                     save_name = name or os.path.basename(ident).split(".")[0]
                 target, safe = session_factory.write_new_state(
                     built, root=root, name=save_name)

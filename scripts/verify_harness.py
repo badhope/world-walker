@@ -250,7 +250,36 @@ def g5_runtime(tmp):
         row.get('role') == 'player' and row.get('text') == '我推开门' for row in turns), '')
 
 
-def g6_ui():
+def g6_library():
+    from game_engine import library, narrative_rules
+    data = library.payload()
+    check('知识库至少 4 个预制玩法', len(data['playbooks']) >= 4,
+          ', '.join(row['id'] for row in data['playbooks']))
+    check('知识库至少 2 份档案', len(data['archives']) >= 2,
+          ', '.join(row['id'] for row in data['archives']))
+    island = library.get_playbook('island-raft')
+    check('海岛预制包锁定白鹿岛设定',
+          island['world']['kind'] == 'setting'
+          and island['world']['id'] == 'settings/白鹿岛.setting.json',
+          str(island['world']))
+    payload = library.playbook_narrative(island)
+    cfg = narrative_rules.normalize(payload)
+    check('预制包叙事字段被归一化',
+          cfg['genre'] == '生存' and cfg['difficulty'] == '硬核'
+          and cfg['skill_ids'] == ['survival-pressure', 'ledger-economy']
+          and cfg['prefab'] == 'island-raft', str(cfg)[:140])
+    check('预制包带真实技能与风格',
+          'survival-pressure' in cfg['skill_ids'] and '短句' in cfg['style'], cfg['style'][:50])
+    bad = False
+    try:
+        library.normalize_playbook({'id': '../bad', 'title': 'x',
+                                    'world': {'kind': 'template', 'id': 'survival'}})
+    except ValueError:
+        bad = True
+    check('预制包拒绝路径式 id', bad, '')
+
+
+def g7_ui():
     html = open(os.path.join(ROOT, 'panel.html'), encoding='utf-8').read()
     js = open(os.path.join(ROOT, 'panel.js'), encoding='utf-8').read()
     for ident in ('connect-harness', 'harness-note', 'harness-table-rules',
@@ -261,6 +290,10 @@ def g6_ui():
           '/api/v1/harness/config' in js and 'renderHarnessSkills' in js
           and '/api/v1/rules' in js and 'refreshHooks' in js, '')
     check('调校页已加入缓存破坏版本 ui5', '?v=ui5' in html, '')
+    check('大厅包含知识库入口', 'id="library-btn"' in html and 'id="library-overlay"' in html, '')
+    check('知识库脚本包含预制玩法渲染',
+          'renderLibrary' in js and '/api/v1/library' in js
+          and 'usePlaybook' in js and 'libraryTab' in js, '')
 
 
 def main():
@@ -270,7 +303,8 @@ def main():
     g3_hooks(tmp)
     g4_rules(tmp)
     g5_runtime(tmp)
-    g6_ui()
+    g6_library()
+    g7_ui()
     print('\n%d/%d passed' % (sum(RESULTS), len(RESULTS)))
     return 0 if all(RESULTS) else 1
 

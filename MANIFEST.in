@@ -11,6 +11,8 @@ include CHANGELOG.md
 include pyproject.toml
 
 recursive-include settings *.json *.md
+recursive-include narrative_skills *.md
+recursive-include library *.json *.md
 recursive-include scripts *.py
 recursive-include docs *.png *.md *.mp4 *.json *.jsonl
 

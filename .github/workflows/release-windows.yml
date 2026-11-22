@@ -1,0 +1,54 @@
+name: Release Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to attach the Windows build to'
+        required: true
+        default: 'v1.18.0'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows x64 installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller==6.22.3
+
+      - name: Build one-file executable
+        run: python scripts/build_exe.py --clean
+
+      - name: Name and checksum the asset
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $asset = "release/world-walker-${{ inputs.tag }}-windows-x64.exe"
+          Copy-Item dist/world-walker.exe $asset
+          Get-FileHash $asset -Algorithm SHA256 | Format-List | Out-String | Set-Content "$asset.sha256"
+          Get-Item $asset | Select-Object Name, Length | Format-Table | Out-String | Write-Host
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: world-walker-windows-${{ inputs.tag }}
+          path: release/*
+          retention-days: 7
+
+      - name: Attach to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release upload "${{ inputs.tag }}" release/world-walker-${{ inputs.tag }}-windows-x64.exe --clobber
+          gh release upload "${{ inputs.tag }}" release/world-walker-${{ inputs.tag }}-windows-x64.exe.sha256 --clobber

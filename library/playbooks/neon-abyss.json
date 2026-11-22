@@ -1,0 +1,16 @@
+{
+  "id": "neon-abyss",
+  "order": 40,
+  "title": "霓虹深渊",
+  "summary": "一座靠债务、义体和信息差运转的垂直城市。往上爬一层，就要把一部分自己押出去。",
+  "genre": "科幻",
+  "play": "权谋经营",
+  "difficulty": "标准",
+  "tone": ["阴郁", "荒诞"],
+  "role": "random",
+  "style": "冷硬，感官具体；霓虹是税，义体是抵押，亲密也有利率。",
+  "world": {"kind": "setting", "id": "settings/霓虹深渊.setting.json", "name": "霓虹深渊"},
+  "save_name": "霓虹深渊·债务层",
+  "skills": ["ledger-economy", "relationship-debt"],
+  "tags": ["赛博", "债务", "势力"]
+}

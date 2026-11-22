@@ -22,7 +22,18 @@ import os
 import tempfile
 from datetime import datetime, timezone
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+def _asset_root(here: str) -> str:
+    """Source tree: package dir is repo root.  Frozen exe: data sits one level up."""
+    probes = ("narrative_skills", "panel.html", "settings")
+    if any(os.path.exists(os.path.join(here, name)) for name in probes):
+        return here
+    parent = os.path.dirname(here)
+    if any(os.path.exists(os.path.join(parent, name)) for name in probes):
+        return parent
+    return here
+
+
+ROOT = _asset_root(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(ROOT, "narrative_skills")
 CONFIG_PATH = os.path.expanduser(
     os.environ.get("WW_HARNESS_CONFIG") or "~/.world-walker/harness.json")
@@ -248,6 +259,32 @@ def save(raw, path: str | None = None) -> dict:
             pass
         raise
     return cfg
+
+
+def display_path(path: str | None = None) -> str:
+    return os.path.expanduser(path or CONFIG_PATH)
+
+
+def install_defaults(path: str | None = None, force: bool = False) -> tuple[dict, bool]:
+    """Write a useful built-in tuning profile once, without clobbering a user edit.
+
+    The five skill packs are shipped data; installing only selects them.  The
+    hooks remain disabled because no hook scripts are shipped.
+    """
+    target = display_path(path)
+    if os.path.isfile(target) and not force:
+        return load(target), False
+    ids = [item["id"] for item in skill_catalog()]
+    cfg = normalize({
+        "director_note": "短句，具体，先写代价；不替玩家解释情绪。",
+        "table_rules": ["不替玩家做内心决定", "每场最多给一条关键线索"],
+        "skills": ids[:MAX_SKILLS],
+        "runtime": dict(RUNTIME_DEFAULT),
+        "rule_events": dict(RULE_EVENTS_DEFAULT),
+        "hooks": {"enabled": False, "timeout": 3,
+                  "events": list(HOOK_EVENTS)},
+    })
+    return save(cfg, path=target), True
 
 
 def public_config(path: str | None = None) -> dict:

@@ -40,6 +40,7 @@
       </div>
       <p class="session-teaser">不用先选模板。告诉我类型、玩法和你想要的角色，我配一局给你。</p>
       <button class="primary-btn wide" id="new-btn" type="button">开始配置</button>
+      <button class="ghost-btn wide library-entry" id="library-btn" type="button">从预制玩法或档案开始</button>
     </section>
 
     <section class="saves-card">
@@ -113,6 +114,22 @@
       <span class="muted" id="session-step-label"></span>
       <button class="primary-btn" id="session-next" type="button">下一步</button>
     </footer>
+  </div>
+</div>
+
+<!-- Library overlay -->
+<div class="overlay" id="library-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="library-title">
+  <div class="overlay-panel library-panel">
+    <header class="overlay-head">
+      <h2 id="library-title">知识库</h2>
+      <button class="icon-btn" data-close="library-overlay" type="button" aria-label="关闭">×</button>
+    </header>
+    <p class="muted library-note">预制玩法只固定世界、循环和叙述口味；角色、名字和边界仍由你定。</p>
+    <nav class="overlay-tabs" id="library-tabs">
+      <button type="button" data-library="playbooks" class="active">预制玩法</button>
+      <button type="button" data-library="archives">设计档案</button>
+    </nav>
+    <div class="overlay-body" id="library-body"></div>
   </div>
 </div>
 

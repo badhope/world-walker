@@ -178,6 +178,10 @@ def _system_prompt(state: dict, harness: dict | None = None,
         "- 需要把正文写进存档：story(action=publish)。",
     ])
     harness = harness_config.normalize(harness or harness_config.load())
+    narrative = state.get("narrative") if isinstance(state.get("narrative"), dict) else {}
+    prefab_skills = list(narrative.get("skill_ids") or [])
+    if prefab_skills:
+        harness["skills"] = list(dict.fromkeys(list(harness.get("skills") or []) + prefab_skills))[:8]
     suffix = harness_config.prompt_sections(harness)
     if hook_prompt:
         clean = str(hook_prompt).strip()[:1800]

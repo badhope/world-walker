@@ -49,6 +49,9 @@ REQUIRED = [
     'docs/demo/折剑行.save.json',
     'docs/demo/霓虹深渊.save.json',
     'docs/demo/雾港.save.json',
+    'narrative_skills/survival-pressure.md',
+    'library/playbooks/island-raft.json',
+    'library/archives/island-raft.md',
 ]
 
 

@@ -8,6 +8,7 @@ A product needs one front door.
 
 Subcommands:
     wg init [path]                 create a starter save
+    wg setup                       install built-in skills, prompts and library defaults
     wg play [--state P]            open the live stage in the browser
     wg serve [--state P] [--port]  run the stage headless (no auto-open)
     wg mcp [--http] [--port N]    run the MCP server (stdio; --http for remote agents)
@@ -29,6 +30,19 @@ import sys
 import webbrowser
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+def _assets_dir(here: str) -> str:
+    probes = ("settings", "panel.html", "narrative_skills", "library")
+    if any(os.path.exists(os.path.join(here, name)) for name in probes):
+        return here
+    parent = os.path.dirname(here)
+    if any(os.path.exists(os.path.join(parent, name)) for name in probes):
+        return parent
+    return here
+
+
+ASSET_ROOT = _assets_dir(ROOT)
 
 
 def _bootstrap():
@@ -79,7 +93,7 @@ def cmd_init(args) -> int:
         print('refusing to overwrite existing file: %s' % target, file=sys.stderr)
         return 1
 
-    bundle_path = os.path.join(ROOT, 'settings', '玄枢界.setting.json')
+    bundle_path = os.path.join(ASSET_ROOT, 'settings', '玄枢界.setting.json')
     if not os.path.isfile(bundle_path):
         print('starter bundle missing: %s' % bundle_path, file=sys.stderr)
         return 1
@@ -93,6 +107,20 @@ def cmd_init(args) -> int:
     print('created %s' % target)
     print('world: %s · entities: %d · markets: %d'
           % (state['world_info']['name'], len(state['entities']), len(state['market'])))
+    return 0
+
+
+def cmd_setup(args) -> int:
+    """Install the built-in tuning assets for the current user."""
+    _bootstrap()
+    from game_engine import harness_config, library
+
+    cfg, written = harness_config.install_defaults(path=args.path, force=args.force)
+    print('%s %s' % ('wrote' if written else 'kept', harness_config.display_path(args.path)))
+    print('skills: %s' % ', '.join(cfg.get('skills') or []))
+    print('playbooks: %d · archives: %d'
+          % (len(library.list_playbooks()), len(library.list_archives())))
+    print('tools: the MCP server and player tool registry are already in the package; run `wg mcp` to expose them.')
     return 0
 
 
@@ -169,7 +197,7 @@ def cmd_doctor(_args) -> int:
         'executable': sys.executable,
         'platform': platform.platform(),
         'cwd': os.getcwd(),
-        'package_root': ROOT,
+        'package_root': ASSET_ROOT,
         'stdlib_only_core': True,
         'optional': {},
         'assets': {},
@@ -180,12 +208,20 @@ def cmd_doctor(_args) -> int:
             report['optional'][name] = getattr(module, '__version__', 'present')
         except ImportError:
             report['optional'][name] = None
+        except Exception as exc:  # noqa: BLE001 - a broken optional package is not a healthy install
+            report['optional'][name] = 'error: %s' % str(exc)[:120]
     for rel in ('panel.html', 'panel.js', 'panel.css'):
-        path = os.path.join(ROOT, rel)
+        path = os.path.join(ASSET_ROOT, rel)
         report['assets'][rel] = os.path.getsize(path) if os.path.exists(path) else None
-    report['bundles'] = sorted(f for f in os.listdir(os.path.join(ROOT, 'settings'))
+    report['assets']['narrative_skills'] = len([
+        1 for name in os.listdir(os.path.join(ASSET_ROOT, 'narrative_skills'))
+        if name.endswith('.md')]) if os.path.isdir(os.path.join(ASSET_ROOT, 'narrative_skills')) else 0
+    report['assets']['library_playbooks'] = len([
+        1 for name in os.listdir(os.path.join(ASSET_ROOT, 'library', 'playbooks'))
+        if name.endswith('.json')]) if os.path.isdir(os.path.join(ASSET_ROOT, 'library', 'playbooks')) else 0
+    report['bundles'] = sorted(f for f in os.listdir(os.path.join(ASSET_ROOT, 'settings'))
                                if f.endswith('.setting.json')) \
-        if os.path.isdir(os.path.join(ROOT, 'settings')) else []
+        if os.path.isdir(os.path.join(ASSET_ROOT, 'settings')) else []
     report['git'] = shutil.which('git')
     print(json.dumps(report, ensure_ascii=False, indent=2))
     healthy = all(report['assets'].values()) and bool(report['bundles'])
@@ -208,6 +244,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser('init', help='create a starter save')
     p.add_argument('path', nargs='?', default='game_state.json')
     p.set_defaults(func=cmd_init)
+
+    p = sub.add_parser('setup', help='install built-in skills, prompts and library defaults')
+    p.add_argument('--path', default='', help='config path (default: ~/.world-walker/harness.json)')
+    p.add_argument('--force', action='store_true', help='overwrite an existing config')
+    p.set_defaults(func=cmd_setup)
 
     p = sub.add_parser('play', help='open the live stage in a browser')
     p.add_argument('--state', default='game_state.json')

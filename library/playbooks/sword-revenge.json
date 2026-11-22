@@ -1,0 +1,16 @@
+{
+  "id": "sword-revenge",
+  "order": 50,
+  "title": "折剑行·旧债",
+  "summary": "江湖不欠你一个公道，只欠你一笔旧账。找上门去，先想清楚要拿什么还。",
+  "genre": "武侠仙侠",
+  "play": "关系情感",
+  "difficulty": "标准",
+  "tone": ["克制", "阴郁"],
+  "role": "random",
+  "style": "短句，留白；刀光写结果，人情写代价。",
+  "world": {"kind": "setting", "id": "settings/折剑行.setting.json", "name": "折剑行"},
+  "save_name": "折剑行·旧债",
+  "skills": ["relationship-debt", "combat-geography"],
+  "tags": ["武侠", "恩仇", "关系"]
+}

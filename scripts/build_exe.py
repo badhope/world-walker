@@ -40,6 +40,8 @@ DATA_FILES = [
     ('docs/RELEASING.md', 'docs'),
     ('docs/metrics.json', 'docs'),
     ('docs/demo', 'docs/demo'),
+    ('narrative_skills', 'narrative_skills'),
+    ('library', 'library'),
 ]
 
 
@@ -93,9 +95,13 @@ def main() -> int:
     # game_engine.* at runtime), so the whole package is declared explicitly.
     # Without this the exe ships data files but no code and dies at startup.
     hidden = ['game_engine', 'game_engine.rules', 'game_engine.engine',
-              'game_engine.mcp_server', 'game_engine.panel', 'game_engine.sessions',
+              'game_engine.panel', 'game_engine.sessions',
               'game_engine.state_schema', 'game_engine.settings_loader',
               'game_engine.templates', 'game_engine.input_policy',
+              'game_engine.harness_config', 'game_engine.harness_hooks',
+              'game_engine.library', 'game_engine.narrative_rules',
+              'game_engine.model_config', 'game_engine.player_view',
+              'game_engine.knowledge', 'game_engine.gameplay',
               'game_engine.viz_series', 'game_engine.bootstrap',
               'game_engine.mcp_primitives', 'game_engine.cli',
               'game_engine.init_game']
@@ -112,6 +118,11 @@ def main() -> int:
         '--name', 'world-walker',
         '--onedir' if args.onedir else '--onefile',
         '--console',
+        '--exclude-module', 'mcp',
+        '--exclude-module', 'pydantic',
+        '--exclude-module', 'jsonschema',
+        '--exclude-module', 'playwright',
+        '--exclude-module', 'coverage',
         *hidden_args,
         '--paths', stage,
         '--distpath', os.path.join(ROOT, 'dist'),

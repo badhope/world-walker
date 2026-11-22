@@ -170,6 +170,8 @@ def normalize(raw):
     world_id = _clean_text(src.get("world_id"), 240)
     world_name = _clean_text(src.get("world_name"), 60)
     style = _clean_text(src.get("style"), 200)
+    prefab = _clean_text(src.get("prefab"), 40)
+    skill_ids = _clean_list(src.get("skill_ids"), None, 8)
     central_question = _clean_text(
         src.get("central_question"), 160, GENRE_QUESTIONS.get(genre, ""))
     fronts = _clean_list(src.get("fronts"), None, 5) or list(SUGGESTED_FRONTS.get(play, []))
@@ -208,6 +210,8 @@ def normalize(raw):
         "clocks": clean_clocks,
         "hints": hints,
         "style": style,
+        "prefab": prefab,
+        "skill_ids": skill_ids,
         "updated_at": _now(),
     }
 

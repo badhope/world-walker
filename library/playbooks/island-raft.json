@@ -1,0 +1,16 @@
+{
+  "id": "island-raft",
+  "order": 10,
+  "title": "海岛求生：救生筏",
+  "summary": "从一条漏气的救生筏开始。潮窗、淡水、气室和体力都在倒计时，先活下去，再谈上岸。",
+  "genre": "生存",
+  "play": "生存压力",
+  "difficulty": "硬核",
+  "tone": ["阴郁", "克制"],
+  "role": "random",
+  "style": "短句，冷硬，先写代价；不解释设定，让玩家从物件的磨损里读出处境。",
+  "world": {"kind": "setting", "id": "settings/白鹿岛.setting.json", "name": "万岛海域"},
+  "save_name": "万岛海域·救生筏",
+  "skills": ["survival-pressure", "ledger-economy"],
+  "tags": ["生存", "海岛", "资源", "潮汐"]
+}

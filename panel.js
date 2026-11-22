@@ -21,6 +21,9 @@
     session: null,
     harness: null,
     harnessLoaded: false,
+    library: null,
+    libraryLoaded: false,
+    libraryTab: "playbooks",
   };
 
   const esc = (value) => String(value == null ? "" : value)
@@ -140,6 +143,7 @@
     app.session = {
       step: 0, genre: "", play: "", role: "random", name: "", style: "",
       tone: [], difficulty: "标准", boundaries: [], world: null, showWorlds: false,
+      prefab: "", skill_ids: [], saveName: "",
     };
     app.sessionPreviewToken = 0;
   }
@@ -283,6 +287,8 @@
       genre: s.genre, play: s.play, role: s.role, player_name: s.name,
       tone: s.tone, difficulty: s.difficulty, boundaries: s.boundaries,
       style: s.style || "",
+      prefab: s.prefab || "",
+      skill_ids: s.skill_ids || [],
       world_kind: s.world ? s.world.kind : "", world_id: s.world ? s.world.id : "",
       world_name: s.world ? s.world.name : "",
     };
@@ -393,7 +399,7 @@
     if (!s) return;
     const button = $("session-next");
     const narrative = sessionNarrative();
-    const name = String(s.name || "").trim();
+    const name = String(s.saveName || s.name || "").trim();
     button.disabled = true;
     button.textContent = "正在开局…";
     try {
@@ -1274,6 +1280,94 @@
   /* Events                                                             */
   /* ------------------------------------------------------------------ */
 
+  /* ------------------------------------------------------------------ */
+  /* Knowledge library                                                  */
+  /* ------------------------------------------------------------------ */
+
+  async function openLibrary() {
+    openOverlay("library-overlay");
+    if (app.libraryLoaded && app.library) {
+      renderLibrary(app.libraryTab);
+      return;
+    }
+    $("library-body").innerHTML = `<p class="muted library-note">正在读取预制玩法与档案…</p>`;
+    try {
+      app.library = await api("/api/v1/library");
+      app.libraryLoaded = true;
+      renderLibrary(app.libraryTab);
+    } catch (err) {
+      $("library-body").innerHTML = `<p class="model-status bad">${esc(err.message)}</p>`;
+    }
+  }
+
+  function renderLibrary(tab = "playbooks") {
+    app.libraryTab = tab;
+    document.querySelectorAll("#library-tabs button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.library === tab);
+    });
+    const data = app.library || {};
+    const body = $("library-body");
+    if (tab === "archives") {
+      const rows = data.archives || [];
+      body.innerHTML = rows.length
+        ? `<div class="archive-list">${rows.map((row) => `
+            <details class="archive-card">
+              <summary>${esc(row.title)}<small>${esc(row.summary || "设计档案")}</small></summary>
+              ${(row.tags || []).length ? `<div class="archive-tags">${row.tags.map((tag) => `<span>#${esc(tag)}</span>`).join("")}</div>` : ""}
+              <div class="archive-body">${esc(row.body || "")}</div>
+            </details>`).join("")}</div>`
+        : `<p class="muted library-note">还没有设计档案。</p>`;
+      return;
+    }
+    const rows = data.playbooks || [];
+    body.innerHTML = rows.length
+      ? `<div class="playbook-grid">${rows.map((row) => {
+          const world = row.world || {};
+          const skills = row.skills || [];
+          return `<article class="playbook-card">
+            <p class="eyebrow">${esc(world.name || "预制玩法")} · ${esc(row.genre || "")}</p>
+            <h3>${esc(row.title)}</h3>
+            <p>${esc(row.summary || "")}</p>
+            <div class="playbook-tags">${(row.tags || []).map((tag) => `<span>${esc(tag)}</span>`).join("")}</div>
+            <div class="playbook-meta">${esc(row.play || "")} · ${esc(row.difficulty || "标准")}${skills.length ? " · " + (row.skill_labels || skills).map((x) => esc(x)).join(" / ") : ""}</div>
+            <div class="playbook-actions">
+              <button class="primary-btn" type="button" data-playbook="${esc(row.id)}">用这套配置</button>
+            </div>
+          </article>`;
+        }).join("")}</div>`
+      : `<p class="muted library-note">还没有预制玩法。把 JSON 放进 library/playbooks/。</p>`;
+  }
+
+  function usePlaybook(ident) {
+    const row = (app.library && app.library.playbooks || []).find((item) => item.id === ident);
+    if (!row) { toast("这套玩法已经不在知识库里了"); return; }
+    newSession();
+    const s = app.session;
+    s.genre = row.genre || "";
+    s.play = row.play || "";
+    s.role = row.role || "random";
+    s.tone = Array.isArray(row.tone) ? row.tone.slice(0, 3) : [];
+    s.difficulty = row.difficulty || "标准";
+    s.style = row.style || "";
+    s.prefab = row.id;
+    s.skill_ids = Array.isArray(row.skills) ? row.skills.slice(0, 8) : [];
+    s.saveName = row.save_name || "";
+    s.name = "";
+    const worlds = (app.bootstrap && app.bootstrap.worlds) || [];
+    const match = row.world && row.world.kind
+      ? worlds.find((w) => w.kind === row.world.kind
+          && (w.name === row.world.name || w.id.endsWith("/" + row.world.id)))
+      : null;
+    s.world = row.world && row.world.kind
+      ? { kind: row.world.kind, id: match ? match.id : row.world.id,
+          name: (match && match.name) || row.world.name || "" }
+      : null;
+    s.step = 3;
+    closeOverlay("library-overlay");
+    renderSession();
+    openOverlay("session-overlay");
+  }
+
   function bind() {
     $("send-btn").addEventListener("click", send);
     $("action-text").addEventListener("input", autoGrow);
@@ -1285,6 +1379,7 @@
     });
 
     $("new-btn").addEventListener("click", openSession);
+    $("library-btn").addEventListener("click", openLibrary);
     $("session-next").addEventListener("click", sessionNext);
     $("session-back").addEventListener("click", sessionBack);
     $("lobby-model-btn").addEventListener("click", openModel);
@@ -1318,6 +1413,13 @@
     renderModelPresets();
     document.querySelectorAll("#connect-tabs button").forEach((button) => {
       button.addEventListener("click", () => setConnectTab(button.dataset.connect));
+    });
+    document.querySelectorAll("#library-tabs button").forEach((button) => {
+      button.addEventListener("click", () => renderLibrary(button.dataset.library));
+    });
+    $("library-body").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-playbook]");
+      if (button) usePlaybook(button.dataset.playbook);
     });
     document.querySelectorAll("[data-copy]").forEach((button) => {
       button.addEventListener("click", () => copyCode(button));

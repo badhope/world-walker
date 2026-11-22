@@ -125,6 +125,11 @@
     plays: ["探索解谜", "生存压力", "权谋经营", "关系情感", "战斗成长", "调查恐怖", "轻松日常"],
     tones: ["明亮", "阴郁", "热血", "克制", "荒诞"],
     difficulties: ["轻松", "标准", "硬核", "铁人"],
+    modes: [
+      { id: "power", label: "爽文", short: "世界偏向你", description: "起始资源更足，压力更慢，有一次轻量金手指。" },
+      { id: "balanced", label: "适中", short: "规则不偏向谁", description: "资源、威胁和成长按设定走。" },
+      { id: "hardcore", label: "硬核", short: "世界不欠你", description: "资源更紧，死亡不可复活。" },
+    ],
     roles: [
       { id: "random", label: "随机生成", desc: "让引擎给你一个能直接玩的人" },
       { id: "custom", label: "我自己写一句", desc: "名字和身份由你定" },
@@ -139,10 +144,26 @@
     return FALLBACK_SESSION_OPTIONS;
   }
 
+  function modeOptions() {
+    const s = app.session || {};
+    if (Array.isArray(s.modeSpecs) && s.modeSpecs.length) return s.modeSpecs;
+    return (sessionOptions().modes || []).length
+      ? sessionOptions().modes
+      : FALLBACK_SESSION_OPTIONS.modes;
+  }
+
+  function modeSpec(id) {
+    return modeOptions().find((item) => item.id === id) || modeOptions()[1] || modeOptions()[0];
+  }
+
+  function modeDifficulty(id) {
+    return (modeSpec(id) || {}).difficulty || (id === "power" ? "轻松" : id === "hardcore" ? "硬核" : "标准");
+  }
+
   function newSession() {
     app.session = {
       step: 0, genre: "", play: "", role: "random", name: "", style: "",
-      tone: [], difficulty: "标准", boundaries: [], world: null, showWorlds: false,
+      tone: [], difficulty: "标准", mode: "balanced", modeSpecs: null, boundaries: [], world: null, showWorlds: false,
       prefab: "", skill_ids: [], saveName: "",
     };
     app.sessionPreviewToken = 0;
@@ -203,8 +224,9 @@
         <div class="session-field"><label>基调（可多选）</label>
           <div class="choice-grid">${opts.tones.map((x) => sessionChip(x, x, s.tone.includes(x), "tone")).join("")}</div>
         </div>
-        <div class="session-field"><label>难度</label>
-          <div class="choice-grid">${opts.difficulties.map((x) => sessionChip(x, x, s.difficulty === x, "difficulty")).join("")}</div>
+        <div class="session-field"><label>模式</label>
+          <div class="choice-grid">${modeOptions().map((item) => sessionChip(item.label, item.id, s.mode === item.id, "mode", item.short)).join("")}</div>
+          <p class="muted" id="mode-note">${esc((modeSpec(s.mode) || {}).description || "")}${modeSpec(s.mode) ? ` · 世界强度 ${esc(modeSpec(s.mode).world_intensity || "")} · ${esc(modeSpec(s.mode).system_strength || "")}` : ""}</p>
         </div>
         <div class="session-field"><label>内容边界（可多选）</label>
           <div class="choice-grid">${opts.boundaries.map((x) => sessionChip(x, x, s.boundaries.includes(x), "boundaries")).join("")}</div>
@@ -246,6 +268,11 @@
         if (group === "tone" || group === "boundaries") {
           const list = Array.isArray(s[group]) ? s[group] : [];
           s[group] = list.includes(value) ? list.filter((x) => x !== value) : list.concat(value);
+        } else if (group === "mode") {
+          s.mode = value;
+          s.difficulty = modeDifficulty(value);
+          renderSession();
+          return;
         } else {
           s[group] = value;
         }
@@ -285,7 +312,7 @@
     const s = app.session || {};
     return {
       genre: s.genre, play: s.play, role: s.role, player_name: s.name,
-      tone: s.tone, difficulty: s.difficulty, boundaries: s.boundaries,
+      tone: s.tone, difficulty: s.difficulty, mode: s.mode || "balanced", boundaries: s.boundaries,
       style: s.style || "",
       prefab: s.prefab || "",
       skill_ids: s.skill_ids || [],
@@ -326,6 +353,7 @@
       <p>${esc(card.player_line)}</p>
       <p>${esc(card.pressure_line)}</p>
       <p class="rules">${esc(card.rules_line)}</p>
+      ${card.mode_label ? `<p class="rules">模式：${esc(card.mode_label)} · 世界强度 ${esc((card.mode_spec || {}).world_intensity || "")} · ${esc((card.mode_spec || {}).system_strength || "")}</p>` : ""}
       <p class="rules">核心问题：${esc(card.central_question || "由你的选择决定")}</p>
       <ul class="hints">${(card.hints || []).map((hint) => `<li>${esc(hint)}</li>`).join("")}</ul>`;
     el.dataset.ready = "1";
@@ -440,6 +468,7 @@
     $("world-name").textContent = world.name || "未命名世界";
     $("world-meta").textContent = [
       world.era, `第 ${num(world.tick)} 回合`,
+      view.mode && view.mode.label ? `模式 · ${view.mode.label}` : "",
       view.player && view.player.location ? view.player.location : "",
     ].filter(Boolean).join(" · ");
     renderModelBadge(view.model || {});
@@ -1329,16 +1358,16 @@
             <h3>${esc(row.title)}</h3>
             <p>${esc(row.summary || "")}</p>
             <div class="playbook-tags">${(row.tags || []).map((tag) => `<span>${esc(tag)}</span>`).join("")}</div>
-            <div class="playbook-meta">${esc(row.play || "")} · ${esc(row.difficulty || "标准")}${skills.length ? " · " + (row.skill_labels || skills).map((x) => esc(x)).join(" / ") : ""}</div>
+            <div class="playbook-meta">${esc(row.play || "")} · 三模式可选${skills.length ? " · " + (row.skill_labels || skills).map((x) => esc(x)).join(" / ") : ""}</div>
             <div class="playbook-actions">
-              <button class="primary-btn" type="button" data-playbook="${esc(row.id)}">用这套配置</button>
+              ${modeOptions().map((item) => `<button class="${item.id === (row.mode_default || "balanced") ? "primary-btn" : "ghost-btn"}" type="button" data-playbook="${esc(row.id)}" data-mode="${esc(item.id)}">${esc(item.label)}</button>`).join("")}
             </div>
           </article>`;
         }).join("")}</div>`
       : `<p class="muted library-note">还没有预制玩法。把 JSON 放进 library/playbooks/。</p>`;
   }
 
-  function usePlaybook(ident) {
+  function usePlaybook(ident, mode) {
     const row = (app.library && app.library.playbooks || []).find((item) => item.id === ident);
     if (!row) { toast("这套玩法已经不在知识库里了"); return; }
     newSession();
@@ -1347,11 +1376,14 @@
     s.play = row.play || "";
     s.role = row.role || "random";
     s.tone = Array.isArray(row.tone) ? row.tone.slice(0, 3) : [];
-    s.difficulty = row.difficulty || "标准";
+    s.modeSpecs = Array.isArray(row.mode_specs) ? row.mode_specs : null;
+    s.mode = mode || row.mode_default || "balanced";
+    s.difficulty = modeDifficulty(s.mode);
     s.style = row.style || "";
     s.prefab = row.id;
     s.skill_ids = Array.isArray(row.skills) ? row.skills.slice(0, 8) : [];
-    s.saveName = row.save_name || "";
+    const modeLabel = (modeSpec(s.mode) || {}).label || "适中";
+    s.saveName = `${row.save_name || row.title || "新局"}·${modeLabel}`;
     s.name = "";
     const worlds = (app.bootstrap && app.bootstrap.worlds) || [];
     const match = row.world && row.world.kind
@@ -1419,7 +1451,7 @@
     });
     $("library-body").addEventListener("click", (event) => {
       const button = event.target.closest("[data-playbook]");
-      if (button) usePlaybook(button.dataset.playbook);
+      if (button) usePlaybook(button.dataset.playbook, button.dataset.mode || "");
     });
     document.querySelectorAll("[data-copy]").forEach((button) => {
       button.addEventListener("click", () => copyCode(button));

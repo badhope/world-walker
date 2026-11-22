@@ -19,16 +19,16 @@ from game_engine import state_schema
 from game_engine import templates
 
 
-def build_from_setting(setting_path: str, *, seed=None, package_root: str | None = None):
+def build_from_setting(setting_path: str, *, seed=None, package_root: str | None = None, mode=None):
     """Load a setting bundle and project it into a runnable state."""
     bundle = input_policy.load_setting(setting_path, package_root=package_root)
-    state = settings_loader.build_state(bundle, seed=seed)
+    state = settings_loader.build_state(bundle, seed=seed, mode=mode)
     settings_loader.apply_runtime_fields(state, bundle)
     return state, bundle
 
 
 def build_from_template(template: str, *, overrides=None, name: str = "",
-                        player_name: str = ""):
+                        player_name: str = "", mode=None):
     """Load a template, validate it, and project it into a runnable state."""
     data = templates.get(template)
     problems = templates.validate(data)
@@ -36,7 +36,7 @@ def build_from_template(template: str, *, overrides=None, name: str = "",
         raise ValueError("模板 %s 结构不完整: %s" % (template, "; ".join(problems[:4])))
     bundle = templates.to_bundle(
         template, overrides=overrides, name=name, player_name=player_name)
-    state = settings_loader.build_state(bundle)
+    state = settings_loader.build_state(bundle, mode=mode)
     settings_loader.apply_runtime_fields(state, bundle)
     return state, bundle
 

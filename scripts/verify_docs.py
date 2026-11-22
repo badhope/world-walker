@@ -315,6 +315,10 @@ def main():
         parts = base.split(os.sep)
         if '.git' in parts or '.aqg' in parts or '.tmp' in parts:
             continue
+        # build/ and dist/ are packaging copies of the same sources; stale
+        # CHANGELOG copies in them must not make live docs look broken.
+        if 'build' in parts or 'dist' in parts:
+            continue
         for fname in files:
             if not fname.endswith('.md'):
                 continue

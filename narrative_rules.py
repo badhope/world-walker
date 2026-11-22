@@ -15,6 +15,7 @@ import re
 from datetime import datetime, timezone
 
 from game_engine.state_schema import load_state, transact_state
+from game_engine.rules import modes as mode_rules
 
 GENRES = [
     "悬疑", "奇幻", "武侠仙侠", "科幻", "都市", "历史",
@@ -161,6 +162,12 @@ def normalize(raw):
     difficulty = _clean_text(src.get("difficulty"), 8, "标准")
     if difficulty not in DIFFICULTIES:
         difficulty = "标准"
+    mode_raw = _clean_text(src.get("mode"), 12)
+    if mode_raw:
+        mode = mode_rules.normalize(mode_raw)
+        difficulty = mode_rules.MODE_SPECS[mode]["difficulty"]
+    else:
+        mode = mode_rules.normalize(difficulty)
     role = _clean_text(src.get("role"), 12, "random")
     if role not in ROLES:
         role = "random"
@@ -199,6 +206,8 @@ def normalize(raw):
         "play": play,
         "tone": tone,
         "difficulty": difficulty,
+        "mode": mode,
+        "mode_label": mode_rules.MODE_SPECS[mode]["label"],
         "role": role,
         "player_name": name,
         "world_kind": world_kind,
@@ -232,9 +241,11 @@ def preview(raw, world_name="", world_desc="", player_name=""):
     else:
         player_line = "你是%s；过去不重要，重要的是你接下来做什么。" % name
     pressure = PLAY_PRESSURES.get(cfg["play"], "有一件事正在变坏。")
-    rules = "难度：%s · 基调：%s · 死亡：%s" % (
-        cfg["difficulty"], " / ".join(cfg["tone"]),
-        "不可逆" if cfg["difficulty"] in ("硬核", "铁人") else "有代价",
+    mode_spec = mode_rules.summary(cfg.get("mode"))
+    rules = "模式：%s（世界强度 %s）· 难度：%s · 基调：%s · 死亡：%s" % (
+        mode_spec["label"], mode_spec["world_intensity"], cfg["difficulty"],
+        " / ".join(cfg["tone"]),
+        "不可逆" if mode_spec["id"] == "hardcore" else "有代价",
     )
     opening = "你站在%s。%s\n\n%s\n\n%s\n\n%s\n\n你可以先看一眼、问一句，或者直接说出你要做什么。" % (
         world, world_line, player_line, pressure, rules,
@@ -246,6 +257,9 @@ def preview(raw, world_name="", world_desc="", player_name=""):
         "play": cfg["play"],
         "tone": cfg["tone"],
         "difficulty": cfg["difficulty"],
+        "mode": cfg["mode"],
+        "mode_label": cfg["mode_label"],
+        "mode_spec": mode_rules.summary(cfg["mode"]),
         "boundaries": cfg["boundaries"],
         "world_line": world_line,
         "player_line": player_line,
@@ -268,10 +282,11 @@ def template_overrides(cfg):
     cfg = normalize(cfg)
     return {
         "game": {
-            "tags": [cfg["genre"], cfg["play"], cfg["difficulty"]],
+            "tags": [cfg["genre"], cfg["play"], cfg["mode_label"]],
             "sheet": {
                 "类型": cfg["genre"],
                 "玩法": cfg["play"],
+                "模式": cfg["mode_label"],
                 "难度": cfg["difficulty"],
                 "核心问题": cfg["central_question"],
             },
@@ -365,6 +380,9 @@ def player_narrative(state):
         "play": cfg["play"],
         "tone": cfg["tone"],
         "difficulty": cfg["difficulty"],
+        "mode": cfg["mode"],
+        "mode_label": cfg["mode_label"],
+        "mode_spec": mode_rules.summary(cfg["mode"]),
         "boundaries": cfg["boundaries"],
         "player_name": cfg.get("player_name") or "",
         "central_question": cfg["central_question"],
@@ -410,6 +428,7 @@ def turn_brief(state):
         scene_card = gameplay_rules.brief(state)
     except Exception:
         scene_card = {}
+    mode = state.get("mode") if isinstance(state.get("mode"), dict) else {}
     return {
         "location": location,
         "present": present,
@@ -421,6 +440,12 @@ def turn_brief(state):
         },
         "facts": facts,
         "clocks": clocks,
+        "mode": {
+            "id": mode.get("id", "balanced"),
+            "label": mode.get("label", "适中"),
+            "narrative_rule": mode.get("narrative_rule", ""),
+            "edge": mode.get("edge", ""),
+        },
         "gameplay": {
             "act": scene_card.get("act"),
             "scene": scene_card.get("scene"),
@@ -490,6 +515,7 @@ def options():
         "plays": PLAYS,
         "tones": TONES,
         "difficulties": DIFFICULTIES,
+        "modes": mode_rules.catalog(),
         "roles": [
             {"id": "random", "label": "随机生成", "desc": "让引擎给你一个能直接玩的人"},
             {"id": "custom", "label": "我自己写一句", "desc": "名字和身份由你定"},

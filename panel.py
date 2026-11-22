@@ -1757,11 +1757,13 @@ class Handler(BaseHTTPRequestHandler):
                 if kind == "template":
                     built, bundle = session_factory.build_from_template(
                         ident, overrides=narrative_rules.template_overrides(narrative),
-                        name=name, player_name=narrative.get("player_name") or "")
+                        name=name, player_name=narrative.get("player_name") or "",
+                        mode=narrative.get("mode") or body.get("mode") or "balanced")
                     save_name = name or bundle["name"]
                 else:
                     built, bundle = session_factory.build_from_setting(
-                        ident, seed=body.get("seed"), package_root=_ASSET_DIR)
+                        ident, seed=body.get("seed"), package_root=_ASSET_DIR,
+                        mode=narrative.get("mode") or body.get("mode") or "balanced")
                     save_name = name or os.path.basename(ident).split(".")[0]
                 target, safe = session_factory.write_new_state(
                     built, root=root, name=save_name)

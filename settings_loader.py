@@ -21,6 +21,7 @@ from game_engine import gameplay as gameplay_rules
 from game_engine import mapgen
 from game_engine.rules import domain_packs as domain_rules
 from game_engine.rules import gamesystem as game_rules
+from game_engine.rules import modes as mode_rules
 from game_engine.rules import playbook as playbook_rules
 from game_engine.rules import questline as questline_rules
 from game_engine.rules import systems as system_rules
@@ -204,7 +205,7 @@ def apply_domain_packs(state: dict, bundle: dict, force_sheet: bool = False) -> 
     vessel_rules.project(state, force_sheet=force_sheet)
 
 
-def build_state(bundle: dict, seed: int | None = None) -> dict:
+def build_state(bundle: dict, seed: int | None = None, mode: str | None = None) -> dict:
     """设定包 → 初始状态（不落盘、不写文件）。
 
     `bundle` 形状见 settings/README.md：world / player / entities / market /
@@ -283,6 +284,9 @@ def build_state(bundle: dict, seed: int | None = None) -> dict:
     if system_defs:
         state["systems"] = {"defs": system_defs, "rt": {}}
     apply_domain_packs(state, bundle)
+    # 三模式是引擎级预设：同一套设定可以选择爽文/适中/硬核，
+    # 数值压力在 build 时一次性落盘，后续读档不会重复加成。
+    mode_rules.apply(state, bundle, mode)
     return state
 
 
@@ -386,6 +390,9 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
                   % (bundle.get("name", ""), lore_n))
     # 运行期载入也要补齐领域包：旧存档续跑不会因为只读 setting 而丢载具梯/物品目录。
     apply_domain_packs(state, bundle)
+    # 老存档没有 mode 时补一个“适中”，避免界面出现空档；已有 mode 不会被重算。
+    if not isinstance(state.get("mode"), dict):
+        mode_rules.apply(state, bundle, None)
     return lore_n
 
 

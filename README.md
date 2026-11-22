@@ -6,13 +6,13 @@ World Walker is a single-player AI tabletop RPG engine. You talk to the GM in pl
 
 No host app. No provider lock-in. The model writes the scene; the engine owns the truth.
 
-`217 rule functions` · `73 MCP tools` · `28 player tools` · `7 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
+`221 rule functions` · `73 MCP tools` · `28 player tools` · `7 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
 
 ## Screens
 
-| Lobby | Knowledge library | At the table |
-| --- | --- | --- |
-| ![Lobby](docs/assets/lobby.png) | ![Knowledge library](docs/assets/library.png) | ![At the table](docs/assets/table.png) |
+| Lobby | Knowledge library | Mode picker | At the table |
+| --- | --- | --- | --- |
+| ![Lobby](docs/assets/lobby.png) | ![Knowledge library](docs/assets/library.png) | ![Mode picker](docs/assets/modes.png) | ![At the table](docs/assets/table.png) |
 
 ## Why it exists
 
@@ -22,7 +22,7 @@ Most AI RPGs fail in the same places. World Walker puts the boundaries in the en
 - **NPCs only know what they have seen.** A character cannot quote facts outside their witnessed memory.
 - **A turn must leave a trace.** Every reply carries a scene card and an audit; a turn without a visible consequence is flagged.
 
-A campaign is built at the table, not pre-written. Session Zero asks genre, play style, role, tone, difficulty and boundaries. Then each turn runs `scene card → your action → world reaction → state change → next hook`.
+A campaign is built at the table, not pre-written. Session Zero asks genre, play style, role, tone, mode (power / balanced / hardcore) and boundaries. Then each turn runs `scene card → your action → world reaction → state change → next hook`.
 
 ## Install and play
 
@@ -40,9 +40,13 @@ wg play --state my-game.json
 
 ## Knowledge library
 
-The lobby's “Start from a prefab or archive” entry offers two selectable starts: island survival in the Ten Thousand Islands Sea, and the hardcore fog-cabin survival of Grey Fog Waste. The fog-cabin prefab is marked `Hardcore`, `No cheat`, `No system`, `Permadeath`. The prefab fixes the world, play loop, difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
+The lobby's “Start from a prefab or archive” entry offers two selectable starts: island survival in the Ten Thousand Islands Sea, and fog-cabin survival in Grey Fog Waste. Every world can be started in one of three modes: **Power** (a mild, world-specific edge and more room to recover), **Balanced** (no favour, no sabotage), and **Hardcore** (scarce resources, faster clocks, permadeath). The fog-cabin Power mode grants one daily *Fog Sense*: a direction, never a map; Hardcore has no cheat and no respawn. The prefab fixes the world, play loop, base difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
 
 “Design archives” holds the raft, prefab-authoring and release-discipline notes. The data lives in `library/playbooks/*.json` and `library/archives/*.md` and ships with the package.
+
+### Three modes, one rules core
+
+`load_setting(path=..., mode="power")` accepts `power`, `balanced` or `hardcore`. The mode changes starting HP and supplies, market temperature, initial clock pressure and the GM's narrative rule; the world's own `modes` block names the edge. Power is a *mild* cheat with a visible cost, not an infinite engine. The same three presets work for every setting bundle and template.
 
 ## Use your own model
 

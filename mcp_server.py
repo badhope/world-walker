@@ -976,7 +976,7 @@ def world_init(state_path: str, world: WorldInfo, player: EntityIn,
                entities: list[EntityIn] | None = None, market: list[MarketIn] | None = None,
                relations: list[RelationIn] | None = None, world_flags: list[str] | None = None,
                ui: dict | None = None,
-               seed: int = 20261014) -> dict:
+               seed: int = 20261014, mode: str = "balanced") -> dict:
     """按玩家设定创建一局新游戏并写盘（Chinese: 设定 → 世界状态；创建后即成为当前对局。
     ui 可给面板皮肤：{"skin": "xuanshu|neutral|ink|neon", "accent": "#rrggbb", "motif": "自由文案"}）。
     Create a new game from the player's setting bible and make it the active session."""
@@ -994,7 +994,7 @@ def world_init(state_path: str, world: WorldInfo, player: EntityIn,
     # 规范化逻辑与纯标准库路径共用（settings_loader），避免"MCP 建局"与"设定包校验"
     # 两套字段处理悄悄漂移。
     target = input_policy.validate_state_path(state_path, must_exist=False)
-    state = settings_loader.build_state(bundle, seed=int(seed))
+    state = settings_loader.build_state(bundle, seed=int(seed), mode=mode)
     log_event(state, "system", "世界「%s」开局：%s" % (state["world_info"]["name"],
                                                   state["world_info"]["location_desc"] or "旅程开始"))
     _remember(state, "locations", state["entities"]["player"].get("location", ""))
@@ -1003,6 +1003,7 @@ def world_init(state_path: str, world: WorldInfo, player: EntityIn,
     return {
         "state_path": target,
         "world": state["world_info"]["name"],
+        "mode": (state.get("mode") or {}).get("label", ""),
         "entities": len(state["entities"]),
         "market_locations": sorted(state["market"]),
         "relations": len(state["relations"]),
@@ -1903,16 +1904,27 @@ def _apply_bundle_extras(state_path: str, bundle: dict) -> int:
 
 
 @server.tool()
-def load_setting(path: str, state_path: str = "", seed: int | None = None) -> dict:
+def load_setting(path: str, state_path: str = "", seed: int | None = None,
+                 mode: str = "balanced") -> dict:
     """从「设定包」一键开一局（Chinese: 包里含 world/player/entities/market/relations/lore，
     示例见 settings/ 目录，格式见 settings/README.md）。
+    mode 取 power（爽文）/ balanced（适中）/ hardcore（硬核），三种模式对每个世界都可用。
     Boot a full game from a setting bundle in one call."""
     resolved = input_policy.validate_setting_path(path, package_root=_SCRIPT_DIR)
     bundle = input_policy.load_setting(resolved, package_root=_SCRIPT_DIR)
     sp = state_path or bundle.get("state_path_hint") or "ww_state.json"
+    if not state_path and sp.endswith(".json"):
+        # 不传 state_path 时，爽文/硬核各自落一个独立档，避免静默覆盖适中档。
+        from game_engine.rules import modes as _modes
+        mode_id = _modes.normalize(mode)
+        if mode_id != "balanced":
+            stem, suffix = sp[:-5], ""
+            if stem.endswith(".save"):
+                stem, suffix = stem[:-5], ".save"
+            sp = stem + "_" + mode_id + suffix + ".json"
     target = input_policy.validate_state_path(sp, must_exist=False)
     game_seed = int(seed if seed is not None else bundle.get("seed", 20261014))
-    state = settings_loader.build_state(bundle, seed=game_seed)
+    state = settings_loader.build_state(bundle, seed=game_seed, mode=mode)
     settings_loader.apply_runtime_fields(state, bundle)
     log_event(state, "system", "世界「%s」开局：%s" % (
         state["world_info"]["name"], state["world_info"].get("location_desc") or "旅程开始"))
@@ -1926,6 +1938,8 @@ def load_setting(path: str, state_path: str = "", seed: int | None = None) -> di
         "market_locations": sorted(state["market"]),
         "relations": len(state["relations"]),
         "seed": game_seed,
+        "mode": (state.get("mode") or {}).get("label", ""),
+        "mode_id": (state.get("mode") or {}).get("id", ""),
         "message": "世界已创建。玩家所在位置: %s" % state["entities"]["player"].get("location", ""),
     }
     return {**result, "setting": bundle.get("name", ""),
@@ -2774,7 +2788,8 @@ def session_list(include_trash: bool = False) -> dict:
 
 @server.tool()
 def session_new(name: str, setting_path: str = "", seed: int | None = None,
-                state: dict | None = None, narrative: dict | None = None) -> dict:
+                state: dict | None = None, narrative: dict | None = None,
+                mode: str = "balanced") -> dict:
     """新建一局并存入存档库（Chinese: 从设定包开新局（setting_path），或用 state 直接导入一份初始状态。
     返回存档路径并把这一局设为当前对局。
     Create a new saved game from a setting bundle or an explicit initial state."""
@@ -2784,7 +2799,7 @@ def session_new(name: str, setting_path: str = "", seed: int | None = None,
         built = session_factory.build_from_state(state)
     elif setting_path:
         built, _bundle = session_factory.build_from_setting(
-            setting_path, seed=seed, package_root=_SCRIPT_DIR)
+            setting_path, seed=seed, package_root=_SCRIPT_DIR, mode=mode)
     else:
         raise ValueError("session_new 需要 setting_path 或 state 之一")
     safe = session_store.safe_name(name)
@@ -3043,13 +3058,13 @@ def template_apply(template: str, overrides: dict | None = None,
 @server.tool()
 def template_start(template: str, name: str = "", overrides: dict | None = None,
                    player_name: str = "", state_path: str = "",
-                   narrative: dict | None = None) -> dict:
+                   narrative: dict | None = None, mode: str = "balanced") -> dict:
     """用模板直接开一局（Chinese: 一步完成 — 取模板 → 建状态 → 写盘 → 设为当前对局。
     name 不传则用模板名；overrides 可覆盖任意字段（见 template_info）。
     Start a new game straight from a template (template → state → disk → active)."""
 
     state, bundle = session_factory.build_from_template(
-        template, overrides=overrides, name=name, player_name=player_name)
+        template, overrides=overrides, name=name, player_name=player_name, mode=mode)
     save_root = session_store.saves_root(
         os.path.dirname(os.path.abspath(_active.get("path") or os.getcwd())))
     log_event(state, "system", "模板「%s」开局：%s" % (template, bundle["name"]))

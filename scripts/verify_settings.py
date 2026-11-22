@@ -38,6 +38,40 @@ def main():
     files = sorted(f for f in os.listdir(SETTINGS_DIR) if f.endswith('.setting.json'))
     check('设定包数量 ≥ 4（覆盖修真/武侠/赛博/悬疑四种世界观）', len(files) >= 4, str(files))
 
+    # 三模式必须对每个世界都成立：同一套设定分别用爽文/适中/硬核建局，
+    # 只看引擎级差异（体力上限、压力钟、flags），世界专属 edge 另查迷雾小屋。
+    mode_bad = []
+    mode_power_better = 0
+    for fn in files:
+        path = os.path.join(SETTINGS_DIR, fn)
+        with open(path, encoding='utf-8') as f:
+            mode_bundle = json.load(f)
+        rows = {}
+        try:
+            for mode in ('power', 'balanced', 'hardcore'):
+                st = SL.build_state(mode_bundle, mode=mode)
+                rows[mode] = st
+                if (st.get('mode') or {}).get('id') != mode:
+                    mode_bad.append('%s/%s 未落盘' % (fn, mode))
+                if 'mode:' + mode not in (st.get('world_flags') or []):
+                    mode_bad.append('%s/%s flags 缺失' % (fn, mode))
+            if rows['power']['entities']['player']['hp_max'] > rows['balanced']['entities']['player']['hp_max']:
+                mode_power_better += 1
+            if rows['hardcore']['entities']['player']['hp_max'] > rows['balanced']['entities']['player']['hp_max']:
+                mode_bad.append('%s 硬核体力不该高于适中' % fn)
+        except Exception as exc:
+            mode_bad.append('%s: %s' % (fn, exc))
+    check('每个世界都支持爽文/适中/硬核三模式', not mode_bad,
+          'power 更宽 %d/%d ｜ %s' % (mode_power_better, len(files),
+                                     ' · '.join(mode_bad[:3]) if mode_bad else 'OK'))
+    fog = os.path.join(SETTINGS_DIR, '迷雾小屋.setting.json')
+    if os.path.isfile(fog):
+        with open(fog, encoding='utf-8') as f:
+            fog_bundle = json.load(f)
+        fog_power = SL.build_state(fog_bundle, mode='power')
+        check('迷雾小屋·爽文模式有世界专属轻量金手指', '雾隙直觉' in (fog_power.get('mode') or {}).get('edge', ''),
+              (fog_power.get('mode') or {}).get('edge', '')[:40])
+
     tmp = tempfile.mkdtemp(prefix='ww-settings-')
     for fn in files:
         path = os.path.join(SETTINGS_DIR, fn)

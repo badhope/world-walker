@@ -13,6 +13,8 @@ import json
 import os
 import re
 
+from game_engine.rules import modes as mode_rules
+
 def _asset_root(here: str) -> str:
     if os.path.isdir(os.path.join(here, "library")):
         return here
@@ -76,6 +78,7 @@ def normalize_playbook(raw: dict) -> dict:
     genre = _text(raw.get("genre"), 20, "生存")
     play = _text(raw.get("play"), 20, "生存压力")
     difficulty = _text(raw.get("difficulty"), 8, "标准")
+    mode_default = mode_rules.normalize(raw.get("mode") or difficulty)
     tone = _list(raw.get("tone"), 3) or ["克制"]
     skills = _list(raw.get("skills"), 8)
     return {
@@ -85,6 +88,8 @@ def normalize_playbook(raw: dict) -> dict:
         "genre": genre,
         "play": play,
         "difficulty": difficulty,
+        "mode_default": mode_default,
+        "mode_label": mode_rules.MODE_SPECS[mode_default]["label"],
         "tone": tone,
         "role": _text(raw.get("role"), 12, "random"),
         "style": _text(raw.get("style"), 200),
@@ -94,6 +99,30 @@ def normalize_playbook(raw: dict) -> dict:
         "tags": _list(raw.get("tags"), 6),
         "order": int(raw.get("order") or 100),
     }
+
+
+def _setting_bundle(world: dict) -> dict:
+    """Read a setting bundle for its world-specific mode copy; never raise."""
+    if world.get("kind") != "setting":
+        return {}
+    rel = os.path.normpath(str(world.get("id") or ""))
+    if os.path.isabs(rel):
+        return {}
+    path = os.path.join(ROOT, rel)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return {}
+
+
+def _mode_specs(world: dict) -> list[dict]:
+    bundle = _setting_bundle(world)
+    return [
+        mode_rules.summary(mode, bundle)
+        for mode in mode_rules.MODE_IDS
+    ]
 
 
 def _world_exists(world: dict) -> bool:
@@ -123,6 +152,7 @@ def list_playbooks() -> list[dict]:
                 row = normalize_playbook(json.load(fh))
             if not _world_exists(row["world"]):
                 continue
+            row["mode_specs"] = _mode_specs(row["world"])
             rows.append(row)
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             continue
@@ -153,6 +183,7 @@ def playbook_narrative(row: dict) -> dict:
         "role": row["role"],
         "tone": list(row["tone"]),
         "difficulty": row["difficulty"],
+        "mode": row["mode_default"],
         "style": row["style"],
         "world_kind": row["world"]["kind"],
         "world_id": row["world"]["id"],
@@ -213,6 +244,7 @@ def payload() -> dict:
         "ok": True,
         "playbooks": playbooks,
         "archives": archives,
+        "modes": mode_rules.catalog(),
         "counts": {"playbooks": len(playbooks), "archives": len(archives)},
         "root": LIBRARY_DIR,
     }

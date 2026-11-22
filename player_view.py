@@ -131,6 +131,7 @@ def build_player_view(state_path: str) -> dict:
             "phase": world_state.get("phase"),
         },
         "scene": vm.get("scene") or {},
+        "mode": state.get("mode") if isinstance(state.get("mode"), dict) else {},
         "narrative": narrative_rules.player_narrative(state),
         "player": {
             "name": player.get("name") or "玩家",

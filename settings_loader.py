@@ -266,6 +266,20 @@ def build_state(bundle: dict, seed: int | None = None, mode: str | None = None) 
             "name": str(world["name"]),
             "era": str(world.get("era", "")),
             "location_desc": str(world.get("location_desc", "")),
+            "brief_line": str((world.get("opening") or {}).get("brief_line") or "")
+            if isinstance(world.get("opening"), dict) else "",
+            "prologue": [
+                str(x).strip() for x in (
+                    (world.get("opening") or {}).get("prologue")
+                    if isinstance(world.get("opening"), dict) else []
+                ) if str(x).strip()
+            ][:8],
+            "opening_actions": [
+                str(x).strip() for x in (
+                    (world.get("opening") or {}).get("actions")
+                    if isinstance(world.get("opening"), dict) else []
+                ) if str(x).strip()
+            ][:4],
         },
         "world_bible": world_bible,
         "playbook": playbook,

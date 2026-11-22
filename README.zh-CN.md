@@ -10,9 +10,9 @@ World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话�
 
 ## 界面
 
-| 大厅 | 知识库 | 模式选择 | 对局 |
-| --- | --- | --- | --- |
-| ![大厅](docs/assets/lobby.png) | ![知识库](docs/assets/library.png) | ![模式选择](docs/assets/modes.png) | ![对局](docs/assets/table.png) |
+| 大厅 | 知识库 | 模式选择 | 开局序章 | 对局 |
+| --- | --- | --- | --- | --- |
+| ![大厅](docs/assets/lobby.png) | ![知识库](docs/assets/library.png) | ![模式选择](docs/assets/modes.png) | ![开局序章](docs/assets/opening.png) | ![对局](docs/assets/table.png) |
 
 ## 它解决什么
 

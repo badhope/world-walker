@@ -500,10 +500,13 @@
       const brief = narrative.brief || {};
       if (brief.headline) {
         const hints = (brief.hints || narrative.hints || []);
+        const prologue = (brief.prologue || narrative.prologue || []);
+        const actions = (brief.opening_actions || narrative.opening_actions || []);
         feed.innerHTML = `
           <div class="session-zero-card">
             <p class="eyebrow">开局卡</p>
             <h2>${esc(brief.headline)}</h2>
+            ${prologue.length ? `<div class="prologue">${prologue.map((line) => `<p>${esc(line)}</p>`).join("")}</div>` : ""}
             <div class="brief">
               ${brief.world_line ? `<p>${esc(brief.world_line)}</p>` : ""}
               ${brief.player_line ? `<p>${esc(brief.player_line)}</p>` : ""}
@@ -511,8 +514,19 @@
               ${brief.rules_line ? `<p class="muted">${esc(brief.rules_line)}</p>` : ""}
             </div>
             ${hints.length ? `<ul class="hints">${hints.map((hint) => `<li>${esc(hint)}</li>`).join("")}</ul>` : ""}
+            ${actions.length ? `<div class="opening-actions">${actions.map((label, index) => `<button class="opening-action" type="button" data-opening-action="${index}">${esc(label)}</button>`).join("")}</div>` : ""}
             <p class="cta">说第一句话，或者先问一句。你不需要选“正确”的开头。</p>
           </div>`;
+        feed.querySelectorAll("[data-opening-action]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const action = actions[Number(button.dataset.openingAction)];
+            if (!action) return;
+            const input = $("action-text");
+            if (!input) return;
+            input.value = action;
+            send();
+          });
+        });
         return;
       }
       feed.innerHTML = `

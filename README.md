@@ -10,9 +10,9 @@ No host app. No provider lock-in. The model writes the scene; the engine owns th
 
 ## Screens
 
-| Lobby | Knowledge library | Mode picker | At the table |
-| --- | --- | --- | --- |
-| ![Lobby](docs/assets/lobby.png) | ![Knowledge library](docs/assets/library.png) | ![Mode picker](docs/assets/modes.png) | ![At the table](docs/assets/table.png) |
+| Lobby | Knowledge library | Mode picker | Cold open | At the table |
+| --- | --- | --- | --- | --- |
+| ![Lobby](docs/assets/lobby.png) | ![Knowledge library](docs/assets/library.png) | ![Mode picker](docs/assets/modes.png) | ![Cold open](docs/assets/opening.png) | ![At the table](docs/assets/table.png) |
 
 ## Why it exists
 

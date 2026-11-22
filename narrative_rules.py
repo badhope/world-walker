@@ -308,16 +308,23 @@ def attach(state_path, raw, world_name="", world_desc="", player_name=""):
                    player_name=player_name)
     cfg["world_name"] = world_name
     cfg["player_name"] = player_name
+    prologue = [str(x).strip() for x in (world.get("prologue") or []) if str(x).strip()]
+    opening_actions = [str(x).strip() for x in (world.get("opening_actions") or []) if str(x).strip()]
+    world_line = str(world.get("brief_line") or card["world_line"])
     cfg["brief"] = {
         "headline": card["headline"],
-        "world_line": card["world_line"],
+        "world_line": world_line,
         "player_line": card["player_line"],
         "pressure_line": card["pressure_line"],
         "rules_line": card["rules_line"],
         "hints": card["hints"],
         "central_question": card["central_question"],
+        "prologue": prologue[:8],
+        "opening_actions": opening_actions[:4],
     }
-    cfg["opening"] = card["opening"]
+    cfg["prologue"] = prologue[:8]
+    cfg["opening_actions"] = opening_actions[:4]
+    cfg["opening"] = ("\n\n".join(prologue) + "\n\n" if prologue else "") + card["opening"]
 
     def edit(state):
         state["narrative"] = cfg

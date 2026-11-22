@@ -40,7 +40,7 @@ wg play --state my-game.json
 
 ## Knowledge library
 
-The lobby's “Start from a prefab or archive” entry offers six selectable starts: island survival, Nine Wastes, Fog Port, Neon Abyss, Sword Break, and the Xuan Gate. A prefab fixes the world, play loop, difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
+The lobby's “Start from a prefab or archive” entry offers one selectable start: island survival in the Ten Thousand Islands Sea. The prefab fixes the world, play loop, difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
 
 “Design archives” holds the raft, prefab-authoring and release-discipline notes. The data lives in `library/playbooks/*.json` and `library/archives/*.md` and ships with the package.
 

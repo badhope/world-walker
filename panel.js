@@ -126,7 +126,7 @@
     tones: ["明亮", "阴郁", "热血", "克制", "荒诞"],
     difficulties: ["轻松", "标准", "硬核", "铁人"],
     modes: [
-      { id: "power", label: "爽文", short: "世界偏向你", description: "起始物资更足；所有加成都是可清点的实物，没有预知/直觉/必中。" },
+      { id: "power", label: "爽文", short: "世界偏向你", description: "起始物资更足；所有加成都是可清点的实物，能数、会用完、会被抢。" },
       { id: "balanced", label: "适中", short: "规则不偏向谁", description: "资源、威胁和成长按设定走。" },
       { id: "hardcore", label: "硬核", short: "世界不欠你", description: "资源更紧，死亡不可复活。" },
     ],

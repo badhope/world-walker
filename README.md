@@ -40,13 +40,13 @@ wg play --state my-game.json
 
 ## Knowledge library
 
-The lobby's “Start from a prefab or archive” entry offers two selectable starts: island survival in the Ten Thousand Islands Sea, and fog-cabin survival in Grey Fog Waste. Every world can be started in one of three modes: **Power** (more starting supplies and room to recover; all gains are countable goods, never precognition, intuition, mind-reading or auto-success), **Balanced** (no favour, no sabotage), and **Hardcore** (scarce resources, faster clocks, permadeath). The fog-cabin Power kit is a second-hand hardware box: 4 boards, 16 nails, 1 hinge, a 10 m rope rated 40 kg, a mechanical thermometer/hygrometer, and a windproof lighter rated for about 80 ignitions. Every piece can be consumed, broken or taken; Hardcore has no kit and no respawn. The prefab fixes the world, play loop, base difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
+The lobby's “Start from a prefab or archive” entry offers two selectable starts: island survival in the Ten Thousand Islands Sea, and fog-cabin survival in Grey Fog Waste. Every world can be started in one of three modes: **Power** (more starting supplies and room to recover; all gains are countable goods that can be used up or taken), **Balanced** (no favour, no sabotage), and **Hardcore** (scarce resources, faster clocks, permadeath). The fog-cabin Power kit is a second-hand hardware box: 4 boards, 16 nails, 1 hinge, a 10 m rope rated 40 kg, a mechanical thermometer/hygrometer, and a windproof lighter rated for about 80 ignitions. Every piece can be consumed, broken or taken; Hardcore has no kit and no respawn. The prefab fixes the world, play loop, base difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
 
 “Design archives” holds the raft, prefab-authoring and release-discipline notes. The data lives in `library/playbooks/*.json` and `library/archives/*.md` and ships with the package.
 
 ### Three modes, one rules core
 
-`load_setting(path=..., mode="power")` accepts `power`, `balanced` or `hardcore`. The mode changes starting HP and supplies, market temperature, initial clock pressure and the GM's narrative rule; the world's own `modes` block names the edge. Power is extra countable stock plus softer market/clock pressure, not an ability: no precognition, intuition or auto-success. The same three presets work for every setting bundle and template.
+`load_setting(path=..., mode="power")` accepts `power`, `balanced` or `hardcore`. The mode changes starting HP and supplies, market temperature, initial clock pressure and the GM's narrative rule; the world's own `modes` block names the edge. Power is extra countable stock plus softer market/clock pressure, not an ability. The same three presets work for every setting bundle and template.
 
 ## Use your own model
 

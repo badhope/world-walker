@@ -302,7 +302,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   box-shadow: 0 30px 90px rgba(0, 0, 0, .28); overflow: hidden;
 }
 .menu-panel { width: min(420px, 100%); }
-.model-panel { width: min(640px, 100%); }
+.model-panel { width: min(720px, 100%); }
 .overlay-head {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   padding: 16px 20px 13px; border-bottom: 1px solid var(--line);
@@ -354,6 +354,50 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .model-status { min-height: 22px; margin-top: 12px; font-size: 13px; line-height: 1.6; color: var(--muted); }
 .model-status.ok { color: var(--ok); }
 .model-status.bad { color: var(--danger); }
+
+/* ---------- harness tuning ---------- */
+#connect-harness .field { margin: 0 0 12px; }
+#connect-harness .field textarea { resize: vertical; line-height: 1.7; }
+.field-hint { margin: -4px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.harness-section {
+  margin: 18px 0 2px; padding-top: 14px; border-top: 1px solid var(--line);
+}
+.harness-section-head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 9px; }
+.harness-section-head b { font-size: 14px; font-weight: 650; }
+.harness-section-head small { color: var(--muted); font-size: 12px; }
+.skill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.skill-chip {
+  display: flex; gap: 9px; align-items: flex-start; min-width: 0;
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px;
+  background: var(--paper-2); cursor: pointer;
+}
+.skill-chip:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.skill-chip input { margin: 2px 0 0; accent-color: var(--accent); flex: 0 0 auto; }
+.skill-chip b { display: block; font-size: 13px; font-weight: 650; }
+.skill-chip small { display: block; margin-top: 2px; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.checkline { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-2); font-size: 13px; cursor: pointer; }
+.checkline input { accent-color: var(--accent); }
+.harness-events { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 12px; }
+.code-input {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--paper); color: var(--ink); padding: 10px 12px;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.6; resize: vertical;
+}
+.rule-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 9px; }
+.rule-help p { margin: 0 0 6px; color: var(--ink-2); font-size: 12.5px; line-height: 1.7; }
+.rule-help code { font-family: var(--mono); font-size: .94em; background: var(--paper-2); padding: 1px 5px; border-radius: 4px; }
+.hook-warning {
+  margin: 0 0 12px; padding: 9px 11px; border: 1px solid color-mix(in srgb, var(--danger) 32%, var(--line));
+  border-radius: 9px; background: color-mix(in srgb, var(--danger) 7%, var(--paper));
+  color: var(--danger); font-size: 12.5px; line-height: 1.65;
+}
+.hook-path { margin: 4px 0 8px; color: var(--muted); font-family: var(--mono); font-size: 11.5px; overflow-wrap: anywhere; }
+.hook-controls { display: grid; grid-template-columns: .8fr 1fr; gap: 10px; align-items: start; margin-bottom: 4px; }
+.hook-toggle { grid-column: 1 / -1; padding: 0; }
+.hook-ready { color: var(--muted); font-size: 13px; padding-top: 2px; }
+.hook-ready.ok { color: var(--ok); }
+.hook-ready.bad { color: var(--danger); }
+.rulebook-section .model-status { margin-top: 4px; }
 
 /* world overlay content */
 .codex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -412,10 +456,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .choice-chip small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
 .session-field { margin-top: 18px; }
 .session-field label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 12px; }
-.session-field input {
+.session-field input,
+.session-field textarea {
   width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 10px;
   background: var(--paper-2); color: var(--ink); padding: 10px 12px; font: inherit; font-size: 14px;
 }
+.session-field textarea { resize: vertical; line-height: 1.65; }
 .session-preview {
   border: 1px solid var(--line); border-radius: 14px; background: var(--paper-2);
   padding: 16px 18px; margin-top: 16px;
@@ -484,7 +530,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   .composer-foot #composer-hint { display: none; }
   .overlay { padding: 10px; }
   .overlay-panel { max-height: 92vh; border-radius: 14px; }
-  .codex-grid, .map-list, .archive-grid, .field-grid, .field-grid.three { grid-template-columns: 1fr; }
+  .codex-grid, .map-list, .archive-grid, .field-grid, .field-grid.three, .skill-grid, .hook-controls { grid-template-columns: 1fr; }
   .new-row { flex-direction: column; align-items: stretch; }
   .new-row .primary-btn { width: 100%; }
 }

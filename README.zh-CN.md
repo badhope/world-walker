@@ -1,12 +1,12 @@
 # World Walker
 
-**v1.16.2** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
+**v1.17.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [更新日志](CHANGELOG.md)
 
 World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话，判定、价格、背包、关系、存档与回放由确定性规则引擎负责；故事由任何 OpenAI-compatible `/chat/completions` 端点来写。
 
 不用宿主 App，不绑定模型厂商。AI 写场面，引擎管事实。
 
-`217 个规则函数` · `73 个 MCP 工具` · `28 个玩家工具` · `6 套设定包` · `9 套模板` · `23 个可执行自检` · `0 个运行时依赖`
+`217 个规则函数` · `73 个 MCP 工具` · `28 个玩家工具` · `6 套设定包` · `9 套模板` · `24 个可执行自检` · `0 个运行时依赖`
 
 ## 它解决什么
 
@@ -39,6 +39,17 @@ wg play --state my-game.json
 ```
 
 在页面的模型设置里填写，或使用 `WW_MODEL_BASE_URL`、`WW_MODEL_API_KEY`、`WW_MODEL_NAME`。配置保存在 `~/.world-walker/model.json`，权限为 `0600`。
+
+## 调校 GM
+
+面板右上角的“连接与调校 → 叙事调校”把四层分开，避免把叙事偏好、提示词包和确定性规则混成一个万能开关：
+
+- **提示词**：导演备注和桌面规则追加到 GM 系统提示；它们改口味，不覆盖 POLICY、CANON 和数值结算。
+- **叙事技能**：`narrative_skills/*.md` 里的提示词包，带标题和摘要，按需注入；不是角色技能。
+- **引擎规则**：当前存档的 `rulebook`，按 `order` 执行，效果走白名单；可在面板里校验并写入，触发次数会落盘。规则可在回合开始或每次工具结算后执行。
+- **回合钩子**：`~/.world-walker/hooks` 下的 `before_turn.py`、`after_tool.py`、`after_turn.py`。默认关闭；脚本以你的权限运行，等同你亲手执行这段 Python。
+
+调校配置保存在 `~/.world-walker/harness.json`，权限为 `0600`。外部 Agent 的 prompt、skill、hook、rule 仍由宿主自己配置；World Walker 只提供 MCP 工具和开局提示词。
 
 ## 通过 MCP 接入 agent
 
@@ -73,7 +84,7 @@ trade(location="临川城", item="ningyuan_dan", direction="buy", quantity=1)
 
 ## 质量
 
-验证是用来失败的，不是用来好看的。`scripts/verify_*.py`、行为回归和变异测试都会在代码被改坏时变红。主门禁跑 23 个可执行自检，核心域有覆盖率要求，变异测试要求零存活。
+验证是用来失败的，不是用来好看的。`scripts/verify_*.py`、行为回归和变异测试都会在代码被改坏时变红。主门禁跑 24 个可执行自检，核心域有覆盖率要求，变异测试要求零存活。
 
 ```bash
 python3 scripts/verify_docs.py

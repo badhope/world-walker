@@ -5,6 +5,39 @@
 
 ---
 
+## v1.17.0 — 2026-11-22
+
+**给面板 GM 补上四层可调校的 harness：提示词、叙事技能、确定性规则事件和本地钩子。**
+
+### 新增
+
+- `harness_config.py`：全局调校配置，默认 `~/.world-walker/harness.json`，原子写入、权限 `0600`；
+  包含导演备注、桌面规则、技能选择、上下文/工具轮/审计开关、规则事件开关和钩子设置。
+- `narrative_skills/`：五个 GM 提示词包——生存压迫、线索节制、关系债、战斗地理、账本经营；
+  每个包带标题和摘要，启用后注入系统提示，不是角色技能。
+- `harness_hooks.py`：本地 `before_turn / after_tool / after_turn` 钩子。脚本以独立子进程运行，
+  只通过 stdin/stdout 交换 JSON；超时、异常和审计拦截只返回错误，不中断回合。
+- 面板“连接与调校 → 叙事调校”：导演备注、桌面规则、技能网格、运行参数、规则 JSON 编辑器、
+  规则触发开关与钩子状态。开局向导新增“叙述风格（可选）”。
+
+### 变更
+
+- `dialog_runtime.py`：系统提示追加 DIRECTOR NOTE、TABLE RULES、ACTIVE SKILLS、HOOK NOTES；
+  回合开始与每次工具后按开关执行 `rulebook`；`before_turn` 可注入提示词或阻断回合。
+- `panel.py`：新增 `GET/POST /api/v1/harness/config` 与 `GET/POST /api/v1/rules`；
+  规则写入前走 `rulebook.normalize()` 白名单校验。
+- 规则效果限定为 `resource / attribute / meter / flag / fact / reputation / xp / advance_time / loot`；
+  触发计数写入当前存档。
+- 钩子默认关闭；面板不提供写脚本接口，并明确提示脚本以用户系统权限运行。
+
+### 验证
+
+- `python3 scripts/verify_harness.py`：41/41。
+- `verify_panel` 6/6、`verify_player_shell` 24/24、`verify_settings` 25/25、`verify_mcp_mode` 8/8。
+- 干净副本 `bash scripts/ci_core.sh`：核心门禁全部通过。
+
+---
+
 ## v1.16.2 — 2026-11-20
 
 **新增第六套可直接开玩的设定包：九荒·凡骨。**

@@ -69,6 +69,8 @@ step "断言审计（拒绝恒真/恒假/弱断言）" "$PY" scripts/verify_test
 step "行为回归（含 MCP stub，非真实 SDK 验证）" "$PY" scripts/run_behavior_regressions.py
 step "CLI 通道自检" "$PY" scripts/verify_cli.py
 step "玩家壳契约自检" "$PY" scripts/verify_player_shell.py
+step "面板契约与调校接口" "$PY" scripts/verify_panel.py
+step "调校层（提示词/技能/规则事件/钩子）" "$PY" scripts/verify_harness.py
 step "濒死保护自检" "$PY" scripts/verify_near_death.py
 step "规则内核公式对拍（77 个函数的闭式复算）" "$PY" scripts/verify_formulas.py
 step "模块分支补测（systems/narrative/cognition/economy）" "$PY" scripts/verify_branches.py

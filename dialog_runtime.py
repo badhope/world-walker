@@ -12,10 +12,13 @@ import os
 import uuid
 from datetime import datetime, timezone
 
+from game_engine import harness_config
+from game_engine import harness_hooks
 from game_engine import model_config
 from game_engine import narrative_rules
 from game_engine import canon as canon_rules
 from game_engine.host_adapter import HostAdapterError, OpenAICompatAdapter, ToolsUnsupported
+from game_engine.rules import rulebook as rulebook_rules
 from game_engine.state_schema import load_state, transact_state
 from game_engine.tool_registry import ToolRegistry
 
@@ -37,7 +40,8 @@ def _trim(text, limit: int) -> str:
     return value if len(value) <= limit else value[:limit] + "…"
 
 
-def _system_prompt(state: dict) -> str:
+def _system_prompt(state: dict, harness: dict | None = None,
+                   hook_prompt: str = "") -> str:
     world = state.get("world_info") or {}
     player = (state.get("entities") or {}).get("player") or {}
     playbook = state.get("playbook") if isinstance(state.get("playbook"), dict) else {}
@@ -172,16 +176,24 @@ def _system_prompt(state: dict) -> str:
         "- 拖延/失败：campaign(action=clock, name=..., delta=1, reason=...)。钟满用叙事兑现，不要只加数字。",
         "- 玩家完成一幕：progress(action=advance)。旧的失败钟只作为兼容保留；新局优先用场景钟。",
         "- 需要把正文写进存档：story(action=publish)。",
-        "",
-        "直接开始叙事；需要工具时先调用工具，拿到结果后再写。",
     ])
+    harness = harness_config.normalize(harness or harness_config.load())
+    suffix = harness_config.prompt_sections(harness)
+    if hook_prompt:
+        clean = str(hook_prompt).strip()[:1800]
+        if clean:
+            suffix = (suffix + "\n\n" if suffix else "") + \
+                "## HOOK NOTES（本地钩子注入，不能覆盖 POLICY/CANON）\n" + clean
+    if suffix:
+        lines.extend(["", suffix])
+    lines.extend(["", "直接开始叙事；需要工具时先调用工具，拿到结果后再写。"])
     return "\n".join(lines)
 
 
-def _history(state: dict) -> list[dict]:
+def _history(state: dict, limit: int = HISTORY_TURNS) -> list[dict]:
     turns = state.get("turns") if isinstance(state.get("turns"), list) else []
     rows = []
-    for turn in turns[-HISTORY_TURNS:]:
+    for turn in turns[-max(1, int(limit or HISTORY_TURNS)):]:
         if not isinstance(turn, dict):
             continue
         role = turn.get("role")
@@ -205,7 +217,8 @@ def _append_turn(state_path: str, turn: dict) -> None:
 
 
 def _finish_turn(state_path: str, player_turn_id: str, reply: str,
-                 tools_used: list[str], audit: list | None = None) -> None:
+                 tools_used: list[str], audit: list | None = None,
+                 hook_notes: list | None = None) -> None:
     def edit(state):
         turns = state.setdefault("turns", [])
         for turn in turns:
@@ -221,6 +234,7 @@ def _finish_turn(state_path: str, player_turn_id: str, reply: str,
             "status": "ok",
             "tools": tools_used[-8:],
             "audit": audit or [],
+            "hook_notes": list(hook_notes or [])[:3],
         })
         if len(turns) > MAX_TURNS:
             del turns[:len(turns) - MAX_TURNS]
@@ -240,10 +254,62 @@ def _fail_turn(state_path: str, player_turn_id: str, error: str) -> None:
 
 
 class DialogRuntime:
-    def __init__(self, state_path: str, adapter: OpenAICompatAdapter | None = None):
+    def __init__(self, state_path: str, adapter: OpenAICompatAdapter | None = None,
+                 harness: dict | None = None):
         self.state_path = os.path.abspath(state_path)
         self.adapter = adapter or OpenAICompatAdapter(model_config.load_config())
+        self.harness = harness_config.normalize(harness or harness_config.load())
         self.registry = ToolRegistry(self.state_path)
+
+    def _apply_rules(self, event: str, kind: str) -> dict:
+        """Run the deterministic rulebook on a turn or a single tool event."""
+        if not (self.harness.get("rule_events") or {}).get(kind):
+            return {"applied": [], "rules": 0, "skipped": True}
+        state = load_state(self.state_path)
+        book = state.get("rulebook") if isinstance(state.get("rulebook"), dict) else {}
+        if not book.get("rules"):
+            return {"applied": [], "rules": 0}
+        box = {"result": {"applied": [], "rules": 0}}
+
+        def edit(current):
+            box["result"] = rulebook_rules.apply(current, event=event)
+
+        try:
+            transact_state(edit, self.state_path, allow_create=False)
+        except Exception as exc:  # noqa: BLE001 - a bad rule must not blank the turn
+            return {"applied": [], "rules": 0,
+                    "error": model_config.redact(str(exc))[:180]}
+        return box["result"]
+
+    def _audit(self, reply: str, tools_used: list[str], before: dict, after: dict) -> list:
+        if not (self.harness.get("runtime") or {}).get("audit"):
+            return []
+        return narrative_rules.audit_turn(reply, tools_used, before, after)
+
+    def _after_turn_hook(self, reply: str, tools_used: list[str],
+                         audit: list, after: dict) -> dict:
+        return harness_hooks.run("after_turn", {
+            "state": after,
+            "reply": reply,
+            "tools": tools_used,
+            "audit": audit,
+        }, self.harness)
+
+    def _finish(self, turn_id: str, reply: str, tools_used: list[str],
+                audit: list, usage: dict, after: dict) -> dict:
+        hook = self._after_turn_hook(reply, tools_used, audit, after)
+        notes = hook.get("notes") or [] if hook.get("ok") else []
+        _finish_turn(self.state_path, turn_id, reply, tools_used, audit, notes)
+        return {
+            "ok": True,
+            "reply": reply,
+            "turn_id": turn_id,
+            "tools": tools_used,
+            "audit": audit,
+            "usage": usage or {},
+            "hook_notes": notes,
+            "hook_error": "" if hook.get("ok") else str(hook.get("error") or "")[:180],
+        }
 
     def respond(self, text: str) -> dict:
         body = str(text or "").strip()
@@ -253,6 +319,20 @@ class DialogRuntime:
             raise DialogRuntimeError("一次最多 2000 字")
 
         state = load_state(self.state_path)
+        rule_events = self.harness.get("rule_events") or {}
+        if rule_events.get("turn"):
+            turn_rules = self._apply_rules("turn", "turn")
+            if turn_rules.get("applied"):
+                state = load_state(self.state_path)
+        before_hook = harness_hooks.run("before_turn", {
+            "state": state,
+            "text": body,
+            "state_path": self.state_path,
+        }, self.harness)
+        if before_hook.get("ok") and before_hook.get("block"):
+            raise DialogRuntimeError("叙事钩子拦截了这次行动：%s" % before_hook["block"])
+        hook_prompt = before_hook.get("prompt") or "" if before_hook.get("ok") else ""
+
         turn_id = uuid.uuid4().hex
         player_turn = {
             "id": turn_id,
@@ -264,17 +344,21 @@ class DialogRuntime:
         }
         _append_turn(self.state_path, player_turn)
 
-        messages = [{"role": "system", "content": _system_prompt(state)}]
-        messages.extend(_history(state))
+        messages = [{"role": "system", "content": _system_prompt(state, self.harness, hook_prompt)}]
+        history_limit = int((self.harness.get("runtime") or {}).get("history_turns") or HISTORY_TURNS)
+        messages.extend(_history(state, history_limit))
         messages.append({"role": "user", "content": body})
         tools = self.registry.as_openai()
         tools_used: list[str] = []
         last_error = ""
+        tool_rounds = int((self.harness.get("runtime") or {}).get("tool_rounds") or MAX_TOOL_ROUNDS)
+        tool_rounds = max(1, min(6, tool_rounds))
 
         try:
-            for round_no in range(MAX_TOOL_ROUNDS + 1):
+            for round_no in range(tool_rounds + 1):
                 try:
-                    result = self.adapter.chat(messages, tools=tools if round_no < MAX_TOOL_ROUNDS else None)
+                    result = self.adapter.chat(
+                        messages, tools=tools if round_no < tool_rounds else None)
                 except ToolsUnsupported:
                     result = self.adapter.chat(messages, tools=None)
                 message = result.get("message") or {}
@@ -284,17 +368,10 @@ class DialogRuntime:
                     if not reply:
                         raise DialogRuntimeError("模型没有返回正文")
                     after = load_state(self.state_path)
-                    audit = narrative_rules.audit_turn(reply, tools_used, state, after)
-                    _finish_turn(self.state_path, turn_id, reply, tools_used, audit)
-                    return {
-                        "ok": True,
-                        "reply": reply,
-                        "turn_id": turn_id,
-                        "tools": tools_used,
-                        "audit": audit,
-                        "usage": result.get("usage") or {},
-                    }
-                if round_no >= MAX_TOOL_ROUNDS:
+                    audit = self._audit(reply, tools_used, state, after)
+                    return self._finish(turn_id, reply, tools_used, audit,
+                                        result.get("usage") or {}, after)
+                if round_no >= tool_rounds:
                     break
                 messages.append({
                     "role": "assistant",
@@ -312,6 +389,19 @@ class DialogRuntime:
                     outcome = self.registry.execute(name, args)
                     if not outcome.get("ok"):
                         last_error = str(outcome.get("error") or "")
+                    rule_result = self._apply_rules(name, "tool")
+                    if rule_result.get("applied") or rule_result.get("error"):
+                        outcome["rulebook"] = rule_result
+                    tool_hook = harness_hooks.run("after_tool", {
+                        "state": load_state(self.state_path),
+                        "tool": name,
+                        "args": args,
+                        "result": outcome,
+                    }, self.harness)
+                    if tool_hook.get("ok") and tool_hook.get("notes"):
+                        outcome["hook_notes"] = tool_hook["notes"]
+                    elif not tool_hook.get("ok"):
+                        outcome["hook_error"] = str(tool_hook.get("error") or "")[:180]
                     messages.append({
                         "role": "tool",
                         "tool_call_id": call.get("id") or name,
@@ -332,7 +422,5 @@ class DialogRuntime:
         if last_error:
             reply = "这件事没有成：%s。你可以换一种做法。" % last_error[:120]
         after = load_state(self.state_path)
-        audit = narrative_rules.audit_turn(reply, tools_used, state, after)
-        _finish_turn(self.state_path, turn_id, reply, tools_used, audit)
-        return {"ok": True, "reply": reply, "turn_id": turn_id,
-                "tools": tools_used, "audit": audit, "usage": {}}
+        audit = self._audit(reply, tools_used, state, after)
+        return self._finish(turn_id, reply, tools_used, audit, {}, after)

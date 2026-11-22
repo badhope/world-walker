@@ -23,6 +23,10 @@ AI 演，引擎判，存档记。面板只做玩家视图，不再承担仪表�
     POST /api/v1/chat           玩家说一句话，模型 + 工具循环推进
     POST /api/v1/model/config   保存 OpenAI-compatible 模型配置
     POST /api/v1/model/test     测试模型连接
+    GET  /api/v1/harness/config 提示词/技能/运行参数/hook 状态
+    POST /api/v1/harness/config 保存叙事调校
+    GET  /api/v1/rules          当前存档的确定性规则本
+    POST /api/v1/rules          校验并替换规则本
 
 写入只发生在玩家 API（新局/对话/模型配置/打开当前局）；旧行动队列已移除。
 """
@@ -1558,6 +1562,36 @@ class Handler(BaseHTTPRequestHandler):
             })
         return {"root": root, "current": current, "saves": rows}
 
+    def _rules_payload(self):
+        """Read-only rulebook view plus the raw data the editor needs."""
+        from game_engine.rules import rulebook as rulebook_rules
+        sp = self._state()
+        if not sp or not os.path.isfile(sp):
+            return {"ok": True, "available": False, "rules": [],
+                    "describe": {"total": 0, "fired": 0, "rules": []}}
+        try:
+            state = load_state(sp)
+            book = state.get("rulebook") if isinstance(state.get("rulebook"), dict) else {}
+            raw = book.get("rules") if isinstance(book.get("rules"), list) else []
+            return {
+                "ok": True,
+                "available": True,
+                "rules": raw,
+                "describe": rulebook_rules.describe(state),
+            }
+        except Exception as exc:  # noqa: BLE001 - a broken save must not blank the settings page
+            return {"ok": False, "available": True, "rules": [],
+                    "describe": {"total": 0, "fired": 0, "rules": []},
+                    "error": str(exc)[:160]}
+
+    def _harness_payload(self):
+        from game_engine import harness_config, harness_hooks
+        cfg = harness_config.load()
+        payload = harness_config.public_config()
+        payload["hooks_status"] = harness_hooks.status(cfg)
+        payload["rulebook"] = self._rules_payload()
+        return payload
+
     def _bootstrap_payload(self):
         from game_engine import model_config, narrative_rules
         listing = self._save_rows()
@@ -1598,6 +1632,18 @@ class Handler(BaseHTTPRequestHandler):
             from game_engine import model_config
             self._api_json(200, {"ok": True, "model": model_config.public_config()})
             return
+        if path == "/api/v1/harness/config":
+            try:
+                self._api_json(200, self._harness_payload())
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:180]})
+            return
+        if path == "/api/v1/rules":
+            try:
+                self._api_json(200, self._rules_payload())
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:180]})
+            return
         if path == "/api/v1/saves":
             listing = self._save_rows()
             self._api_json(200, {"ok": True, "saves": listing["saves"], "root": listing["root"]})
@@ -1630,7 +1676,7 @@ class Handler(BaseHTTPRequestHandler):
     def _api_v1_post(self, path):
         if not self._api_guard():
             return
-        body = self._api_body(limit=16384)
+        body = self._api_body(limit=65536)
         if body is None:
             return
         if path == "/api/v1/open":
@@ -1756,6 +1802,47 @@ class Handler(BaseHTTPRequestHandler):
                 self._api_json(502, {"ok": False, "error": str(exc)[:240]})
             except Exception as exc:  # noqa: BLE001
                 self._api_json(500, {"ok": False, "error": str(exc)[:240]})
+            return
+        if path == "/api/v1/harness/config":
+            from game_engine import harness_config, harness_hooks
+            try:
+                cfg = harness_config.save(body.get("config") or body)
+                payload = harness_config.public_config()
+                payload["hooks_status"] = harness_hooks.status(cfg)
+                payload["rulebook"] = self._rules_payload()
+                self._api_json(200, payload)
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(400, {"ok": False, "error": str(exc)[:220]})
+            return
+        if path == "/api/v1/rules":
+            from game_engine.rules import rulebook as rulebook_rules
+            from game_engine.state_schema import transact_state
+            raw = body.get("rules")
+            if isinstance(raw, str):
+                try:
+                    raw = json.loads(raw)
+                except ValueError as exc:
+                    self._api_json(400, {"ok": False, "error": "规则 JSON 不合法：%s" % str(exc)[:160]})
+                    return
+            if not isinstance(raw, list):
+                self._api_json(400, {"ok": False, "error": "rules 必须是规则数组"})
+                return
+            sp = self._state()
+            if not sp or not os.path.isfile(sp):
+                self._api_json(404, {"ok": False, "error": "当前没有打开的对局"})
+                return
+            try:
+                normalized = rulebook_rules.normalize(raw)
+
+                def edit(state):
+                    rulebook_rules.load(state, normalized)
+
+                transact_state(edit, sp, allow_create=False)
+                self._api_json(200, self._rules_payload())
+            except ValueError as exc:
+                self._api_json(400, {"ok": False, "error": str(exc)[:220]})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:220]})
             return
         self._api_json(404, {"ok": False, "error": "not found"})
 

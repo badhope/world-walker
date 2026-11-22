@@ -18,6 +18,7 @@ for suite in \
   run_behavior_regressions \
   verify_cli \
   verify_panel \
+  verify_harness \
   verify_player_shell \
   verify_near_death \
   verify_formulas \

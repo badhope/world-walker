@@ -1,6 +1,6 @@
 # World Walker 架构
 
-文档版本：v1.16.2 · 2026-11-21
+文档版本：v1.17.0 · 2026-11-22
 
 World Walker 有两个入口，但只有一套引擎：
 
@@ -58,10 +58,22 @@ MCP 模式走：
 ### 对话运行时：`dialog_runtime.py`
 
 - 组装 GM 系统提示：POLICY（绝对规则）、CANON（只读世界圣经）、当前局面、
-  GAME PROFILE、CONTRACT（本场契约：幕/目标/障碍/压力/线索/代价）、TOOLS。
+  GAME PROFILE、CONTRACT（本场契约：幕/目标/障碍/压力/线索/代价）、TOOLS；
+  之后追加 DIRECTOR NOTE、TABLE RULES、ACTIVE SKILLS、HOOK NOTES。
 - 跑 OpenAI-compatible 工具循环；模型可以多轮调用工具。
+- 回合开始跑 `rule_events.turn`，每次工具后跑 `rule_events.tool`；规则效果写进工具结果。
+- `before_turn` 钩子可以注入提示词或阻断回合；`after_tool` / `after_turn` 钩子只追加 note。
 - 收尾时写 `turns`，并把 `narrative_rules.audit_turn` 的发现写入 `audit`。
 - 不直接改写游戏数值；所有数值变更由工具完成。
+
+### 调校层：`harness_config.py` / `harness_hooks.py`
+
+- `harness_config.py` 管全局导演备注、桌面规则、叙事技能和运行时开关，
+  默认落 `~/.world-walker/harness.json`（0600）。
+- `narrative_skills/*.md` 是 GM 提示词包，解析 `# 标题` 与 `> 摘要`；最多启用 8 个。
+- `harness_hooks.py` 用隔离子进程跑 `before_turn / after_tool / after_turn`，
+  只交换 JSON；超时、异常和审计拦截都只返回错误，不中断回合。
+- 钩子是协作护栏，不是安全沙箱：默认关闭，脚本以用户权限运行。
 
 ### 世界圣经：`canon.py`
 
@@ -123,6 +135,9 @@ MCP 模式走：
 world-walker/
 ├── panel.py / panel.html / panel.css / panel.js   # 玩家页面
 ├── dialog_runtime.py                              # GM 提示词与工具循环
+├── harness_config.py                              # 导演备注 / 桌面规则 / 技能 / 运行开关
+├── harness_hooks.py                               # 本地 before_turn / after_tool / after_turn
+├── narrative_skills/                              # GM 提示词包
 ├── narrative_rules.py                             # Session Zero / 开局卡 / 场面卡 / 审计
 ├── canon.py                                       # 世界圣经 / 硬 canon / 冲突检查
 ├── knowledge.py                                   # SQLite sidecar 索引：角色卡 / 世界书 / 时间线

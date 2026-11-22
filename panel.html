@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#f3eee2" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23241f18'/%3E%3Ctext x='16' y='22' font-size='16' text-anchor='middle' fill='%23e5c07b' font-family='serif'%3E%E8%A1%8C%3C/text%3E%3C/svg%3E" />
 <title>World Walker · 世界行者</title>
-<link rel="stylesheet" href="/panel.css?v=ui3" />
+<link rel="stylesheet" href="/panel.css?v=ui5" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -156,12 +156,13 @@
 <div class="overlay" id="model-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="model-title">
   <div class="overlay-panel model-panel">
     <header class="overlay-head">
-      <h2 id="model-title">连接 Agent 与模型</h2>
+      <h2 id="model-title">连接与调校</h2>
       <button class="icon-btn" data-close="model-overlay" type="button" aria-label="关闭">×</button>
     </header>
     <div class="overlay-tabs" id="connect-tabs">
       <button type="button" data-connect="model" class="active">面板模型</button>
       <button type="button" data-connect="agent">Agent / MCP</button>
+      <button type="button" data-connect="harness">叙事调校</button>
     </div>
     <div class="overlay-body">
       <section class="connect-pane" id="connect-model">
@@ -224,11 +225,112 @@
         </details>
         <p class="model-note small">远端 Agent 连上后，用 <code>session_zero</code> 或 <code>template_start</code> 开局；不要在面板里重复填 Key。</p>
       </section>
+
+      <section class="connect-pane" id="connect-harness" hidden>
+        <p class="muted model-note">这一页只改叙事口味、提示词包和运行参数；判定、价格、背包仍归引擎。保存后下一回合生效。</p>
+        <p class="model-summary" id="harness-summary">正在读取当前调校…</p>
+
+        <label class="field"><span>导演备注（全局，追加到系统提示）</span>
+          <textarea id="harness-note" rows="3" maxlength="2400"
+            placeholder="例如：短句，冷硬，少形容词；NPC 不主动解释设定；每场先写代价。"></textarea></label>
+        <p class="field-hint">不能覆盖 POLICY、CANON 和数值结算；只影响叙述选择与语气。</p>
+
+        <label class="field"><span>桌面规则（一行一条，模型必须遵守）</span>
+          <textarea id="harness-table-rules" rows="4" maxlength="4200"
+            placeholder="例如：&#10;不出现现代枪械&#10;不替玩家写内心决定&#10;每场最多给一条关键线索"></textarea></label>
+        <p class="field-hint">这是提示词层的软约束；需要确定性效果，写到下面的引擎规则。</p>
+
+        <div class="harness-section">
+          <div class="harness-section-head">
+            <b>叙事技能</b><small>提示词包，按需注入；不是角色技能，也不是引擎模块。</small>
+          </div>
+          <div class="skill-grid" id="harness-skills"></div>
+        </div>
+
+        <details class="model-advanced">
+          <summary>运行参数</summary>
+          <div class="field-grid three">
+            <label class="field"><span>上下文回合</span>
+              <input id="harness-history" type="number" min="4" max="30" step="1" /></label>
+            <label class="field"><span>工具轮上限</span>
+              <input id="harness-tool-rounds" type="number" min="1" max="6" step="1" /></label>
+            <div class="field"><span>回合审计</span>
+              <label class="checkline"><input id="harness-audit" type="checkbox" /> 记录审计</label>
+            </div>
+          </div>
+          <div class="harness-events">
+            <label class="checkline"><input id="harness-rule-turn" type="checkbox" /> 回合开始结算规则</label>
+            <label class="checkline"><input id="harness-rule-tool" type="checkbox" /> 每次工具后结算规则</label>
+          </div>
+        </details>
+
+        <div class="harness-section rulebook-section">
+          <div class="harness-section-head">
+            <b>引擎规则</b><small id="rule-summary">读取中…</small>
+          </div>
+          <p class="model-note small">确定性规则本，只接受白名单效果；保存到当前存档。规则在回合开始或每次工具结算后执行，触发次数会累积。</p>
+          <textarea id="rule-json" class="code-input" rows="7" spellcheck="false"
+            placeholder='[&#10;  {"id":"rain_cost","order":10,"when":{"flag":"raining"},&#10;   "then":[{"op":"resource","key":"hp","delta":-1}],&#10;   "note":"雨中行动消耗体力"}&#10;]'></textarea>
+          <div class="rule-actions">
+            <button class="ghost-btn" id="rule-refresh" type="button">刷新当前规则</button>
+            <button class="primary-btn" id="rule-save" type="button">校验并保存</button>
+          </div>
+          <div class="model-status" id="rule-status" aria-live="polite"></div>
+          <details class="model-advanced">
+            <summary>规则格式与可用效果</summary>
+            <div class="rule-help">
+              <p><code>when</code> 复用任务谓词：<code>flag</code>、<code>tick_gte</code>、<code>all</code>、<code>any</code>、<code>not</code>。</p>
+              <p><code>then</code> 可用：<code>resource</code>、<code>attribute</code>、<code>meter</code>、<code>flag</code>、<code>fact</code>、<code>reputation</code>、<code>xp</code>、<code>advance_time</code>、<code>loot</code>。</p>
+              <p>规则按 <code>order</code> 从高到低执行；<code>stop: true</code> 会截断后面的规则。</p>
+            </div>
+          </details>
+        </div>
+
+        <details class="model-advanced hook-section">
+          <summary>回合钩子（本地脚本，默认关）</summary>
+          <p class="hook-warning">脚本以你的系统权限运行，等同你亲手执行这段 Python。只放你信任的代码；面板不会从模型或网页写脚本。</p>
+          <div class="hook-controls">
+            <label class="checkline hook-toggle"><input id="hook-enabled" type="checkbox" /> 启用本地钩子</label>
+            <label class="field"><span>超时 秒</span>
+              <input id="hook-timeout" type="number" min="1" max="10" step="1" /></label>
+            <div class="field"><span>状态</span><span class="hook-ready" id="hook-ready">未检测</span></div>
+          </div>
+          <div class="harness-events">
+            <label class="checkline"><input id="hook-before" type="checkbox" /> before_turn</label>
+            <label class="checkline"><input id="hook-after-tool" type="checkbox" /> after_tool</label>
+            <label class="checkline"><input id="hook-after-turn" type="checkbox" /> after_turn</label>
+          </div>
+          <p class="hook-path" id="hook-path">目录：读取中…</p>
+          <div class="model-status" id="hook-status" aria-live="polite"></div>
+          <div class="rule-actions">
+            <button class="ghost-btn" id="hook-refresh" type="button">刷新 hook 状态</button>
+          </div>
+          <details class="model-advanced">
+            <summary>脚本协议</summary>
+            <div class="code-card">
+              <pre>def before_turn(ctx):
+    return {"prompt": "这一回合额外注意潮水"}
+
+def after_tool(ctx):
+    return {"notes": ["工具结算后记一笔"]}
+
+def after_turn(ctx):
+    return {"notes": ["回合结束的提醒"]}</pre>
+            </div>
+            <p class="model-note small">每个事件一个文件：<code>before_turn.py</code>、<code>after_tool.py</code>、<code>after_turn.py</code>。返回 JSON 对象；超时或异常不会中断回合。</p>
+          </details>
+        </details>
+
+        <div class="model-status" id="harness-status" aria-live="polite"></div>
+        <div class="model-actions">
+          <button class="primary-btn" id="harness-save" type="button">保存调校</button>
+        </div>
+      </section>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="/panel.js?v=ui3"></script>
+<script src="/panel.js?v=ui5"></script>
 </body>
 </html>

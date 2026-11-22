@@ -19,6 +19,8 @@
     toastTimer: null,
     feedFirst: true,
     session: null,
+    harness: null,
+    harnessLoaded: false,
   };
 
   const esc = (value) => String(value == null ? "" : value)
@@ -136,7 +138,7 @@
 
   function newSession() {
     app.session = {
-      step: 0, genre: "", play: "", role: "random", name: "",
+      step: 0, genre: "", play: "", role: "random", name: "", style: "",
       tone: [], difficulty: "标准", boundaries: [], world: null, showWorlds: false,
     };
     app.sessionPreviewToken = 0;
@@ -203,6 +205,10 @@
         <div class="session-field"><label>内容边界（可多选）</label>
           <div class="choice-grid">${opts.boundaries.map((x) => sessionChip(x, x, s.boundaries.includes(x), "boundaries")).join("")}</div>
         </div>
+        <div class="session-field"><label for="session-style">叙述风格（可选，只改写法）</label>
+          <textarea id="session-style" rows="2" maxlength="200"
+            placeholder="例如：短句，冷硬，少形容词；不解释设定。">${esc(s.style || "")}</textarea>
+        </div>
         <div class="session-field"><label>开局卡</label>
           <div id="session-preview" class="session-preview"><p class="muted">选完上面的项，这里会出现开局卡。</p></div>
         </div>
@@ -265,6 +271,10 @@
     if (input) {
       input.addEventListener("input", (event) => { s.name = event.target.value; });
     }
+    const style = $("session-style");
+    if (style) {
+      style.addEventListener("input", (event) => { s.style = event.target.value; });
+    }
   }
 
   function sessionNarrative() {
@@ -272,6 +282,7 @@
     return {
       genre: s.genre, play: s.play, role: s.role, player_name: s.name,
       tone: s.tone, difficulty: s.difficulty, boundaries: s.boundaries,
+      style: s.style || "",
       world_kind: s.world ? s.world.kind : "", world_id: s.world ? s.world.id : "",
       world_name: s.world ? s.world.name : "",
     };
@@ -368,6 +379,7 @@
       const payload = await api("/api/v1/open", { method: "POST", body: { path } });
       app.view = payload.state;
       app.feedFirst = true;
+      app.harnessLoaded = false;
       showScreen("play");
       renderPlay();
       connectSSE();
@@ -396,6 +408,7 @@
       });
       app.view = payload.state;
       app.feedFirst = true;
+      app.harnessLoaded = false;
       app.session = null;
       closeOverlay("session-overlay");
       showScreen("play");
@@ -898,6 +911,8 @@
     });
     $("connect-model").hidden = tab !== "model";
     $("connect-agent").hidden = tab !== "agent";
+    $("connect-harness").hidden = tab !== "harness";
+    if (tab === "harness" && !app.harnessLoaded) loadHarness();
   }
 
   function renderModelSummary(model) {
@@ -1018,8 +1033,199 @@
     }
   }
 
-  async function copyCode(button) {
-    const target = document.querySelector(button.dataset.copy);
+  function renderHarnessSkills(skills) {
+    const box = $("harness-skills");
+    const rows = Array.isArray(skills) ? skills : [];
+    box.innerHTML = rows.length
+      ? rows.map((item) => `<label class="skill-chip">
+          <input type="checkbox" data-skill="${esc(item.id)}" ${item.enabled ? "checked" : ""} />
+          <span><b>${esc(item.name || item.id)}</b><small>${esc(item.summary || "")}</small></span>
+        </label>`).join("")
+      : `<p class="empty-small">没有找到叙事技能包。把带 # 标题的 .md 放进 narrative_skills/。</p>`;
+  }
+
+  function renderRulebook(payload) {
+    const data = payload || {};
+    const desc = data.describe || {};
+    const available = data.available !== false;
+    $("rule-summary").textContent = available
+      ? `共 ${num(desc.total || 0)} 条 · 已触发 ${num(desc.fired || 0)} 条`
+      : "当前没有打开的对局";
+    $("rule-json").value = JSON.stringify(data.rules || [], null, 2);
+    $("rule-json").disabled = !available;
+    $("rule-save").disabled = !available;
+    if (!available) {
+      $("rule-status").className = "model-status";
+      $("rule-status").textContent = "打开一局后，这里会显示这一局自己的规则本。";
+    }
+  }
+
+  function renderHookStatus(status) {
+    const data = status || {};
+    const scripts = data.scripts || [];
+    const found = scripts.filter((row) => row.exists);
+    const ready = $("hook-ready");
+    ready.className = "hook-ready" + (data.enabled && found.length ? " ok" : (data.enabled ? " bad" : ""));
+    if (!data.enabled) ready.textContent = "已关闭";
+    else if (!found.length) ready.textContent = "已启用，但没有脚本";
+    else ready.textContent = `已启用 · ${found.length} 个脚本`;
+    $("hook-path").textContent = `目录：${data.dir || "未配置"}${found.length ? " · " + found.map((row) => row.event + ".py").join("、") : ""}`;
+    const tail = Array.isArray(data.log_tail) ? data.log_tail.slice(-3) : [];
+    $("hook-status").className = "model-status" + (data.enabled && !found.length ? " bad" : "");
+    $("hook-status").textContent = tail.length ? tail.join(" · ") : (data.enabled ? "还没有 hook 运行记录。" : "默认关闭；启用后才会执行本地脚本。");
+  }
+
+  function renderHarness(payload) {
+    app.harness = payload || {};
+    const cfg = app.harness.config || {};
+    const runtime = cfg.runtime || {};
+    const hooks = cfg.hooks || {};
+    const events = cfg.rule_events || {};
+    const source = app.harness.source === "file" ? "已保存的全局调校" : "默认调校，尚未保存";
+    $("harness-summary").textContent = `${source} · 技能 ${(app.harness.skills || []).filter((x) => x.enabled).length} 个 · 规则事件 ${events.turn ? "回合" : ""}${events.turn && events.tool ? " + " : ""}${events.tool ? "工具" : ""}${!events.turn && !events.tool ? "全部关闭" : ""}`;
+    $("harness-note").value = cfg.director_note || "";
+    $("harness-table-rules").value = (cfg.table_rules || []).join("\n");
+    $("harness-history").value = runtime.history_turns == null ? 12 : runtime.history_turns;
+    $("harness-tool-rounds").value = runtime.tool_rounds == null ? 3 : runtime.tool_rounds;
+    $("harness-audit").checked = runtime.audit !== false;
+    $("harness-rule-turn").checked = events.turn !== false;
+    $("harness-rule-tool").checked = events.tool !== false;
+    $("hook-enabled").checked = hooks.enabled === true;
+    $("hook-timeout").value = hooks.timeout == null ? 3 : hooks.timeout;
+    const activeEvents = Array.isArray(hooks.events) ? hooks.events : [];
+    $("hook-before").checked = activeEvents.includes("before_turn");
+    $("hook-after-tool").checked = activeEvents.includes("after_tool");
+    $("hook-after-turn").checked = activeEvents.includes("after_turn");
+    renderHarnessSkills(app.harness.skills || []);
+    renderRulebook(app.harness.rulebook || {});
+    renderHookStatus(app.harness.hooks_status || {});
+    $("harness-status").className = "model-status";
+    $("harness-status").textContent = "保存后下一回合生效；规则只改当前存档。";
+  }
+
+  async function loadHarness() {
+    try {
+      const payload = await api("/api/v1/harness/config");
+      renderHarness(payload);
+      app.harnessLoaded = true;
+    } catch (err) {
+      app.harnessLoaded = false;
+      $("harness-summary").textContent = err.message;
+      $("harness-status").className = "model-status bad";
+      $("harness-status").textContent = err.message;
+    }
+  }
+
+  function harnessPayload() {
+    const number = (id, fallback, min, max) => {
+      const value = Number($(id).value);
+      return Number.isFinite(value) ? clamp(value, min, max) : fallback;
+    };
+    const skills = Array.from(document.querySelectorAll("#harness-skills input[data-skill]:checked"))
+      .map((input) => input.dataset.skill);
+    const hookEvents = [];
+    if ($("hook-before").checked) hookEvents.push("before_turn");
+    if ($("hook-after-tool").checked) hookEvents.push("after_tool");
+    if ($("hook-after-turn").checked) hookEvents.push("after_turn");
+    const oldHooks = (app.harness && app.harness.config && app.harness.config.hooks) || {};
+    return {
+      director_note: $("harness-note").value.trim(),
+      table_rules: $("harness-table-rules").value.split("\n").map((line) => line.trim()).filter(Boolean),
+      skills,
+      runtime: {
+        audit: $("harness-audit").checked,
+        history_turns: number("harness-history", 12, 4, 30),
+        tool_rounds: number("harness-tool-rounds", 3, 1, 6),
+      },
+      rule_events: {
+        turn: $("harness-rule-turn").checked,
+        tool: $("harness-rule-tool").checked,
+      },
+      hooks: {
+        enabled: $("hook-enabled").checked,
+        dir: oldHooks.dir || "",
+        timeout: number("hook-timeout", 3, 1, 10),
+        events: hookEvents,
+      },
+    };
+  }
+
+  async function saveHarness() {
+    const status = $("harness-status");
+    status.className = "model-status";
+    status.textContent = "正在保存…";
+    try {
+      const payload = await api("/api/v1/harness/config", {
+        method: "POST",
+        body: { config: harnessPayload() },
+      });
+      renderHarness(payload);
+      app.harnessLoaded = true;
+      $("harness-status").className = "model-status ok";
+      $("harness-status").textContent = "已保存；下一回合起生效。";
+      toast("叙事调校已保存");
+    } catch (err) {
+      status.className = "model-status bad";
+      status.textContent = err.message;
+    }
+  }
+
+  async function refreshRules() {
+    const status = $("rule-status");
+    status.className = "model-status";
+    status.textContent = "正在读取规则本…";
+    try {
+      const payload = await api("/api/v1/rules");
+      if (app.harness) app.harness.rulebook = payload;
+      renderRulebook(payload);
+      status.className = "model-status";
+      status.textContent = "已读取当前存档的规则本。";
+    } catch (err) {
+      status.className = "model-status bad";
+      status.textContent = err.message;
+    }
+  }
+
+  async function saveRules() {
+    const status = $("rule-status");
+    let rules;
+    try {
+      rules = JSON.parse($("rule-json").value.trim() || "[]");
+    } catch (err) {
+      status.className = "model-status bad";
+      status.textContent = "JSON 不合法：" + err.message;
+      return;
+    }
+    status.className = "model-status";
+    status.textContent = "正在校验并写入当前存档…";
+    try {
+      const payload = await api("/api/v1/rules", { method: "POST", body: { rules } });
+      if (app.harness) app.harness.rulebook = payload;
+      renderRulebook(payload);
+      status.className = "model-status ok";
+      status.textContent = "已保存。规则会在回合开始或工具结算后按开关执行。";
+      toast("规则本已更新");
+    } catch (err) {
+      status.className = "model-status bad";
+      status.textContent = err.message;
+    }
+  }
+
+  async function refreshHooks() {
+    const status = $("hook-status");
+    status.className = "model-status";
+    status.textContent = "正在读取 hook 状态…";
+    try {
+      const payload = await api("/api/v1/harness/config");
+      if (app.harness) app.harness.hooks_status = payload.hooks_status;
+      renderHookStatus(payload.hooks_status || {});
+    } catch (err) {
+      status.className = "model-status bad";
+      status.textContent = err.message;
+    }
+  }
+
+  async function copyCode(button) {    const target = document.querySelector(button.dataset.copy);
     if (!target) return;
     const text = target.textContent;
     try {
@@ -1105,6 +1311,10 @@
 
     $("model-save").addEventListener("click", saveModel);
     $("model-test").addEventListener("click", testModel);
+    $("harness-save").addEventListener("click", saveHarness);
+    $("rule-refresh").addEventListener("click", refreshRules);
+    $("rule-save").addEventListener("click", saveRules);
+    $("hook-refresh").addEventListener("click", refreshHooks);
     renderModelPresets();
     document.querySelectorAll("#connect-tabs button").forEach((button) => {
       button.addEventListener("click", () => setConnectTab(button.dataset.connect));

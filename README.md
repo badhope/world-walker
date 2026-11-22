@@ -1,12 +1,12 @@
 # World Walker
 
-**v1.16.2** · English · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
+**v1.17.0** · English · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
 
 World Walker is a single-player AI tabletop RPG engine. You talk to the GM in plain language; a deterministic rules engine owns checks, prices, inventory, relationships, saves and replay. Any OpenAI-compatible `/chat/completions` endpoint can drive the story.
 
 No host app. No provider lock-in. The model writes the scene; the engine owns the truth.
 
-`217 rule functions` · `73 MCP tools` · `28 player tools` · `6 setting bundles` · `9 templates` · `23 self-check suites` · `0 runtime dependencies`
+`217 rule functions` · `73 MCP tools` · `28 player tools` · `6 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
 
 ## Why it exists
 
@@ -39,6 +39,17 @@ The model layer only assumes an OpenAI-compatible endpoint:
 ```
 
 Set it in the model settings page, or use `WW_MODEL_BASE_URL`, `WW_MODEL_API_KEY` and `WW_MODEL_NAME`. The config lives at `~/.world-walker/model.json` with `0600` permissions.
+
+## Tune the GM
+
+The “Connect & tune → Narrative tuning” panel keeps four layers separate instead of folding taste, prompt packs and hard rules into one switch:
+
+- **Prompt:** director notes and table rules are appended to the GM system prompt. They change the telling, not POLICY, CANON or numeric outcomes.
+- **Narrative skills:** prompt packs under `narrative_skills/*.md`, each with a title and summary, injected only when enabled. These are not character skills.
+- **Engine rules:** the current save's `rulebook`, ordered by `order`, limited to whitelisted effects. Validate and save from the panel; trigger counts are persisted. Rules can run at turn start or after every tool result.
+- **Turn hooks:** `before_turn.py`, `after_tool.py` and `after_turn.py` under `~/.world-walker/hooks`. Off by default. They run with your own permissions — treat them as Python you wrote yourself.
+
+Tuning config lives at `~/.world-walker/harness.json` with `0600` permissions. Prompts, skills, hooks and rules for an external agent still belong to its host; World Walker only supplies MCP tools and starting prompts.
 
 ## Connect an agent over MCP
 
@@ -73,7 +84,7 @@ The player surface exposes 28 tools. The 73-tool MCP surface remains for advance
 
 ## Quality
 
-Verification is executable, not decorative. `scripts/verify_*.py`, behaviour regressions and mutation tests must fail when the code is wrong. The main gate runs 23 self-check suites, with coverage for the core domain and a zero-survivor mutation pass.
+Verification is executable, not decorative. `scripts/verify_*.py`, behaviour regressions and mutation tests must fail when the code is wrong. The main gate runs 24 self-check suites, with coverage for the core domain and a zero-survivor mutation pass.
 
 ```bash
 python3 scripts/verify_docs.py

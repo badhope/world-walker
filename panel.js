@@ -885,6 +885,71 @@
   /* Model dialog                                                       */
   /* ------------------------------------------------------------------ */
 
+  const MODEL_PRESETS = [
+    { label: "DeepSeek", base: "https://api.deepseek.com/v1", model: "deepseek-chat" },
+    { label: "通义千问", base: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus" },
+    { label: "本地 Ollama", base: "http://127.0.0.1:11434/v1", model: "qwen3:8b" },
+    { label: "自定义", base: "", model: "" },
+  ];
+
+  function setConnectTab(tab) {
+    document.querySelectorAll("#connect-tabs button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.connect === tab);
+    });
+    $("connect-model").hidden = tab !== "model";
+    $("connect-agent").hidden = tab !== "agent";
+  }
+
+  function renderModelSummary(model) {
+    const el = $("model-summary");
+    el.className = "model-summary" + (model.configured ? "" : " bad");
+    if (!model.configured) {
+      el.textContent = model.has_api_key
+        ? "还没填完整：接口地址和模型名都要有。"
+        : "还没连上。填接口地址、模型名；云端网关还要 API Key，本地 Ollama 可以留空。";
+      return;
+    }
+    if (model.source === "environment") {
+      el.textContent = `当前由环境变量接管（${(model.env_keys || []).join("、")}）。面板里保存的地址和 Key 不会覆盖它。`;
+      return;
+    }
+    el.textContent = `当前生效：${model.base_url} · ${model.model}${model.has_api_key ? "" : " · 未设 Key（本地端点可留空）"}`;
+  }
+
+  function renderModelPresets() {
+    const row = $("model-presets");
+    row.innerHTML = MODEL_PRESETS.map((item, index) =>
+      `<button class="preset-chip" type="button" data-preset="${index}">${esc(item.label)}</button>`).join("");
+    row.querySelectorAll("[data-preset]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const preset = MODEL_PRESETS[Number(button.dataset.preset)];
+        if (!preset) return;
+        $("model-base").value = preset.base;
+        $("model-name").value = preset.model;
+        $("model-status").className = "model-status";
+        $("model-status").textContent = preset.base
+          ? "已填入参考值；模型名以你的账号控制台为准，改完再测试。"
+          : "清空后填你自己的网关地址。";
+        if (!preset.base) $("model-base").focus();
+      });
+    });
+  }
+
+  function modelPayload() {
+    const number = (id, fallback) => {
+      const value = Number($(id).value);
+      return Number.isFinite(value) && value > 0 ? value : fallback;
+    };
+    return {
+      base_url: $("model-base").value.trim(),
+      model: $("model-name").value.trim(),
+      api_key: $("model-key").value.trim(),
+      timeout: number("model-timeout", 60),
+      temperature: $("model-temperature").value === "" ? 0.7 : Number($("model-temperature").value),
+      max_tokens: number("model-max-tokens", 1200),
+    };
+  }
+
   async function openModel() {
     try {
       const payload = await api("/api/v1/model/config");
@@ -895,22 +960,23 @@
       $("model-key").placeholder = model.api_key_masked
         ? `已保存（${model.api_key_masked}），留空则不改`
         : "sk-…（本地保存，0600）";
+      $("model-timeout").value = model.timeout == null ? 60 : model.timeout;
+      $("model-temperature").value = model.temperature == null ? 0.7 : model.temperature;
+      $("model-max-tokens").value = model.max_tokens == null ? 1200 : model.max_tokens;
+      renderModelSummary(model);
       $("model-status").className = "model-status";
       $("model-status").textContent = model.configured
-        ? "已连接；测试一次确认网关可用。"
-        : "还没有连接模型。填完保存即可开始对话。";
+        ? "保存后才会改变当前局使用的连接。"
+        : "填完先测试，再保存；测试用当前输入，不必先存。";
     } catch (err) {
       toast(err.message);
     }
+    setConnectTab("model");
     openOverlay("model-overlay");
   }
 
   async function saveModel() {
-    const payload = {
-      base_url: $("model-base").value.trim(),
-      model: $("model-name").value.trim(),
-      api_key: $("model-key").value.trim(),
-    };
+    const payload = modelPayload();
     if (!payload.base_url || !payload.model) {
       $("model-status").className = "model-status bad";
       $("model-status").textContent = "接口地址和模型名都要填。";
@@ -919,9 +985,12 @@
     try {
       const result = await api("/api/v1/model/config", { method: "POST", body: payload });
       $("model-status").className = "model-status ok";
-      $("model-status").textContent = "已保存。";
+      $("model-status").textContent = result.model.source === "environment"
+        ? "已保存，但环境变量仍在接管，实际请求不会用这份文件。"
+        : "已保存。";
       if (app.bootstrap) app.bootstrap.model = result.model;
       if (app.view) { app.view.model = result.model; renderModelBadge(result.model); }
+      renderModelSummary(result.model);
       toast("模型已保存");
     } catch (err) {
       $("model-status").className = "model-status bad";
@@ -931,15 +1000,46 @@
 
   async function testModel() {
     const status = $("model-status");
+    const payload = modelPayload();
+    if (!payload.base_url || !payload.model) {
+      status.className = "model-status bad";
+      status.textContent = "先填接口地址和模型名，再测试。";
+      return;
+    }
     status.className = "model-status";
-    status.textContent = "正在测试…";
+    status.textContent = "正在用当前输入测试…";
     try {
-      const result = await api("/api/v1/model/test", { method: "POST", body: {} });
+      const result = await api("/api/v1/model/test", { method: "POST", body: payload });
       status.className = "model-status ok";
-      status.textContent = `连接正常 · ${result.model || "模型"} · ${result.latency_ms || 0}ms`;
+      status.textContent = `连接正常 · ${result.model || payload.model} · ${result.latency_ms || 0}ms`;
     } catch (err) {
       status.className = "model-status bad";
       status.textContent = err.message;
+    }
+  }
+
+  async function copyCode(button) {
+    const target = document.querySelector(button.dataset.copy);
+    if (!target) return;
+    const text = target.textContent;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.style.position = "fixed";
+        area.style.left = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+      const old = button.textContent;
+      button.textContent = "已复制";
+      setTimeout(() => { button.textContent = old; }, 1200);
+    } catch (err) {
+      toast("复制失败，请手动选中命令");
     }
   }
 
@@ -1005,6 +1105,13 @@
 
     $("model-save").addEventListener("click", saveModel);
     $("model-test").addEventListener("click", testModel);
+    renderModelPresets();
+    document.querySelectorAll("#connect-tabs button").forEach((button) => {
+      button.addEventListener("click", () => setConnectTab(button.dataset.connect));
+    });
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", () => copyCode(button));
+    });
 
     document.querySelectorAll("#rail-tabs button").forEach((button) => {
       button.addEventListener("click", () => { app.rail = button.dataset.rail; renderRail(); });

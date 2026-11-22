@@ -1737,15 +1737,20 @@ class Handler(BaseHTTPRequestHandler):
             if not payload.get("api_key") and old.get("api_key"):
                 payload["api_key"] = old["api_key"]
             try:
-                cfg = model_config.save_config(payload)
-                self._api_json(200, {"ok": True, "model": model_config.public_config(cfg)})
+                model_config.save_config(payload)
+                self._api_json(200, {"ok": True, "model": model_config.public_config()})
             except Exception as exc:  # noqa: BLE001
                 self._api_json(400, {"ok": False, "error": str(exc)[:180]})
             return
         if path == "/api/v1/model/test":
             from game_engine import host_adapter, model_config
             try:
-                adapter = host_adapter.OpenAICompatAdapter(model_config.load_config())
+                payload = dict(body)
+                has_form_values = any(payload.get(key) not in (None, "")
+                                      for key in ("base_url", "model", "api_key"))
+                cfg = (model_config.candidate_config(payload)
+                       if has_form_values else model_config.load_config())
+                adapter = host_adapter.OpenAICompatAdapter(cfg)
                 self._api_json(200, {"ok": True, **adapter.test()})
             except host_adapter.HostAdapterError as exc:
                 self._api_json(502, {"ok": False, "error": str(exc)[:240]})

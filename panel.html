@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#f3eee2" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23241f18'/%3E%3Ctext x='16' y='22' font-size='16' text-anchor='middle' fill='%23e5c07b' font-family='serif'%3E%E8%A1%8C%3C/text%3E%3C/svg%3E" />
 <title>World Walker · 世界行者</title>
-<link rel="stylesheet" href="/panel.css?v=ui2" />
+<link rel="stylesheet" href="/panel.css?v=ui3" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -156,27 +156,79 @@
 <div class="overlay" id="model-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="model-title">
   <div class="overlay-panel model-panel">
     <header class="overlay-head">
-      <h2 id="model-title">模型连接</h2>
+      <h2 id="model-title">连接 Agent 与模型</h2>
       <button class="icon-btn" data-close="model-overlay" type="button" aria-label="关闭">×</button>
     </header>
+    <div class="overlay-tabs" id="connect-tabs">
+      <button type="button" data-connect="model" class="active">面板模型</button>
+      <button type="button" data-connect="agent">Agent / MCP</button>
+    </div>
     <div class="overlay-body">
-      <p class="muted model-note">只认 OpenAI-compatible 协议：填网关地址、模型名和 Key 即可，不绑定任何厂商。</p>
-      <label class="field"><span>接口地址 base_url</span>
-        <input id="model-base" type="url" placeholder="https://你的网关/v1" autocomplete="off" spellcheck="false" /></label>
-      <label class="field"><span>模型名 model</span>
-        <input id="model-name" type="text" placeholder="任意模型名" autocomplete="off" spellcheck="false" /></label>
-      <label class="field"><span>API Key</span>
-        <input id="model-key" type="password" placeholder="sk-…（本地保存，0600）" autocomplete="off" /></label>
-      <div class="model-status" id="model-status" aria-live="polite"></div>
-      <div class="model-actions">
-        <button class="ghost-btn" id="model-test" type="button">测试连接</button>
-        <button class="primary-btn" id="model-save" type="button">保存</button>
-      </div>
+      <section class="connect-pane" id="connect-model">
+        <p class="muted model-note">在面板里玩，走这一页：填 OpenAI-compatible 网关。只连国内或本地端点，不绑厂商。</p>
+        <p class="model-summary" id="model-summary"></p>
+        <div class="preset-row" id="model-presets" aria-label="常用接口"></div>
+        <div class="field-grid">
+          <label class="field"><span>接口地址 base_url</span>
+            <input id="model-base" type="url" placeholder="https://你的网关/v1" autocomplete="off" spellcheck="false" /></label>
+          <label class="field"><span>模型名 model</span>
+            <input id="model-name" type="text" placeholder="例如 deepseek-chat" autocomplete="off" spellcheck="false" /></label>
+        </div>
+        <label class="field"><span>API Key</span>
+          <input id="model-key" type="password" placeholder="sk-…（本地保存，0600）" autocomplete="off" /></label>
+        <details class="model-advanced">
+          <summary>高级参数</summary>
+          <div class="field-grid three">
+            <label class="field"><span>超时 秒</span><input id="model-timeout" type="number" min="1" max="300" step="1" /></label>
+            <label class="field"><span>温度</span><input id="model-temperature" type="number" min="0" max="2" step="0.1" /></label>
+            <label class="field"><span>最大输出</span><input id="model-max-tokens" type="number" min="1" max="32000" step="1" /></label>
+          </div>
+        </details>
+        <div class="model-status" id="model-status" aria-live="polite"></div>
+        <div class="model-actions">
+          <button class="ghost-btn" id="model-test" type="button">测试当前输入</button>
+          <button class="primary-btn" id="model-save" type="button">保存</button>
+        </div>
+      </section>
+
+      <section class="connect-pane" id="connect-agent" hidden>
+        <p class="muted model-note">让外部 Agent 接管对话，走这一页。模型和 Key 由 Agent 自己配置；面板只提供 MCP 端点。</p>
+        <div class="agent-step">
+          <b>1. 启动 MCP 服务</b>
+          <p class="model-note">在仓库目录执行。HTTP 模式适合远程 Agent；stdio 模式适合本机客户端。</p>
+          <div class="code-card">
+            <button class="copy-btn" type="button" data-copy="#agent-http-cmd">复制</button>
+            <pre id="agent-http-cmd">python3 cli.py mcp --http --port 8620</pre>
+          </div>
+          <p class="model-note">安装之后也可以直接用 <code>wg mcp --http --port 8620</code>。</p>
+        </div>
+        <div class="agent-step">
+          <b>2. 在 Agent 里填端点</b>
+          <div class="code-card">
+            <button class="copy-btn" type="button" data-copy="#agent-endpoint">复制</button>
+            <pre id="agent-endpoint">http://127.0.0.1:8620/mcp</pre>
+          </div>
+        </div>
+        <details class="model-advanced">
+          <summary>本机 stdio 客户端配置</summary>
+          <div class="code-card">
+            <button class="copy-btn" type="button" data-copy="#agent-stdio-json">复制</button>
+            <pre id="agent-stdio-json">{
+  "mcpServers": {
+    "world-walker": {
+      "command": "world-walker-mcp"
+    }
+  }
+}</pre>
+          </div>
+        </details>
+        <p class="model-note small">远端 Agent 连上后，用 <code>session_zero</code> 或 <code>template_start</code> 开局；不要在面板里重复填 Key。</p>
+      </section>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<script src="/panel.js?v=ui2"></script>
+<script src="/panel.js?v=ui3"></script>
 </body>
 </html>

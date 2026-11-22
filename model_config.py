@@ -48,28 +48,58 @@ def _clean(raw) -> dict:
     return out
 
 
-def load_config() -> dict:
-    """Read config; environment variables win over the file."""
+ENV_KEYS = {
+    "base_url": "WW_MODEL_BASE_URL",
+    "api_key": "WW_MODEL_API_KEY",
+    "model": "WW_MODEL_NAME",
+    "timeout": "WW_MODEL_TIMEOUT",
+    "temperature": "WW_MODEL_TEMPERATURE",
+    "max_tokens": "WW_MODEL_MAX_TOKENS",
+}
+
+
+def _file_config() -> dict:
+    """Only the on-disk config, without environment overrides.
+
+    Used for the setup form and for testing values the user has typed but not
+    saved yet.  A stale env var must not silently replace what is on screen.
+    """
     raw = {}
-    path = config_path()
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(config_path(), encoding="utf-8") as fh:
             raw = json.load(fh)
     except (OSError, ValueError, TypeError):
         raw = {}
-    cfg = _clean(raw)
-    env = {
-        "base_url": os.environ.get("WW_MODEL_BASE_URL"),
-        "api_key": os.environ.get("WW_MODEL_API_KEY"),
-        "model": os.environ.get("WW_MODEL_NAME"),
-        "timeout": os.environ.get("WW_MODEL_TIMEOUT"),
-        "temperature": os.environ.get("WW_MODEL_TEMPERATURE"),
-        "max_tokens": os.environ.get("WW_MODEL_MAX_TOKENS"),
-    }
+    return _clean(raw)
+
+
+def env_keys() -> list[str]:
+    """Names (never values) of environment variables currently overriding the file."""
+    return [name for name in ENV_KEYS.values() if os.environ.get(name) not in (None, "")]
+
+
+def load_config() -> dict:
+    """Effective config; environment variables win over the file."""
+    cfg = _file_config()
+    env = {key: os.environ.get(name) for key, name in ENV_KEYS.items()}
     for key, value in env.items():
         if value not in (None, ""):
             cfg[key] = value
     return _clean(cfg)
+
+
+def candidate_config(payload: dict) -> dict:
+    """Merge unsaved form values over the effective config for Test.
+
+    The key is intentionally reused when the form leaves it blank, so a user can
+    test a new endpoint or model without retyping a stored secret.
+    """
+    base = load_config()
+    for key in DEFAULTS:
+        value = payload.get(key) if isinstance(payload, dict) else None
+        if value not in (None, ""):
+            base[key] = value
+    return _clean(base)
 
 
 def save_config(payload: dict) -> dict:
@@ -97,19 +127,24 @@ def save_config(payload: dict) -> dict:
 
 
 def public_config(cfg: dict | None = None) -> dict:
-    cfg = load_config() if cfg is None else _clean(cfg)
-    key = cfg.get("api_key") or ""
+    effective = load_config() if cfg is None else _clean(cfg)
+    key = effective.get("api_key") or ""
     masked = ""
     if key:
         masked = key[:4] + "…" + key[-4:] if len(key) > 8 else "已设置"
+    overrides = env_keys()
     return {
-        "base_url": cfg.get("base_url", ""),
-        "model": cfg.get("model", ""),
+        "base_url": effective.get("base_url", ""),
+        "model": effective.get("model", ""),
         "api_key_masked": masked,
-        "configured": bool(cfg.get("base_url") and cfg.get("model")),
-        "timeout": cfg.get("timeout"),
-        "temperature": cfg.get("temperature"),
-        "max_tokens": cfg.get("max_tokens"),
+        "has_api_key": bool(key),
+        "configured": bool(effective.get("base_url") and effective.get("model")),
+        "timeout": effective.get("timeout"),
+        "temperature": effective.get("temperature"),
+        "max_tokens": effective.get("max_tokens"),
+        "source": "environment" if overrides else (
+            "file" if os.path.exists(config_path()) else "none"),
+        "env_keys": overrides,
     }
 
 

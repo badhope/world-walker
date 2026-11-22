@@ -28,7 +28,7 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | `places` | | 地点描写 `{地名: {desc}}` 或 `{地名: "描写"}`。走到该地时面板主舞台显示它，而不是开场那句 |
 | `lore` | | 世界书条目，**与酒馆 character_book 同形**：`keys` / `secondary_keys` / `selective` / `constant` / `insertion_order` / `content` / `comment`。`narration_context` 按关键词触发它们 |
 | `playbook` | | 玩法剧本 `{loop, input, progress, failure, beat, settlement, context}`；决定这一局"怎么玩"（详见 `docs/MCP_PLAY.md`）。缺省为自由推进 + 气血失败 |
-| `modes` | | 三模式的世界专属覆盖：`{power:{edge,description,start_items,start_gold}, balanced:{...}, hardcore:{...}}`；爽文只给轻量金手指，硬核不可复活 |
+| `modes` | | 三模式的世界专属覆盖：`{power:{edge,description,start_items,start_gold}, balanced:{...}, hardcore:{...}}`；爽文只给可清点的物资/价格/库存，且会损耗或被抢；硬核不可复活 |
 | `gameplay` | | 场景契约 `{acts, clocks, fronts, choice_policy, progression, session}`：3 幕、压力钟、隐藏前线、每场选择必须付代价。缺省退回三幕骨架，不会空白 |
 | `questlines` | | 事业线数组（stage DAG + 谓词 + 奖励）。载入时校验环与幽灵 next；未满足 `visibility` 的线保持 dormant，不占面板 |
 | `seed` | | 随机种子（可复现） |
@@ -44,7 +44,7 @@ load_setting(path="settings/玄枢界.setting.json")     # 世界 + 人物 + 市
 | `雾港.setting.json` | 调查悬疑 | 六阶（外行→传奇） | 法币 | 9 条 | 线索链与理智消耗、克苏鲁式"越查越冷" |
 | `白鹿岛.setting.json` | 全民穿越 / 海岛求生 | 六阶生存评级 + 17×5 载具阶位 | 潮币 | 首批 100 万人同时投放；普通充气救生筏即唯一初始基地（无甲板/无初始岛）；潮汐礁安全窗；系统引导/任务/活动/能力；17 大品阶×5 细分阶共 85 级 | 普通大学生在漏气救生筏上醒来；救生筏开局、手环面板、分解系、修筏、扩载具、雾墙、夜潮与邻岛主岛 |
 | `九荒.setting.json` | 修仙 / 凡人流 | 十阶（凡人→渡劫） | 碎银 | 8 条 | 普通大学生坠入古仙坟场：无系统、骨片读残念、青岚宗测骨、裂谷与失踪同学 |
-| `迷雾小屋.setting.json` | 迷雾求生 / 三模式生存 | 六阶据点稳固度 | 口粮 | 9 条 | 爽文给「雾隙直觉」轻量金手指，适中按规则，硬核无金手指/永久死亡；桦木小屋开局，补窗、烧水、守门、雾潮与邻屋 |
+| `迷雾小屋.setting.json` | 迷雾求生 / 三模式生存 | 六阶据点稳固度 | 口粮 | 9 条 | 爽文给一套可清点的旧五金工具箱（4块木板、16枚钉、1副铰链、1卷10米绳、温湿度计、约80次点火打火机），适中按规则，硬核无金手指/永久死亡；桦木小屋开局，补窗、烧水、守门、雾潮与邻屋 |
 
 七套共用同一套规则内核：战斗、交易、社交、因果、势力演化、长局记忆全部一致，
 差别在**叙事词汇、等级阶梯、经济规模、玩法循环（playbook）与事业线结构**：

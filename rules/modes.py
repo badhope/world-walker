@@ -18,11 +18,11 @@ MODE_SPECS = {
     "power": {
         "id": "power",
         "label": "爽文",
-        "short": "世界偏向你，留一口气",
-        "description": "起始资源更足，压力钟更慢，失败通常留一口气；每局有一次符合世界设定的轻量金手指。仍然会饿、会冷、会受伤。",
+        "short": "物资更足，没有预知",
+        "description": "前两类主耗材 +50%，口粮钱 +50%，物价 -15%，库存 +2，压力钟 -1；失败通常留一口气。所有好处都是可清点的实物：会吃掉、烧掉、用坏或被抢走。",
         "world_intensity": "低",
         "play_style": "爽文推进",
-        "system_strength": "轻量金手指（每局一次，有代价）",
+        "system_strength": "无系统；可清点的起始物资（会损耗/被抢）",
         "death_rule": "重伤留一口气，不直接抹掉角色",
         "resource_curve": "宽裕",
         "encounter_pressure": "低",
@@ -33,8 +33,8 @@ MODE_SPECS = {
         "clock_delta": -1,
         "price_mult": 0.85,
         "supply_delta": 2,
-        "edge": "气运偏斜：每局一次，可以把一次失败改写成‘差一点成功’，但会在现场留下痕迹。",
-        "narrative_rule": "给玩家留退路：失败先给代价和转机，不连续下死手；金手指只兑现一次，兑现后必须留下可追踪的痕迹。",
+        "edge": "起始前两类主耗材 +50%，口粮钱 +50%，物价 -15%、库存 +2；没有预知、直觉、读心或必中。",
+        "narrative_rule": "给玩家留退路：失败先给代价和转机，不连续下死手；爽文加成只能落在可清点的物资、价格、库存和耐久上，不给预知/直觉/读心/必中。",
     },
     "balanced": {
         "id": "balanced",
@@ -232,10 +232,11 @@ def apply(state: dict, bundle: dict | None = None, mode=None) -> dict:
                 continue
 
     flags = [str(f) for f in (state.get("world_flags") or [])
-             if not str(f).startswith("mode:")]
+             if not str(f).startswith("mode:")
+             and str(f) not in ("hardcore", "no_cheat", "no_respawn", "mild_cheat")]
     flags.append("mode:" + key)
     if key == "hardcore":
-        flags.extend(["no_respawn", "no_cheat"])
+        flags.extend(["hardcore", "no_respawn", "no_cheat"])
     elif key == "power":
         flags.append("mild_cheat")
     state["world_flags"] = flags

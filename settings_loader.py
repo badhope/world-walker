@@ -333,7 +333,9 @@ def apply_runtime_fields(state: dict, bundle: dict) -> int:
             except ValueError as exc:
                 raise ValueError("systems 定义非法: %s" % exc)
             defs[normalized["id"]] = normalized
-    if bundle.get("gameplay"):
+    if bundle.get("gameplay") and not isinstance(state.get("mode"), dict):
+        # 模式建局时，gameplay 已经按爽文/硬核调过压力钟；
+        # 再按原始 bundle 归一化一次会把 -1/+1 抹掉（实测爽文档雾潮会回到 1）。
         state["gameplay"] = gameplay_rules.normalize(
             bundle["gameplay"], narrative=state.get("narrative"), bundle=bundle)
     if bundle.get("currency"):

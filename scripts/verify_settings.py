@@ -69,8 +69,14 @@ def main():
         with open(fog, encoding='utf-8') as f:
             fog_bundle = json.load(f)
         fog_power = SL.build_state(fog_bundle, mode='power')
-        check('迷雾小屋·爽文模式有世界专属轻量金手指', '雾隙直觉' in (fog_power.get('mode') or {}).get('edge', ''),
-              (fog_power.get('mode') or {}).get('edge', '')[:40])
+        edge = (fog_power.get('mode') or {}).get('edge', '')
+        items = fog_power['entities']['player'].get('items') or {}
+        check('迷雾小屋·爽文模式给可清点的实用工具箱',
+              '旧五金工具箱' in edge and '4块' in edge and '16枚' in edge
+              and items.get('plank') == 4 and items.get('nails') == 16
+              and items.get('hinge') == 1 and items.get('rope') == 1
+              and items.get('lighter') == 1 and items.get('thermo') == 1,
+              '%s ｜ items=%s' % (edge[:36], sorted(items)))
 
     tmp = tempfile.mkdtemp(prefix='ww-settings-')
     for fn in files:

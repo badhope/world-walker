@@ -1,0 +1,23 @@
+{
+  "id": "folded-sword",
+  "order": 12,
+  "featured": true,
+  "pitch": "一柄断了两寸的剑，一张赌来的旧木桌，和一个只肯等三天的渡口。",
+  "title": "折剑行：洛水渡",
+  "summary": "江湖不欠你一个解释。断剑、旧桌、渡口，三样东西都在提醒你：想上船，先拿得出船资。",
+  "genre": "武侠仙侠",
+  "play": "探索解谜",
+  "difficulty": "标准",
+  "tone": ["冷硬", "克制", "苍凉"],
+  "role": "preset",
+  "style": "短句，冷硬；先写手边的物件和人的动作，再写情绪。不解释江湖规矩，让代价自己说话。",
+  "world": {
+    "kind": "setting",
+    "id": "settings/折剑行.setting.json",
+    "name": "折剑行"
+  },
+  "save_name": "洛水渡·断剑",
+  "skills": ["survival-pressure", "ledger-economy"],
+  "tags": ["武侠", "渡口", "断剑", "标准模式", "探索"],
+  "mode": "balanced"
+}

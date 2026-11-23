@@ -16,6 +16,7 @@ from game_engine import harness_config
 from game_engine import harness_hooks
 from game_engine import model_config
 from game_engine import narrative_rules
+from game_engine import state_diff
 from game_engine import canon as canon_rules
 from game_engine.host_adapter import HostAdapterError, OpenAICompatAdapter, ToolsUnsupported
 from game_engine.rules import rulebook as rulebook_rules
@@ -222,7 +223,8 @@ def _append_turn(state_path: str, turn: dict) -> None:
 
 def _finish_turn(state_path: str, player_turn_id: str, reply: str,
                  tools_used: list[str], audit: list | None = None,
-                 hook_notes: list | None = None) -> None:
+                 hook_notes: list | None = None,
+                 delta: dict | None = None) -> None:
     def edit(state):
         turns = state.setdefault("turns", [])
         for turn in turns:
@@ -239,6 +241,7 @@ def _finish_turn(state_path: str, player_turn_id: str, reply: str,
             "tools": tools_used[-8:],
             "audit": audit or [],
             "hook_notes": list(hook_notes or [])[:3],
+            "delta": delta if isinstance(delta, dict) else None,
         })
         if len(turns) > MAX_TURNS:
             del turns[:len(turns) - MAX_TURNS]
@@ -300,10 +303,11 @@ class DialogRuntime:
         }, self.harness)
 
     def _finish(self, turn_id: str, reply: str, tools_used: list[str],
-                audit: list, usage: dict, after: dict) -> dict:
+                audit: list, usage: dict, after: dict, before: dict | None = None) -> dict:
         hook = self._after_turn_hook(reply, tools_used, audit, after)
         notes = hook.get("notes") or [] if hook.get("ok") else []
-        _finish_turn(self.state_path, turn_id, reply, tools_used, audit, notes)
+        delta = state_diff.summarize(before, after) if before else None
+        _finish_turn(self.state_path, turn_id, reply, tools_used, audit, notes, delta)
         return {
             "ok": True,
             "reply": reply,
@@ -374,7 +378,7 @@ class DialogRuntime:
                     after = load_state(self.state_path)
                     audit = self._audit(reply, tools_used, state, after)
                     return self._finish(turn_id, reply, tools_used, audit,
-                                        result.get("usage") or {}, after)
+                                        result.get("usage") or {}, after, before=state)
                 if round_no >= tool_rounds:
                     break
                 messages.append({
@@ -427,4 +431,4 @@ class DialogRuntime:
             reply = "这件事没有成：%s。你可以换一种做法。" % last_error[:120]
         after = load_state(self.state_path)
         audit = self._audit(reply, tools_used, state, after)
-        return self._finish(turn_id, reply, tools_used, audit, {}, after)
+        return self._finish(turn_id, reply, tools_used, audit, {}, after, before=state)

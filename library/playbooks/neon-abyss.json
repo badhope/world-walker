@@ -1,0 +1,23 @@
+{
+  "id": "neon-abyss",
+  "order": 13,
+  "featured": true,
+  "pitch": "雨下了十一天。你的义体接口在冒蓝火，对面诊所的灯还亮着。",
+  "title": "霓虹深渊：白鲸诊所",
+  "summary": "下城第 9 区不问出处，只问你还付不付得起下一针。左臂在渗血，招牌坏了三年，诊所里的人还在收活人。",
+  "genre": "科幻",
+  "play": "调查恐怖",
+  "difficulty": "标准",
+  "tone": ["阴郁", "压迫", "克制"],
+  "role": "preset",
+  "style": "冷湿的霓虹质感；写义体、雨、账单和人的迟疑。不要赛博朋克百科，先把这一条巷子写实。",
+  "world": {
+    "kind": "setting",
+    "id": "settings/霓虹深渊.setting.json",
+    "name": "霓虹深渊"
+  },
+  "save_name": "第9区·雨夜",
+  "skills": ["survival-pressure", "ledger-economy"],
+  "tags": ["科幻", "赛博", "诊所", "雨夜", "调查"],
+  "mode": "balanced"
+}

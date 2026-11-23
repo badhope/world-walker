@@ -2,7 +2,7 @@
 
 Why this exists
 ---------------
-The server exposes 73 tools and two prompts, but had zero **resources** at first. That matters:
+The server exposes 74 tools and two prompts, but had zero **resources** at first. That matters:
 in MCP, tools are *model-controlled* (the model decides to call them), while
 resources are *application-controlled* — a host can pin live game state, the
 current save, or the active rule set into context without asking the model to

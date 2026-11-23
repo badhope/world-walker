@@ -52,6 +52,14 @@
     </section>
   </div>
 
+  <section class="featured-section" id="featured-section" hidden>
+    <div class="section-head">
+      <h2>今晚就能开</h2>
+      <span class="hint">三个世界 · 不用先读规则</span>
+    </div>
+    <div class="featured-list" id="featured-list"></div>
+  </section>
+
   <footer class="lobby-foot">
     <span>World Walker · 对话游戏引擎</span>
     <span id="version-line">规则为证</span>
@@ -161,10 +169,46 @@
     <div class="overlay-body menu-body">
       <button class="menu-row" id="menu-saves" type="button">存档与继续 <span>→</span></button>
       <button class="menu-row" id="menu-model" type="button">模型连接 <span>→</span></button>
-      <button class="menu-row" id="menu-export" type="button">导出这一局 <span>↓</span></button>
+      <button class="menu-row" id="menu-replay" type="button">战报回放 <span>▤</span></button>
+      <button class="menu-row" id="menu-export" type="button">导出与分享 <span>↗</span></button>
       <button class="menu-row" id="menu-world" type="button">打开世界 <span>→</span></button>
       <button class="menu-row" id="menu-about" type="button">关于 World Walker <span>?</span></button>
       <button class="menu-row danger" id="menu-back" type="button">回到大厅 <span>←</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Replay overlay -->
+<div class="overlay" id="replay-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="replay-title">
+  <div class="overlay-panel replay-panel">
+    <header class="overlay-head">
+      <h2 id="replay-title">战报回放</h2>
+      <button class="icon-btn" data-close="replay-overlay" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="overlay-body" id="replay-body"></div>
+  </div>
+</div>
+
+<!-- Export / share overlay -->
+<div class="overlay" id="export-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="export-title">
+  <div class="overlay-panel export-panel">
+    <header class="overlay-head">
+      <h2 id="export-title">导出与分享</h2>
+      <button class="icon-btn" data-close="export-overlay" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="overlay-body menu-body">
+      <p class="muted export-note">存档给未来的自己；战报给朋友看；世界包能把这一局原样交给另一台机器。</p>
+      <a class="menu-row" href="/api/v1/export?kind=save" download>存档 · JSON <span>↓</span></a>
+      <a class="menu-row" href="/api/v1/export?kind=story" download>战报 · Markdown <span>↓</span></a>
+      <a class="menu-row" href="/api/v1/export?kind=world" download>世界包 · JSON <span>↓</span></a>
+      <a class="menu-row" href="/api/v1/export?kind=character" download>角色卡 · chara_card_v2 <span>↓</span></a>
+      <label class="menu-row import-row" for="import-world-file">导入世界包 <span>↑</span>
+        <input id="import-world-file" type="file" accept=".json,application/json" hidden />
+      </label>
+      <label class="menu-row import-row" for="import-card-file">导入角色卡 · JSON <span>↑</span>
+        <input id="import-card-file" type="file" accept=".json,application/json" hidden />
+      </label>
+      <p class="muted export-note small">世界包含当前进度与剧透，只发给愿意接棒的人。PNG 角色卡仍走 MCP 的 <code>character_card_read</code> + <code>add_character</code>。</p>
     </div>
   </div>
 </div>

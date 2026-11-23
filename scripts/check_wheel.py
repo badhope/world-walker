@@ -30,6 +30,10 @@ REQUIRED = [
     'cli.py',
     'mcp_primitives.py',
     'action_log.py',
+    'state_diff.py',
+    'story_replay.py',
+    'world_pack.py',
+    'character_cards.py',
     'settings/玄枢界.setting.json',
     'settings/折剑行.setting.json',
     'settings/霓虹深渊.setting.json',
@@ -41,6 +45,7 @@ REQUIRED = [
     'docs/metrics.json',
     'ARCHITECTURE.md',
     'docs/MCP_PLAY.md',
+    'docs/SHARE_FORMATS.md',
     'BRAND.md',
     'templates.py',
     'canon.py',
@@ -51,6 +56,9 @@ REQUIRED = [
     'docs/demo/雾港.save.json',
     'narrative_skills/survival-pressure.md',
     'library/playbooks/island-raft.json',
+    'library/playbooks/fog-cabin.json',
+    'library/playbooks/folded-sword.json',
+    'library/playbooks/neon-abyss.json',
     'library/archives/island-raft.md',
 ]
 

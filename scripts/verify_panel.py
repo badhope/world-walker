@@ -28,6 +28,7 @@ import importlib.util as _ilu
 _pspec = _ilu.spec_from_file_location('panel_settings', os.path.join(ROOT, 'panel.py'))
 PANEL = _ilu.module_from_spec(_pspec)
 _pspec.loader.exec_module(PANEL)
+from game_engine import state_diff  # noqa: E402
 from game_engine import viz_series as VIZ  # noqa: E402
 
 RESULTS = []
@@ -92,11 +93,53 @@ def g4_api_guard():
           handler._api_guard() is False and 403 in calls, str(calls))
 
 
+def g5_state_diff():
+    before = {
+        "tick": 3,
+        "entities": {"player": {
+            "hp": 30, "gold": 8,
+            "items": {"plank": 4, "nails": 16},
+            "weapon": {"name": "旧柴刀", "durability": 20},
+        }},
+        "gameplay": {"clocks": [{"name": "体温", "segments": 6, "filled": 1}]},
+        "world_flags": ["mode:power"],
+        "scene": {"title": "第一夜：四块板"},
+        "relations": {"lin": {"name": "林蔓", "affinity": 0}},
+    }
+    after = {
+        "tick": 4,
+        "entities": {"player": {
+            "hp": 15, "gold": 8,
+            "items": {"plank": 2, "nails": 16, "rope": 1},
+            "weapon": {"name": "旧柴刀", "durability": 18},
+        }},
+        "gameplay": {"clocks": [{"name": "体温", "segments": 6, "filled": 3}]},
+        "world_flags": ["mode:power", "door_barred"],
+        "scene": {"title": "第二夜：门闩"},
+        "relations": {"lin": {"name": "林蔓", "affinity": 1}},
+        "item_catalog": {"rope": {"name": "尼龙绳"}},
+    }
+    summary = state_diff.summarize(before, after)
+    keys = {row["key"] for row in summary["changes"]}
+    check("状态差异：气血下降、木板减少、体温上升、绳子入包",
+          {"hp", "item:plank", "clock:体温", "item:rope"} <= keys,
+          str(sorted(keys)))
+    check("状态差异：武器耐久与门闩标记可见",
+          {"weapon:durability", "flag:door_barred"} <= keys,
+          str(sorted(keys)))
+    check("状态差异：物品名来自 item_catalog，而不是英文 key",
+          next(row for row in summary["changes"] if row["key"] == "item:rope")["label"] == "尼龙绳")
+    check("状态差异：有界且带一行摘要",
+          len(summary["changes"]) <= state_diff.MAX_CHANGES
+          and "气血 -15" in state_diff.format_line(summary))
+
+
 def main():
     g1_events()
     g2_price_index()
     g3_inbox()
     g4_api_guard()
+    g5_state_diff()
     passed = sum(RESULTS)
     print('\n%d/%d passed' % (passed, len(RESULTS)))
     return 0 if passed == len(RESULTS) else 1

@@ -44,7 +44,7 @@ def _body(tag: str, metrics: dict) -> str:
         '- %s 个确定性规则函数\n'
         '- %s 个可执行自检\n'
         '- 版本 %s\n'
-    ) % (tag, metrics.get('tools', 73), metrics.get('rule_functions', 217),
+    ) % (tag, metrics.get('tools', 74), metrics.get('rule_functions', 221),
          metrics.get('verify_scripts', 24), metrics.get('version', ''))
 
 

@@ -94,12 +94,39 @@
     const data = app.bootstrap || {};
     renderContinue(data.current);
     renderSaves(data.saves || []);
+    renderFeatured(data.featured || []);
     const model = data.model || {};
     if (!model.configured) {
       $("lobby-model-btn").textContent = "模型未连接 · 去设置";
     } else {
       $("lobby-model-btn").textContent = `模型 · ${model.model || "已连接"}`;
     }
+  }
+
+  function renderFeatured(rows) {
+    const section = $("featured-section");
+    const list = $("featured-list");
+    if (!section || !list) return;
+    const items = Array.isArray(rows) ? rows.filter((row) => row && row.id) : [];
+    if (!items.length) { section.hidden = true; return; }
+    section.hidden = false;
+    list.innerHTML = items.map((row) => {
+      const mode = row.mode_default || "balanced";
+      const modeLabel = row.mode_label || modeDifficulty(mode);
+      const world = row.world || {};
+      const tags = (row.tags || []).slice(0, 3);
+      return `<article class="featured-item">
+        <p class="eyebrow">${esc(row.genre || "预制玩法")} · ${esc(modeLabel)}</p>
+        <h3>${esc(row.title || world.name || "未命名世界")}</h3>
+        <p class="pitch">${esc(row.pitch || row.summary || "")}</p>
+        <div class="featured-tags">${tags.map((tag) => `<span>#${esc(tag)}</span>`).join("")}</div>
+        <button class="primary-btn featured-action" type="button"
+          data-quickstart="${esc(row.id)}" data-mode="${esc(mode)}">进入 ${esc(world.name || "这个世界")}</button>
+      </article>`;
+    }).join("");
+    list.querySelectorAll("[data-quickstart]").forEach((button) => {
+      button.addEventListener("click", () => quickStart(button.dataset.quickstart, button.dataset.mode));
+    });
   }
 
   function renderContinue(current) {
@@ -489,6 +516,36 @@
     }
   }
 
+  function deltaChipText(row) {
+    if (!row || typeof row !== "object") return "";
+    const label = String(row.label || row.key || "变化");
+    const before = row.before;
+    const after = row.after;
+    if (row.kind === "clock") return `${label} ${before}→${after}`;
+    if (row.kind === "flag") return `${label} · 已记下`;
+    const delta = Number(row.delta);
+    if (Number.isFinite(delta) && delta !== 0) {
+      return `${label} ${delta > 0 ? "+" : ""}${delta}`;
+    }
+    if (before !== undefined && after !== undefined && before !== after) {
+      return `${label} ${before}→${after}`;
+    }
+    return "";
+  }
+
+  function deltaHtml(delta) {
+    if (!delta || typeof delta !== "object") return "";
+    const rows = (delta.changes || []).slice(0, 9).map((row) => {
+      const text = deltaChipText(row);
+      if (!text) return "";
+      const tone = row.tone === "up" || row.tone === "down" ? row.tone : "";
+      return `<span class="delta-chip ${tone}">${esc(text)}</span>`;
+    }).filter(Boolean).join("");
+    if (!rows) return "";
+    const more = Number(delta.truncated || 0) > 0 ? `<span class="delta-chip">另有 ${num(delta.truncated)} 项</span>` : "";
+    return `<div class="turn-delta" aria-label="本回合状态变化">${rows}${more}</div>`;
+  }
+
   function renderFeed(items) {
     const feed = $("feed");
     const wasNearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 120;
@@ -552,7 +609,7 @@
         .map((part) => `<p>${esc(part).replace(/\n/g, "<br>")}</p>`).join("");
       const tools = (item.tools || []).length
         ? `<span class="turn-tools">结算 ${item.tools.length} 次</span>` : "";
-      return `<div class="bubble narrator" data-id="${esc(item.id)}">${paragraphs}${tools}</div>`;
+      return `<div class="bubble narrator" data-id="${esc(item.id)}">${paragraphs}${deltaHtml(item.delta)}${tools}</div>`;
     }).join("");
     if (shouldPin) {
       feed.scrollTop = feed.scrollHeight;
@@ -1327,6 +1384,76 @@
   /* Knowledge library                                                  */
   /* ------------------------------------------------------------------ */
 
+  async function openReplay() {
+    closeOverlay("menu-overlay");
+    openOverlay("replay-overlay");
+    const body = $("replay-body");
+    body.innerHTML = `<p class="muted">正在把这一局按时间顺序摊开…</p>`;
+    try {
+      const data = await api("/api/v1/replay");
+      renderReplay(data);
+    } catch (err) {
+      body.innerHTML = `<p class="model-status bad">${esc(err.message)}</p>`;
+    }
+  }
+
+  function renderReplay(data) {
+    const world = data.world || {};
+    const rows = data.timeline || [];
+    const counts = data.counts || {};
+    const body = $("replay-body");
+    const summary = `<div class="replay-summary">
+      <b>${esc(world.name || "这一局")}</b> · 第 ${num(world.tick)} 回合
+      ${world.mode ? ` · ${esc(world.mode)}` : ""}<br>
+      玩家行动 ${num(counts.player)} 次 · 正文 ${num(counts.narrator)} 段
+    </div>`;
+    if (!rows.length) {
+      body.innerHTML = summary + `<p class="replay-empty">这一局还没有留下正文。先开一局，再说第一句话。</p>`;
+      return;
+    }
+    body.innerHTML = summary + rows.map((row) => {
+      const text = esc(row.text || "").replace(/\n/g, "<br>");
+      const tick = row.kind === "player" ? "你" : `第 ${num(row.tick)} 回合`;
+      return `<div class="replay-item ${row.kind === "player" ? "player" : "narrator"}">
+        <div class="replay-tick">${esc(tick)}</div>
+        <div class="replay-text">${text}${deltaHtml(row.delta)}</div>
+      </div>`;
+    }).join("");
+  }
+
+  async function importWorld(file) {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { toast("世界包超过 4 MB，先拆一下再导入", 5000); return; }
+    try {
+      const pack = JSON.parse(await file.text());
+      const payload = await api("/api/v1/import/world", { method: "POST", body: { pack } });
+      app.view = payload.state;
+      app.feedFirst = true;
+      app.harnessLoaded = false;
+      closeAllOverlays();
+      showScreen("play");
+      renderPlay();
+      connectSSE();
+      toast("世界包已接上。这一局现在归你。");
+    } catch (err) {
+      toast(`导入失败：${err.message}`, 6000);
+    }
+  }
+
+  async function importCharacter(file) {
+    if (!file) return;
+    try {
+      const card = JSON.parse(await file.text());
+      const payload = await api("/api/v1/import/character", { method: "POST", body: { card } });
+      app.view = payload.state;
+      renderPlay();
+      const name = ((payload.result || {}).name) || ((card.data || {}).name) || "角色卡";
+      toast(`角色卡已入局：${name}`);
+    } catch (err) {
+      toast(`角色卡导入失败：${err.message}`, 6000);
+    }
+  }
+
   async function openLibrary() {
     openOverlay("library-overlay");
     if (app.libraryLoaded && app.library) {
@@ -1385,13 +1512,22 @@
     const row = (app.library && app.library.playbooks || []).find((item) => item.id === ident);
     if (!row) { toast("这套玩法已经不在知识库里了"); return; }
     newSession();
+    applyPlaybook(row, mode);
+    closeOverlay("library-overlay");
+    renderSession();
+    openOverlay("session-overlay");
+  }
+
+  function applyPlaybook(row, mode = "") {
+    if (!app.session) newSession();
     const s = app.session;
+    const chosen = mode || row.mode_default || "balanced";
     s.genre = row.genre || "";
     s.play = row.play || "";
     s.role = row.role || "random";
     s.tone = Array.isArray(row.tone) ? row.tone.slice(0, 3) : [];
     s.modeSpecs = Array.isArray(row.mode_specs) ? row.mode_specs : null;
-    s.mode = mode || row.mode_default || "balanced";
+    s.mode = chosen;
     s.difficulty = modeDifficulty(s.mode);
     s.style = row.style || "";
     s.prefab = row.id;
@@ -1402,16 +1538,22 @@
     const worlds = (app.bootstrap && app.bootstrap.worlds) || [];
     const match = row.world && row.world.kind
       ? worlds.find((w) => w.kind === row.world.kind
-          && (w.name === row.world.name || w.id.endsWith("/" + row.world.id)))
+          && (w.name === row.world.name || (w.id || "").endsWith("/" + row.world.id)))
       : null;
     s.world = row.world && row.world.kind
       ? { kind: row.world.kind, id: match ? match.id : row.world.id,
           name: (match && match.name) || row.world.name || "" }
       : null;
     s.step = 3;
-    closeOverlay("library-overlay");
-    renderSession();
-    openOverlay("session-overlay");
+    return s;
+  }
+
+  async function quickStart(ident, mode) {
+    const row = ((app.bootstrap && app.bootstrap.featured) || []).find((item) => item.id === ident);
+    if (!row) { toast("这张开局卡已经不在大厅里了"); openLibrary(); return; }
+    newSession();
+    applyPlaybook(row, mode || row.mode_default || "balanced");
+    await createGame();
   }
 
   function bind() {
@@ -1441,7 +1583,18 @@
     $("menu-saves").addEventListener("click", () => { closeAllOverlays(); showScreen("lobby"); refreshLobby(); });
     $("menu-model").addEventListener("click", () => { closeOverlay("menu-overlay"); openModel(); });
     $("menu-world").addEventListener("click", () => { closeOverlay("menu-overlay"); openWorld("codex"); });
-    $("menu-export").addEventListener("click", () => { window.location.href = "/api/v1/export"; });
+    $("menu-replay").addEventListener("click", openReplay);
+    $("menu-export").addEventListener("click", () => { closeOverlay("menu-overlay"); openOverlay("export-overlay"); });
+    $("import-world-file").addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = "";
+      importWorld(file);
+    });
+    $("import-card-file").addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = "";
+      importCharacter(file);
+    });
     $("menu-about").addEventListener("click", () => toast("World Walker · 对话游戏引擎：AI 演，引擎判，存档记。", 5000));
     $("menu-back").addEventListener("click", () => {
       closeAllOverlays();

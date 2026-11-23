@@ -36,6 +36,18 @@ HTTP 模式则把客户端指向 `http://127.0.0.1:8620/mcp`。
 
 MCP 不要求模型厂商；宿主 AI 用哪个模型由你的客户端决定。
 
+## 紧凑玩家路由：`play`
+
+完整 MCP 面有 74 个工具，适合需要细粒度控制的宿主。不想把整张工具表塞进上下文的客户端，可以只调用一个 `play`：
+
+```json
+{"intent": "inspect", "arguments": {"view": "status"}}
+```
+
+`intent` 覆盖同一套 28 个玩家意图（`inspect / progress / story / memory / context / canon / characters / knowledge / sheet / systems / worlds / calc / panel / new_game / open_game / saves / snapshot / combat / combat_preview / trade / social / karma / campaign / advance / travel / use_item / roll / configure`）。`new_game` 成功后路由会把活动存档切到新局的 `state_path`；其余 `intent` 直接沿用。它和完整工具面共用 `GameService`、规则引擎和事务写入，不是第二套规则。
+
+工具报错会在正文后附一行“下一步：……”，例如未开局时提示先 `world_open` 或 `session_new`，缺场景时提示 `campaign(action="brief")` / `campaign(action="open")`；宿主不需要猜。
+
 ## 开局
 
 如果设定包带 `world.opening`，`load_setting` / `session_new` / `template_start` 会返回 `opening.brief_line`、`opening.prologue` 和 `opening.actions`。宿主先把序章逐段讲给玩家，再把三枚动作当作可选开头；不要改写系统公告。没有 `opening` 的模板才由宿主自己写开局卡。

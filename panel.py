@@ -936,11 +936,20 @@ def _build_replay(state_path, state):
         from game_engine import action_log
         rows = action_log.read_actions(state_path, limit=5)
         total = int(state.get("actions_seq", 0) or 0)
+        recent = []
+        for row in rows:
+            delta = row.get("delta") if isinstance(row.get("delta"), dict) else None
+            recent.append({
+                "seq": row.get("seq"),
+                "tick": row.get("tick"),
+                "tool": row.get("tool"),
+                "delta": delta,
+            })
         return {
             "logged": total,
             "log_file": os.path.basename(action_log.action_log_path(state_path)),
-            "recent": [{"seq": r.get("seq"), "tick": r.get("tick"), "tool": r.get("tool")}
-                       for r in rows],
+            "recent": recent,
+            "latest_delta": recent[-1].get("delta") if recent else None,
             "last_state_hash": rows[-1].get("state_after") if rows else "",
         }
     except Exception as exc:  # aqg: boundary
@@ -1447,6 +1456,20 @@ class Handler(BaseHTTPRequestHandler):
         body = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")
         self._send(code, "application/json; charset=utf-8", body)
 
+    def _api_download(self, body, filename, ctype="application/json; charset=utf-8"):
+        """Attachment response with an ASCII fallback plus RFC 5987 UTF-8 name."""
+        ascii_name = "world-walker-export" + os.path.splitext(filename)[1]
+        quoted = urllib.parse.quote(filename, safe="")
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Content-Disposition",
+                         "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (ascii_name, quoted))
+        for name, val in self._SECURITY_HEADERS:
+            self.send_header(name, val)
+        self.end_headers()
+        self.wfile.write(body)
+
     def _api_guard(self):
         if not self._host_ok():
             self._api_json(403, {"ok": False, "error": "Host 不被允许"})
@@ -1612,9 +1635,21 @@ class Handler(BaseHTTPRequestHandler):
             "current": listing["current"],
             "saves": listing["saves"],
             "worlds": self._world_catalog(),
+            "featured": self._featured_playbooks(),
             "model": model_config.public_config(),
             "session_zero": narrative_rules.options(),
         }
+
+    def _featured_playbooks(self):
+        try:
+            from game_engine import library as library_store
+            rows = [row for row in library_store.list_playbooks() if row.get("featured")]
+            rows = rows[:3]
+            keep = ("id", "title", "pitch", "summary", "genre", "play",
+                    "mode_default", "mode_label", "world", "save_name", "tags")
+            return [{key: row.get(key) for key in keep} for row in rows]
+        except Exception:  # aqg: boundary — a broken library must not blank the lobby
+            return []
 
     def _player_payload(self):
         from game_engine import player_view
@@ -1669,23 +1704,47 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/v1/export":
             from game_engine.state_schema import state_lock, _recover_archive
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+            kind = (query.get("kind") or ["save"])[0].strip().lower()
+            sp = self._state()
             try:
-                with state_lock(self._state()):
-                    _recover_archive(self._state())
-                    with open(self._state(), "rb") as fh:
+                with state_lock(sp):
+                    _recover_archive(sp)
+                    with open(sp, "rb") as fh:
                         raw = fh.read()
-            except OSError as exc:
+                state = json.loads(raw.decode("utf-8"))
+            except (OSError, ValueError, TypeError) as exc:
                 self._api_json(404, {"ok": False, "error": str(exc)[:120]})
                 return
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Length", str(len(raw)))
-            self.send_header("Content-Disposition",
-                             'attachment; filename="%s"' % os.path.basename(self._state()))
-            for name, val in self._SECURITY_HEADERS:
-                self.send_header(name, val)
-            self.end_headers()
-            self.wfile.write(raw)
+            if kind == "story":
+                from game_engine import story_replay
+                name = str((state.get("world_info") or {}).get("name") or "world-walker")
+                body = story_replay.markdown(state, name).encode("utf-8")
+                self._api_download(body, "%s-战报.md" % name, "text/markdown; charset=utf-8")
+                return
+            if kind in ("world", "worldpack"):
+                from game_engine import world_pack
+                pack = world_pack.build(state, state_path=sp)
+                self._api_download(world_pack.dumps(pack), world_pack.filename(pack))
+                return
+            if kind in ("character", "card"):
+                from game_engine import character_cards
+                player = (state.get("entities") or {}).get("player") or {}
+                card = character_cards.entity_card(player)
+                name = str(player.get("name") or "player")
+                body = json.dumps(card, ensure_ascii=False, indent=2, allow_nan=False).encode("utf-8")
+                safe = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in name).strip("-")
+                self._api_download(body, "%s.card.json" % (safe or "player"))
+                return
+            self._api_download(raw, os.path.basename(sp))
+            return
+        if path == "/api/v1/replay":
+            try:
+                from game_engine import story_replay
+                state = load_state_retry(self._state())
+                self._api_json(200, story_replay.payload(state, self._state()))
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(500, {"ok": False, "error": str(exc)[:180]})
             return
         if path == "/api/v1/events":
             self._api_sse()
@@ -1695,8 +1754,61 @@ class Handler(BaseHTTPRequestHandler):
     def _api_v1_post(self, path):
         if not self._api_guard():
             return
-        body = self._api_body(limit=65536)
+        limit = (4 * 1024 * 1024 if path == "/api/v1/import/world"
+                 else 1024 * 1024 if path == "/api/v1/import/character" else 65536)
+        body = self._api_body(limit=limit)
         if body is None:
+            return
+        if path == "/api/v1/import/world":
+            from game_engine import player_view, session_factory, world_pack
+            try:
+                pack = body.get("pack") if isinstance(body.get("pack"), dict) else body
+                state = world_pack.state_from_pack(pack)
+                name = str(body.get("name") or (pack.get("name") if isinstance(pack, dict) else "") or "导入世界")
+                built = session_factory.build_from_state(state)
+                target, safe = session_factory.write_new_state(
+                    built, root=self._save_root(), name=name)
+                self.server.state_path = os.path.abspath(target)
+                try:
+                    from game_engine import mcp_server
+                    mcp_server.set_active_path(target)
+                except Exception:  # noqa: BLE001
+                    pass
+                self._api_json(200, {"ok": True, "state": player_view.build_player_view(target),
+                                     "created": {"state_path": target, "name": safe}})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(400, {"ok": False, "error": str(exc)[:220]})
+            return
+        if path == "/api/v1/import/character":
+            import tempfile
+            from game_engine import player_view
+            card = body.get("card")
+            if not isinstance(card, dict):
+                self._api_json(400, {"ok": False, "error": "card 必须是角色卡 JSON 对象"})
+                return
+            tmp = ""
+            try:
+                from game_engine import mcp_server
+                mcp_server.set_active_path(self._state())
+                fd, tmp = tempfile.mkstemp(prefix=".ww_card_", suffix=".json",
+                                           dir=os.path.dirname(os.path.abspath(self._state())))
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    json.dump(card, fh, ensure_ascii=False)
+                entity_id = str(body.get("entity_id") or "card_%d" % int(time.time()))
+                result = mcp_server.add_character(
+                    path=tmp, entity_id=entity_id,
+                    hp=int(body.get("hp") or 100),
+                    location=str(body.get("location") or ""))
+                self._api_json(200, {"ok": True, "result": result,
+                                     "state": player_view.build_player_view(self._state())})
+            except Exception as exc:  # noqa: BLE001
+                self._api_json(400, {"ok": False, "error": str(exc)[:220]})
+            finally:
+                if tmp:
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
             return
         if path == "/api/v1/open":
             from game_engine import input_policy, player_view
@@ -1772,6 +1884,11 @@ class Handler(BaseHTTPRequestHandler):
                     world_name=str((built.get("world_info") or {}).get("name") or ""),
                     player_name=narrative.get("player_name") or "")
                 self.server.state_path = os.path.abspath(target)
+                try:
+                    from game_engine import mcp_server
+                    mcp_server.set_active_path(target)
+                except Exception:  # noqa: BLE001
+                    pass
                 result = {
                     "state_path": target,
                     "name": safe,

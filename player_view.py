@@ -47,6 +47,7 @@ def _feed(vm: dict, state: dict) -> list:
             "text": text,
             "tools": [str(t) for t in (turn.get("tools") or [])][:8],
             "status": str(turn.get("status") or ""),
+            "delta": turn.get("delta") if isinstance(turn.get("delta"), dict) else None,
             "_order": 1 if role == "player" else 2,
         })
 

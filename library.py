@@ -98,6 +98,8 @@ def normalize_playbook(raw: dict) -> dict:
         "skills": skills,
         "tags": _list(raw.get("tags"), 6),
         "order": int(raw.get("order") or 100),
+        "featured": bool(raw.get("featured")),
+        "pitch": _text(raw.get("pitch"), 120),
     }
 
 

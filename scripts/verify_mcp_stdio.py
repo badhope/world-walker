@@ -51,6 +51,8 @@ EXPECTED_TOOLS = {
     'canon_init', 'canon_brief', 'canon_check', 'canon_commit',
     # v1.15.0 知识库投影
     'knowledge',
+    # v1.19.0 紧凑玩家路由：28 个意图共用一套 GameService
+    'play',
 }
 
 RESULTS = []
@@ -161,7 +163,13 @@ async def main():
 
             # 2. 未开局时的守卫
             r = await session.call_tool('tick', {})
+            err_text = ''
+            try:
+                err_text = ' '.join(str(getattr(item, 'text', '') or '') for item in (r.content or []))
+            except Exception:  # noqa: BLE001
+                err_text = ''
             check('未 world_init 就结算会报错（不许绕过引擎）', is_err(r), 'isError=True' if is_err(r) else data(r))
+            check('MCP 错误带可执行的下一步', '下一步' in err_text, err_text[:120])
 
             # 3. world_schema
             schema = data(await session.call_tool('world_schema', {}))
@@ -172,6 +180,20 @@ async def main():
             out = await scenario(session, state_a, seed=42)
             check('world_init 建世界成功', isinstance(out['init'], dict) and out['init'].get('entities') == 3,
                   str(out['init'])[:80])
+            route = data(await session.call_tool('play', {'intent': 'inspect',
+                                                          'arguments': {'view': 'status'}}))
+            check('play 路由能读到当前局面',
+                  isinstance(route, dict) and route.get('ok') is True and route.get('intent') == 'inspect'
+                  and 'world' in route, str(route)[:100])
+            bad_route = await session.call_tool('play', {'intent': 'not_a_player_intent'})
+            bad_text = ''
+            try:
+                bad_text = ' '.join(str(getattr(item, 'text', '') or '') for item in (bad_route.content or []))
+            except Exception:  # noqa: BLE001
+                bad_text = ''
+            check('play 路由拒绝未知意图并给下一步',
+                  '未知玩家意图' in bad_text and 'next_action' in bad_text,
+                  bad_text[:120])
             # 卡面文字必须穿过 pydantic 保留下来——它是角色卡详情弹窗与叙事层的唯一来源。
             # 曾经的缺陷：EntityIn 没有 desc/personality/speech 字段，设定包人物描述被静默丢弃，
             # 面板点开角色只剩气血一行。

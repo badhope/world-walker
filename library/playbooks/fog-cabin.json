@@ -32,5 +32,7 @@
     "永久死亡",
     "硬核可选"
   ],
-  "mode": "balanced"
+  "mode": "power",
+  "featured": true,
+  "pitch": "门缝下压着一张湿纸：别在雾里跑。先看水，再看火，最后看门。"
 }

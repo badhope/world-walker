@@ -104,7 +104,12 @@ def main() -> int:
               'game_engine.knowledge', 'game_engine.gameplay',
               'game_engine.viz_series', 'game_engine.bootstrap',
               'game_engine.mcp_primitives', 'game_engine.cli',
-              'game_engine.init_game']
+              'game_engine.init_game', 'game_engine.state_diff',
+              'game_engine.story_replay', 'game_engine.world_pack',
+              'game_engine.character_cards', 'game_engine.action_log',
+              'game_engine.game_service', 'game_engine.tool_registry',
+              'game_engine.host_adapter', 'game_engine.dialog_runtime',
+              'game_engine.mcp_server']
     hidden += ['game_engine.rules.' + name[:-3]
                for name in sorted(os.listdir(os.path.join(ROOT, 'rules')))
                if name.endswith('.py') and name != '__init__.py']

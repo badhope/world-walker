@@ -93,7 +93,8 @@ def next_seq(state: dict) -> int:
 
 def record(state_path: str, *, seq: int, tick: int, tool: str,
            args=None, rng_before=None, rng_after=None,
-           state_before: str = '', state_after: str = '') -> dict:
+           state_before: str = '', state_after: str = '',
+           delta: dict | None = None) -> dict:
     """Append one action record. Returns the record written."""
     entry = {
         'seq': int(seq),
@@ -105,6 +106,8 @@ def record(state_path: str, *, seq: int, tick: int, tool: str,
         'state_before': state_before,
         'state_after': state_after,
     }
+    if isinstance(delta, dict):
+        entry['delta'] = delta
     path = action_log_path(state_path)
     try:
         directory = os.path.dirname(path)

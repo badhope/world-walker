@@ -1,18 +1,22 @@
 # World Walker
 
-**v1.18.0** · English · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Changelog](CHANGELOG.md)
+**v1.19.0** · English · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Share formats](docs/SHARE_FORMATS.md) · [Changelog](CHANGELOG.md)
 
 World Walker is a single-player AI tabletop RPG engine. You talk to the GM in plain language; a deterministic rules engine owns checks, prices, inventory, relationships, saves and replay. Any OpenAI-compatible `/chat/completions` endpoint can drive the story.
 
 No host app. No provider lock-in. The model writes the scene; the engine owns the truth.
 
-`221 rule functions` · `73 MCP tools` · `28 player tools` · `7 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
+`221 rule functions` · `74 MCP tools` · `28 player tools` · `7 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
 
 ## Screens
 
 | Lobby | Knowledge library | Mode picker | Cold open | At the table |
 | --- | --- | --- | --- | --- |
 | ![Lobby](docs/assets/lobby.png) | ![Knowledge library](docs/assets/library.png) | ![Mode picker](docs/assets/modes.png) | ![Cold open](docs/assets/opening.png) | ![At the table](docs/assets/table.png) |
+
+![Replay](docs/assets/replay.png)
+
+The replay is a read of the same state file: prologue, player lines, narrator prose, and the state chip for each settled turn. No second log format to keep in sync.
 
 ## Why it exists
 
@@ -40,7 +44,9 @@ wg play --state my-game.json
 
 ## Knowledge library
 
-The lobby's “Start from a prefab or archive” entry offers two selectable starts: island survival in the Ten Thousand Islands Sea, and fog-cabin survival in Grey Fog Waste. Every world can be started in one of three modes: **Power** (more starting supplies and room to recover; all gains are countable goods or stamina that can be used up or taken), **Balanced** (no favour, no sabotage), and **Hardcore** (scarce resources, faster clocks, permadeath). The fog-cabin Power kit is a second-hand hardware box: 4 boards, 16 nails, 1 hinge, a 10 m rope rated 40 kg, a mechanical thermometer/hygrometer, a windproof lighter rated for about 80 ignitions, a 500 g claw hammer and a 28 cm billhook. The character also has hauling strength from working in the family shop: STR 12 against a 10 baseline, enough to shoulder 60 kg for 20 m. Every piece can be consumed, broken or taken; the billhook dulls after 20 cuts; Hardcore has no kit and no respawn. The prefab fixes the world, play loop, base difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
+The lobby has three one-click flagship starts — fog-cabin survival, the ferry crossing in *Folded Sword*, and the White Whale clinic in *Neon Abyss* — plus island survival in the Ten Thousand Islands Sea. No rules reading first; the opening card and its first-reaction buttons are playable immediately. Every world can be started in one of three modes: **Power** (more starting supplies and room to recover; all gains are countable goods or stamina that can be used up or taken), **Balanced** (no favour, no sabotage), and **Hardcore** (scarce resources, faster clocks, permadeath). The fog-cabin Power kit is a second-hand hardware box: 4 boards, 16 nails, 1 hinge, a 10 m rope rated 40 kg, a mechanical thermometer/hygrometer, a windproof lighter rated for about 80 ignitions, a 500 g claw hammer and a 28 cm billhook. The character also has hauling strength from working in the family shop: STR 12 against a 10 baseline, enough to shoulder 60 kg for 20 m. Every piece can be consumed, broken or taken; the billhook dulls after 20 cuts; Hardcore has no kit and no respawn. The prefab fixes the world, play loop, base difficulty, tone and narrative style; name, role, boundaries and what happens next still belong to the player.
+
+Every narrator turn now carries a bounded state diff under the prose: HP, items, clocks, weapon durability, location, flags and relationship movement. The menu also offers a chronological battle report, a Markdown export, a world-pack round trip (export and import), and a `chara_card_v2` character-card export/import path. These are reads over the same state file, not a second save format.
 
 “Design archives” holds the raft, prefab-authoring and release-discipline notes. The data lives in `library/playbooks/*.json` and `library/archives/*.md` and ships with the package.
 
@@ -98,7 +104,7 @@ The host calls tools only when a number is needed. Prose stays in the conversati
 - **Replay:** one transactional writer, a command log with state fingerprints, and a save you can inspect.
 - **Context boundaries:** NPC knowledge, canon facts, world book triggers and a scene card before every reply.
 
-The player surface exposes 28 tools. The 73-tool MCP surface remains for advanced hosts. Both routes share the same rules, state file and writer.
+The player surface exposes 28 tools. The 74-tool MCP surface remains for advanced hosts; `play(intent=..., arguments=...)` is a compact one-tool route over the same 28 player intents when a host does not want to load the full registry. Both routes share the same rules, state file and writer.
 
 ## Quality
 

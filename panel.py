@@ -1780,35 +1780,30 @@ class Handler(BaseHTTPRequestHandler):
                 self._api_json(400, {"ok": False, "error": str(exc)[:220]})
             return
         if path == "/api/v1/import/character":
-            import tempfile
-            from game_engine import player_view
+            from game_engine import character_cards, player_view
+            from game_engine.state_schema import transact_state
             card = body.get("card")
             if not isinstance(card, dict):
                 self._api_json(400, {"ok": False, "error": "card 必须是角色卡 JSON 对象"})
                 return
-            tmp = ""
-            try:
-                from game_engine import mcp_server
-                mcp_server.set_active_path(self._state())
-                fd, tmp = tempfile.mkstemp(prefix=".ww_card_", suffix=".json",
-                                           dir=os.path.dirname(os.path.abspath(self._state())))
-                with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                    json.dump(card, fh, ensure_ascii=False)
-                entity_id = str(body.get("entity_id") or "card_%d" % int(time.time()))
-                result = mcp_server.add_character(
-                    path=tmp, entity_id=entity_id,
+            entity_id = str(body.get("entity_id") or "card_%d" % int(time.time()))
+            result = {}
+
+            def edit(state):
+                result.update(character_cards.add_to_state(
+                    state, card, entity_id,
+                    attrs=body.get("attrs") if isinstance(body.get("attrs"), dict) else None,
                     hp=int(body.get("hp") or 100),
-                    location=str(body.get("location") or ""))
+                    gold=int(body.get("gold") or 0),
+                    location=str(body.get("location") or ""),
+                    level=str(body.get("level") or "凡人")))
+
+            try:
+                transact_state(edit, self._state(), allow_create=False)
                 self._api_json(200, {"ok": True, "result": result,
                                      "state": player_view.build_player_view(self._state())})
             except Exception as exc:  # noqa: BLE001
                 self._api_json(400, {"ok": False, "error": str(exc)[:220]})
-            finally:
-                if tmp:
-                    try:
-                        os.unlink(tmp)
-                    except OSError:
-                        pass
             return
         if path == "/api/v1/open":
             from game_engine import input_policy, player_view

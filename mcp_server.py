@@ -87,6 +87,7 @@ from game_engine import sessions as session_store
 from game_engine import input_policy
 from game_engine import state_diff
 from game_engine.character_cards import entity_card as _entity_card
+from game_engine.character_cards import add_to_state as _add_card_to_state
 try:
     from game_engine import mcp_primitives
 except ImportError:  # bare checkout
@@ -1628,31 +1629,9 @@ def add_character(path: str, entity_id: str, attrs: dict[str, int] | None = None
     Add a character card to the active game as an NPC."""
     state = _load()
     d, _spec = _load_card(path)
-    if entity_id in state.get("entities", {}):
-        raise ValueError("实体已存在: %s（换个 entity_id 或先 remove）" % entity_id)
-    ent = _normalize_entity(entity_id, {
-        "name": d.get("name"), "attrs": attrs or {}, "hp": hp, "hp_max": hp,
-        "gold": gold, "location": location or state.get("entities", {}).get("player", {}).get("location", ""),
-        "level": level,
-        "desc": d.get("description") or "",
-        "personality": d.get("personality") or "",
-        "speech": d.get("mes_example") or "",
-        "card_json": {"spec": "chara_card_v2", "spec_version": "2.0", "data": d},
-    })
-    state.setdefault("entities", {})[entity_id] = ent
-    book = (d.get("character_book") or {}).get("entries") or []
-    if isinstance(book, dict):
-        book = list(book.values())
-    added = 0
-    for e in book:
-        n = _normalize_lore_entry(e)
-        if n:
-            state.setdefault("lore", []).append(n)
-            added += 1
-    _remember(state, "people", ent["name"])
-    log_event(state, "system", "角色卡「%s」入局（%s），世界书 +%d 条" % (ent["name"], entity_id, added))
-    return _finish(state, {"entity_id": entity_id, "name": ent["name"], "lore_added": added,
-                           "entities": len(state["entities"])})
+    result = _add_card_to_state(state, d, entity_id, attrs=attrs, hp=hp, gold=gold,
+                                location=location, level=level)
+    return _finish(state, result)
 
 
 @server.tool()

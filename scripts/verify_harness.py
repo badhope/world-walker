@@ -33,7 +33,16 @@ def check(name, ok, note=''):
 
 
 def _demo_state(tmp):
-    src = os.path.join(ROOT, 'saves', '万岛海域_救生筏_重开.save.json')
+    # CI checkouts have no `saves/` directory (it is gitignored); the demo
+    # fixture under docs/demo is the portable source of truth.  Keep the old
+    # local save as a fallback for developer machines that still have it.
+    candidates = [
+        os.path.join(ROOT, 'docs', 'demo', '折剑行.save.json'),
+        os.path.join(ROOT, 'saves', '万岛海域_救生筏_重开.save.json'),
+    ]
+    src = next((path for path in candidates if os.path.isfile(path)), '')
+    if not src:
+        raise FileNotFoundError('没有可用的演示存档：docs/demo/折剑行.save.json 或 saves/万岛海域_救生筏_重开.save.json')
     dst = os.path.join(tmp, 'game.save.json')
     shutil.copy(src, dst)
     return dst
@@ -192,6 +201,8 @@ def g5_runtime(tmp):
         rulebook.load(state, rules)
 
     transact_state(edit, path, allow_create=False)
+    with open(path, encoding='utf-8') as fh:
+        before_hp = json.load(fh)['entities']['player']['hp']
     hook_dir = os.path.join(tmp, 'runtime-hooks')
     os.makedirs(hook_dir)
     harness_hooks.LOG_PATH = os.path.join(tmp, 'runtime-hooks.log')
@@ -229,8 +240,8 @@ def g5_runtime(tmp):
           str(result.get('hook_notes')))
     check('audit 开关关闭后 audit 为空', result.get('audit') == [], str(result.get('audit')))
     after = load_state(path)
-    check('回合规则在模型调用前生效', after['entities']['player']['hp'] == 41,
-          'hp=%s' % after['entities']['player']['hp'])
+    check('回合规则在模型调用前生效', after['entities']['player']['hp'] == before_hp - 1,
+          'hp=%s -> %s' % (before_hp, after['entities']['player']['hp']))
 
     open(os.path.join(hook_dir, 'before_turn.py'), 'w', encoding='utf-8').write(
         'def before_turn(ctx):\n    return {"block": "这一行动不符合桌上的约定"}\n')

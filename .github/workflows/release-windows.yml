@@ -39,7 +39,7 @@ jobs:
           Get-FileHash $asset -Algorithm SHA256 | Format-List | Out-String | Set-Content "$asset.sha256"
           Get-Item $asset | Select-Object Name, Length | Format-Table | Out-String | Write-Host
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: world-walker-windows-${{ inputs.tag }}
           path: release/*

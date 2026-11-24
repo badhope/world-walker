@@ -51,6 +51,7 @@
   <div class="wrap">
     <div class="brand">World Walker</div>
     <div class="links">
+      <a href="ANDROID.md">安卓版</a>
       <a href="MCP_PLAY.md">MCP 模式</a>
       <a href="https://github.com/badhope/world-walker">GitHub</a>
       <a href="https://gitee.com/badhope/world-walker">Gitee</a>
@@ -91,6 +92,11 @@
 wg mcp                 # stdio
 wg mcp --http --port 8620</code></pre>
     <p>模型不绑定厂商；<code>base_url / api_key / model</code> 都可以在配置里替换。</p>
+  </section>
+
+  <section>
+    <h2>安卓版：把同一个引擎装进口袋</h2>
+    <p>APK 内带同一套 Python 引擎，Chaquopy 在 App 进程里启动本地回环面板，WebView 只连 <code>127.0.0.1</code>。三档 ABI、签名 Release、下载落 <code>Downloads/World Walker</code>；右栏收进底部抽屉，返回键先收抽屉再回大厅。安装与构建见 <a href="ANDROID.md">docs/ANDROID.md</a>。</p>
   </section>
 
   <section>

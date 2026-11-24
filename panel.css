@@ -638,3 +638,105 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 a.menu-row { color: var(--ink); text-decoration: none; }
 a.menu-row:hover { color: var(--accent); }
 .lobby-grid { flex: 0 0 auto; }
+
+/* ---------- phone shell ------------------------------------------------ */
+.rail-toggle, .rail-mobile-head, .rail-backdrop { display: none; }
+
+@media (max-width: 760px) {
+  .screen { min-height: 100dvh; }
+  .lobby {
+    width: calc(100% - 24px);
+    padding-top: calc(18px + env(safe-area-inset-top));
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+  .lobby-head { margin-bottom: 22px; }
+  .seal { width: 46px; height: 46px; font-size: 23px; border-radius: 12px; }
+  .wordmark { font-size: 31px; }
+  .tagline { font-size: 13px; }
+  .lobby-grid { gap: 12px; }
+  .continue-card, .new-card, .saves-card { padding: 17px; border-radius: 15px; }
+  .continue-body h3 { font-size: 23px; }
+  .saves-list { max-height: none; }
+  .featured-section { margin-top: 14px; }
+  .featured-list { grid-template-columns: 1fr; gap: 10px; }
+  .featured-item { padding: 16px; border-radius: 14px; }
+  .featured-item h3 { font-size: 21px; }
+  .featured-item .pitch { font-size: 13.5px; }
+  .lobby-foot { padding-bottom: env(safe-area-inset-bottom); }
+
+  .play { height: 100vh; height: 100dvh; }
+  .play-head {
+    padding: 9px 10px 9px 8px;
+    padding-top: calc(9px + env(safe-area-inset-top));
+    gap: 6px;
+  }
+  .play-head .icon-btn { min-width: 40px; min-height: 40px; }
+  .play-title h2 { font-size: 18px; }
+  .play-title span { font-size: 11.5px; }
+  .play-actions { gap: 5px; }
+  .play-actions .ghost-btn { padding: 0 10px; min-height: 40px; }
+  .model-badge { display: none; }
+  .rail-toggle { display: inline-flex; align-items: center; justify-content: center; }
+
+  .play-main { display: flex; flex-direction: column; }
+  .story-column { flex: 1; min-height: 0; }
+  .feed { padding: 18px 14px 10px; }
+  .bubble { margin-bottom: 19px; }
+  .bubble.narrator { font-size: 17px; line-height: 1.86; }
+  .bubble.player { max-width: 90%; font-size: 15.5px; }
+  .empty-feed { margin-top: 3vh; padding-left: 16px; }
+  .empty-feed h2 { font-size: 26px; }
+  .empty-feed p { font-size: 16.5px; line-height: 1.8; }
+  .composer {
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+  .composer-inner { border-radius: 15px; padding: 7px 7px 7px 12px; gap: 7px; }
+  .composer textarea { font-size: 16px; line-height: 1.55; max-height: 116px; }
+  .send-btn { min-width: 58px; min-height: 40px; }
+  .composer-foot { margin-top: 5px; }
+  .composer-foot #typing { font-size: 11px; }
+
+  .rail {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 31;
+    max-height: 76vh; height: auto;
+    border-left: 0; border-top: 1px solid var(--line-2);
+    border-radius: 20px 20px 0 0;
+    background: var(--paper);
+    box-shadow: 0 -18px 60px rgba(20, 16, 10, .22);
+    transform: translateY(105%);
+    transition: transform .22s cubic-bezier(.2,.7,.2,1);
+    pointer-events: none;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .rail.rail-open { transform: translateY(0); pointer-events: auto; }
+  .rail-mobile-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px 0; color: var(--muted); font-size: 11px; letter-spacing: .12em;
+  }
+  .rail-mobile-head .icon-btn { min-width: 40px; min-height: 40px; }
+  .rail-tabs { padding: 0 10px; }
+  .rail-tabs button { min-height: 46px; font-size: 15px; }
+  .rail-body { padding: 16px 14px 28px; }
+  .rail-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 30;
+    background: rgba(20, 16, 12, .34); backdrop-filter: blur(2px);
+  }
+  .rail-backdrop[hidden] { display: none; }
+
+  .overlay {
+    padding: calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
+  }
+  .overlay-panel {
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  .overlay-head { padding: 14px 16px 12px; }
+  .session-body, .overlay-body { padding-left: 16px; padding-right: 16px; }
+  .session-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .replay-item { grid-template-columns: 56px 1fr; gap: 8px; }
+
+  button, .save-item, .world-item, .featured-action, .playbook-actions button {
+    touch-action: manipulation;
+  }
+  button:not(.icon-btn):not(.rail-tabs button) { min-height: 42px; }
+  .save-item, .world-item { min-height: 48px; }
+}

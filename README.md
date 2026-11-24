@@ -1,12 +1,12 @@
 # World Walker
 
-**v1.19.0** · English · [简体中文](README.zh-CN.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Share formats](docs/SHARE_FORMATS.md) · [Changelog](CHANGELOG.md)
+**v1.20.0** · English · [简体中文](README.zh-CN.md) · [Android](docs/ANDROID.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Share formats](docs/SHARE_FORMATS.md) · [Changelog](CHANGELOG.md)
 
 World Walker is a single-player AI tabletop RPG engine. You talk to the GM in plain language; a deterministic rules engine owns checks, prices, inventory, relationships, saves and replay. Any OpenAI-compatible `/chat/completions` endpoint can drive the story.
 
 No host app. No provider lock-in. The model writes the scene; the engine owns the truth.
 
-`221 rule functions` · `74 MCP tools` · `28 player tools` · `7 setting bundles` · `9 templates` · `24 self-check suites` · `0 runtime dependencies`
+`221 rule functions` · `74 MCP tools` · `28 player tools` · `7 setting bundles` · `9 templates` · `25 self-check suites` · `0 runtime dependencies`
 
 ## Screens
 
@@ -27,6 +27,18 @@ Most AI RPGs fail in the same places. World Walker puts the boundaries in the en
 - **A turn must leave a trace.** Every reply carries a scene card and an audit; a turn without a visible consequence is flagged.
 
 A campaign is built at the table, not pre-written. Session Zero asks genre, play style, role, tone, mode (power / balanced / hardcore) and boundaries. Then each turn runs `scene card → your action → world reaction → state change → next hook`.
+
+## Android
+
+Since v1.20.0 there is a signed APK: about 25 MB for `arm64-v8a`, 38 MB universal. It is not a remote web page: the APK carries the same Python engine, Chaquopy starts a loopback panel inside the app process, and the WebView only talks to `127.0.0.1`. Saves, model keys and world packs stay on the phone.
+
+The phone shell folds the rail into a “panel” bottom sheet; back closes the sheet, then overlays, then returns to the lobby. Downloads land in `Downloads/World Walker`, and JSON imports use the system file picker. See [docs/ANDROID.md](docs/ANDROID.md) for install, ABI selection, build and troubleshooting.
+
+### On a phone
+
+| Lobby | Table |
+| --- | --- |
+| <img src="docs/assets/android-lobby.png" width="280" alt="Android lobby"> | <img src="docs/assets/android-play.png" width="280" alt="Android table"> |
 
 ## Install and play
 
@@ -108,7 +120,7 @@ The player surface exposes 28 tools. The 74-tool MCP surface remains for advance
 
 ## Quality
 
-Verification is executable, not decorative. `scripts/verify_*.py`, behaviour regressions and mutation tests must fail when the code is wrong. The main gate runs 24 self-check suites, with coverage for the core domain and a zero-survivor mutation pass.
+Verification is executable, not decorative. `scripts/verify_*.py`, behaviour regressions and mutation tests must fail when the code is wrong. The main gate runs 25 self-check suites, with coverage for the core domain and a zero-survivor mutation pass.
 
 ```bash
 python3 scripts/verify_docs.py

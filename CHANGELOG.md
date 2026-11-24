@@ -5,6 +5,32 @@
 
 ---
 
+## v1.20.0 — 2026-11-25
+
+**口袋版：同一个本地引擎，装进 Android；手机竖屏不再是桌面页缩小版。**
+
+### 新增
+
+- **Android APK**：`android/` 工程 + `scripts/build_android.py`。Chaquopy 3.12 在 App 进程内启动标准库 HTTP 面板，WebView 只连 `127.0.0.1`；规则、存档、模型配置全部留在本机，不经过云端中转。
+- 三档 ABI：`arm64-v8a`（现役手机）、`x86_64`（模拟器/平板）、`universal`（不确定机型时用）。Release 用本地密钥签名，包名 `com.worldwalker.app`。
+- 手机壳：对局页新增“面板”按钮与上滑式角色/局面/人情/世界抽屉；返回键先收抽屉、再收弹层、最后回大厅。Android 下载走 MediaStore（`Downloads/World Walker`），JSON 导入走系统文件选择器。
+- `certifi` 随 APK 打包，HTTPS 模型端点不再依赖 Android 系统 CA 的 OpenSSL 路径；`WW_MODEL_CONFIG` / `WW_HARNESS_CONFIG` / `WW_HOOKS_DIR` 指向 App 私有目录。
+- 首次启动自动铺一份折剑行演示档到 App 的 `saves/`，之后按最近修改时间续上；卸载重装不会把存档写回仓库。
+- `docs/ANDROID.md`：构建、签名、安装、ABI、排障与隐私边界。
+
+### 变更
+
+- 手机端面板不再把桌面右栏硬塞在输入框下面：`<=760px` 时改为底部抽屉，默认收起；桌面布局保持不变。
+- `panel.js` 增加 `window.wwAndroidBack` 返回桥；`panel.css` 增加 `env(safe-area-inset-*)` 与 44dp 触控下限。
+- `scripts/verify_android.py` 检查 runtime.zip、APK 包名/版本/ABI、`aapt` 资源与签名；“解压后真的能起面板”的启动冒烟与 37 项断言；Android 构建不进入 32 步本地门禁，避免没有 SDK 的机器被误伤。
+- Android 启动路径改用 `getCanonicalPath()`：App 进程里的 `/data/user/0/...` 是指向 `/data/data/...` 的软链，会被状态层的软链防护误判为不安全路径，表现为“存档需要修复”。实际 API 30 x86_64 模拟器安装启动后复验，存档正确读到折剑行第 180 回合。
+
+### 验证
+
+- `bash scripts/pre_push_gate.sh` 32/32 通过；52 个变异体全部被杀死，核心域覆盖率 78%。
+- `python3 scripts/verify_android.py` 37/37；API 30 x86_64 模拟器安装并启动，`/api/v1/health` 返回 1.20.0，演示档读到「折剑行」第 180 回合。
+- `python3 scripts/verify_docs.py` 29/29；桌面 1920×993 与手机 390×844 双视口回查，桌面布局未退化。
+
 ## v1.19.0 — 2026-11-24
 
 **可玩性收口：从“能开一局”到“看得见变化、带得走世界”。**

@@ -1,6 +1,6 @@
 # World Walker 架构
 
-文档版本：v1.19.0 · 2026-11-24
+文档版本：v1.20.0 · 2026-11-25
 
 World Walker 有两个入口，但只有一套引擎：
 
@@ -45,6 +45,12 @@ MCP 模式走：
 - `bootstrap` 返回大厅、世界目录、模型状态和 Session Zero 选项。
 - `new` 接受 `narrative`；未指定模板时按类型自动配骨架。
 - `chat` 调 `DialogRuntime.respond()`，模型通过 28 个玩家工具推进；其中 `campaign` 负责“一回合一场戏”，`tick` 不再是玩家工具。
+
+### Android 宿主：`android/` + `world_walker_android.py`
+
+APK 不重写引擎，只换宿主：`assets/runtime.zip` 由 `scripts/build_android.py` 从仓库根打包，Java 首次启动解压到 App 私有 `filesDir/runtime/v20/`，Chaquopy 在同一进程里启动 Python，`world_walker_android.start_server()` 再把 runtime 加进 `sys.path` 并调用 `panel.start(..., host_allow=("127.0.0.1","localhost"))`。WebView 只访问随机回环端口，没有公网中转。
+
+路径必须先 `getCanonicalPath()`：Android 进程里的 `/data/user/0/...` 是指向 `/data/data/...` 的软链，而状态层的 `input_policy` 会拒绝含软链的路径；不规范化会把合法存档误判成“需要修复”。模型配置、hook、存档和临时目录都落在 App 私有目录，`allowBackup=false` 防止 API Key 被云备份。
 
 ### 场景层：`gameplay.py`
 

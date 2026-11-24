@@ -76,11 +76,13 @@
     </div>
     <div class="play-actions">
       <button class="model-badge" id="model-badge" type="button" title="模型连接">模型</button>
+      <button class="ghost-btn rail-toggle" id="rail-toggle" type="button" aria-expanded="false" aria-controls="rail">面板</button>
       <button class="ghost-btn" id="menu-btn" type="button">菜单</button>
     </div>
   </header>
 
   <main class="play-main">
+    <div class="rail-backdrop" id="rail-backdrop" hidden></div>
     <section class="story-column" aria-label="叙事">
       <div class="feed" id="feed" aria-live="polite"></div>
       <div class="composer" id="composer">
@@ -96,7 +98,11 @@
       </div>
     </section>
 
-    <aside class="rail" aria-label="角色与世界">
+    <aside class="rail" id="rail" aria-label="角色与世界">
+      <div class="rail-mobile-head">
+        <span>角色与世界</span>
+        <button class="icon-btn" id="rail-close" type="button" aria-label="收起面板">×</button>
+      </div>
       <nav class="rail-tabs" id="rail-tabs">
         <button type="button" data-rail="character" class="active">角色</button>
         <button type="button" data-rail="quests">局面</button>

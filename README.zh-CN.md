@@ -1,12 +1,12 @@
 # World Walker
 
-**v1.19.0** · [English](README.md) · **简体中文** · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [分享格式](docs/SHARE_FORMATS.md) · [更新日志](CHANGELOG.md)
+**v1.20.0** · [English](README.md) · **简体中文** · [Android](docs/ANDROID.md) · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [分享格式](docs/SHARE_FORMATS.md) · [更新日志](CHANGELOG.md)
 
 World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话，判定、价格、背包、关系、存档与回放由确定性规则引擎负责；故事由任何 OpenAI-compatible `/chat/completions` 端点来写。
 
 不用宿主 App，不绑定模型厂商。AI 写场面，引擎管事实。
 
-`221 个规则函数` · `74 个 MCP 工具` · `28 个玩家工具` · `7 套设定包` · `9 套模板` · `24 个可执行自检` · `0 个运行时依赖`
+`221 个规则函数` · `74 个 MCP 工具` · `28 个玩家工具` · `7 套设定包` · `9 套模板` · `25 个可执行自检` · `0 个运行时依赖`
 
 ## 界面
 
@@ -27,6 +27,18 @@ World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话�
 - **一回合必须留下痕迹。** 每次回复都有场面卡和审计；没有可见后果的回合会被标出来。
 
 战役是玩出来的，不是预写的。开局先问类型、玩法、角色、基调、模式（爽文/适中/硬核）和边界；之后每一回合走 `场面卡 → 你的行动 → 世界反应 → 状态变化 → 下一个钩子`。
+
+## 安卓版
+
+v1.20.0 起提供签名 APK：`arm64-v8a` 约 25 MB，`universal` 约 38 MB。它不是远程网页，APK 内带同一套 Python 引擎，Chaquopy 在 App 进程里起本地面板，WebView 只连 `127.0.0.1`；存档、模型 Key 和世界包都留在手机上。
+
+手机壳把右栏收进“面板”抽屉，返回键先收抽屉、再收弹层、最后回大厅；下载落在 `Downloads/World Walker`，JSON 导入走系统文件选择器。安装、ABI 选择、构建与排障见 [docs/ANDROID.md](docs/ANDROID.md)。
+
+### 手机上的样子
+
+| 大厅 | 对局 |
+| --- | --- |
+| <img src="docs/assets/android-lobby.png" width="280" alt="安卓大厅"> | <img src="docs/assets/android-play.png" width="280" alt="安卓对局"> |
 
 ## 安装与开玩
 
@@ -108,7 +120,7 @@ trade(location="临川城", item="ningyuan_dan", direction="buy", quantity=1)
 
 ## 质量
 
-验证是用来失败的，不是用来好看的。`scripts/verify_*.py`、行为回归和变异测试都会在代码被改坏时变红。主门禁跑 24 个可执行自检，核心域有覆盖率要求，变异测试要求零存活。
+验证是用来失败的，不是用来好看的。`scripts/verify_*.py`、行为回归和变异测试都会在代码被改坏时变红。主门禁跑 25 个可执行自检，核心域有覆盖率要求，变异测试要求零存活。
 
 ```bash
 python3 scripts/verify_docs.py

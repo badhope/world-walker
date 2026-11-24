@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">World Walker</string>
+    <string name="loading_title">世界行者</string>
+    <string name="loading_subtitle">正在把世界放到你的口袋里…</string>
+    <string name="loading_note">规则在本地跑，故事由你选的模型来写。</string>
+    <string name="retry">重试</string>
+    <string name="loading_failed">世界没有醒过来</string>
+    <string name="loading_failed_note">引擎启动失败。点重试，或者把下面的错误信息留给我。</string>
+    <string name="download_saved">已保存到 Downloads/World Walker</string>
+    <string name="download_failed">下载失败</string>
+    <string name="no_file_app">没有找到文件选择器</string>
+</resources>

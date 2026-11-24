@@ -1523,9 +1523,12 @@ class Handler(BaseHTTPRequestHandler):
                 "tick": int(state.get("tick", 0) or 0),
                 "turns": len(state.get("turns") or []),
             }
-        except (OSError, TypeError, ValueError):
+        except Exception as exc:  # noqa: BLE001 - a corrupt save must not blank the lobby
+            import traceback as _traceback
+            _traceback.print_exc()
             return {"path": os.path.abspath(sp), "name": os.path.basename(sp),
-                    "world": "", "tick": 0, "turns": 0, "broken": True}
+                    "world": "", "tick": 0, "turns": 0, "broken": True,
+                    "error": "%s: %s" % (type(exc).__name__, exc)[:180]}
 
     def _world_catalog(self):
         settings_dir = os.path.join(_ASSET_DIR, "settings")

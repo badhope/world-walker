@@ -65,13 +65,34 @@
     const lobby = $("lobby");
     const play = $("play");
     if (name === "play") { lobby.hidden = true; play.hidden = false; }
-    else { play.hidden = true; lobby.hidden = false; }
+    else { play.hidden = true; lobby.hidden = false; setRailOpen(false); }
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function isCompactShell() {
+    return window.matchMedia("(max-width: 760px)").matches;
+  }
+
+  function railOpen() {
+    const rail = $("rail");
+    return !!rail && rail.classList.contains("rail-open");
+  }
+
+  function setRailOpen(open) {
+    const rail = $("rail");
+    const backdrop = $("rail-backdrop");
+    const toggle = $("rail-toggle");
+    if (!rail) return;
+    const next = !!open && isCompactShell();
+    rail.classList.toggle("rail-open", next);
+    if (backdrop) backdrop.hidden = !next;
+    if (toggle) toggle.setAttribute("aria-expanded", next ? "true" : "false");
   }
 
   function openOverlay(id) {
     const el = $(id);
     if (!el) return;
+    setRailOpen(false);
     el.hidden = false;
     const first = el.querySelector("input, button");
     if (first && id === "model-overlay") setTimeout(() => first.focus(), 30);
@@ -84,6 +105,7 @@
 
   function closeAllOverlays() {
     document.querySelectorAll(".overlay").forEach((el) => { el.hidden = true; });
+    setRailOpen(false);
   }
 
   /* ------------------------------------------------------------------ */
@@ -1574,9 +1596,17 @@
     $("model-badge").addEventListener("click", openModel);
 
     $("back-btn").addEventListener("click", () => {
+      setRailOpen(false);
       if (app.sse) { app.sse.close(); app.sse = null; }
       showScreen("lobby");
       refreshLobby();
+    });
+
+    $("rail-toggle").addEventListener("click", () => setRailOpen(!railOpen()));
+    $("rail-close").addEventListener("click", () => setRailOpen(false));
+    $("rail-backdrop").addEventListener("click", () => setRailOpen(false));
+    window.addEventListener("resize", () => {
+      if (!isCompactShell()) setRailOpen(false);
     });
 
     $("menu-btn").addEventListener("click", () => openOverlay("menu-overlay"));
@@ -1648,6 +1678,14 @@
       }
     });
   }
+
+  window.wwAndroidBack = function () {
+    const open = Array.from(document.querySelectorAll(".overlay")).find((el) => !el.hidden);
+    if (open) { open.hidden = true; return true; }
+    if (railOpen()) { setRailOpen(false); return true; }
+    if (!$("play").hidden) { $("back-btn").click(); return true; }
+    return false;
+  };
 
   async function boot() {
     bind();

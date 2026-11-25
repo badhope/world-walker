@@ -9,6 +9,7 @@ missing resources and a panel that cannot start from app-private paths.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -44,7 +45,7 @@ def runtime_check() -> None:
         names = set(zf.namelist())
         required = [
             "game_engine/__init__.py", "game_engine/panel.py", "game_engine/panel.html",
-            "game_engine/panel.css", "game_engine/panel.js", "game_engine/settings",
+            "game_engine/panel.css", "game_engine/panel.js", "game_engine/panel.compat.js", "game_engine/settings",
             "game_engine/library/playbooks/folded-sword.json",
             "game_engine/library/playbooks/neon-abyss.json",
             "game_engine/narrative_skills/survival-pressure.md",
@@ -71,7 +72,7 @@ def apk_check() -> None:
         return
     out = subprocess.run([str(aapt), "dump", "badging", str(apk)], capture_output=True, text=True, check=True).stdout
     check("包名 com.worldwalker.app", "package: name='com.worldwalker.app'" in out)
-    check("versionName 1.20.0", ("versionName='%s'" % VERSION) in out)
+    check("versionName %s" % VERSION, ("versionName='%s'" % VERSION) in out)
     check("minSdk 24", "sdkVersion:'24'" in out)
     check("targetSdk 35", "targetSdkVersion:'35'" in out)
     check("arm64 native", "native-code:" in out and "arm64-v8a" in out)
@@ -122,6 +123,9 @@ def source_check() -> None:
     check("Android 用 canonical 路径避开 /data/user/0 软链", "getCanonicalPath()" in main_java and "getFilesDir().getCanonicalPath()" in main_java)
     check("手机 CSS 断点存在", "@media (max-width: 760px)" in (ROOT / "panel.css").read_text(encoding="utf-8"))
     check("手机返回桥存在", "window.wwAndroidBack" in (ROOT / "panel.js").read_text(encoding="utf-8"))
+    compat = (ROOT / "panel.compat.js").read_text(encoding="utf-8")
+    digest = hashlib.sha256((ROOT / "panel.js").read_bytes()).hexdigest()
+    check("panel.compat.js 与 panel.js 同步", digest in compat[:240], digest[:12])
     manifest = (ANDROID / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")
     check("Manifest 声明联网权限", 'android.permission.INTERNET' in manifest)
     check("Manifest 允许本地明文回环", 'android:usesCleartextTraffic="true"' in manifest)

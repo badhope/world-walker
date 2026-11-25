@@ -1,8 +1,8 @@
 # World Walker for Android
 
-**v1.20.0 · `com.worldwalker.app` · minSdk 24 · targetSdk 35**
+**v1.20.1 · `com.worldwalker.app` · minSdk 24 · targetSdk 35**
 
-下载页：[GitHub Releases · v1.20.0](https://github.com/Morningstar202604/world-walker/releases/tag/v1.20.0)。
+下载页：[GitHub Releases · v1.20.1](https://github.com/Morningstar202604/world-walker/releases/tag/v1.20.1)。
 
 安卓版不是另一套规则，也不是把网页丢进浏览器。APK 里带的是同一个 Python 引擎：Chaquopy 在 App 进程里启动本地 HTTP 面板，WebView 只访问 `127.0.0.1`。模型 Key、存档、世界包、角色卡都留在 App 私有目录，不经过中转服务器。
 
@@ -10,9 +10,9 @@
 
 | 文件 | 给谁 | 体积 |
 | --- | --- | --- |
-| `world-walker-1.20.0-arm64-v8a.apk` | 绝大多数现役安卓手机 | 约 25 MB |
-| `world-walker-1.20.0-x86_64.apk` | x86 平板、模拟器 | 约 25 MB |
-| `world-walker-1.20.0-universal.apk` | 不确定机型，或两个都要 | 约 38 MB |
+| `world-walker-1.20.1-arm64-v8a.apk` | 绝大多数现役安卓手机 | 约 25 MB |
+| `world-walker-1.20.1-x86_64.apk` | x86 平板、模拟器 | 约 25 MB |
+| `world-walker-1.20.1-universal.apk` | 不确定机型，或两个都要 | 约 38 MB |
 
 Release 签名证书 SHA-256：
 
@@ -37,6 +37,16 @@ API Key:  你的 Key
 
 端点必须能从**手机**访问；电脑上的 `localhost` 在手机上指向手机自己。局域网模型请填电脑的局域网 IP，并确保同一 Wi-Fi、防火墙放行。
 
+## 实机界面
+
+Android 7.0（API 24，系统 WebView 52）模拟器实拍，720×1280：
+
+| 启动 | 大厅 |
+| --- | --- |
+| <img src="assets/android-splash.png" width="240" alt="启动"> | <img src="assets/android-lobby.png" width="240" alt="大厅"> |
+| **对局** | **面板抽屉** |
+| <img src="assets/android-play.png" width="240" alt="对局"> | <img src="assets/android-rail.png" width="240" alt="面板抽屉"> |
+
 ## 手机壳做了什么
 
 - 大厅、旗舰开局、知识库、战报回放、导出/分享都沿用桌面同一套页面。
@@ -49,7 +59,7 @@ API Key:  你的 Key
 
 ```text
 MainActivity (Java)
-  ├─ 解压 assets/runtime.zip 到 filesDir/runtime/v20/
+  ├─ 解压 assets/runtime.zip 到 filesDir/runtime/v<versionCode>/
   ├─ Python.start(AndroidPlatform)
   ├─ world_walker_android.start_server(...)
   │    ├─ 设置 HOME / TMPDIR / WW_MODEL_CONFIG / WW_HARNESS_CONFIG
@@ -114,7 +124,8 @@ python3 scripts/build_android.py
 
 ## 验证记录
 
-- `scripts/verify_android.py`：37/37，通过 runtime 内容、APK 包名/版本/ABI/签名、以及“解压后真的能起面板”的启动检查。
+- `scripts/verify_android.py`：39/39，通过 runtime 内容、APK 包名/版本/ABI/签名、以及“解压后真的能起面板”的启动检查。
 - 已在 Android 11（API 30）x86_64 模拟器安装并启动实际 APK：健康检查返回 `version: 1.20.0`，初始档正确读到 `折剑行` 第 180 回合。期间抓到一个只在 Android 出现的路径问题：App 的 `/data/user/0/...` 在进程内是指向 `/data/data/...` 的软链，`input_policy` 的软链防护把合法存档判成不安全；改为把 Java 传入的私有目录先 `getCanonicalPath()` 后解决，`verify_android.py` 已加回归断言。
-- 手机布局截图：`docs/assets/android-lobby.png`、`android-play.png`、`android-rail.png`、`android-featured.png`（390×844 视口，2× 像素密度）。
+- **Android 7.0（API 24，系统 WebView 52）实机复验（v1.20.1）**：安装、启动、读取演示档「折剑行」第 180 回合均通过；大厅、对局、面板抽屉、存档卡四屏均正常。旧 WebView 不支持 `async/await`，面板改为默认加载 Babel 转译的 `panel.compat.js`（保留 `panel.js` 源文件），并补了 `scrollTo`、`Object.entries`、`Blob.text` 的退化路径；`Log.i` 现在会把 WebView 控制台错误写进 logcat，后续不再静默失败。
+- 手机实拍截图：`docs/assets/android-splash.png`、`android-lobby.png`、`android-play.png`、`android-rail.png`、`android-saves.png`（720×1280，Android 7.0 API 24 模拟器实拍，非浏览器视口）。
 - 桌面布局在 1920×993 复查，未被手机断点改坏。

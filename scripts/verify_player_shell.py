@@ -79,7 +79,7 @@ def main():
         srv, port = panel.start(os.path.join(temp, "折剑行.save.json"), port=0)
         base = "http://127.0.0.1:%d" % port
 
-        for path in ("/", "/panel.html", "/panel.css", "/panel.js"):
+        for path in ("/", "/panel.html", "/panel.css", "/panel.js", "/panel.compat.js"):
             status, ctype, body = http("GET", base + path)
             check("静态资源 %s 可访问" % path,
                   status == 200 and len(body) > 0 and ("html" in ctype or "css" in ctype or "javascript" in ctype),

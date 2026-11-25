@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.20.0** · English · [简体中文](README.zh-CN.md) · [Android](docs/ANDROID.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Share formats](docs/SHARE_FORMATS.md) · [Changelog](CHANGELOG.md)
+**v1.20.1** · English · [简体中文](README.zh-CN.md) · [Android](docs/ANDROID.md) · [Architecture](ARCHITECTURE.md) · [MCP mode](docs/MCP_PLAY.md) · [Share formats](docs/SHARE_FORMATS.md) · [Changelog](CHANGELOG.md)
 
 World Walker is a single-player AI tabletop RPG engine. You talk to the GM in plain language; a deterministic rules engine owns checks, prices, inventory, relationships, saves and replay. Any OpenAI-compatible `/chat/completions` endpoint can drive the story.
 
@@ -30,7 +30,7 @@ A campaign is built at the table, not pre-written. Session Zero asks genre, play
 
 ## Android
 
-Since v1.20.0 there is a signed APK: about 25 MB for `arm64-v8a`, 38 MB universal. It is not a remote web page: the APK carries the same Python engine, Chaquopy starts a loopback panel inside the app process, and the WebView only talks to `127.0.0.1`. Saves, model keys and world packs stay on the phone.
+Since v1.20.0 there is a signed APK: about 25 MB for `arm64-v8a`, 38 MB universal. It is not a remote web page: the APK carries the same Python engine, Chaquopy starts a loopback panel inside the app process, and the WebView only talks to `127.0.0.1`. Saves, model keys and world packs stay on the phone. v1.20.1 adds a compatibility build for Android 7's stock WebView; the older release could show a static lobby with dead buttons.
 
 The phone shell folds the rail into a “panel” bottom sheet; back closes the sheet, then overlays, then returns to the lobby. Downloads land in `Downloads/World Walker`, and JSON imports use the system file picker. See [docs/ANDROID.md](docs/ANDROID.md) for install, ABI selection, build and troubleshooting.
 

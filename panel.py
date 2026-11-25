@@ -1195,6 +1195,7 @@ STATIC_WHITELIST = {
     "/panel.html": ("panel.html", "text/html; charset=utf-8"),
     "/panel.css": ("panel.css", "text/css; charset=utf-8"),
     "/panel.js": ("panel.js", "text/javascript; charset=utf-8"),
+    "/panel.compat.js": ("panel.compat.js", "text/javascript; charset=utf-8"),
 }
 
 from game_engine.viz_series import SERIES_CAP, load_series, record_sample, series_path  # noqa: E402

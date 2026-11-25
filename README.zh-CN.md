@@ -1,6 +1,6 @@
 # World Walker
 
-**v1.20.0** · [English](README.md) · **简体中文** · [Android](docs/ANDROID.md) · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [分享格式](docs/SHARE_FORMATS.md) · [更新日志](CHANGELOG.md)
+**v1.20.1** · [English](README.md) · **简体中文** · [Android](docs/ANDROID.md) · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [分享格式](docs/SHARE_FORMATS.md) · [更新日志](CHANGELOG.md)
 
 World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话，判定、价格、背包、关系、存档与回放由确定性规则引擎负责；故事由任何 OpenAI-compatible `/chat/completions` 端点来写。
 
@@ -30,7 +30,7 @@ World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话�
 
 ## 安卓版
 
-v1.20.0 起提供签名 APK：`arm64-v8a` 约 25 MB，`universal` 约 38 MB。它不是远程网页，APK 内带同一套 Python 引擎，Chaquopy 在 App 进程里起本地面板，WebView 只连 `127.0.0.1`；存档、模型 Key 和世界包都留在手机上。
+v1.20.0 起提供签名 APK：`arm64-v8a` 约 25 MB，`universal` 约 38 MB。它不是远程网页，APK 内带同一套 Python 引擎，Chaquopy 在 App 进程里起本地面板，WebView 只连 `127.0.0.1`；存档、模型 Key 和世界包都留在手机上。v1.20.1 补了 Android 7 自带 WebView 的兼容；旧版在系统 WebView 未升级时会只显示静态大厅、按钮点不动。
 
 手机壳把右栏收进“面板”抽屉，返回键先收抽屉、再收弹层、最后回大厅；下载落在 `Downloads/World Walker`，JSON 导入走系统文件选择器。安装、ABI 选择、构建与排障见 [docs/ANDROID.md](docs/ANDROID.md)。
 

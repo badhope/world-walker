@@ -37,8 +37,17 @@
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+  function readFileText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error || new Error("读取文件失败"));
+      reader.readAsText(file);
+    });
+  }
+
   async function api(path, options = {}) {
-    const opts = { headers: {}, ...options };
+    const opts = Object.assign({ headers: {} }, options);
     if (opts.body !== undefined) {
       opts.headers["Content-Type"] = "application/json";
       opts.body = JSON.stringify(opts.body);
@@ -66,7 +75,8 @@
     const play = $("play");
     if (name === "play") { lobby.hidden = true; play.hidden = false; }
     else { play.hidden = true; lobby.hidden = false; setRailOpen(false); }
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); }
+    catch (error) { window.scrollTo(0, 0); }
   }
 
   function isCompactShell() {
@@ -674,7 +684,7 @@
     const mp = Number(p.mp || 0), mpMax = Number(p.mp_max || 0);
     const items = p.inventory || [];
     const checks = character.checks || [];
-    const attrs = Object.entries(p.attrs || {});
+    const attrs = Object.keys(p.attrs || {}).map((key) => [key, (p.attrs || {})[key]]);
     const parts = [];
 
     parts.push(section("此人", `
@@ -1447,7 +1457,7 @@
     if (!file) return;
     if (file.size > 4 * 1024 * 1024) { toast("世界包超过 4 MB，先拆一下再导入", 5000); return; }
     try {
-      const pack = JSON.parse(await file.text());
+      const pack = JSON.parse(await readFileText(file));
       const payload = await api("/api/v1/import/world", { method: "POST", body: { pack } });
       app.view = payload.state;
       app.feedFirst = true;
@@ -1465,7 +1475,7 @@
   async function importCharacter(file) {
     if (!file) return;
     try {
-      const card = JSON.parse(await file.text());
+      const card = JSON.parse(await readFileText(file));
       const payload = await api("/api/v1/import/character", { method: "POST", body: { card } });
       app.view = payload.state;
       renderPlay();

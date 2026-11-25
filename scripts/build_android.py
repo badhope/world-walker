@@ -53,7 +53,7 @@ def runtime_files() -> list[Path]:
                 continue
             files.append(path)
     for pattern in (
-        "panel.html", "panel.css", "panel.js",
+        "panel.html", "panel.css", "panel.js", "panel.compat.js",
         "settings/*.json", "settings/*.md",
         "library/playbooks/*.json", "library/archives/*.md",
         "narrative_skills/*.md",

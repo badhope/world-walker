@@ -21,6 +21,7 @@ REQUIRED = [
     'panel.html',
     'panel.css',
     'panel.js',
+    'panel.compat.js',
     'dialog_runtime.py',
     'player_view.py',
     'game_service.py',

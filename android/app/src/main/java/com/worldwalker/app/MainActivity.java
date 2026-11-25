@@ -145,6 +145,13 @@ public class MainActivity extends Activity {
 
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
+            public boolean onConsoleMessage(android.webkit.ConsoleMessage message) {
+                Log.i(TAG, "console " + message.messageLevel() + " " + message.message()
+                        + " @" + message.sourceId() + ":" + message.lineNumber());
+                return true;
+            }
+
+            @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
                                              FileChooserParams params) {
                 if (pendingFileCallback != null) {
@@ -269,7 +276,7 @@ public class MainActivity extends Activity {
         }
         if (bytes < 100_000) throw new IOException("runtime.zip 内容异常（" + bytes + " bytes）");
         try (FileOutputStream marker = new FileOutputStream(ready)) {
-            marker.write("1.20.0\n".getBytes(StandardCharsets.UTF_8));
+            marker.write((BuildConfig.VERSION_NAME + "\n").getBytes(StandardCharsets.UTF_8));
         }
         cleanOldRuntimes(target);
         return target;

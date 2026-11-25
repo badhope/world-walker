@@ -5,6 +5,23 @@
 
 ---
 
+
+## v1.20.1 — 2026-11-25
+
+**旧 WebView 兼容：Android 7 不再只显示一张点不动的静态大厅。**
+
+### 修复
+
+- 面板默认加载 Babel 转译的 `panel.compat.js`，`panel.js` 继续作为源码；Android 7 自带 Chromium 52 不认识 `async/await`，旧版会在 `panel.js:40` 抛 `Unexpected token function`，按钮全部失效。
+- 去掉旧 WebView 不认识的三处写法：对象展开、`Object.entries`、`Blob.text()`；文件导入改用 `FileReader`。
+- `showScreen()` 的 `scrollTo({behavior: "smooth"})` 加退化分支，避免旧 WebView 在切屏时抛异常、导致对局页只渲染外壳不渲染叙事。
+- `panel.py` 的静态白名单补 `/panel.compat.js`；`MainActivity` 把 WebView 控制台错误写进 logcat，并在运行时目录标记里使用真实 `VERSION_NAME`。
+
+### 验证
+
+- Android 7.0（API 24，系统 WebView 52）x86_64 模拟器安装 v1.20.1 实际 APK：启动页、大厅、对局、面板抽屉、存档卡均正常，演示档读到「折剑行」第 180 回合。
+- `scripts/verify_android.py` 39/39；桌面与 API 30 路径不回归。
+
 ## v1.20.0 — 2026-11-25
 
 **口袋版：同一个本地引擎，装进 Android；手机竖屏不再是桌面页缩小版。**

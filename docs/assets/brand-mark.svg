@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect x="28" y="28" width="456" height="456" rx="76" fill="#241F18"/>
+  <rect x="46" y="46" width="420" height="420" rx="62" fill="none" stroke="#C59742" stroke-width="3" opacity=".62"/>
+  <rect x="62" y="62" width="388" height="388" rx="48" fill="none" stroke="#C59742" stroke-width="1.5" opacity=".30"/>
+  <text x="256" y="370" text-anchor="middle" font-family="'Noto Serif CJK SC','Songti SC','STSong',serif" font-size="270" font-weight="700" fill="#C59742">行</text>
+</svg>

@@ -2,45 +2,48 @@
 
 **v1.20.1** · [English](README.md) · **简体中文** · [Android](docs/ANDROID.md) · [架构](ARCHITECTURE.md) · [MCP 模式](docs/MCP_PLAY.md) · [分享格式](docs/SHARE_FORMATS.md) · [更新日志](CHANGELOG.md)
 
-World Walker 是一个单人 AI 跑团引擎。你用日常语言和 GM 对话，判定、价格、背包、关系、存档与回放由确定性规则引擎负责；故事由任何 OpenAI-compatible `/chat/completions` 端点来写。
+<p align="center">
+  <a href="https://github.com/Morningstar202604/world-walker/releases/tag/v1.20.1">
+    <img src="docs/assets/brand-hero.png" alt="World Walker — 你开口，世界回应。单人 AI 跑团引擎。" width="100%">
+  </a>
+</p>
 
-不用宿主 App，不绑定模型厂商。AI 写场面，引擎管事实。
+<p align="center">
+  <strong>你开口，世界回应。</strong><br>
+  <sub>单人 AI 跑团引擎。模型写场面，引擎守事实。</sub>
+</p>
 
-`221 个规则函数` · `74 个 MCP 工具` · `28 个玩家工具` · `7 套设定包` · `9 套模板` · `25 个可执行自检` · `0 个运行时依赖`
+`221 个规则函数` · `74 个 MCP 工具` · `28 个玩家工具` · `7 套世界` · `9 套模板` · `25 个可执行自检` · `0 个运行时依赖`
 
-## 界面
+多数 AI 跑团，是给聊天窗口临时装上骰子。World Walker 是一张会记住事的桌子：价格、伤口、人情、压力钟、谁看见了什么，以及你上一个选择付出了什么。故事由任何 OpenAI-compatible `/chat/completions` 端点来写，账本由引擎来记。
 
-| 大厅 | 知识库 | 模式选择 | 开局序章 | 对局 |
-| --- | --- | --- | --- | --- |
-| ![大厅](docs/assets/lobby.png) | ![知识库](docs/assets/library.png) | ![模式选择](docs/assets/modes.png) | ![开局序章](docs/assets/opening.png) | ![对局](docs/assets/table.png) |
+不用宿主 App，不绑定模型厂商，不维护第二套存档格式。AI 写场面，引擎管事实。
+
+## 引擎不替你假装的三件事
+
+- **你的角色始终是你的。** GM 只写世界和 NPC，不替你决定下一步。
+- **NPC 只知道亲眼见过的事。** 角色不能引用从未进入其见证记忆的事实。
+- **一回合必须留下痕迹。** 每次回复都有场面卡和有界状态差异；没有可见后果的回合，是 bug，不是气氛。
+
+战役是玩出来的，不是预写的。开局先问类型、玩法、角色、基调、模式（爽文 / 适中 / 硬核）和边界；之后每一回合走 `场面卡 → 你的行动 → 世界反应 → 状态变化 → 下一个钩子`。
+
+## 一回合，五步
+
+![一回合，五步](docs/assets/readme-loop.png)
+
+一局游戏不是一段更长的提示词，而是一条可检查的因果链：场面卡钉住压力，引擎结算数字，GM 写出世界的回应，状态文件收下代价。
+
+## 三块屏幕，一份存档
+
+![World Walker 安卓实拍：大厅、对局与角色面板](docs/assets/readme-gallery.png)
+
+大厅可以继续旧局，也可以开新世界；对局是一列叙事加一条安静的右栏；右栏放角色、压力钟、人情和世界事实，手机上收进底部抽屉。这里没有第二份状态：回放、Markdown 战报和安卓 APK 读的都是同一份存档。
 
 ![战报回放](docs/assets/replay.png)
 
-回放读的是同一份状态文件：序章、玩家的话、叙述正文，以及每个已结算回合的状态差异。没有第二套日志格式要同步。
+回放是同一份存档换个读法：序章、你说过的话、叙述正文，以及每个已结算回合的状态差异。没有第二套日志格式要同步。
 
-## 它解决什么
-
-多数 AI 跑团会坏在同样的地方。World Walker 把这些边界写进引擎，而不是写进更长的提示词。
-
-- **GM 不能替你玩。** 它只写世界和 NPC；你的决定始终由你来做。
-- **NPC 只知道亲眼见过的事。** 角色不能引用自己没见证过的事实。
-- **一回合必须留下痕迹。** 每次回复都有场面卡和审计；没有可见后果的回合会被标出来。
-
-战役是玩出来的，不是预写的。开局先问类型、玩法、角色、基调、模式（爽文/适中/硬核）和边界；之后每一回合走 `场面卡 → 你的行动 → 世界反应 → 状态变化 → 下一个钩子`。
-
-## 安卓版
-
-v1.20.0 起提供签名 APK：`arm64-v8a` 约 25 MB，`universal` 约 38 MB。它不是远程网页，APK 内带同一套 Python 引擎，Chaquopy 在 App 进程里起本地面板，WebView 只连 `127.0.0.1`；存档、模型 Key 和世界包都留在手机上。v1.20.1 补了 Android 7 自带 WebView 的兼容；旧版在系统 WebView 未升级时会只显示静态大厅、按钮点不动。
-
-手机壳把右栏收进“面板”抽屉，返回键先收抽屉、再收弹层、最后回大厅；下载落在 `Downloads/World Walker`，JSON 导入走系统文件选择器。安装、ABI 选择、构建与排障见 [docs/ANDROID.md](docs/ANDROID.md)。
-
-### 手机上的样子
-
-| 大厅 | 对局 |
-| --- | --- |
-| <img src="docs/assets/android-lobby.png" width="280" alt="安卓大厅"> | <img src="docs/assets/android-play.png" width="280" alt="安卓对局"> |
-
-## 安装与开玩
+## 三十秒开一局
 
 ```bash
 pip install -e ".[mcp]"      # 核心只用标准库；mcp 是可选依赖
@@ -48,11 +51,19 @@ wg init my-game.json
 wg play --state my-game.json
 ```
 
-`wg play` 会打开本地页面 `http://127.0.0.1:8899/`。可以继续旧局，也可以开新世界。玩家界面只有一屏：左边是叙事，右边是窄栏（角色、任务、人情、世界），底部一个输入框。
+`wg play` 会打开本地页面 `http://127.0.0.1:8899/`。可以继续旧局，也可以开新世界。玩家界面只有一屏：中间是叙事，右边是窄栏（角色、任务、人情、世界），底部一个输入框。
 
 `wg` 是统一入口：`init`、`setup`、`play`、`serve`、`mcp`、`run`、`doctor`、`version`。完整列表见 `wg --help`。
 
 `wg setup` 会把五个内置叙事技能、导演备注和两条桌面规则写入 `~/.world-walker/harness.json`，权限 `0600`；已有配置不会覆盖，`--force` 才重写。
+
+## 安卓版：把桌子装进口袋
+
+**[下载 v1.20.1 APK](https://github.com/Morningstar202604/world-walker/releases/tag/v1.20.1)** · **[安装、ABI 与构建说明](docs/ANDROID.md)**
+
+签名 APK：`arm64-v8a` 约 25 MB，`x86_64` 约 26 MB，`universal` 约 39 MB。它不是远程网页：APK 内带同一套 Python 引擎，Chaquopy 在 App 进程里启动本地回环面板，WebView 只连 `127.0.0.1`。存档、模型 Key 和世界包都留在手机上。
+
+v1.20.1 补上了 Android 7 自带 WebView 的兼容，移除了会让旧手机只显示静态大厅、按钮全死的 `async/await` 悬崖。手机壳把右栏收进“面板”抽屉，返回键先收抽屉、再收弹层、最后回大厅；下载落在 `Downloads/World Walker`，JSON 导入走系统文件选择器。
 
 ## 知识库与预制玩法
 
@@ -150,6 +161,10 @@ world-walker/                  # 仓库根即 game_engine 包
 ├── saves/                     # 本地存档库
 └── scripts/                   # 验证与构建工具
 ```
+
+## 如果你也想要这样一张桌子
+
+如果这就是你想存在的那张桌子，[点一颗星](https://github.com/Morningstar202604/world-walker)。它会让下一桌人找到这里。
 
 ## 许可
 

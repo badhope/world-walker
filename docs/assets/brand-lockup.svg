@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" width="1200" height="360">
+  <g transform="translate(40 96) scale(0.31)">
+    <rect x="28" y="28" width="456" height="456" rx="76" fill="#241F18"/>
+    <rect x="46" y="46" width="420" height="420" rx="62" fill="none" stroke="#C59742" stroke-width="3" opacity=".62"/>
+    <rect x="62" y="62" width="388" height="388" rx="48" fill="none" stroke="#C59742" stroke-width="1.5" opacity=".30"/>
+    <text x="256" y="370" text-anchor="middle" font-family="'Noto Serif CJK SC','Songti SC','STSong',serif" font-size="270" font-weight="700" fill="#C59742">行</text>
+  </g>
+  <text x="220" y="172" font-family="'Noto Serif CJK SC','Songti SC',Georgia,serif" font-size="76" font-weight="700" letter-spacing="6" fill="#241F18">WORLD WALKER</text>
+  <text x="224" y="232" font-family="'Noto Serif CJK SC','Songti SC',serif" font-size="30" letter-spacing="13" fill="#7A6C58">世 界 行 者</text>
+  <text x="224" y="286" font-family="'Noto Serif CJK SC','Songti SC',serif" font-size="28" letter-spacing="2" fill="#8A5A12">你开口，世界回应。</text>
+</svg>

@@ -26,13 +26,19 @@
     backdrop-filter: blur(10px);
   }
   nav .wrap { display: flex; align-items: center; gap: 18px; height: 62px; flex-wrap: wrap; }
-  .brand { font-family: Georgia, "Songti SC", serif; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
+  .brand { display: inline-flex; align-items: center; gap: 9px; font-family: Georgia, "Songti SC", serif; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; }
   nav .links { margin-left: auto; display: flex; gap: 16px; flex-wrap: wrap; }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  header { padding: 72px 0 34px; text-align: center; }
+  header { padding: 42px 0 34px; text-align: center; }
+  .hero { display: block; width: 100%; max-width: 980px; margin: 0 auto 26px; border-radius: 14px; }
   h1 { font: 700 clamp(32px, 5vw, 54px)/1.16 Georgia, "Songti SC", serif; margin-bottom: 16px; }
   .lead { color: var(--dim); font-size: 18px; max-width: 720px; margin: 0 auto; }
+  .figure { padding: 0; overflow: hidden; }
+  .figure img { display: block; width: 100%; height: auto; }
+  .figure .caption { padding: 14px 20px 18px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
   .badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 26px; }
   .badge { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 13px; font-size: 14px; }
   .badge b { color: var(--accent); margin-right: 4px; }
@@ -49,11 +55,11 @@
 <body>
 <nav>
   <div class="wrap">
-    <div class="brand">World Walker</div>
+    <div class="brand"><img src="assets/brand-mark.svg" alt="" width="28" height="28">World Walker</div>
     <div class="links">
       <a href="ANDROID.md">安卓版</a>
       <a href="MCP_PLAY.md">MCP 模式</a>
-      <a href="https://github.com/badhope/world-walker">GitHub</a>
+      <a href="https://github.com/Morningstar202604/world-walker">GitHub</a>
       <a href="https://gitee.com/badhope/world-walker">Gitee</a>
       <a href="https://gitcode.com/badhope/world-walker">GitCode</a>
     </div>
@@ -61,12 +67,13 @@
 </nav>
 
 <header class="wrap">
-  <h1>你开口，世界回应。</h1>
-  <p class="lead">单人 AI 跑团 / 互动叙事引擎。你直接和 AI 对话，规则引擎负责判定、状态和存档；也可以把自己的 AI 通过 MCP 接进来当 GM。</p>
+  <h1 class="sr-only">World Walker — 你开口，世界回应。</h1>
+  <img class="hero" src="assets/brand-hero.png" alt="World Walker — 你开口，世界回应。单人 AI 跑团引擎">
+  <p class="lead">单人 AI 跑团 / 互动叙事引擎。模型写场面，引擎守事实；安卓 APK 把同一张桌子装进口袋。</p>
   <div class="badges">
+    <span class="badge"><b>v1.20.1</b> · Android 7+ · MIT</span>
     <span class="badge"><b>74</b><span data-lang="en">MCP tools</span></span>
     <span class="badge"><b>221</b><span data-lang="en">rule functions</span></span>
-    <span class="badge"><b>9</b><span data-lang="zh">套开局骨架</span></span>
   </div>
 </header>
 
@@ -86,6 +93,18 @@
     </section>
   </div>
 
+  <section class="figure">
+    <h2 style="padding: 0 0 0 26px; margin: 22px 0 0;">一回合，五步</h2>
+    <img src="assets/readme-loop.png" alt="一回合，五步：你的话、场面卡、判定、GM 回应、状态落盘">
+    <div class="caption"><p>不是聊天记录，是一条能回放的因果链。场面卡钉住压力，引擎结算数字，GM 写下世界的回应，状态文件收下代价。</p></div>
+  </section>
+
+  <section class="figure">
+    <h2 style="padding: 0 0 0 26px; margin: 22px 0 0;">三块屏幕，一份存档</h2>
+    <img src="assets/readme-gallery.png" alt="World Walker 安卓实拍：大厅、对局与角色面板">
+    <div class="caption"><p>大厅继续旧局，对局是叙事加一条安静的右栏，右栏收进手机底部的“面板”抽屉。回放、Markdown 战报和安卓 APK 读的都是同一份存档。</p></div>
+  </section>
+
   <section>
     <h2>快速开始</h2>
     <pre><code>pip install -e ".[mcp]"
@@ -97,6 +116,7 @@ wg mcp --http --port 8620</code></pre>
   <section>
     <h2>安卓版：把同一个引擎装进口袋</h2>
     <p>APK 内带同一套 Python 引擎，Chaquopy 在 App 进程里启动本地回环面板，WebView 只连 <code>127.0.0.1</code>。三档 ABI、签名 Release、下载落 <code>Downloads/World Walker</code>；右栏收进底部抽屉，返回键先收抽屉再回大厅。安装与构建见 <a href="ANDROID.md">docs/ANDROID.md</a>。</p>
+    <p><a href="https://github.com/Morningstar202604/world-walker/releases/tag/v1.20.1"><strong>下载 v1.20.1 APK →</strong></a></p>
   </section>
 
   <section>

@@ -36,6 +36,7 @@ if 'game_engine' not in sys.modules:
 
 from game_engine import settings_loader as SL              # noqa: E402
 from game_engine import gameplay as GP                     # noqa: E402
+from game_engine import canon as CANON                     # noqa: E402
 from game_engine.state_schema import load_state, save_state, seed_rng  # noqa: E402
 from game_engine.rules import lorebook as LB              # noqa: E402
 from game_engine.rules import playbook as PB              # noqa: E402
@@ -454,30 +455,39 @@ def g4_integration():
 
 # ── G5 回退一致性 ─────────────────────────────────────────
 def g5_determinism():
-    tmp = tempfile.mkdtemp(prefix='ww-gameplay-det-')
-    a = os.path.join(tmp, 'a.json')
-    b = os.path.join(tmp, 'b.json')
-    sa0 = _load_bundle('雾港', a)
-    sb0 = _load_bundle('雾港', b)
+    # 初始状态里带 updated_at 时间戳；若两次载入恰好跨秒，逐字节断言会假红。
+    # 固定归一化时钟后再比较，测的是状态确定性，不是墙钟。
+    old_canon, old_gp = CANON._now, GP._now
+    CANON._now = lambda: '2026-01-01T00:00:00+00:00'
+    GP._now = lambda: '2026-01-01T00:00:00+00:00'
+    try:
+        tmp = tempfile.mkdtemp(prefix='ww-gameplay-det-')
+        a = os.path.join(tmp, 'a.json')
+        b = os.path.join(tmp, 'b.json')
+        sa0 = _load_bundle('雾港', a)
+        sb0 = _load_bundle('雾港', b)
 
-    diff_keys = [k for k in set(sa0) | set(sb0) if sa0.get(k) != sb0.get(k)]
-    check('G5 两次载入的初始状态逐字段一致', diff_keys == [],
-          '差异字段=%s' % (diff_keys[:3] or '无'))
+        diff_keys = [k for k in set(sa0) | set(sb0) if sa0.get(k) != sb0.get(k)]
+        check('G5 两次载入的初始状态逐字段一致', diff_keys == [],
+              '差异字段=%s' % (diff_keys[:3] or '无'))
 
-    # 同一 tick 同一文本 → 同一命中集合（世界书确定性）
-    ra = LB.trigger(sa0, sa0.get('lore') or [], ['灯塔 名册 沉船湾'], tick=0, apply_runtime=False)
-    rb = LB.trigger(sb0, sb0.get('lore') or [], ['灯塔 名册 沉船湾'], tick=0, apply_runtime=False)
-    check('G5 同种子同回合的世界书命中完全一致',
-          [x['comment'] for x in ra['entries']] == [x['comment'] for x in rb['entries']],
-          '%d 条' % len(ra['entries']))
+        # 同一 tick 同一文本 → 同一命中集合（世界书确定性）
+        ra = LB.trigger(sa0, sa0.get('lore') or [], ['灯塔 名册 沉船湾'], tick=0, apply_runtime=False)
+        rb = LB.trigger(sb0, sb0.get('lore') or [], ['灯塔 名册 沉船湾'], tick=0, apply_runtime=False)
+        check('G5 同种子同回合的世界书命中完全一致',
+              [x['comment'] for x in ra['entries']] == [x['comment'] for x in rb['entries']],
+              '%d 条' % len(ra['entries']))
 
-    # 连续 tick 两步后两个副本逐字节一致（排除 event_log 的时间顺序无关性）
-    for _ in range(3):
-        _tick_once(a)
-        _tick_once(b)
-    fa = open(a, 'rb').read()
-    fb = open(b, 'rb').read()
-    check('G5 两个副本连跑 3 回合后逐字节一致', fa == fb, '%d vs %d 字节' % (len(fa), len(fb)))
+        # 连续 tick 两步后两个副本逐字节一致（排除 event_log 的时间顺序无关性）
+        for _ in range(3):
+            _tick_once(a)
+            _tick_once(b)
+        fa = open(a, 'rb').read()
+        fb = open(b, 'rb').read()
+        check('G5 两个副本连跑 3 回合后逐字节一致', fa == fb, '%d vs %d 字节' % (len(fa), len(fb)))
+    finally:
+        CANON._now = old_canon
+        GP._now = old_gp
 
 
 # ── G6 场景驱动 ───────────────────────────────────────────
